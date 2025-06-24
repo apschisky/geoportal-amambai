@@ -184,12 +184,112 @@ map.on('pointermove', function(evt) {
     document.getElementById('mouse-coordinates').innerText = `Lon: ${coord[0].toFixed(5)}, Lat: ${coord[1].toFixed(5)}`;
 });
 
-document.getElementById('search-button').addEventListener('click', () => {
-    const query = document.getElementById('search-input').value;
+document.getElementById('search-button').addEventListener('click', async () => {
+    const query = document.getElementById('search-input').value.trim();
     if (!query) {
-        alert('Digite um endereço para buscar.');
+        alert('Digite um endereço ou número BIC para buscar.');
         return;
     }
+    // Se for um número (BIC), busca na camada de lotes urbanos
+    if (/^\d{4,}$/.test(query)) { // Exemplo: BIC com 4 ou mais dígitos
+        const bicField = 'bic'; // Substitua pelo nome correto do atributo se necessário
+        // Garante que a camada de lotes urbanos está visível
+        if (layers['layer3']) {
+            layers['layer3'].setVisible(true);
+            const checkbox = document.getElementById('layer3');
+            if (checkbox) checkbox.checked = true;
+            atualizarLegendas && atualizarLegendas();
+        }
+        const wfsUrl = `http://187.86.62.26:5433/geoserver/ne/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=ne:area_urbana&outputFormat=application/json&CQL_FILTER=${bicField}='${query}'`;
+        try {
+            const response = await fetch(wfsUrl);
+            const data = await response.json();
+            if (data.features && data.features.length > 0) {
+                const feature = data.features[0];
+                const format = new ol.format.GeoJSON();
+                const olFeature = format.readFeature(feature, {
+                    dataProjection: 'EPSG:32721',
+                    featureProjection: map.getView().getProjection()
+                });
+                if (loteSelecionadoLayer) map.removeLayer(loteSelecionadoLayer);
+                loteSelecionadoLayer = new ol.layer.Vector({
+                    source: new ol.source.Vector({ features: [olFeature] }),
+                    style: new ol.style.Style({
+                        stroke: new ol.style.Stroke({ color: '#1976d2', width: 4 }),
+                        fill: new ol.style.Fill({ color: 'rgba(25, 118, 210, 0.15)' })
+                    })
+                });
+                map.addLayer(loteSelecionadoLayer);
+                const extent = olFeature.getGeometry().getExtent();
+                map.getView().fit(extent, { maxZoom: 18, duration: 800, padding: [60, 60, 60, 60] });
+                let html = `<div style='font-size:14px;max-width:320px;'><strong>Lote encontrado (BIC: ${query})</strong><br><table style='border-collapse:collapse;width:100%'>`;
+                for (const key in feature.properties) {
+                    html += `<tr><td style='border:1px solid #ccc;padding:4px 8px;background:#f7f7f7;'><b>${key}</b></td><td style='border:1px solid #ccc;padding:4px 8px;'>${feature.properties[key]}</td></tr>`;
+                }
+                html += '</table></div>';
+                setTimeout(() => {
+                    let geometry = olFeature.getGeometry();
+                    let popupCoord = geometry.getType() === 'Point'
+                        ? geometry.getCoordinates()
+                        : ol.extent.getCenter(extent);
+                    showLotesPopup(popupCoord, html);
+                }, 900);
+            } else {
+                alert('Lote com este número BIC não encontrado.');
+            }
+        } catch (e) {
+            alert('Erro ao buscar lote pelo número BIC.');
+        }
+        return;
+    }
+    // Se não for número, tenta buscar pelo endereço na camada de lotes urbanos
+    const enderecoField = 'endereco'; // Substitua pelo nome correto do atributo se necessário
+    const wfsEnderecoUrl = `http://187.86.62.26:5433/geoserver/ne/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=ne:area_urbana&outputFormat=application/json&CQL_FILTER=${enderecoField} ILIKE '%25${encodeURIComponent(query)}%25'`;
+    try {
+        const response = await fetch(wfsEnderecoUrl);
+        const data = await response.json();
+        if (data.features && data.features.length > 0) {
+            const feature = data.features[0];
+            const format = new ol.format.GeoJSON();
+            const olFeature = format.readFeature(feature, {
+                dataProjection: 'EPSG:32721',
+                featureProjection: map.getView().getProjection()
+            });
+            if (loteSelecionadoLayer) map.removeLayer(loteSelecionadoLayer);
+            loteSelecionadoLayer = new ol.layer.Vector({
+                source: new ol.source.Vector({ features: [olFeature] }),
+                style: new ol.style.Style({
+                    stroke: new ol.style.Stroke({ color: '#1976d2', width: 4 }),
+                    fill: new ol.style.Fill({ color: 'rgba(25, 118, 210, 0.15)' })
+                })
+            });
+            map.addLayer(loteSelecionadoLayer);
+            if (layers['layer3']) {
+                layers['layer3'].setVisible(true);
+                const checkbox = document.getElementById('layer3');
+                if (checkbox) checkbox.checked = true;
+                atualizarLegendas && atualizarLegendas();
+            }
+            const extent = olFeature.getGeometry().getExtent();
+            map.getView().fit(extent, { maxZoom: 18, duration: 800, padding: [60, 60, 60, 60] });
+            let html = `<div style='font-size:14px;max-width:320px;'><strong>Lote encontrado (Endereço: ${query})</strong><br><table style='border-collapse:collapse;width:100%'>`;
+            for (const key in feature.properties) {
+                html += `<tr><td style='border:1px solid #ccc;padding:4px 8px;background:#f7f7f7;'><b>${key}</b></td><td style='border:1px solid #ccc;padding:4px 8px;'>${feature.properties[key]}</td></tr>`;
+            }
+            html += '</table></div>';
+            setTimeout(() => {
+                let geometry = olFeature.getGeometry();
+                let popupCoord = geometry.getType() === 'Point'
+                    ? geometry.getCoordinates()
+                    : ol.extent.getCenter(extent);
+                showLotesPopup(popupCoord, html);
+            }, 900);
+            return;
+        }
+    } catch (e) {
+        // Se erro, ignora e segue para busca Nominatim
+    }
+    // Busca padrão por endereço
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`;
     fetch(url)
         .then(async response => {
