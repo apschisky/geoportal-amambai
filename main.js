@@ -1094,3 +1094,46 @@ const lotesIndex = map.getLayers().getArray().indexOf(layers['layer3']);
 map.getLayers().insertAt(lotesIndex, tiposVegetacaoLayer);
 // Adiciona a camada 'Edificações' logo acima da camada de lotes (layer3)
 map.getLayers().insertAt(lotesIndex + 1, edificacoesLayer);
+
+// Adiciona o display do zoom no HTML
+const zoomDiv = document.createElement('div');
+zoomDiv.id = 'zoom-display';
+document.body.appendChild(zoomDiv);
+
+function atualizarZoomDisplay() {
+  const zoom = map.getView().getZoom();
+  zoomDiv.textContent = 'Zoom: ' + (zoom !== undefined && zoom !== null ? zoom.toFixed(2) : '');
+}
+
+// Atualiza ao carregar o mapa
+map.once('postrender', atualizarZoomDisplay);
+// Atualiza sempre que o zoom mudar
+map.getView().on('change:zoom', atualizarZoomDisplay);
+// Atualiza também ao trocar de mapa base
+map.getView().on('change:center', atualizarZoomDisplay);
+
+// Defina o limite máximo de zoom permitido para o layer satélite
+const SATELLITE_MAX_ZOOM = 18; // ajuste conforme o limite do provedor
+
+// Ao trocar para o satélite, limite o zoom máximo
+map.getView().on('change:resolution', function() {
+  if (satelliteLayer.getVisible()) {
+    const zoom = map.getView().getZoom();
+    if (zoom > SATELLITE_MAX_ZOOM) {
+      map.getView().setZoom(SATELLITE_MAX_ZOOM);
+    }
+  }
+});
+
+// Também limite ao ativar o satélite
+const satelliteRadio = document.querySelector('input[name="basemap"][value="satellite"]');
+if (satelliteRadio) {
+  satelliteRadio.addEventListener('change', function() {
+    if (this.checked) {
+      const zoom = map.getView().getZoom();
+      if (zoom > SATELLITE_MAX_ZOOM) {
+        map.getView().setZoom(SATELLITE_MAX_ZOOM);
+      }
+    }
+  });
+}
