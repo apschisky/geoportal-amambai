@@ -43,69 +43,69 @@ function createLayer(url, layerName, crs = 'EPSG:32721') {
 
 const layers = {
     'layer1': createLayer(
-        'http://187.86.62.26:5433/geoserver/ne/wms',
+        'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
         'ne:Perímetro de Amambai'
     ),
     'layer2': createLayer(
-        'http://187.86.62.26:5433/geoserver/ne/wms',
+        'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
         'ne:EixoDeAdensamento',
         'EPSG:32721'
     ),
     'layer3': createLayer(
-        'http://187.86.62.26:5433/geoserver/ne/wms',
+        'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
         'ne:area_urbana',
         'EPSG:3857'
     ),
     'layer_aeia': createLayer(
-        'http://187.86.62.26:5433/geoserver/ne/wms',
+        'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
         'ne:AEIA',
         'EPSG:3857'
     ),
     'layer_aeie': createLayer(
-        'http://187.86.62.26:5433/geoserver/ne/wms',
+        'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
         'ne:AEIE',
         'EPSG:3857'
     ),
     'layer_aeis1': createLayer(
-        'http://187.86.62.26:5433/geoserver/ne/wms',
+        'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
         'ne:AEIS1',
         'EPSG:32721'
     ),
     'layer_aeis2': createLayer(
-        'http://187.86.62.26:5433/geoserver/ne/wms',
+        'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
         'ne:AEIS2',
         'EPSG:32721'
     ),
     'layer4': createLayer(
-        'http://187.86.62.26:5433/geoserver/ne/wms',
+        'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
         'ne:ZoneamentoUrbano_PD_novo',
         'EPSG:3857'
     ),
     'layer5': createLayer(
-        'http://187.86.62.26:5433/geoserver/ne/wms',
+        'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
         'ne:Aldeias'
     ),
     'layer6': createLayer(
-        'http://187.86.62.26:5433/geoserver/ne/wms',
+        'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
         'ne:bacia_rio_parana'
     ),
     'layer7': createLayer(
-        'http://187.86.62.26:5433/geoserver/ne/wms',
+        'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
         'ne:Rios e Córregos de Amambai',
         'EPSG:31981'
     ),
     'layer_aeiu': createLayer(
-        'http://187.86.62.26:5433/geoserver/ne/wms',
+        'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
         'ne:AEIU',
         'EPSG:32721'
     ),
     'layer_apc': createLayer(
-        'http://187.86.62.26:5433/geoserver/ne/wms',
+        'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
         'ne:AreaExpansaoUrbana',
         'EPSG:32721'
     ),
     'layer_area_protecao_cultural': createLayer(
-        'http://187.86.62.26:5433/geoserver/ne/wms',
+        'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
         'ne:AreaDeProtecaoCultural',
         'EPSG:32721'
     )
@@ -200,7 +200,7 @@ document.getElementById('search-button').addEventListener('click', async () => {
             if (checkbox) checkbox.checked = true;
             atualizarLegendas && atualizarLegendas();
         }
-        const wfsUrl = `http://187.86.62.26:5433/geoserver/ne/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=ne:area_urbana&outputFormat=application/json&CQL_FILTER=${bicField}='${query}'`;
+        const wfsUrl = `https://geoserver.amambai.ms.gov.br/geoserver/ne/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=ne:area_urbana&outputFormat=application/json&CQL_FILTER=${bicField}='${query}'`;
         try {
             const response = await fetch(wfsUrl);
             const data = await response.json();
@@ -244,7 +244,7 @@ document.getElementById('search-button').addEventListener('click', async () => {
     }
     // Se não for número, tenta buscar pelo endereço na camada de lotes urbanos
     const enderecoField = 'endereco'; // Substitua pelo nome correto do atributo se necessário
-    const wfsEnderecoUrl = `http://187.86.62.26:5433/geoserver/ne/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=ne:area_urbana&outputFormat=application/json&CQL_FILTER=${enderecoField} ILIKE '%25${encodeURIComponent(query)}%25'`;
+    const wfsEnderecoUrl = `https://geoserver.amambai.ms.gov.br/geoserver/ne/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=ne:area_urbana&outputFormat=application/json&CQL_FILTER=${enderecoField} ILIKE '%25${encodeURIComponent(query)}%25'`;
     try {
         const response = await fetch(wfsEnderecoUrl);
         const data = await response.json();
@@ -338,43 +338,43 @@ document.getElementById('print-btn').addEventListener('click', () => {
 const legendasWMS = {
     'layer5': {
         titulo: 'Terras Indígenas',
-        url: 'http://187.86.62.26:5433/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Aldeias'
+        url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Aldeias'
     },
     'layer6': {
         titulo: 'Sub-bacias do Rio Paraná',
-        url: 'http://187.86.62.26:5433/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:bacia_rio_parana'
+        url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:bacia_rio_parana'
     },
     'layer4': {
         titulo: 'Zoneamento Urbano',
-        url: 'http://187.86.62.26:5433/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:ZoneamentoUrbano_PD_novo'
+        url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:ZoneamentoUrbano_PD_novo'
     },
     'layer_aeia': {
         titulo: 'AEIA',
-        url: 'http://187.86.62.26:5433/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:AEIA'
+        url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:AEIA'
     },
     'layer_aeie': {
         titulo: 'AEIE',
-        url: 'http://187.86.62.26:5433/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:AEIE'
+        url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:AEIE'
     },
     'layer_aeis1': {
         titulo: 'AEIS1',
-        url: 'http://187.86.62.26:5433/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:AEIS1'
+        url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:AEIS1'
     },
     'layer_aeis2': {
         titulo: 'AEIS2',
-        url: 'http://187.86.62.26:5433/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:AEIS2'
+        url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:AEIS2'
     },
     'layer_aeiu': {
         titulo: 'AEIU',
-        url: 'http://187.86.62.26:5433/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:AEIU'
+        url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:AEIU'
     },
     'layer_apc': {
         titulo: 'Área de Expansão Urbana',
-        url: 'http://187.86.62.26:5433/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:AreaExpansaoUrbana'
+        url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:AreaExpansaoUrbana'
     },
     'layer_area_protecao_cultural': {
         titulo: 'Área de Proteção Cultural',
-        url: 'http://187.86.62.26:5433/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:AreaDeProtecaoCultural'
+        url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:AreaDeProtecaoCultural'
     }
 };
 
@@ -651,7 +651,7 @@ document.querySelector('.geolocate-box').addEventListener('click', function() {
 // Camada Pavimentação
 const pavimentacaoLayer = new ol.layer.Image({
   source: new ol.source.ImageWMS({
-    url: 'http://187.86.62.26:5433/geoserver/ne/wms',
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
     params: {
       'LAYERS': 'ne:Pavimentação',
       'TILED': true,
@@ -668,7 +668,7 @@ const legendasCategorias = document.getElementById('legendas-categorias');
 const pavimentacaoLegendHTML = `
   <div id="legenda-pavimentacao">
     <strong>Pavimentação</strong><br>
-    <img src="http://187.86.62.26:5433/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Pavimentação" alt="Legenda Pavimentação">
+    <img src="https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Pavimentação" alt="Legenda Pavimentação">
   </div>
 `;
 
@@ -691,7 +691,7 @@ document.getElementById('layer_pavimentacao').addEventListener('change', functio
 // Camada Trechos de RDA
 const trechosRdaLayer = new ol.layer.Image({
   source: new ol.source.ImageWMS({
-    url: 'http://187.86.62.26:5433/geoserver/ne/wms',
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
     params: {
       'LAYERS': 'ne:Trechos de RDA',
       'TILED': true,
@@ -707,7 +707,7 @@ map.addLayer(trechosRdaLayer);
 const trechosRdaLegendHTML = `
   <div id="legenda-trechosrda">
     <strong>Trechos de RDA</strong><br>
-    <img src="http://187.86.62.26:5433/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Trechos%20de%20RDA" alt="Legenda Trechos de RDA">
+    <img src="https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Trechos%20de%20RDA" alt="Legenda Trechos de RDA">
   </div>
 `;
 
@@ -730,7 +730,7 @@ document.getElementById('layer_trechosrda').addEventListener('change', function(
 // Camada Rede de esgoto
 const redeEsgotoLayer = new ol.layer.Image({
   source: new ol.source.ImageWMS({
-    url: 'http://187.86.62.26:5433/geoserver/ne/wms',
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
     params: {
       'LAYERS': 'ne:rede_esgoto_2025_at',
       'TILED': true,
@@ -746,7 +746,7 @@ map.addLayer(redeEsgotoLayer);
 const redeEsgotoLegendHTML = `
   <div id="legenda-redeesgoto">
     <strong>Rede de esgoto</strong><br>
-    <img src="http://187.86.62.26:5433/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:rede_esgoto_2025_at" alt="Legenda Rede de esgoto">
+    <img src="https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:rede_esgoto_2025_at" alt="Legenda Rede de esgoto">
   </div>
 `;
 
@@ -769,7 +769,7 @@ document.getElementById('layer_redeesgoto').addEventListener('change', function(
 // Camada Assistência Social
 const assistenciaSocialLayer = new ol.layer.Image({
   source: new ol.source.ImageWMS({
-    url: 'http://187.86.62.26:5433/geoserver/ne/wms',
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
     params: {
       'LAYERS': 'ne:Assistência social',
       'TILED': true,
@@ -785,7 +785,7 @@ map.addLayer(assistenciaSocialLayer);
 const assistenciaSocialLegendHTML = `
   <div id="legenda-assistencia-social">
     <strong>Assistência Social</strong><br>
-    <img src="http://187.86.62.26:5433/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Assistência%20social" alt="Legenda Assistência Social">
+    <img src="https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Assistência%20social" alt="Legenda Assistência Social">
   </div>
 `;
 
@@ -808,7 +808,7 @@ document.getElementById('layer_assistencia_social').addEventListener('change', f
 // Camada Educação
 const educacaoLayer = new ol.layer.Image({
   source: new ol.source.ImageWMS({
-    url: 'http://187.86.62.26:5433/geoserver/ne/wms',
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
     params: {
       'LAYERS': 'ne:Educação_at',
       'TILED': true,
@@ -824,7 +824,7 @@ map.addLayer(educacaoLayer);
 const educacaoLegendHTML = `
   <div id="legenda-educacao">
     <strong>Educação</strong><br>
-    <img src="http://187.86.62.26:5433/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Educação_at" alt="Legenda Educação">
+    <img src="https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Educação_at" alt="Legenda Educação">
   </div>
 `;
 
@@ -847,7 +847,7 @@ document.getElementById('layer_educacao').addEventListener('change', function() 
 // Camada Prefeitura
 const prefeituraLayer = new ol.layer.Image({
   source: new ol.source.ImageWMS({
-    url: 'http://187.86.62.26:5433/geoserver/ne/wms',
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
     params: {
       'LAYERS': 'ne:Prefeitura',
       'TILED': true,
@@ -863,7 +863,7 @@ map.addLayer(prefeituraLayer);
 const prefeituraLegendHTML = `
   <div id="legenda-prefeitura">
     <strong>Prefeitura</strong><br>
-    <img src="http://187.86.62.26:5433/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Prefeitura" alt="Legenda Prefeitura">
+    <img src="https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Prefeitura" alt="Legenda Prefeitura">
   </div>
 `;
 
@@ -886,7 +886,7 @@ document.getElementById('layer_prefeitura').addEventListener('change', function(
 // Camada Saúde
 const saudeLayer = new ol.layer.Image({
   source: new ol.source.ImageWMS({
-    url: 'http://187.86.62.26:5433/geoserver/ne/wms',
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
     params: {
       'LAYERS': 'ne:Saúde_atu',
       'TILED': true,
@@ -902,7 +902,7 @@ map.addLayer(saudeLayer);
 const saudeLegendHTML = `
   <div id="legenda-saude">
     <strong>Saúde</strong><br>
-    <img src="http://187.86.62.26:5433/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Saúde_atu" alt="Legenda Saúde">
+    <img src="https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Saúde_atu" alt="Legenda Saúde">
   </div>
 `;
 
@@ -925,7 +925,7 @@ document.getElementById('layer_saude').addEventListener('change', function() {
 // Camada Tipos de vegetação
 const tiposVegetacaoLayer = new ol.layer.Image({
   source: new ol.source.ImageWMS({
-    url: 'http://187.86.62.26:5433/geoserver/ne/wms',
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
     params: {
       'LAYERS': 'ne:veg_dissolvido', // corrigido para o nome correto do layer
       'TILED': true,
@@ -941,7 +941,7 @@ map.addLayer(tiposVegetacaoLayer);
 const tiposVegetacaoLegendHTML = `
   <div id="legenda-tipos-vegetacao">
     <strong>Tipos de vegetação</strong><br>
-    <img src="http://187.86.62.26:5433/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:veg_dissolvido" alt="Legenda Tipos de vegetação">
+    <img src="https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:veg_dissolvido" alt="Legenda Tipos de vegetação">
   </div>
 `;
 
@@ -964,7 +964,7 @@ document.getElementById('layer_tipos_vegetacao').addEventListener('change', func
 // Camada Imóveis SIGEF
 const imoveisSigefLayer = new ol.layer.Image({
   source: new ol.source.ImageWMS({
-    url: 'http://187.86.62.26:5433/geoserver/ne/wms',
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
     params: {
       'LAYERS': 'ne:Imóveis SIGEF 05_25',
       'TILED': true,
@@ -980,7 +980,7 @@ map.addLayer(imoveisSigefLayer);
 const imoveisSigefLegendHTML = `
   <div id="legenda-imoveis-sigef">
     <strong>Imóveis SIGEF</strong><br>
-    <img src="http://187.86.62.26:5433/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Imóveis%20SIGEF%2005_25" alt="Legenda Imóveis SIGEF">
+    <img src="https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Imóveis%20SIGEF%2005_25" alt="Legenda Imóveis SIGEF">
   </div>
 `;
 
@@ -1003,7 +1003,7 @@ document.getElementById('layer_imoveis_sigef').addEventListener('change', functi
 // Camada Imóveis SNCI
 const imoveisSnciLayer = new ol.layer.Image({
   source: new ol.source.ImageWMS({
-    url: 'http://187.86.62.26:5433/geoserver/ne/wms',
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
     params: {
       'LAYERS': 'ne:Imóveis SNCI 05_25',
       'TILED': true,
@@ -1019,7 +1019,7 @@ map.addLayer(imoveisSnciLayer);
 const imoveisSnciLegendHTML = `
   <div id="legenda-imoveis-snci">
     <strong>Imóveis SNCI</strong><br>
-    <img src="http://187.86.62.26:5433/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Imóveis%20SNCI%2005_25" alt="Legenda Imóveis SNCI">
+    <img src="https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Imóveis%20SNCI%2005_25" alt="Legenda Imóveis SNCI">
   </div>
 `;
 
@@ -1042,7 +1042,7 @@ document.getElementById('layer_imoveis_snci').addEventListener('change', functio
 // Camada Edificações
 const edificacoesLayer = new ol.layer.Image({
   source: new ol.source.ImageWMS({
-    url: 'http://187.86.62.26:5433/geoserver/ne/wms',
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
     params: {
       'LAYERS': 'ne:EdificaçõesDB',
       'TILED': true,
@@ -1058,7 +1058,7 @@ map.addLayer(edificacoesLayer);
 const edificacoesLegendHTML = `
   <div id="legenda-edificacoes">
     <strong>Edificações</strong><br>
-    <img src="http://187.86.62.26:5433/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:EdificaçõesDB" alt="Legenda Edificações">
+    <img src="https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:EdificaçõesDB" alt="Legenda Edificações">
   </div>
 `;
 
