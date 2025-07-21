@@ -7,6 +7,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/ol@latest/ol.css">
     <link rel="stylesheet" href="style.css">
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-FL1QM3BJZB"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-FL1QM3BJZB');
+    </script>
 </head>
 <body>
     <!-- Cabeçalho com logo e título do geoportal -->
@@ -37,110 +45,100 @@
                 <img src="https://img.icons8.com/ios-filled/50/000000/search.png" alt="Buscar">
                 <div class="search-options">
                     <strong>Buscar:</strong><br>
-                    <input type="text" id="search-input" placeholder="Digite um endereço">
+                    <select id="search-type" style="margin-bottom:4px;">
+                      <option value="bic">BIC</option>
+                      <option value="endereco">Endereço</option>
+                      <option value="fazenda">Imóveis Rurais</option>
+                    </select><br>
+                    <input type="text" id="search-input" placeholder="Digite um endereço, BIC ou fazenda">
                     <button id="search-button">Buscar</button>
                 </div>
             </div>
             <div class="fullscreen-box" title="Tela Cheia">
-                <img src="https://img.icons8.com/ios-filled/50/000000/full-screen.png" alt="Tela Cheia">
-                <div class="fullscreen-options">
-                    <strong>Opções:</strong>
-                    <button id="fullscreen-btn">Ativar Tela Cheia</button>
-                </div>
+                <img src="https://img.icons8.com/ios-filled/50/000000/full-screen.png" alt="Tela Cheia" id="fullscreen-btn">
             </div>
-            <div class="print-box" title="Imprimir">
-                <img src="https://img.icons8.com/ios-filled/50/000000/print.png" alt="Imprimir">
-                <div class="print-options">
-                    <strong>Opções:</strong>
-                    <button id="print-btn">Imprimir</button>
-                </div>
+            <div class="print-box" title="Imprimir" style="position: relative;">
+                <button id="print-btn" type="button" style="background: none; border: none; padding: 0; cursor: pointer; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <img src="https://img.icons8.com/ios-filled/50/000000/print.png" alt="Imprimir">
+                </button>
             </div>
             <div class="geolocate-box" title="Encontrar minha localização">
                 <img src="https://img.icons8.com/ios-filled/50/000000/marker.png" alt="Geolocalizar">
             </div>
         </div>
-        <div id="legendas-categorias" style="
-            position: absolute;
-            right: 15px;
-            bottom: 100px;
-            z-index: 2100;
-            max-width: 260px;
-            background: rgba(255,255,255,0.97);
-            border-radius: 8px;
-            box-shadow: 2px 2px 10px rgba(0,0,0,0.15);
-            padding: 10px 18px 10px 10px;
-            display: none;
-            font-size: 14px;
-        "></div>
-        </div>
-        <div class="layer-controls-box" title="Camadas">
-            <img src="https://img.icons8.com/ios-filled/50/000000/layers.png" alt="Camadas">
-            <div class="layer-controls-content">
-              <strong>Camadas:</strong><br>
-      
-              <div class="theme-group">
-                <button class="theme-toggle" type="button">Plano diretor</button>
-                <div class="theme-layers" style="display:none;">
-                  <label><input type="checkbox" id="layer2"> Eixo de Adensamento</label><br>
-                  <label><input type="checkbox" id="layer_aeia"> Área interesse ambiental</label><br>
-                  <label><input type="checkbox" id="layer_aeie"> Área interesse econômico</label><br>
-                  <label><input type="checkbox" id="layer_aeis1"> Área interesse social1</label><br>
-                  <label><input type="checkbox" id="layer_aeis2"> Área interesse social2</label><br>
-                  <label><input type="checkbox" id="layer_aeiu"> Área interesse urbano</label><br>
-                  <label><input type="checkbox" id="layer_apc"> Área de Expansão Urbana</label><br>
-                  <label><input type="checkbox" id="layer4"> Zoneamento Urbano</label><br>
-                  <label><input type="checkbox" id="layer_area_protecao_cultural"> Área de Proteção Cultural</label><br>
-                </div>
-              </div>
-      
-              <div class="theme-group">
-                <button class="theme-toggle" type="button">Infraestrutura</button>
-                <div class="theme-layers" style="display:none;">
-                  <label><input type="checkbox" id="layer3"> Lotes Urbanos</label><br>
-                  <label><input type="checkbox" id="layer_edificacoes"> Edificações</label><br>
-                  <label><input type="checkbox" id="layer_pavimentacao"> Pavimentação</label><br>
-                  <label><input type="checkbox" id="layer_trechosrda"> Rede de água</label><br>
-                  <label><input type="checkbox" id="layer_redeesgoto"> Rede de esgoto</label><br>
-                </div>
-              </div>
-      
-              <div class="theme-group">
-                <button class="theme-toggle" type="button">Locais de interesse</button>
-                <div class="theme-layers" style="display:none;">
-                  <label><input type="checkbox" id="layer_assistencia_social"> Assistência Social</label><br>
-                  <label><input type="checkbox" id="layer_educacao"> Educação</label><br>
-                  <label><input type="checkbox" id="layer_prefeitura"> Prefeitura</label><br>
-                  <label><input type="checkbox" id="layer_saude"> Saúde</label><br>
-                </div>
-              </div>
-      
-              <div class="theme-group">
-                <button class="theme-toggle" type="button">Gerais</button>
-                <div class="theme-layers" style="display:none;">
-                  <label><input type="checkbox" id="layer1" checked> Perímetro do Município</label><br>
-                  <label><input type="checkbox" id="layer5"> Terras Indígenas</label><br>
-                  <label><input type="checkbox" id="layer6"> Sub-bacias do Rio Paraná</label><br>
-                  <label><input type="checkbox" id="layer7"> Cursos d'água Amambai</label><br>
-                  <label><input type="checkbox" id="layer_tipos_vegetacao"> Tipos de vegetação</label><br>
-                </div>
-              </div>
-      
-              <div class="theme-group">
-                <button class="theme-toggle" type="button">Área rural</button>
-                <div class="theme-layers" style="display:none;">
-                  <label><input type="checkbox" id="layer_imoveis_sigef"> Imóveis SIGEF</label><br>
-                  <label><input type="checkbox" id="layer_imoveis_snci"> Imóveis SNCI</label><br>
-                </div>
-              </div>
-      
-              <hr>
-              <strong>Mapa Base:</strong><br>
-              <label><input type="radio" name="basemap" value="osm" checked> OpenStreetMap</label><br>
-              <label><input type="radio" name="basemap" value="satellite"> Satélite</label>
-            </div>
-        </div>
-        <div class="coordinate-display" id="mouse-coordinates">Lon: --, Lat: --</div>
+        <!-- Botão para expandir/retrair a legenda -->
+        
+        <!-- Bloco responsável pelo posicionamento e comportamento visual da caixa de legendas (#legendas-categorias).
+             O estilo agora é controlado apenas pelo CSS externo (style.css). -->
+        <div id="legendas-categorias"></div>
     </div>
+    <div class="layer-controls-box" title="Camadas">
+        <img src="https://img.icons8.com/ios-filled/50/000000/layers.png" alt="Camadas">
+        <div class="layer-controls-content">
+          <strong>Camadas:</strong><br>
+  
+          <div class="theme-group">
+            <button class="theme-toggle" type="button">Plano diretor</button>
+            <div class="theme-layers">
+              <label><input type="checkbox" id="layer2"> Eixo de Adensamento</label><br>
+              <label><input type="checkbox" id="layer_aeia"> Área interesse ambiental</label><br>
+              <label><input type="checkbox" id="layer_aeie"> Área interesse econômico</label><br>
+              <label><input type="checkbox" id="layer_aeis1"> Área interesse social1</label><br>
+              <label><input type="checkbox" id="layer_aeis2"> Área interesse social2</label><br>
+              <label><input type="checkbox" id="layer_aeiu"> Área interesse urbano</label><br>
+              <label><input type="checkbox" id="layer_apc"> Área de Expansão Urbana</label><br>
+              <label><input type="checkbox" id="layer4"> Zoneamento Urbano</label><br>
+              <label><input type="checkbox" id="layer_area_protecao_cultural"> Área de Proteção Cultural</label><br>
+            </div>
+          </div>
+  
+          <div class="theme-group">
+            <button class="theme-toggle" type="button">Infraestrutura</button>
+            <div class="theme-layers">
+              <label><input type="checkbox" id="layer3"> Lotes Urbanos</label><br>
+              <label><input type="checkbox" id="layer_edificacoes"> Edificações</label><br>
+              <label><input type="checkbox" id="layer_pavimentacao"> Pavimentação</label><br>
+              <label><input type="checkbox" id="layer_trechosrda"> Rede de água</label><br>
+              <label><input type="checkbox" id="layer_redeesgoto"> Rede de esgoto</label><br>
+            </div>
+          </div>
+  
+          <div class="theme-group">
+            <button class="theme-toggle" type="button">Locais de interesse</button>
+            <div class="theme-layers">
+              <label><input type="checkbox" id="layer_assistencia_social"> Assistência Social</label><br>
+              <label><input type="checkbox" id="layer_educacao"> Educação</label><br>
+              <label><input type="checkbox" id="layer_prefeitura"> Prefeitura</label><br>
+              <label><input type="checkbox" id="layer_saude"> Saúde</label><br>
+            </div>
+          </div>
+  
+          <div class="theme-group">
+            <button class="theme-toggle" type="button">Gerais</button>
+            <div class="theme-layers">
+              <label><input type="checkbox" id="layer1" checked> Perímetro do Município</label><br>
+              <label><input type="checkbox" id="layer5"> Terras Indígenas</label><br>
+              <label><input type="checkbox" id="layer6"> Sub-bacias do Rio Paraná</label><br>
+              <label><input type="checkbox" id="layer7"> Cursos d'água Amambai</label><br>
+              <label><input type="checkbox" id="layer_tipos_vegetacao"> Tipos de vegetação</label><br>
+            </div>
+          </div>
+  
+          <div class="theme-group">
+            <button class="theme-toggle" type="button">Área rural</button>
+            <div class="theme-layers">
+              <label><input type="checkbox" id="layer_imoveis_sigef"> Imóveis SIGEF</label><br>
+              <label><input type="checkbox" id="layer_imoveis_snci"> Imóveis SNCI</label><br>
+            </div>
+          </div>
+  
+          <hr>
+          <strong>Mapa Base:</strong><br>
+          <label><input type="radio" name="basemap" value="osm" checked> OpenStreetMap</label><br>
+          <label><input type="radio" name="basemap" value="satellite"> Satélite</label>
+        </div>
+    </div>
+    <div class="coordinate-display" id="mouse-coordinates">Lon: --, Lat: --</div>
     <footer class="footer">
         <span>Todos os direitos reservados a Prefeitura de Amambai - MS, 2025</span>
         <a href="https://www.amambai.ms.gov.br/" target="_blank" class="footer-link">www.amambai.ms.gov.br</a>

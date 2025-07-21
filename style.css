@@ -1,3 +1,103 @@
+/* --- Cabeçalho compacto para impressão --- */
+@media print {
+  .header {
+    display: flex !important;
+    align-items: center !important;
+    flex-direction: row !important;
+    justify-content: flex-start !important;
+    gap: 6px !important;
+    padding: 2px 8px 2px 8px !important;
+    margin: 0 !important;
+    border-bottom: 1px solid #eee !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    flex-wrap: nowrap !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    visibility: visible !important;
+    position: relative !important;
+    font-size: 0.68em !important;
+    max-width: 100vw !important;
+  }
+  .header img {
+    height: 18px !important;
+    width: auto !important;
+    margin-right: 5px !important;
+    background: #fff !important;
+    border-radius: 2px !important;
+    padding: 1px !important;
+    box-shadow: none !important;
+    display: inline-block !important;
+    vertical-align: middle !important;
+  }
+  .header span {
+    font-size: 1.08em !important;
+    font-weight: bold !important;
+    margin: 0 !important;
+    display: inline-block !important;
+    vertical-align: middle !important;
+    color: #222 !important;
+    letter-spacing: 0.5px !important;
+    font-family: 'Roboto', Arial, sans-serif !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: ellipsis !important;
+    max-width: 95vw !important;
+  }
+  #map {
+    width: 100vw !important;
+    height: 15cm !important;
+    max-height: 15cm !important;
+    min-height: 10cm !important;
+    page-break-after: always !important;
+    display: block !important;
+    position: relative !important;
+    background: #fff !important;
+    overflow: hidden !important;
+    padding: 0.2cm 0.3cm 0.2cm 0.2cm !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+  }
+}
+/* --- PRINT LAYOUT FIX --- */
+@media print {
+  body, html {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    overflow: visible !important;
+  }
+  #map {
+    width: 100vw !important;
+    max-height: 17cm !important;
+    height: 17cm !important;
+    page-break-after: always;
+    display: block !important;
+    position: relative !important;
+    background: #fff !important;
+    overflow: hidden !important;
+  }
+  .print-popup-table-page {
+    display: block !important;
+    page-break-before: always !important;
+    width: 100vw !important;
+    background: #fff !important;
+    position: relative !important;
+    box-sizing: border-box !important;
+    padding: 10px 0 10px 0 !important;
+    margin: 0 !important;
+    min-height: auto !important;
+  }
+  /* Esconde todos os controles e toolboxes na impressão */
+  .measurement-box, .geolocate-box, .search-box, .layer-controls-box, .ol-control, .ol-scale-line {
+    display: none !important;
+  }
+  /* Esconde popups do mapa na impressão */
+  .ol-popup, .draggable-popup {
+    display: none !important;
+  }
+}
 body {
     font-family: 'Roboto', sans-serif;
     margin: 0;
@@ -527,5 +627,98 @@ body {
   .geolocate-box {
     top: 120px;
     left: 10px;
+  }
+}
+#legendas-categorias {
+    position: absolute;
+    left: 10px;
+    bottom: 100px;
+    z-index: 2100;
+    max-width: 340px;
+    max-height: 30vh;
+    overflow-y: auto;
+    background: #fff !important; /* Força fundo branco sólido */
+    border-radius: 8px;
+    box-shadow: 2px 2px 10px rgba(0,0,0,0.15);
+    padding: 10px 18px 10px 10px;
+    display: none;
+    font-size: 14px;
+}
+#legendas-categorias > div {
+    margin-bottom: 12px;
+    word-break: break-word;
+}
+#legendas-categorias > div:last-child {
+    margin-bottom: 0;
+}
+#legendas-categorias:not(:empty) {
+    padding: 10px 18px 10px 10px;
+}
+#legendas-categorias:empty {
+    padding: 0;
+}
+
+/* Garante fundo branco sólido para popups do OpenLayers e qualquer popup customizado */
+.ol-popup, .ol-popup-content, .ol-popup-closer {
+    background: #fff !important;
+    backdrop-filter: none !important;
+    box-shadow: 2px 2px 10px rgba(0,0,0,0.15) !important;
+}
+
+/* Sobrescreve variáveis do OpenLayers para evitar transparência */
+:root {
+    --ol-background-color: #fff !important;
+    --ol-partial-background-color: #fff !important;
+    --ol-subtle-background-color: #fff !important;
+}
+
+/* Garante que qualquer td/th em popups não tenha fundo transparente */
+.ol-popup td, .ol-popup th, .ol-popup-content td, .ol-popup-content th {
+    background: #fff !important;
+}
+
+/* Garante que #legendas-categorias nunca herde transparência de variáveis globais */
+#legendas-categorias {
+    background: #fff !important;
+}
+/* Impressão: esconde botões, controles e zoom na impressão */
+
+@media print {
+  /* Esconde todos os botões e controles interativos na impressão */
+  .measurement-box,
+  .geolocate-box,
+  .search-box,
+  #fullscreen-btn,
+  #print-btn,
+  .layer-controls-box,
+  #zoom-display,
+  .ol-zoom,
+  .ol-zoom button,
+  .ol-rotate,
+  .ol-scale-line,
+  .ol-attribution,
+  .ol-control,
+  .ol-overlaycontainer-stopevent,
+  .ol-overlaycontainer,
+  .ol-popup,
+  .ol-popup-content,
+  .ol-popup-bar,
+  .ol-popup-closer,
+  .coordinate-display {
+    display: none !important;
+  }
+  /* Esconde legendas e popups na primeira página */
+  #legendas-categorias {
+    display: none !important;
+  }
+  #map {
+    background: #fff !important;
+  }
+  /* Exibe a área especial na segunda página */
+  .print-popup-table-page {
+    display: block !important;
+    page-break-before: always;
+    width: 100%;
+    margin-top: 40px;
   }
 }
