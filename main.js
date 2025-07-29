@@ -170,10 +170,15 @@ const layers = {
         'ne:AEIS2',
         'EPSG:32721'
     ),
+    'layer_macrozoneamento': createLayer(
+        'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
+        'ne:Macrozoneamento_web',
+        'EPSG:32721'
+    ),
     'layer4': createLayer(
         'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
         'ne:ZoneamentoUrbano_PD_novo',
-        'EPSG:3857'
+        'EPSG:32721'
     ),
     'layer5': createLayer(
         'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
@@ -206,7 +211,7 @@ const layers = {
 };
 
 // Adiciona as camadas na nova ordem correta de sobreposição
-[layers['layer7'], layers['layer6'], layers['layer_area_protecao_cultural'], layers['layer5'], layers['layer4'], layers['layer_aeiu'], layers['layer_apc'], layers['layer_aeis2'], layers['layer_aeis1'], layers['layer_aeie'], layers['layer_aeia'], layers['layer3'], layers['layer2'], layers['layer1']].forEach(layer => map.addLayer(layer));
+[layers['layer7'], layers['layer6'], layers['layer_area_protecao_cultural'], layers['layer5'], layers['layer_macrozoneamento'], layers['layer4'], layers['layer_aeiu'], layers['layer_apc'], layers['layer_aeis2'], layers['layer_aeis1'], layers['layer_aeie'], layers['layer_aeia'], layers['layer3'], layers['layer2'], layers['layer1']].forEach(layer => map.addLayer(layer));
 
 document.querySelectorAll('.layer-controls-content input[type="checkbox"]').forEach(checkbox => {
     checkbox.addEventListener('change', function () {
@@ -612,6 +617,10 @@ if (printBtn) {
 }
 
 const legendasWMS = {
+    'layer_macrozoneamento': {
+        titulo: 'Macrozoneamento',
+        url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Macrozoneamento_web'
+    },
     'layer5': {
         titulo: 'Terras Indígenas',
         url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Aldeias'
