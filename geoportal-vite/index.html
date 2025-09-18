@@ -17,60 +17,55 @@
     </script>
 </head>
 <body>
-    <!-- Cabeçalho com logo e título do geoportal -->
-    <div class="header">
-        <div style="background: #fff; border-radius: 8px; padding: 4px 8px; display: flex; align-items: center;">
-            <img src="logo.png" alt="Logo Prefeitura de Amambai">
-        </div>
+    <div class="print-firstpage-group">
+      <!-- Cabeçalho com logo e título do geoportal -->
+      <div class="header">
+        <img src="image.svg" alt="Logo Prefeitura de Amambai" style="background: transparent; border: none;">
         <span>
-            Geoportal de Amambai - MS
+          Geoportal de Amambai - MS
         </span>
-    </div>
-
-    <!-- Container principal do mapa e ferramentas -->
-    <div id="map-container">
-        <div id="map"></div>
+      </div>
+      <!-- Container principal do mapa e ferramentas -->
+      <div id="map-container">
+        <div id="map">
+          <div id="legendas-categorias"></div>
+        </div>
         <div class="toolbox">
-            <div class="measurement-box" title="Medir">
-                <img src="https://img.icons8.com/ios-filled/50/000000/ruler.png" alt="Medir">
-                <span class="measurement-result" id="measurement-result" style="display:none;"></span>
-                <div class="options">
-                    <strong>Medir:</strong>
-                    <button id="measure-distance">Distância</button>
-                    <button id="measure-area">Área</button>
-                    <button id="clear-measurement">Limpar</button>
-                </div>
+          <div class="measurement-box" title="Medir">
+            <img src="https://img.icons8.com/ios-filled/50/000000/ruler.png" alt="Medir">
+            <div class="options">
+              <strong>Medir:</strong>
+              <button id="measure-distance">Distância</button>
+              <button id="measure-area">Área</button>
+              <button id="clear-measurement">Limpar</button>
             </div>
-            <div class="search-box" title="Buscar">
-                <img src="https://img.icons8.com/ios-filled/50/000000/search.png" alt="Buscar">
-                <div class="search-options">
-                    <strong>Buscar:</strong><br>
-                    <select id="search-type" style="margin-bottom:4px;">
-                      <option value="bic">BIC</option>
-                      <option value="endereco">Endereço</option>
-                      <option value="fazenda">Imóveis Rurais</option>
-                    </select><br>
-                    <input type="text" id="search-input" placeholder="Digite um endereço, BIC ou fazenda">
-                    <button id="search-button">Buscar</button>
-                </div>
+          </div>
+          <div class="search-box" title="Buscar">
+            <img src="https://img.icons8.com/ios-filled/50/000000/search.png" alt="Buscar">
+            <div class="search-options">
+              <strong>Buscar:</strong><br>
+              <select id="search-type" style="margin-bottom:4px;">
+                <option value="bic">BIC</option>
+                <option value="endereco">Endereço</option>
+                <option value="fazenda">Imóveis Rurais</option>
+              </select><br>
+              <input type="text" id="search-input" placeholder="Digite um endereço, BIC ou fazenda">
+              <button id="search-button">Buscar</button>
             </div>
-            <div class="fullscreen-box" title="Tela Cheia">
-                <img src="https://img.icons8.com/ios-filled/50/000000/full-screen.png" alt="Tela Cheia" id="fullscreen-btn">
-            </div>
-            <div class="print-box" title="Imprimir" style="position: relative;">
+          </div>
+          <div class="fullscreen-box" title="Tela Cheia">
+            <img src="https://img.icons8.com/ios-filled/50/000000/full-screen.png" alt="Tela Cheia" id="fullscreen-btn">
+          </div>
+          <div class="print-box" title="Imprimir" style="position: relative;">
                 <button id="print-btn" type="button" style="background: none; border: none; padding: 0; cursor: pointer; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
                     <img src="https://img.icons8.com/ios-filled/50/000000/print.png" alt="Imprimir">
                 </button>
             </div>
             <div class="geolocate-box" title="Encontrar minha localização">
-                <img src="https://img.icons8.com/ios-filled/50/000000/marker.png" alt="Geolocalizar">
+                <img src="https://img.icons8.com/ios-filled/50/000000/marker.png" alt="Geolocalizar" id="geolocate-btn">
             </div>
         </div>
-        <!-- Botão para expandir/retrair a legenda -->
-        
-        <!-- Bloco responsável pelo posicionamento e comportamento visual da caixa de legendas (#legendas-categorias).
-             O estilo agora é controlado apenas pelo CSS externo (style.css). -->
-        <div id="legendas-categorias"></div>
+     <!-- Legenda agora está dentro do #map para sobreposição absoluta na impressão -->
     </div>
     <div class="layer-controls-box" title="Camadas">
         <img src="https://img.icons8.com/ios-filled/50/000000/layers.png" alt="Camadas">
@@ -144,7 +139,6 @@
         <span>Todos os direitos reservados a Prefeitura de Amambai - MS, 2025</span>
         <a href="https://www.amambai.ms.gov.br/" target="_blank" class="footer-link">www.amambai.ms.gov.br</a>
     </footer>
-    <script src="https://unpkg.com/ol@latest/dist/ol.js"></script>
-    <script type="module" src="./js/main.js"></script>
+    <script type="module" src="/src/main.js"></script>
 </body>
 </html>

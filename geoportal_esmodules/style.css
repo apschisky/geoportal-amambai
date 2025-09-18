@@ -1,0 +1,724 @@
+/* --- Cabeçalho compacto para impressão --- */
+@media print {
+  .header {
+    display: flex !important;
+    align-items: center !important;
+    flex-direction: row !important;
+    justify-content: flex-start !important;
+    gap: 6px !important;
+    padding: 2px 8px 2px 8px !important;
+    margin: 0 !important;
+    border-bottom: 1px solid #eee !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    flex-wrap: nowrap !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    visibility: visible !important;
+    position: relative !important;
+    font-size: 0.68em !important;
+    max-width: 100vw !important;
+  }
+  .header img {
+    height: 18px !important;
+    width: auto !important;
+    margin-right: 5px !important;
+    background: #fff !important;
+    border-radius: 2px !important;
+    padding: 1px !important;
+    box-shadow: none !important;
+    display: inline-block !important;
+    vertical-align: middle !important;
+  }
+  .header span {
+    font-size: 1.08em !important;
+    font-weight: bold !important;
+    margin: 0 !important;
+    display: inline-block !important;
+    vertical-align: middle !important;
+    color: #222 !important;
+    letter-spacing: 0.5px !important;
+    font-family: 'Roboto', Arial, sans-serif !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: ellipsis !important;
+    max-width: 95vw !important;
+  }
+  #map {
+    width: 100vw !important;
+    height: 15cm !important;
+    max-height: 15cm !important;
+    min-height: 10cm !important;
+    page-break-after: always !important;
+    display: block !important;
+    position: relative !important;
+    background: #fff !important;
+    overflow: hidden !important;
+    padding: 0.2cm 0.3cm 0.2cm 0.2cm !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+  }
+}
+/* --- PRINT LAYOUT FIX --- */
+@media print {
+  body, html {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    overflow: visible !important;
+  }
+  #map {
+    width: 100vw !important;
+    max-height: 17cm !important;
+    height: 17cm !important;
+    page-break-after: always;
+    display: block !important;
+    position: relative !important;
+    background: #fff !important;
+    overflow: hidden !important;
+  }
+  .print-popup-table-page {
+    display: block !important;
+    page-break-before: always !important;
+    width: 100vw !important;
+    background: #fff !important;
+    position: relative !important;
+    box-sizing: border-box !important;
+    padding: 10px 0 10px 0 !important;
+    margin: 0 !important;
+    min-height: auto !important;
+  }
+  /* Esconde todos os controles e toolboxes na impressão */
+  .measurement-box, .geolocate-box, .search-box, .layer-controls-box, .ol-control, .ol-scale-line {
+    display: none !important;
+  }
+  /* Esconde popups do mapa na impressão */
+  .ol-popup, .draggable-popup {
+    display: none !important;
+  }
+}
+body {
+    font-family: 'Roboto', sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+.header {
+    background-color: #2c3e50;
+    color: white;
+    padding: 2px 10px; /* padding ainda menor */
+    text-align: center;
+    font-size: 22px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    position: relative;
+    height: 44px; /* barra mais fina */
+}
+.header img {
+    height: 56px; /* mantém a logo grande */
+    margin-right: 10px;
+    background-color: white;
+    border-radius: 5px;
+    padding: 3px;
+}
+.header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #fff;
+  padding: 10px 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+}
+.header img {
+  height: 60px;
+  width: auto;
+  display: block;
+  background: none;
+  border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+.header span {
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: #2a3a4a;
+  font-family: 'Roboto', Arial, sans-serif;
+  letter-spacing: 0.5px;
+}
+#map-container {
+    flex-grow: 1;
+    position: relative;
+}
+#map {
+    width: 100%;
+    height: 100%;
+}
+.toolbox {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    z-index: 1000;
+}
+.ol-zoom {
+    position: absolute;
+    top: 30px; /* aumentado para descer abaixo do header */
+    right: 15px;
+    left: auto;
+    bottom: auto;
+    z-index: 1500;
+    transform: rotate(90deg);
+    transform-origin: top right;
+    width: 24px;
+    height: 48px;
+}
+.ol-zoom button {
+    width: 20px !important;
+    height: 20px !important;
+    font-size: 14px !important;
+    margin: 2px 0 !important;
+}
+@media (max-width: 600px) {
+  .ol-zoom {
+    top: 25px; /* também desce no mobile, ajustado para header menor */
+    right: 6px;
+    width: 18px;
+    height: 36px;
+  }
+  .ol-zoom button {
+    width: 14px !important;
+    height: 14px !important;
+    font-size: 11px !important;
+  }
+}
+@media (max-width: 600px) {
+  .ol-zoom {
+    bottom: 15px;
+    right: 15px;
+    left: auto;
+    top: auto;
+  }
+}
+.layer-controls, .measurement-box, .search-box, .map-overlay, .toolbar-icons {
+    background: rgba(255, 255, 255, 0.9);
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
+}
+.layer-controls {
+    position: absolute;
+    top: 75px;
+    right: 15px;
+    max-width: 250px;
+}
+.measurement-box {
+    position: relative;
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: width 0.3s, height 0.3s;
+    overflow: visible;
+    padding: 0;
+}
+.measurement-box img {
+    width: 24px;
+    height: 24px;
+}
+.measurement-box .options {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+}
+.measurement-result {
+    position: absolute;
+    left: 60px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #f4f4f4;
+    border-radius: 5px;
+    font-size: 14px;
+    color: #222;
+    padding: 3px 8px;
+    white-space: nowrap;
+    box-shadow: 1px 1px 6px rgba(0,0,0,0.08);
+    display: none;
+    z-index: 10;
+    pointer-events: none;
+}
+.search-box {
+    left: 15px;
+    width: 25px;
+    height: 25px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: width 0.3s, height 0.3s;
+    overflow: hidden;
+}
+.search-box img {
+    width: 24px;
+    height: 24px;
+}
+.search-box .search-options {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+    width: 100%;
+}
+.search-box input[type="text"] {
+    width: calc(100% - 90px);
+    padding: 5px;
+    font-size: 14px;
+}
+.search-box button {
+    padding: 5px;
+    font-size: 14px;
+}
+.map-overlay {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    padding: 5px 15px;
+    border-radius: 5px;
+    font-size: 14px;
+    font-weight: bold;
+}
+.footer {
+    width: 100%;
+    background-color: #2c3e50;
+    color: white;
+    text-align: center;
+    padding: 10px 20px;
+    font-size: 14px;
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 3000;
+}
+.footer-link {
+    color: #fff;
+    text-decoration: underline;
+    font-size: 14px;
+    margin-left: 10px;
+}
+.coordinate-display {
+    position: fixed;
+    right: 10px;
+    left: auto;
+    bottom: 60px;
+    font-size: 12px;
+    color: white;
+    background: rgba(0,0,0,0.6);
+    padding: 5px 10px;
+    border-radius: 5px;
+    z-index: 2001;
+    display: inline-block;
+}
+.toolbar-icons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: absolute;
+    top: 15px;
+    left: 80px;
+    z-index: 2000;
+}
+.toolbar-icons div {
+    background: transparent;
+}
+.toolbar-icons button {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+.toolbar-icons img {
+    height: 24px;
+    width: 24px;
+}
+.search-box input[type="text"] {
+    width: calc(100% - 90px);
+    padding: 5px;
+    font-size: 14px;
+}
+.search-box button {
+    padding: 5px;
+    font-size: 14px;
+}
+.fullscreen-box, .print-box {
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    box-shadow: 2px 2px 10px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.3s, width 0.3s, height 0.3s;
+}
+.fullscreen-box img {
+    width: 24px;
+    height: 24px;
+}
+.fullscreen-box .fullscreen-options {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+}
+.print-box img {
+    width: 24px;
+    height: 24px;
+}
+.print-box .print-options {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+}
+.ol-scale-line {
+    position: fixed !important;
+    left: 10px !important;
+    right: auto !important;
+    bottom: 60px !important;
+    z-index: 2001;
+    background: #2c3e50 !important;
+    color: #fff !important;
+    border-radius: 5px !important;
+    font-size: 13px !important;
+    padding: 4px 12px !important;
+    box-shadow: 2px 2px 8px rgba(0,0,0,0.15) !important;
+    border: none !important;
+}
+.ol-scale-line-inner {
+    color: #fff !important;
+    border-color: #fff !important;
+}
+.layer-controls-box {
+    position: absolute;
+    top: 95px;
+    right: 15px;
+    width: 50px;
+    height: 50px;
+    background: rgba(255,255,255,0.9);
+    border-radius: 50%;
+    box-shadow: 2px 2px 10px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: width 0.3s, height 0.3s, border-radius 0.3s, padding 0.3s;
+    overflow: visible;
+    z-index: 1200;
+}
+.layer-controls-box img {
+    width: 24px;
+    height: 24px;
+}
+.layer-controls-content {
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 14px;
+    min-width: 200px;
+    max-width: 260px;
+    background: rgba(255,255,255,0.97);
+    border-radius: 8px;
+    box-shadow: 2px 2px 10px rgba(0,0,0,0.15);
+    padding: 10px 18px 10px 10px;
+    position: absolute;
+    top: 0;
+    right: 60px;
+    z-index: 1201;
+}
+.measurement-box.expanded,
+.search-box.expanded,
+.fullscreen-box.expanded,
+.print-box.expanded,
+.layer-controls-box.expanded {
+    width: 250px !important;
+    height: auto !important;
+    border-radius: 10px !important;
+    padding: 10px !important;
+    z-index: 1300;
+}
+.measurement-box .options,
+.search-box .search-options,
+.fullscreen-box .fullscreen-options,
+.print-box .print-options,
+.layer-controls-box .layer-controls-content {
+    display: none;
+}
+.measurement-box.expanded .options,
+.search-box.expanded .search-options,
+.fullscreen-box.expanded .fullscreen-options,
+.print-box.expanded .print-options,
+.layer-controls-box.expanded .layer-controls-content {
+    display: flex;
+    flex-direction: column;
+}
+.layer-controls-box.expanded .layer-controls-content {
+    display: block;
+}
+.geolocate-box {
+  position: static;
+  margin-bottom: 0;
+  width: 50px;
+  height: 50px;
+  background: rgba(255,255,255,0.9);
+  border-radius: 50%;
+  box-shadow: 2px 2px 10px rgba(0,0,0,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.3s, width 0.3s, height 0.3s;
+}
+.geolocate-box img {
+    width: 24px;
+    height: 24px;
+}
+.theme-group {
+  margin-bottom: 8px;
+}
+.theme-toggle {
+  width: 100%;
+  text-align: left;
+  background: #f2f2f2;
+  border: none;
+  padding: 6px 8px;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 4px;
+  margin-bottom: 2px;
+}
+.theme-toggle:focus {
+  outline: 2px solid #0078d7;
+}
+.theme-layers {
+  padding-left: 12px;
+  margin-bottom: 4px;
+}
+
+/* Removido o bloco de estilos do #zoom-display e .zoom-coord-container */
+.coordinate-display {
+  position: fixed;
+  right: 10px;
+  left: auto;
+  bottom: 60px;
+  font-size: 12px;
+  color: white;
+  background: rgba(0,0,0,0.6);
+  padding: 5px 10px;
+  border-radius: 5px;
+  z-index: 2001;
+  display: inline-block;
+}
+@media (max-width: 600px) {
+  .coordinate-display {
+    font-size: 10px;
+    bottom: 38px;
+    right: 5px;
+    padding: 2px 4px;
+  }
+}
+@media (max-width: 900px) {
+  .header {
+    flex-direction: column;
+    height: auto;
+    font-size: 16px;
+    padding: 8px 4px;
+    gap: 8px;
+  }
+  .header img {
+    height: 40px;
+    margin-right: 0;
+    margin-bottom: 4px;
+  }
+  .header span {
+    font-size: 1.1rem;
+  }
+  .footer {
+    font-size: 12px;
+    padding: 6px 4px;
+  }
+  .footer-link {
+    font-size: 12px;
+    margin-left: 4px;
+  }
+}
+
+@media (max-width: 600px) {
+  #map-container, #map {
+    height: 60vh !important;
+    min-height: 250px;
+  }
+  .toolbox {
+    flex-direction: row;
+    top: auto;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 98vw;
+    gap: 4px;
+    z-index: 2000;
+  }
+  .measurement-box, .search-box, .fullscreen-box, .print-box, .geolocate-box {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px;
+    min-height: 38px;
+    padding: 0 !important;
+  }
+  .measurement-box img, .search-box img, .fullscreen-box img, .print-box img, .geolocate-box img {
+    width: 18px;
+    height: 18px;
+  }
+  .layer-controls-box {
+    top: 10px;
+    right: 10px;
+    width: 38px;
+    height: 38px;
+  }
+  .layer-controls-content {
+    min-width: 120px;
+    max-width: 95vw;
+    font-size: 12px;
+    right: 44px;
+    padding: 6px 8px 6px 6px;
+  }
+  .coordinate-display {
+    font-size: 10px;
+    bottom: 38px;
+    right: 5px;
+    padding: 2px 4px;
+  }
+  .ol-scale-line {
+    font-size: 10px !important;
+    padding: 2px 6px !important;
+    left: 5px !important;
+    bottom: 38px !important;
+  }
+  .geolocate-box {
+    top: 120px;
+    left: 10px;
+  }
+}
+#legendas-categorias {
+    position: absolute;
+    left: 10px;
+    bottom: 100px;
+    z-index: 2100;
+    max-width: 340px;
+    max-height: 30vh;
+    overflow-y: auto;
+    background: #fff !important; /* Força fundo branco sólido */
+    border-radius: 8px;
+    box-shadow: 2px 2px 10px rgba(0,0,0,0.15);
+    padding: 10px 18px 10px 10px;
+    display: none;
+    font-size: 14px;
+}
+#legendas-categorias > div {
+    margin-bottom: 12px;
+    word-break: break-word;
+}
+#legendas-categorias > div:last-child {
+    margin-bottom: 0;
+}
+#legendas-categorias:not(:empty) {
+    padding: 10px 18px 10px 10px;
+}
+#legendas-categorias:empty {
+    padding: 0;
+}
+
+/* Garante fundo branco sólido para popups do OpenLayers e qualquer popup customizado */
+.ol-popup, .ol-popup-content, .ol-popup-closer {
+    background: #fff !important;
+    backdrop-filter: none !important;
+    box-shadow: 2px 2px 10px rgba(0,0,0,0.15) !important;
+}
+
+/* Sobrescreve variáveis do OpenLayers para evitar transparência */
+:root {
+    --ol-background-color: #fff !important;
+    --ol-partial-background-color: #fff !important;
+    --ol-subtle-background-color: #fff !important;
+}
+
+/* Garante que qualquer td/th em popups não tenha fundo transparente */
+.ol-popup td, .ol-popup th, .ol-popup-content td, .ol-popup-content th {
+    background: #fff !important;
+}
+
+/* Garante que #legendas-categorias nunca herde transparência de variáveis globais */
+#legendas-categorias {
+    background: #fff !important;
+}
+/* Impressão: esconde botões, controles e zoom na impressão */
+
+@media print {
+  /* Esconde todos os botões e controles interativos na impressão */
+  .measurement-box,
+  .geolocate-box,
+  .search-box,
+  #fullscreen-btn,
+  #print-btn,
+  .layer-controls-box,
+  #zoom-display,
+  .ol-zoom,
+  .ol-zoom button,
+  .ol-rotate,
+  .ol-scale-line,
+  .ol-attribution,
+  .ol-control,
+  .ol-overlaycontainer-stopevent,
+  .ol-overlaycontainer,
+  .ol-popup,
+  .ol-popup-content,
+  .ol-popup-bar,
+  .ol-popup-closer,
+  .coordinate-display {
+    display: none !important;
+  }
+  /* Esconde legendas e popups na primeira página */
+  #legendas-categorias {
+    display: none !important;
+  }
+  #map {
+    background: #fff !important;
+  }
+  /* Exibe a área especial na segunda página */
+  .print-popup-table-page {
+    display: block !important;
+    page-break-before: always;
+    width: 100%;
+    margin-top: 40px;
+  }
+}
