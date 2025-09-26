@@ -89,7 +89,7 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
       { key: 'layer2', name: 'Eixo de Adensamento', queryLayer: 'ne:EixoDeAdensamento' },
       { key: 'layer3', name: 'Lote', queryLayer: 'ne:area_urbana' },
       { key: 'layer4', name: 'Zoneamento Urbano', queryLayer: 'ne:ZoneamentoUrbano_PD_novo' },
-      { key: 'layer_edificacoes', name: 'Edificações', queryLayer: 'ne:EdificaçõesDB' },
+  { key: 'layer_edificacoes', name: 'Edificações', queryLayer: 'ne:EdificacoesDB' },
       { key: 'layer_imoveis_sigef', name: 'Imóveis SIGEF', queryLayer: 'ne:Imóveis SIGEF 05_25' },
       { key: 'layer_imoveis_snci', name: 'Imóveis SNCI', queryLayer: 'ne:Imóveis SNCI 05_25' }
     ];

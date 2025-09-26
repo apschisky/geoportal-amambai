@@ -74,7 +74,7 @@ export const LAYER_CONFIG = {
   },
   layer_edificacoes: {
     url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
-    layerName: 'ne:EdificaçõesDB',
+    layerName: 'ne:EdificacoesDB',
     crs: 'EPSG:3857'
   },
   layer_pavimentacao: {
@@ -176,7 +176,7 @@ export const LEGEND_CONFIG = {
   },
   layer_edificacoes: {
     titulo: 'Edificações',
-    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:EdificaçõesDB'
+  url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:EdificacoesDB'
   },
   layer_pavimentacao: {
     titulo: 'Pavimentação',
