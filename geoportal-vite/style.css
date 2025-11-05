@@ -920,6 +920,24 @@ body {
 #legendas-categorias {
     background: #fff !important;
 }
+/* Estilos reutilizáveis para títulos e separadores nos popups do mapa */
+.popup-title {
+  text-align: center;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: #222;
+  font-size: 1rem;
+}
+.popup-separator {
+  margin: 8px 0;
+  border: none;
+  border-top: 1px solid #ccc;
+}
+/* Contêiner do bloco de popup (texto e tabela) */
+.popup-block {
+  font-size: 14px;
+  max-width: 320px;
+}
 /* Impressão: esconde botões, controles e zoom na impressão */
 
 @media print {

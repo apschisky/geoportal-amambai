@@ -2,9 +2,28 @@
 
 import TileLayer from 'ol/layer/Tile.js';
 import TileWMS from 'ol/source/TileWMS.js';
+import ImageLayer from 'ol/layer/Image.js';
+import ImageWMS from 'ol/source/ImageWMS.js';
 import { LAYER_CONFIG } from '@/geoportal-config.js';
 
 export function createLayer({ url, layerName, crs = 'EPSG:32721' }) {
+  // if config requests a single image (ImageWMS), create an ImageLayer
+  if (arguments[0] && arguments[0].singleImage) {
+    return new ImageLayer({
+      source: new ImageWMS({
+        url: url,
+        params: {
+          'LAYERS': layerName,
+          'FORMAT': 'image/png',
+          'CRS': crs
+        },
+        serverType: 'geoserver'
+      }),
+      visible: false
+    });
+  }
+
+  // default: tiled WMS
   return new TileLayer({
     source: new TileWMS({
       url: url,

@@ -92,6 +92,13 @@ export const LAYER_CONFIG = {
     layerName: 'ne:rede_esgoto_2025_at',
     crs: 'EPSG:32721'
   },
+  layer_coleta: {
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
+    layerName: 'ne:Coleta',
+    crs: 'EPSG:32721',
+    // request single image (ImageWMS) instead of tiled WMS to avoid repeated labels per tile
+    singleImage: true
+  },
   layer_assistencia_social: {
     url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
     layerName: 'ne:Assistência social',
@@ -217,5 +224,9 @@ export const LEGEND_CONFIG = {
   layer_imoveis_snci: {
     titulo: 'Imóveis SNCI',
     url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Imóveis%20SNCI%2005_25'
+  },
+  layer_coleta: {
+    titulo: 'Coleta de Lixo',
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Coleta'
   }
 };

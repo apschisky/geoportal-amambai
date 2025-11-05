@@ -79,6 +79,14 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
     quadra: 'Quadra',
     vila: 'Vila'
   };
+  // Mapeamento amigável para a camada Coleta de Lixo
+  const coletaMap = {
+    dias: 'Rejeito e lixo úmido',
+    dias_recic: 'Recicláveis',
+    'hora_nao_recic': 'Horário Rejeito e lixo úmido',
+    hora_recic: 'Horário Recicláveis',
+    setor: 'Setor'
+  };
   map.on('singleclick', async function(evt) {
     if (window.measureActive) return; // Bloqueia seleção/popup durante medição
     const view = map.getView();
@@ -88,16 +96,19 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
     const queryLayers = [
       { key: 'layer2', name: 'Eixo de Adensamento', queryLayer: 'ne:EixoDeAdensamento' },
       { key: 'layer3', name: 'Lote', queryLayer: 'ne:area_urbana' },
-      { key: 'layer4', name: 'Zoneamento Urbano', queryLayer: 'ne:ZoneamentoUrbano_PD_novo' },
+  { key: 'layer4', name: 'Zoneamento Urbano', queryLayer: 'ne:ZoneamentoUrbano_PD_novo' },
   { key: 'layer_edificacoes', name: 'Edificações', queryLayer: 'ne:EdificacoesDB' },
+  { key: 'layer_coleta', name: 'Coleta de Lixo', queryLayer: 'ne:Coleta' },
       { key: 'layer_imoveis_sigef', name: 'Imóveis SIGEF', queryLayer: 'ne:Imóveis SIGEF 05_25' },
       { key: 'layer_imoveis_snci', name: 'Imóveis SNCI', queryLayer: 'ne:Imóveis SNCI 05_25' }
     ];
-    let html = '';
-    let loteHtml = '';
-    let eixoHtml = '';
-    let zoneamentoHtml = '';
-    let otherHtml = '';
+  let html = '';
+  let loteHtml = '';
+  let eixoHtml = '';
+  let zoneamentoHtml = '';
+  let coletaHtml = '';
+  let edificacoesHtml = '';
+  let otherHtml = '';
     let zoomed = false;
     let loteExtent = null;
     let eixoExtent = null;
@@ -152,7 +163,8 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
             if (isJson && data && data.features && data.features.length > 0) {
               console.log('Features encontradas para', layerInfo.name, data.features);
               const props = data.features[0].properties;
-              let currentHtml = `<div style=\"font-size:14px;max-width:320px;\"><strong>${layerInfo.name}</strong><br><table style=\"border-collapse:collapse;width:100%\">`;
+              // Usa classes CSS para o bloco do popup e o título (manutenção mais fácil)
+              let currentHtml = `<div class=\"popup-block\"><div class=\"popup-title\">${layerInfo.name}</div><table style=\"border-collapse:collapse;width:100%\">`;
               for (const key in props) {
                 if (key === 'geometry' || key === 'id') continue;
                 if (layerInfo.key === 'layer_imoveis_snci' && snciHidden.includes(key)) continue;
@@ -162,6 +174,7 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
                 if (layerInfo.key === 'layer4' && zoneamentoMap[key]) label = zoneamentoMap[key];
                 if (layerInfo.key === 'layer3' && loteMap[key]) label = loteMap[key];
                 if (layerInfo.key === 'layer_edificacoes' && edificacoesMap[key]) label = edificacoesMap[key];
+                if (layerInfo.key === 'layer_coleta' && coletaMap[key]) label = coletaMap[key];
                 if (layerInfo.key === 'layer_imoveis_snci' && snciMap[key]) label = snciMap[key];
                 if (layerInfo.key === 'layer_imoveis_sigef' && sigefMap[key]) label = sigefMap[key];
                 currentHtml += `<tr><td style='border:1px solid #ccc;padding:4px 8px;background:#f7f7f7;'><b>${label}</b></td><td style='border:1px solid #ccc;padding:4px 8px;'>${props[key]}</td></tr>`;
@@ -189,6 +202,12 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
                 loteHtml = currentHtml;
               } else if (layerInfo.key === 'layer4') {
                 zoneamentoHtml = currentHtml;
+              } else if (layerInfo.key === 'layer_edificacoes') {
+                // Mantém popup separado para Edificações para permitir concatenação com Lote
+                edificacoesHtml = currentHtml;
+              } else if (layerInfo.key === 'layer_coleta') {
+                // Mantém popup separado para Coleta para permitir concatenação com Lote
+                coletaHtml = currentHtml;
               } else {
                 otherHtml += currentHtml;
               }
@@ -222,10 +241,19 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
       showLotesPopup(map, coord, eixoHtml);
     } else if (loteHtml && zoneamentoHtml) {
       showLotesPopup(map, coord, loteHtml + zoneamentoHtml);
+    } else if (loteHtml && edificacoesHtml) {
+      // Quando Lote + Edificações estão ativos, mostrar os dois popups juntos com um separador
+      showLotesPopup(map, coord, loteHtml + '<hr class="popup-separator">' + edificacoesHtml);
+    } else if (loteHtml && coletaHtml) {
+      // Quando Lote + Coleta estão ativos, mostrar os dois popups juntos com um separador
+      // Usa classe CSS para o separador entre blocos
+      showLotesPopup(map, coord, loteHtml + '<hr class="popup-separator">' + coletaHtml);
     } else if (loteHtml) {
       showLotesPopup(map, coord, loteHtml);
     } else if (zoneamentoHtml) {
       showLotesPopup(map, coord, zoneamentoHtml);
+    } else if (coletaHtml) {
+      showLotesPopup(map, coord, coletaHtml);
     } else if (otherHtml) {
       showLotesPopup(map, coord, otherHtml);
     }
