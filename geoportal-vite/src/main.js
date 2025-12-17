@@ -36,6 +36,7 @@ window.addEventListener('DOMContentLoaded', () => {
     'layer3',
     'layer_edificacoes',
     'layer_pavimentacao',
+    'layer_contorno_viario',
   'layer_trechosrda',
   'layer_redeesgoto',
   'layer_coleta',
