@@ -14,6 +14,11 @@ export const LAYER_CONFIG = {
     layerName: 'ne:area_urbana',
     crs: 'EPSG:3857'
   },
+  layer_vilas: {
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
+    layerName: 'ne:Vilas',
+    crs: 'EPSG:32721'
+  },
   layer_aeia: {
     url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
     layerName: 'ne:AEIA',
@@ -97,6 +102,11 @@ export const LAYER_CONFIG = {
   layer_redeesgoto: {
     url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
     layerName: 'ne:rede_esgoto_2025_at',
+    crs: 'EPSG:32721'
+  },
+  layer_postes: {
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
+    layerName: 'ne:Postes - IDs - AU',
     crs: 'EPSG:32721'
   },
   layer_coleta: {
@@ -199,6 +209,10 @@ export const LEGEND_CONFIG = {
     titulo: 'Edificações',
   url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:EdificacoesDB'
   },
+  layer_vilas: {
+    titulo: 'Vilas',
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Vilas'
+  },
   layer_pavimentacao: {
     titulo: 'Pavimentação',
     url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Pavimentação'
@@ -210,6 +224,10 @@ export const LEGEND_CONFIG = {
   layer_redeesgoto: {
     titulo: 'Rede de esgoto',
     url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:rede_esgoto_2025_at'
+  },
+  layer_postes: {
+    titulo: 'Postes da rede elétrica',
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Postes%20-%20IDs%20-%20AU'
   },
   layer_assistencia_social: {
     titulo: 'Assistência Social',
@@ -242,8 +260,7 @@ export const LEGEND_CONFIG = {
   layer_coleta: {
     titulo: 'Coleta de Lixo',
     url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Coleta'
-  }
-  ,
+  },
   layer_contorno_viario: {
     titulo: 'Contorno Viário',
     url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:contorno'
