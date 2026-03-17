@@ -143,11 +143,6 @@ export const LAYER_CONFIG = {
     layerName: 'ne:Saúde_atu',
     crs: 'EPSG:32721'
   },
-  layer_tipos_vegetacao: {
-    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
-    layerName: 'ne:veg_dissolvido',
-    crs: 'EPSG:32721'
-  },
   layer_imoveis_sigef: {
     url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
     layerName: 'ne:Imóveis SIGEF 05_25',
@@ -244,10 +239,6 @@ export const LEGEND_CONFIG = {
   layer_saude: {
     titulo: 'Saúde',
     url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Saúde_atu'
-  },
-  layer_tipos_vegetacao: {
-    titulo: 'Tipos de vegetação',
-    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:veg_dissolvido'
   },
   layer_imoveis_sigef: {
     titulo: 'Imóveis SIGEF',

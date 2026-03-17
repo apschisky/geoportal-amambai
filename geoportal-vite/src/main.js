@@ -49,7 +49,6 @@ window.addEventListener('DOMContentLoaded', () => {
     'layer5',
     'layer6',
     'layer7',
-    'layer_tipos_vegetacao',
     'layer_imoveis_sigef',
     'layer_imoveis_snci'
   ];
