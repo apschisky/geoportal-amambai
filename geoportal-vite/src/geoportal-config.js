@@ -62,6 +62,16 @@ export const LAYER_CONFIG = {
     layerName: 'ne:Rios e Córregos de Amambai',
     crs: 'EPSG:31981'
   },
+  layer_convergencia_fluxo: {
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
+    layerName: 'ne:Convergência de fluxo de água',
+    crs: 'EPSG:32721'
+  },
+  layer_microbacias_urbana: {
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
+    layerName: 'ne:Microbacias área urbana',
+    crs: 'EPSG:32721'
+  },
   layer_aeiu: {
     url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
     layerName: 'ne:AEIU',
@@ -102,6 +112,11 @@ export const LAYER_CONFIG = {
   layer_redeesgoto: {
     url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
     layerName: 'ne:rede_esgoto_2025_at',
+    crs: 'EPSG:32721'
+  },
+  layer_drenagem_urbana: {
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
+    layerName: 'ne:Rede de drenagem urbana',
     crs: 'EPSG:32721'
   },
   layer_postes: {
@@ -168,6 +183,14 @@ export const LEGEND_CONFIG = {
     titulo: 'Sub-bacias do Rio Paraná',
     url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:bacia_rio_parana'
   },
+  layer_convergencia_fluxo: {
+    titulo: 'Convergência de fluxo',
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Convergência%20de%20fluxo%20de%20água'
+  },
+  layer_microbacias_urbana: {
+    titulo: 'Micro bacias da área urbana',
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Microbacias%20%C3%A1rea%20urbana'
+  },
   layer4: {
     titulo: 'Zoneamento Urbano',
     url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:ZoneamentoUrbano_PD_novo'
@@ -219,6 +242,10 @@ export const LEGEND_CONFIG = {
   layer_redeesgoto: {
     titulo: 'Rede de esgoto',
     url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:rede_esgoto_2025_at'
+  },
+  layer_drenagem_urbana: {
+    titulo: 'Drenagem urbana',
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Rede%20de%20drenagem%20urbana'
   },
   layer_postes: {
     titulo: 'Postes da rede elétrica',
