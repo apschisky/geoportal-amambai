@@ -97,12 +97,20 @@ export const LAYER_CONFIG = {
     layerName: 'ne:Pavimentação',
     crs: 'EPSG:32721'
   },
-  layer_contorno_viario: {
-    // Contorno viário — adicionada conforme pedido do usuário
+  layer_unidades_conservacao: {
     url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
-    // Assumi o nome da camada como 'ne:Contorno_Viario'. Se o nome real for outro, altere aqui.
-    layerName: 'ne:Contorno_Viario',
+    layerName: 'ne:UCs Amambai',
     crs: 'EPSG:32721'
+  },
+  layer_tipos_solo: {
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
+    layerName: 'ne:tipos_solo_at',
+    crs: 'EPSG:31981'
+  },
+  layer_geologia: {
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
+    layerName: 'ne:geologia',
+    crs: 'EPSG:31981'
   },
   layer_trechosrda: {
     url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
@@ -129,6 +137,12 @@ export const LAYER_CONFIG = {
     layerName: 'ne:Coleta',
     crs: 'EPSG:32721',
     // request single image (ImageWMS) instead of tiled WMS to avoid repeated labels per tile
+    singleImage: true
+  },
+  layer_coleta_seletiva: {
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
+    layerName: 'ne:coleta_seletiva',
+    crs: 'EPSG:32721',
     singleImage: true
   },
   layer_contorno_viario: {
@@ -182,6 +196,18 @@ export const LEGEND_CONFIG = {
   layer6: {
     titulo: 'Sub-bacias do Rio Paraná',
     url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:bacia_rio_parana'
+  },
+  layer_unidades_conservacao: {
+    titulo: 'Unidades de Conservação',
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne%3AUCs%20Amambai'
+  },
+  layer_tipos_solo: {
+    titulo: 'Tipos de Solo',
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:tipos_solo_at'
+  },
+  layer_geologia: {
+    titulo: 'Geologia',
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:geologia'
   },
   layer_convergencia_fluxo: {
     titulo: 'Convergência de fluxo',
@@ -278,6 +304,10 @@ export const LEGEND_CONFIG = {
   layer_coleta: {
     titulo: 'Coleta de Lixo',
     url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Coleta'
+  },
+  layer_coleta_seletiva: {
+    titulo: 'Coleta Seletiva',
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:coleta_seletiva'
   },
   layer_contorno_viario: {
     titulo: 'Contorno Viário',

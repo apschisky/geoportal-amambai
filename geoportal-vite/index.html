@@ -117,26 +117,36 @@
             <button class="theme-toggle" type="button">Serviços</button>
             <div class="theme-layers">
               <label><input type="checkbox" id="layer_coleta"> Coleta de Lixo</label><br>
+              <label><input type="checkbox" id="layer_coleta_seletiva"> Coleta Seletiva</label><br>
             </div>
           </div>
-  
+          
+           <div class="theme-group">
+            <button class="theme-toggle" type="button">Ambiental</button>
+            <div class="theme-layers">
+              <label><input type="checkbox" id="layer5"> Terras Indígenas</label><br>
+              <label><input type="checkbox" id="layer7"> Cursos d'água Amambai</label><br>
+              <label><input type="checkbox" id="layer_convergencia_fluxo"> Linhas de escoamento da Chuva</label><br>
+              <label><input type="checkbox" id="layer_microbacias_urbana"> Micro bacias urbanas</label><br>
+              <label><input type="checkbox" id="layer6"> Sub-bacias do Rio Paraná</label><br>
+              <label><input type="checkbox" id="layer_unidades_conservacao"> Unidades de Conservação</label><br>
+              <label><input type="checkbox" id="layer_tipos_solo"> Tipos de Solo</label><br>
+              <label><input type="checkbox" id="layer_geologia"> Geologia</label><br>
+            </div>
+          </div>
+
           <div class="theme-group">
             <button class="theme-toggle" type="button">Gerais</button>
             <div class="theme-layers">
               <label><input type="checkbox" id="layer1" checked> Perímetro do Município</label><br>
-              <label><input type="checkbox" id="layer5"> Terras Indígenas</label><br>
-              <label><input type="checkbox" id="layer6"> Sub-bacias do Rio Paraná</label><br>
-              <label><input type="checkbox" id="layer7"> Cursos d'água Amambai</label><br>
-              <label><input type="checkbox" id="layer_convergencia_fluxo"> Convergência de fluxo</label><br>
-              <label><input type="checkbox" id="layer_microbacias_urbana"> Micro bacias da área urbana</label><br>
-            </div>
+             </div>
           </div>
   
           <div class="theme-group">
             <button class="theme-toggle" type="button">Área rural</button>
             <div class="theme-layers">
-              <label><input type="checkbox" id="layer_imoveis_sigef"> Imóveis SIGEF</label><br>
-              <label><input type="checkbox" id="layer_imoveis_snci"> Imóveis SNCI</label><br>
+              <label><input type="checkbox" id="layer_imoveis_sigef"> Imóveis Rurais (SIGEF)</label><br>
+              <label><input type="checkbox" id="layer_imoveis_snci"> Imóveis Rurais (SNCI)</label><br>
             </div>
           </div>
   
@@ -148,9 +158,14 @@
     </div>
     <div class="coordinate-display" id="mouse-coordinates">Lon: --, Lat: --</div>
     <footer class="footer">
-        <span>Todos os direitos reservados a Prefeitura de Amambai - MS, 2025</span>
+        <span id="copyright-year"></span>
         <a href="https://www.amambai.ms.gov.br/" target="_blank" class="footer-link">www.amambai.ms.gov.br</a>
     </footer>
+    <script>
+        // Atualizar ano automaticamente
+        document.getElementById('copyright-year').textContent = 
+            'Todos os direitos reservados a Prefeitura de Amambai - MS, ' + new Date().getFullYear();
+    </script>
     <script type="module" src="/src/main.js"></script>
 </body>
 </html>
