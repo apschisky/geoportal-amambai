@@ -11,6 +11,7 @@ import { setupPrint } from '@/geoportal-print.js'; //ok
 import { setupUIHandlers, setupGeolocation } from '@/geoportal-ui.js'; //ok
 import { addSpecialLayers } from '@/geoportal-special-layers.js'; //ok
 import { setupMapClickHandler } from '@/geoportal-mapclick.js'; //ok
+import { createFarmaciasDeOntemLayer } from '@/geoportal-farmacias.js'; //ok
 import { toLonLat } from 'ol/proj.js';
 
 
@@ -50,6 +51,7 @@ window.addEventListener('DOMContentLoaded', () => {
     'layer_educacao',
     'layer_prefeitura',
     'layer_saude',
+    'layer_farmacias',
     'layer5',
     'layer6',
     'layer_tipos_solo',
@@ -61,6 +63,13 @@ window.addEventListener('DOMContentLoaded', () => {
   ];
   addLayersToMap(map, layers, layerOrder);
 
+  // Criar camada de destaque para farmácias de plantão
+  console.log('[Main] Criando VectorLayer para farmácias de plantão...');
+  const farmaciasHighlightLayer = createFarmaciasDeOntemLayer();
+  console.log('[Main] VectorLayer criada, adicionando ao mapa...');
+  map.addLayer(farmaciasHighlightLayer);
+  console.log('[Main] ✓ Camada de farmácias adicionada ao mapa!');
+
   // Camadas especiais (exemplo: pavimentação)
   const specialLayers = addSpecialLayers(map);
 
@@ -69,11 +78,27 @@ window.addEventListener('DOMContentLoaded', () => {
     const checkbox = document.getElementById(layerId);
     if (checkbox) {
       checkbox.addEventListener('change', e => {
+        console.log(`[Main] Checkbox "${layerId}" mudou para:`, e.target.checked);
+        
         setLayerVisibility(layers, layerId, e.target.checked);
+        
+        // Sincronizar visibilidade da camada de destaque de farmácias
+        if (layerId === 'layer_farmacias') {
+          console.log('[Main] Alterando visibilidade de farmácias highlight para:', e.target.checked);
+          farmaciasHighlightLayer.setVisible(e.target.checked);
+          console.log('[Main] Visibilidade após mudança:', farmaciasHighlightLayer.getVisible());
+        }
+        
         atualizarLegendas(layers);
       });
       // Ativar camada se checkbox já estiver marcado no HTML
       setLayerVisibility(layers, layerId, checkbox.checked);
+      
+      // Sincronizar visibilidade inicial da camada de destaque de farmácias
+      if (layerId === 'layer_farmacias' && checkbox.checked) {
+        console.log('[Main] Ativando farmácias highlight inicial');
+        farmaciasHighlightLayer.setVisible(true);
+      }
     }
   });
 

@@ -172,6 +172,11 @@ export const LAYER_CONFIG = {
     layerName: 'ne:Saúde_atu',
     crs: 'EPSG:32721'
   },
+  layer_farmacias: {
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
+    layerName: 'ne:Farmácias',
+    crs: 'EPSG:32721'
+  },
   layer_imoveis_sigef: {
     url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms',
     layerName: 'ne:Imóveis SIGEF 05_25',
@@ -292,6 +297,10 @@ export const LEGEND_CONFIG = {
   layer_saude: {
     titulo: 'Saúde',
     url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Saúde_atu'
+  },
+  layer_farmacias: {
+    titulo: 'Farmácias de Amambai',
+    url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:Farmácias'
   },
   layer_imoveis_sigef: {
     titulo: 'Imóveis SIGEF',
