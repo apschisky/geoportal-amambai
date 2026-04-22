@@ -17,7 +17,6 @@ function extractDaysFromField(diaMesstrText) {
     .map(day => parseInt(day.trim()))
     .filter(day => !isNaN(day));
   
-  console.log(`[Farmácias] Campo Dias_mes: "${diaMesstrText}" -> Dias extraídos:`, daysArray);
   return daysArray;
 }
 
@@ -26,8 +25,6 @@ function isFarmaciaDeOntem(properties) {
   const todayDay = getTodayDay();
   const daysOfDuty = extractDaysFromField(properties.Dias_mes);
   const isOnDuty = daysOfDuty.includes(todayDay);
-  
-  console.log(`[Farmácias] "${properties.Farmacia}" - Dia de hoje: ${todayDay}, Dias de plantão: ${daysOfDuty}, Em plantão: ${isOnDuty}`);
   
   return isOnDuty;
 }
@@ -68,41 +65,23 @@ export function createFarmaciasDeOntemLayer() {
     'service=WFS&version=2.0.0&request=GetFeature&typeName=ne:Farm%C3%A1cias' +
     '&outputFormat=application/json&SRSNAME=EPSG:32721';
   
-  console.log('[Farmácias Highlight] Iniciando carregamento via WFS...');
-  
   fetch(url)
     .then(response => {
-      console.log('[Farmácias Highlight] Response status:', response.status, response.ok);
       return response.json();
     })
     .then(data => {
-      console.log('[Farmácias Highlight] Dados recebidos, parseando...', Object.keys(data));
-      
       const allFeatures = new GeoJSON().readFeatures(data, {
         dataProjection: 'EPSG:32721',    // Projeção dos dados do WFS
         featureProjection: 'EPSG:3857'   // Projeção do mapa (Web Mercator)
       });
-      
-      console.log('[Farmácias Highlight] Total de features:', allFeatures.length);
       
       // Filtrar apenas farmácias de plantão
       const filteredFeatures = allFeatures.filter(feature => 
         isFarmaciaDeOntem(feature.getProperties())
       );
       
-      console.log('[Farmácias Highlight] Features em plantão:', filteredFeatures.length);
-      
       if (filteredFeatures.length > 0) {
         source.addFeatures(filteredFeatures);
-        console.log('[Farmácias Highlight] ✓ Features adicionadas à source!');
-        
-        filteredFeatures.forEach(f => {
-          const geom = f.getGeometry();
-          console.log('[Farmácias Highlight] Feature "' + f.getProperties().Farmacia + '":');
-          console.log('  - Tipo geometria:', geom?.getType());
-          console.log('  - Coordenadas:', geom?.getCoordinates());
-          console.log('  - Feature completa:', f);
-        });
       }
       
       source.dispatchEvent('change');
@@ -121,8 +100,6 @@ export async function getFarmaciasDeOntemData() {
       'service=WFS&version=2.0.0&request=GetFeature&typeName=ne:Farm%C3%A1cias' +
       '&outputFormat=application/json&SRSNAME=EPSG:32721';
     
-    console.log('[Farmácias Legenda] Carregando dados para legenda...');
-    
     const response = await fetch(url);
     const data = await response.json();
     const features = new GeoJSON().readFeatures(data, {
@@ -130,14 +107,10 @@ export async function getFarmaciasDeOntemData() {
       featureProjection: 'EPSG:3857'   // Projeção do mapa (Web Mercator)
     });
     
-    console.log('[Farmácias Legenda] Features recebidas:', features.length);
-    
     // Filtrar apenas farmácias em plantão
     const result = features
       .filter(feature => isFarmaciaDeOntem(feature.getProperties()))
       .map(feature => feature.getProperties());
-    
-    console.log('[Farmácias Legenda] Farmácias em plantão para legenda:', result.length, result);
     
     return result;
   } catch (error) {
@@ -154,6 +127,38 @@ function formatDataBrasilera() {
   return `${day}/${month}`;
 }
 
+// Formatar número do WhatsApp
+function formatWhatsappNumber(whatsapp) {
+  if (!whatsapp || whatsapp === 'N/A') return 'N/A';
+  
+  // Remove todos os caracteres não numéricos
+  const cleanNumber = whatsapp.replace(/\D/g, '');
+  
+  // Se não tiver pelo menos 10 dígitos, retorna como está
+  if (cleanNumber.length < 10) return whatsapp;
+  
+  // Pega os últimos 11 dígitos (para números brasileiros com DDD)
+  const last11 = cleanNumber.slice(-11);
+  
+  // Formata como (xx) xxxxx-xxxx
+  const ddd = last11.slice(0, 2);
+  const first5 = last11.slice(2, 7);
+  const last4 = last11.slice(7);
+  
+  return `(${ddd}) ${first5}-${last4}`;
+}
+
+// Gerar link do WhatsApp
+function generateWhatsappLink(whatsapp) {
+  if (!whatsapp || whatsapp === 'N/A') return null;
+  
+  const cleanNumber = whatsapp.replace(/\D/g, '');
+  if (cleanNumber.length < 10) return null;
+  
+  const last11 = cleanNumber.slice(-11);
+  return `https://wa.me/55${last11}`;
+}
+
 // Atualizar painel de legenda com informações de farmácias de plantão
 export async function atualizarLegendaBotaoPonta(legendasDiv) {
   const farmaciasDeOntem = await getFarmaciasDeOntemData();
@@ -167,11 +172,21 @@ export async function atualizarLegendaBotaoPonta(legendasDiv) {
     `;
     
     farmaciasDeOntem.forEach(props => {
+      const whatsappFormatted = formatWhatsappNumber(props.Whatsapp);
+      const whatsappLink = generateWhatsappLink(props.Whatsapp);
+      
       legendaHtml += `
         <div style="margin: 8px 0; padding: 8px; border-bottom: 1px solid #ddd;">
           <strong>${props.Farmacia || 'N/A'}</strong><br>
           📞 ${props.Telefone || 'N/A'}<br>
-          📱 ${props.Whatsapp || 'N/A'}
+          ${whatsappLink ? 
+            `<a href="${whatsappLink}" target="_blank" style="color: #25d366; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+              <i class="fa-brands fa-whatsapp" style="font-size: 16px;"></i> ${whatsappFormatted}
+            </a>` : 
+            `<span style="color: #666; display: inline-flex; align-items: center; gap: 4px;">
+              <i class="fa-brands fa-whatsapp" style="font-size: 16px;"></i> ${whatsappFormatted}
+            </span>`
+          }
         </div>
       `;
     });
