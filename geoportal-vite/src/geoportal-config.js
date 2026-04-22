@@ -323,3 +323,12 @@ export const LEGEND_CONFIG = {
     url: 'https://geoserver.amambai.ms.gov.br/geoserver/ne/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=ne:contorno'
   }
 };
+
+// Configuração de formulário Google Forms para solicitação de reparo de postes
+export const POSTE_FORM_CONFIG = {
+  baseUrl: 'https://docs.google.com/forms/d/e/1FAIpQLSfCB1x7yPaO_jDwqHhDjTi67JdTrMzTAZYxGQ_Vtyo7n9TSjQ/viewform?usp=pp_url',
+  fields: {
+    identificacaoPoste: 'entry.1055006444',
+    coordenadas: 'entry.2043543033'
+  }
+};

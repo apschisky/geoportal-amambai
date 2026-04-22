@@ -39,6 +39,9 @@ import VectorSource from 'ol/source/Vector.js';
 import Style from 'ol/style/Style.js';
 import Stroke from 'ol/style/Stroke.js';
 import Fill from 'ol/style/Fill.js';
+import { transformExtent } from 'ol/proj.js';
+import { LAYER_CONFIG, POSTE_FORM_CONFIG } from './geoportal-config.js';
+import { createPostePopupHTML, queryPosteLayerWithBuffer } from './geoportal-postes-reparo.js';
 // Handler para clique no mapa: busca atributos e destaca feição usando ES Modules do OpenLayers
 export function setupMapClickHandler(map, layers, showLotesPopup) {
   // Mapeamento amigável para Eixo de Adensamento
@@ -151,7 +154,6 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
         );
         if (url) {
           try {
-            console.log('Consultando camada:', layerInfo.name, url);
             const response = await fetch(url);
             let data = null;
             let isJson = true;
@@ -161,7 +163,6 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
               isJson = false;
             }
             if (isJson && data && data.features && data.features.length > 0) {
-              console.log('Features encontradas para', layerInfo.name, data.features);
               const props = data.features[0].properties;
               // Usa classes CSS para o bloco do popup e o título (manutenção mais fácil)
               let currentHtml = `<div class=\"popup-block\"><div class=\"popup-title\">${layerInfo.name}</div><table style=\"border-collapse:collapse;width:100%\">`;
@@ -197,7 +198,6 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
               }
               if (layerInfo.key === 'layer2') {
                 eixoHtml = currentHtml;
-                console.log('Popup do Eixo de Adensamento gerado:', eixoHtml);
               } else if (layerInfo.key === 'layer3') {
                 loteHtml = currentHtml;
               } else if (layerInfo.key === 'layer4') {
@@ -211,30 +211,55 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
               } else {
                 otherHtml += currentHtml;
               }
-            } else {
-              console.log('Nenhuma feição encontrada para', layerInfo.name);
             }
           } catch (e) {
             otherHtml += `<div style='color:#c00;font-size:14px;max-width:320px;'><b>${layerInfo.name}:</b> Erro ao buscar informações.</div>`;
-            console.error('Erro ao buscar camada', layerInfo.name, e);
           }
         }
       }
     }
+
+    // Consulta para camada de Postes (tratamento especial: sem zoom automático)
+    // Implementa busca com buffer de 10m selecionando o poste mais próximo
+    let posteHtml = '';
+    const posteLayer = layers['layer_postes'];
+    if (posteLayer && posteLayer.getVisible()) {
+      try {
+        const posteProps = await queryPosteLayerWithBuffer(coord, '10');
+        
+        if (posteProps) {
+          // Gerar HTML especial para postes com botão de formulário
+          posteHtml = createPostePopupHTML(
+            posteProps,
+            coord,
+            POSTE_FORM_CONFIG.baseUrl,
+            POSTE_FORM_CONFIG.fields
+          );
+        }
+      } catch (error) {
+        // Silenciosamente ignorar erro na consulta de postes
+      }
+    }
+
     if (highlightSource.getFeatures().length > 0) {
       map.addLayer(highlightLayer);
     }
     // Zoom: prioriza lote se existir, senão eixo, senão qualquer outra feição
+    // NÃO faz zoom se apenas Postes foram encontrados (requisito especial)
     if (loteExtent) {
       map.getView().fit(loteExtent, { maxZoom: 19, duration: 800, padding: [40,40,40,40] });
     } else if (eixoExtent) {
       map.getView().fit(eixoExtent, { maxZoom: 19, duration: 800, padding: [40,40,40,40] });
-    } else if (highlightSource.getFeatures().length > 0) {
+    } else if (!posteHtml && highlightSource.getFeatures().length > 0) {
+      // Só faz zoom se NÃO for só postes
       const extent = highlightSource.getFeatures()[0].getGeometry().getExtent();
       map.getView().fit(extent, { maxZoom: 19, duration: 800, padding: [40,40,40,40] });
     }
     // Lógica de exibição dos popups
-    if (eixoHtml && loteHtml) {
+    // Prioriza Postes se encontrado (sem as outras camadas)
+    if (posteHtml) {
+      showLotesPopup(map, coord, posteHtml);
+    } else if (eixoHtml && loteHtml) {
       // Se Eixo está presente, ignora Zoneamento
       showLotesPopup(map, coord, loteHtml + eixoHtml);
     } else if (eixoHtml) {
