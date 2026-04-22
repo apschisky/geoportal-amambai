@@ -90,18 +90,19 @@ export function setupGeolocation(map) {
     navigator.geolocation.getCurrentPosition(
       pos => {
         const coords = fromLonLat([pos.coords.longitude, pos.coords.latitude]);
-        map.getView().animate({ center: coords, zoom: 16, duration: 800 });
+        // Zoom automático ao ativar geolocalização (nível 18 para mais proximidade)
+        map.getView().animate({ center: coords, zoom: 18, duration: 800 });
         // Remove marcador anterior
         if (map.getLayers().getArray().some(l => l.get('geolocateLayer'))) {
           const toRemove = map.getLayers().getArray().filter(l => l.get('geolocateLayer'));
           toRemove.forEach(l => map.removeLayer(l));
         }
-        // Adiciona marcador
+        // Adiciona marcador com ícone de localização vermelho
         const marker = new Feature({ geometry: new Point(coords) });
         marker.setStyle(new Style({
           image: new Icon({
-            src: 'https://cdn-icons-png.flaticon.com/512/64/64113.png',
-            scale: 0.08
+            src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23ff6b6b" width="48" height="48"><path d="M12 2C6.48 2 2 6.48 2 12c0 7 10 13 10 13s10-6 10-13c0-5.52-4.48-10-10-10zm0 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg>',
+            scale: 1.5
           })
         }));
         const vectorSource = new VectorSource({ features: [marker] });

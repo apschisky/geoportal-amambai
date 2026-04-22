@@ -103,6 +103,20 @@ export function createPostePopupHTML(properties, coordinate, formBaseUrl, formFi
           <i class="fa-brands fa-whatsapp" style="margin-right:6px;"></i>Solicitar Reparo
         </a>
       </div>
+      <div style="margin-top:16px;padding:12px;background:#fff8e1;border-left:4px solid #ffc107;border-radius:4px;font-size:13px;line-height:1.5;color:#333;">
+        <div style="margin-bottom:8px;font-weight:bold;color:#ff9800;">
+          <i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>Não encontrou o poste correto?
+        </div>
+        <p style="margin:6px 0;">
+          Se este não for o poste desejado ou se a localização estiver incorreta no mapa, você ainda pode registrar a solicitação normalmente.
+        </p>
+        <p style="margin:6px 0;">
+          <strong>👉 Utilize o poste mais próximo disponível</strong> e, no formulário, informe o <strong>endereço correto</strong> e um <strong>ponto de referência</strong> no campo de observações.
+        </p>
+        <p style="margin:6px 0;color:#666;">
+          Isso ajuda nossa equipe a localizar com precisão o ponto e realizar o atendimento mais rapidamente.
+        </p>
+      </div>
     </div>
   `;
   

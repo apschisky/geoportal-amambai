@@ -74,9 +74,9 @@ export function showLotesPopup(map, coord, html, isPrint = false) {
   });
   popupOverlayLotes = new Overlay({
     element: container,
-    positioning: 'bottom-center',
+    positioning: 'center-right',
     stopEvent: true,
-    offset: [0, -12]
+    offset: [12, 0]
   });
   popupOverlayLotes.set('popupLotes', true);
   map.addOverlay(popupOverlayLotes);
