@@ -13,6 +13,8 @@ import { addSpecialLayers } from '@/geoportal-special-layers.js'; //ok
 import { setupMapClickHandler } from '@/geoportal-mapclick.js'; //ok
 import { createFarmaciasDeOntemLayer, zoomToFarmaciaDePlantao } from '@/geoportal-farmacias.js'; //ok
 import { toLonLat } from 'ol/proj.js';
+import VectorSource from 'ol/source/Vector.js';
+import VectorLayer from 'ol/layer/Vector.js';
 
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -104,25 +106,11 @@ window.addEventListener('DOMContentLoaded', () => {
   atualizarLegendas(layers);
 
   // Medição
-  import('ol/source/Vector.js').then(({ default: VectorSource }) => {
-    const source = new VectorSource();
-    // Adiciona camada de medição ao mapa se não existir
-    import('ol/layer/Vector.js').then(({ default: VectorLayer }) => {
-      const measureLayer = new VectorLayer({ source });
-      measureLayer.set('measureLayer', true);
-      map.addLayer(measureLayer);
-      setupMeasurement(map, source);
-    });
-    // Controle de ativação da medição
-    const btnDist = document.getElementById('measure-distance');
-    const btnArea = document.getElementById('measure-area');
-    const btnClear = document.getElementById('clear-measurement');
-    if (btnDist && btnArea && btnClear) {
-  btnDist.addEventListener('click', () => { window.measureActive = true; });
-  btnArea.addEventListener('click', () => { window.measureActive = true; });
-  btnClear.addEventListener('click', () => { window.measureActive = false; });
-    }
-  });
+  const source = new VectorSource();
+  const measureLayer = new VectorLayer({ source });
+  measureLayer.set('measureLayer', true);
+  map.addLayer(measureLayer);
+  setupMeasurement(map, source);
 
   // Busca
   setupSearchHandlers(map, layers, showLotesPopup, () => atualizarLegendas(layers));
