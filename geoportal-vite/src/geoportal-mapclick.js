@@ -115,6 +115,7 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
     let zoomed = false;
     let loteExtent = null;
     let eixoExtent = null;
+    let posteCoord = null;
     // Remove highlight anterior
     if (map.getLayers().getArray().some(l => l.get('highlightLayer'))) {
       const toRemove = map.getLayers().getArray().filter(l => l.get('highlightLayer'));
@@ -228,6 +229,7 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
         const posteProps = await queryPosteLayerWithBuffer(coord, '10');
         
         if (posteProps) {
+          posteCoord = coord;
           // Gerar HTML especial para postes com botão de formulário
           posteHtml = createPostePopupHTML(
             posteProps,
@@ -246,11 +248,14 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
     }
     // Zoom: prioriza lote se existir, senão eixo, senão qualquer outra feição
     // NÃO faz zoom se apenas Postes foram encontrados (requisito especial)
-    if (loteExtent) {
+    if (posteCoord) {
+      map.getView().cancelAnimations();
+      map.getView().animate({ center: posteCoord, zoom: 19, duration: 800 });
+    } else if (loteExtent) {
       map.getView().fit(loteExtent, { maxZoom: 19, duration: 800, padding: [40,40,40,40] });
     } else if (eixoExtent) {
       map.getView().fit(eixoExtent, { maxZoom: 19, duration: 800, padding: [40,40,40,40] });
-    } else if (!posteHtml && highlightSource.getFeatures().length > 0) {
+    } else if (highlightSource.getFeatures().length > 0) {
       // Só faz zoom se NÃO for só postes
       const extent = highlightSource.getFeatures()[0].getGeometry().getExtent();
       map.getView().fit(extent, { maxZoom: 19, duration: 800, padding: [40,40,40,40] });

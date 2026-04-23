@@ -59,6 +59,8 @@ export function createFarmaciasDeOntemLayer() {
   });
 
   layer.set('name', 'layer_farmacias_highlight');
+  layer.set('farmaciasLoaded', false);
+  layer.set('alreadyZoomed', false);
 
   // Carregar features de plantão da WFS quando a layer for criada
   const url = 'https://geoserver.amambai.ms.gov.br/geoserver/wfs?' +
@@ -84,13 +86,55 @@ export function createFarmaciasDeOntemLayer() {
         source.addFeatures(filteredFeatures);
       }
       
+      layer.set('farmaciasLoaded', true);
       source.dispatchEvent('change');
     })
     .catch(error => {
+      layer.set('farmaciasLoaded', true);
       console.error('[Farmácias Highlight] ✗ ERRO:', error);
     });
 
   return layer;
+}
+
+export function zoomToFarmaciaDePlantao(map, highlightLayer) {
+  if (!map || !highlightLayer) return;
+
+  const source = highlightLayer.getSource();
+  if (!source) return;
+
+  const focusFarmacias = () => {
+    const features = source.getFeatures();
+    if (!features || features.length === 0) return false;
+
+    if (features.length === 1) {
+      const coord = features[0].getGeometry()?.getCoordinates?.();
+      if (!coord) return false;
+      map.getView().animate({ center: coord, zoom: 18, duration: 800 });
+      return true;
+    }
+
+    map.getView().fit(source.getExtent(), {
+      maxZoom: 18,
+      duration: 800,
+      padding: [40, 40, 40, 40]
+    });
+    return true;
+  };
+
+  if (focusFarmacias()) {
+    highlightLayer.set('alreadyZoomed', true);
+    return;
+  }
+
+  if (highlightLayer.get('farmaciasLoaded')) return;
+
+  source.once('addfeature', () => {
+    if (!highlightLayer.getVisible() || highlightLayer.get('alreadyZoomed')) return;
+    if (focusFarmacias()) {
+      highlightLayer.set('alreadyZoomed', true);
+    }
+  });
 }
 
 // Obter farmácias de plantão por camada WFS

@@ -11,7 +11,7 @@ import { setupPrint } from '@/geoportal-print.js'; //ok
 import { setupUIHandlers, setupGeolocation } from '@/geoportal-ui.js'; //ok
 import { addSpecialLayers } from '@/geoportal-special-layers.js'; //ok
 import { setupMapClickHandler } from '@/geoportal-mapclick.js'; //ok
-import { createFarmaciasDeOntemLayer } from '@/geoportal-farmacias.js'; //ok
+import { createFarmaciasDeOntemLayer, zoomToFarmaciaDePlantao } from '@/geoportal-farmacias.js'; //ok
 import { toLonLat } from 'ol/proj.js';
 
 
@@ -80,6 +80,12 @@ window.addEventListener('DOMContentLoaded', () => {
         // Sincronizar visibilidade da camada de destaque de farmácias
         if (layerId === 'layer_farmacias') {
           farmaciasHighlightLayer.setVisible(e.target.checked);
+          if (e.target.checked && !farmaciasHighlightLayer.get('alreadyZoomed')) {
+            zoomToFarmaciaDePlantao(map, farmaciasHighlightLayer);
+          }
+          if (!e.target.checked) {
+            farmaciasHighlightLayer.set('alreadyZoomed', false);
+          }
         }
         
         atualizarLegendas(layers);

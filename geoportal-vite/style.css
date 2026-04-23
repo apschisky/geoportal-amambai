@@ -970,6 +970,44 @@ body {
   font-size: 14px;
   max-width: 320px;
 }
+
+@media (max-width: 600px) {
+  .ol-popup.draggable-popup {
+    width: min(92vw, 340px);
+    max-width: calc(100vw - 16px);
+    max-height: 50dvh;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  .ol-popup.draggable-popup .ol-popup-bar {
+    flex-shrink: 0;
+  }
+
+  .ol-popup.draggable-popup .ol-popup-content {
+    max-height: calc(50dvh - 44px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    box-sizing: border-box;
+  }
+
+  .ol-popup.draggable-popup .popup-block {
+    max-width: 100%;
+    word-break: break-word;
+  }
+
+  .ol-popup.draggable-popup table {
+    width: 100%;
+    table-layout: fixed;
+  }
+
+  .ol-popup.draggable-popup td,
+  .ol-popup.draggable-popup th {
+    word-break: break-word;
+  }
+}
 /* Impressão: esconde botões, controles e zoom na impressão */
 
 @media print {
