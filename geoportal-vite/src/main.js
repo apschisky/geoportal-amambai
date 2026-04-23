@@ -119,7 +119,7 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 
   // Busca
-  setupSearchHandlers(map, layers, showLotesPopup);
+  setupSearchHandlers(map, layers, showLotesPopup, () => atualizarLegendas(layers));
 
   // Impressão
   setupPrint(map, layers);
