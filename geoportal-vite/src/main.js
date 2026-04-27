@@ -12,6 +12,7 @@ import { setupUIHandlers, setupGeolocation } from '@/geoportal-ui.js'; //ok
 import { addSpecialLayers } from '@/geoportal-special-layers.js'; //ok
 import { setupMapClickHandler } from '@/geoportal-mapclick.js'; //ok
 import { createFarmaciasDeOntemLayer, zoomToFarmaciaDePlantao } from '@/geoportal-farmacias.js'; //ok
+import { setupWelcomeNotices } from '@/geoportal-notices.js'; //ok
 import { toLonLat } from 'ol/proj.js';
 import VectorSource from 'ol/source/Vector.js';
 import VectorLayer from 'ol/layer/Vector.js';
@@ -123,6 +124,29 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Ativa geolocalização
   setupGeolocation(map);
+
+  const tutorialLinks = {
+    lighting: '#',
+    farmacia: '#'
+  };
+
+  const activateLayerFromNotice = (layerId) => {
+    const checkbox = document.getElementById(layerId);
+    if (!checkbox || checkbox.checked) return;
+
+    checkbox.checked = true;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+
+  setupWelcomeNotices({
+    tutorialLinks,
+    onActivateLighting: () => {
+      activateLayerFromNotice('layer_postes');
+    },
+    onActivateFarmacia: () => {
+      activateLayerFromNotice('layer_farmacias');
+    }
+  });
 
 
   // Handler único de singleclick: mostra apenas coordenadas

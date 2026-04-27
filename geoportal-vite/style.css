@@ -1133,4 +1133,209 @@ body {
     font-size: 14px;
 }
 
+.welcome-notice-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(20, 30, 40, 0.5);
+}
+
+.welcome-notice-modal {
+  width: min(760px, 100%);
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.22);
+  overflow: hidden;
+  color: #22313f;
+}
+
+.welcome-notice-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid #e6ebf0;
+}
+
+.welcome-notice-header h2 {
+  margin: 0 0 6px;
+  font-size: 1.4rem;
+  color: #2a3a4a;
+}
+
+.welcome-notice-header p {
+  margin: 0;
+  font-size: 0.96rem;
+  line-height: 1.45;
+  color: #5b6b79;
+}
+
+.welcome-notice-close {
+  border: none;
+  background: none;
+  color: #5b6b79;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.welcome-notice-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding: 18px 20px 10px;
+}
+
+.welcome-notice-card {
+  border: 1px solid #e5eaf0;
+  border-radius: 10px;
+  padding: 16px;
+  background: #fbfcfe;
+}
+
+.welcome-notice-badge {
+  display: inline-block;
+  margin-bottom: 10px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #e8f1fb;
+  color: #1f5f99;
+  font-size: 0.83rem;
+  font-weight: 700;
+}
+
+.welcome-notice-card p {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: #334155;
+}
+
+.welcome-notice-list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #334155;
+}
+
+.welcome-notice-list li {
+  margin-bottom: 6px;
+}
+
+.welcome-notice-list li::marker {
+  color: #1976d2;
+}
+
+.welcome-notice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.welcome-notice-primary,
+.welcome-notice-link,
+.welcome-notice-muted {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 0.94rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: filter 0.2s ease;
+}
+
+.welcome-notice-primary {
+  border: none;
+  background: #1976d2;
+  color: #fff;
+}
+
+.welcome-notice-primary.is-secondary {
+  background: #2c7a4b;
+}
+
+.welcome-notice-link {
+  border: 1px solid #d3dbe4;
+  background: #fff;
+  color: #2a3a4a;
+}
+
+.welcome-notice-link.is-disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.welcome-notice-muted {
+  border: none;
+  background: transparent;
+  color: #526273;
+}
+
+.welcome-notice-primary:hover,
+.welcome-notice-link:hover,
+.welcome-notice-muted:hover,
+.welcome-notice-close:hover {
+  filter: brightness(0.96);
+}
+
+.welcome-notice-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 20px 18px;
+}
+
+@media (max-width: 600px) {
+  .welcome-notice-overlay {
+    padding: 12px;
+    align-items: flex-start;
+  }
+
+  .welcome-notice-modal {
+    margin-top: 10px;
+  }
+
+  .welcome-notice-header {
+    padding: 16px 16px 10px;
+  }
+
+  .welcome-notice-header h2 {
+    font-size: 1.15rem;
+  }
+
+  .welcome-notice-cards {
+    grid-template-columns: 1fr;
+    padding: 14px 16px 8px;
+  }
+
+  .welcome-notice-card {
+    padding: 14px;
+  }
+
+  .welcome-notice-actions {
+    flex-direction: column;
+  }
+
+  .welcome-notice-primary,
+  .welcome-notice-link,
+  .welcome-notice-muted {
+    width: 100%;
+  }
+
+  .welcome-notice-footer {
+    padding: 0 16px 16px;
+  }
+}
+
 /* Removido bloco duplicado/conflictivo para #legendas-categorias na impressão. O controle de exibição da legenda é feito apenas pelo bloco principal @media print. */
