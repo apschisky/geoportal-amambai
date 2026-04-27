@@ -5,6 +5,11 @@ import Overlay from 'ol/Overlay.js';
 export function showLotesPopup(map, coord, html, isPrint = false) {
   // Salva o HTML do popup para uso na impressão
   window.__geoportalUltimoPopupHtml = html;
+  const popupPixel = map.getPixelFromCoordinate(coord);
+  const mapSize = map.getSize() || [0, 0];
+  const showOnRightSide = !popupPixel || popupPixel[0] <= mapSize[0] / 2;
+  const popupPositioning = showOnRightSide ? 'center-left' : 'center-right';
+  const popupOffset = showOnRightSide ? [24, 0] : [-24, 0];
   let popupOverlayLotes = map.getOverlays().getArray().find(ov => ov.get('popupLotes'));
   if (popupOverlayLotes) {
     map.removeOverlay(popupOverlayLotes);
@@ -74,9 +79,9 @@ export function showLotesPopup(map, coord, html, isPrint = false) {
   });
   popupOverlayLotes = new Overlay({
     element: container,
-    positioning: 'center-right',
+    positioning: popupPositioning,
     stopEvent: true,
-    offset: [12, 0]
+    offset: popupOffset
   });
   popupOverlayLotes.set('popupLotes', true);
   map.addOverlay(popupOverlayLotes);

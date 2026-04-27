@@ -183,7 +183,7 @@ export function calculateDistance(point1, point2) {
  * @param {string} bufferDistance - Distância do buffer em metros (ex: "10")
  * @returns {Promise<Object|null>} Propriedades do poste mais próximo ou null
  */
-export async function queryPosteLayerWithBuffer(coord, bufferDistance = '10') {
+export async function queryPosteLayerWithBuffer(coord, bufferDistance = '10', returnFeature = false) {
   try {
     const layerName = 'ne:Postes%20-%20IDs%20-%20AU';
     const fromCrs = 'EPSG:3857';  // CRS do clique (Web Mercator)
@@ -218,7 +218,7 @@ export async function queryPosteLayerWithBuffer(coord, bufferDistance = '10') {
     
     // Se encontrou apenas um, retornar diretamente
     if (data.features.length === 1) {
-      return data.features[0].properties;
+      return returnFeature ? data.features[0] : data.features[0].properties;
     }
     
     // Se encontrou múltiplos, calcular distância e selecionar o mais próximo
@@ -247,7 +247,7 @@ export async function queryPosteLayerWithBuffer(coord, bufferDistance = '10') {
     });
     
     if (closestFeature) {
-      return closestFeature.properties;
+      return returnFeature ? closestFeature : closestFeature.properties;
     }
     
     return null;

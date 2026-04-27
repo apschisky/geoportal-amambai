@@ -39,6 +39,7 @@ import VectorSource from 'ol/source/Vector.js';
 import Style from 'ol/style/Style.js';
 import Stroke from 'ol/style/Stroke.js';
 import Fill from 'ol/style/Fill.js';
+import CircleStyle from 'ol/style/Circle.js';
 import { transformExtent } from 'ol/proj.js';
 import { LAYER_CONFIG, POSTE_FORM_CONFIG } from './geoportal-config.js';
 import { createPostePopupHTML, queryPosteLayerWithBuffer } from './geoportal-postes-reparo.js';
@@ -123,12 +124,25 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
     }
     // Camada de destaque
     const highlightSource = new VectorSource();
+    const polygonHighlightStyle = new Style({
+      stroke: new Stroke({ color: '#ff0', width: 3 }),
+      fill: new Fill({ color: 'rgba(255,255,0,0.2)' })
+    });
+    const pointHighlightStyle = new Style({
+      image: new CircleStyle({
+        radius: 8,
+        fill: new Fill({ color: 'rgba(255,255,0,0.35)' }),
+        stroke: new Stroke({ color: '#ff0', width: 3 })
+      })
+    });
     const highlightLayer = new VectorLayer({
       source: highlightSource,
-      style: new Style({
-        stroke: new Stroke({ color: '#ff0', width: 3 }),
-        fill: new Fill({ color: 'rgba(255,255,0,0.2)' })
-      })
+      style: feature => {
+        const geometryType = feature.getGeometry()?.getType?.();
+        return geometryType === 'Point' || geometryType === 'MultiPoint'
+          ? pointHighlightStyle
+          : polygonHighlightStyle;
+      }
     });
     highlightLayer.set('highlightLayer', true);
     // Limpa seleção anterior
@@ -226,14 +240,26 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
     const posteLayer = layers['layer_postes'];
     if (posteLayer && posteLayer.getVisible()) {
       try {
-        const posteProps = await queryPosteLayerWithBuffer(coord, '10');
+        const posteFeature = await queryPosteLayerWithBuffer(coord, '10', true);
         
-        if (posteProps) {
-          posteCoord = coord;
+        if (posteFeature) {
+          const olPosteFeature = new GeoJSON().readFeature(posteFeature, {
+            dataProjection: 'EPSG:32721',
+            featureProjection: map.getView().getProjection()
+          });
+          const posteGeometry = olPosteFeature.getGeometry();
+          if (posteGeometry?.getType?.() === 'Point') {
+            posteCoord = posteGeometry.getCoordinates();
+          } else if (posteGeometry?.getType?.() === 'MultiPoint') {
+            posteCoord = posteGeometry.getCoordinates()[0];
+          } else {
+            posteCoord = coord;
+          }
+          highlightSource.addFeature(olPosteFeature);
           // Gerar HTML especial para postes com botão de formulário
           posteHtml = createPostePopupHTML(
-            posteProps,
-            coord,
+            posteFeature.properties,
+            posteCoord,
             POSTE_FORM_CONFIG.baseUrl,
             POSTE_FORM_CONFIG.fields
           );
@@ -263,7 +289,7 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
     // Lógica de exibição dos popups
     // Prioriza Postes se encontrado (sem as outras camadas)
     if (posteHtml) {
-      showLotesPopup(map, coord, posteHtml);
+      showLotesPopup(map, posteCoord || coord, posteHtml);
     } else if (eixoHtml && loteHtml) {
       // Se Eixo está presente, ignora Zoneamento
       showLotesPopup(map, coord, loteHtml + eixoHtml);
