@@ -37,6 +37,7 @@ export function setupWelcomeNotices({
   };
 
   const tutorialHref = links.main || '#';
+  const mostrarIluminacao = false;
 
   const overlay = document.createElement('div');
   overlay.className = 'welcome-notice-overlay';
@@ -89,6 +90,11 @@ export function setupWelcomeNotices({
     </div>
   `;
 
+  const lightingButton = overlay.querySelector('[data-action="lighting"]');
+  if (!mostrarIluminacao) {
+    lightingButton?.closest('.welcome-notice-card')?.remove();
+  }
+
   const close = () => {
     markDismissedInSession();
     overlay.remove();
@@ -105,10 +111,12 @@ export function setupWelcomeNotices({
     link.addEventListener('click', (e) => e.preventDefault());
   });
 
-  overlay.querySelector('[data-action="lighting"]').addEventListener('click', () => {
-    onActivateLighting?.();
-    close();
-  });
+  if (lightingButton) {
+    lightingButton.addEventListener('click', () => {
+      onActivateLighting?.();
+      close();
+    });
+  }
 
   overlay.querySelector('[data-action="farmacia"]').addEventListener('click', () => {
     onActivateFarmacia?.();
