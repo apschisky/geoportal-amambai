@@ -32,10 +32,11 @@ export function setupWelcomeNotices({
   if (wasDismissedInSession()) return;
 
   const links = {
-    lighting: '#',
-    farmacia: '#',
+    main: '#',
     ...tutorialLinks
   };
+
+  const tutorialHref = links.main || '#';
 
   const overlay = document.createElement('div');
   overlay.className = 'welcome-notice-overlay';
@@ -63,7 +64,6 @@ export function setupWelcomeNotices({
           </ul>
           <div class="welcome-notice-actions">
             <button type="button" class="welcome-notice-primary" data-action="lighting">Ativar Postes</button>
-            ${renderTutorialLink(links.lighting)}
           </div>
         </section>
 
@@ -78,12 +78,12 @@ export function setupWelcomeNotices({
           </ul>
           <div class="welcome-notice-actions">
             <button type="button" class="welcome-notice-primary is-secondary" data-action="farmacia">Ver Farmácia de Plantão</button>
-            ${renderTutorialLink(links.farmacia)}
           </div>
         </section>
       </div>
 
       <div class="welcome-notice-footer">
+        ${renderTutorialLink(tutorialHref)}
         <button type="button" class="welcome-notice-muted" data-action="close">Fechar e continuar</button>
       </div>
     </div>

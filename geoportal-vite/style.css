@@ -1292,7 +1292,9 @@ body {
 
 .welcome-notice-footer {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
   padding: 0 20px 18px;
 }
 
@@ -1334,6 +1336,7 @@ body {
   }
 
   .welcome-notice-footer {
+    flex-direction: column;
     padding: 0 16px 16px;
   }
 }

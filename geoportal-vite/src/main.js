@@ -126,8 +126,7 @@ window.addEventListener('DOMContentLoaded', () => {
   setupGeolocation(map);
 
   const tutorialLinks = {
-    lighting: '#',
-    farmacia: '#'
+    main: '#'
   };
 
   const activateLayerFromNotice = (layerId) => {
