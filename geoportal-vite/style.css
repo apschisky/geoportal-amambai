@@ -891,22 +891,23 @@ body {
     height: 22px;
   }
   .layer-controls-box {
-    top: 10px;
-    right: 10px;
+    top: 54px;
+    right: 8px;
     width: 38px;
     height: 38px;
+    z-index: 3200;
   }
   .layer-controls-content {
-    width: min(68vw, 220px);
+    width: min(46vw, 158px);
     min-width: 0;
-    max-width: calc(100vw - 20px);
-    max-height: calc(100dvh - 120px);
+    max-width: calc(100vw - 145px);
+    max-height: calc(100dvh - 170px);
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     font-size: 12px;
     line-height: 1.25;
-    top: calc(100% + 2px);
+    top: calc(100% + 8px);
     right: 0;
     padding: 8px 10px 8px 8px;
     box-sizing: border-box;
@@ -1001,9 +1002,9 @@ body {
 
 @media (max-width: 600px) {
   .ol-popup.draggable-popup {
-    width: min(92vw, 340px);
-    max-width: calc(100vw - 16px);
-    max-height: 50dvh;
+    width: min(86vw, 300px);
+    max-width: calc(100vw - 24px);
+    max-height: 42dvh;
     overflow: hidden;
     box-sizing: border-box;
   }
@@ -1013,7 +1014,7 @@ body {
   }
 
   .ol-popup.draggable-popup .ol-popup-content {
-    max-height: calc(50dvh - 44px);
+    max-height: calc(42dvh - 44px);
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
@@ -1021,19 +1022,23 @@ body {
     box-sizing: border-box;
   }
 
-  .ol-popup.draggable-popup .popup-block {
-    max-width: 100%;
+  .ol-popup.draggable-popup .popup-block,
+  .ol-popup.draggable-popup div[style*="max-width:320px"] {
+    max-width: 100% !important;
+    font-size: 12px !important;
     word-break: break-word;
   }
 
   .ol-popup.draggable-popup table {
     width: 100%;
     table-layout: fixed;
+    font-size: 12px;
   }
 
   .ol-popup.draggable-popup td,
   .ol-popup.draggable-popup th {
     word-break: break-word;
+    padding: 3px 5px !important;
   }
 }
 /* Impressão: esconde botões, controles e zoom na impressão */
@@ -1584,37 +1589,66 @@ body {
     height: 44px !important;
   }
 
+  #legendas-categorias {
+    width: min(36vw, 145px);
+    max-width: min(36vw, 145px);
+    max-height: 170px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    font-size: 10.5px;
+    padding: 6px;
+    box-sizing: border-box;
+    pointer-events: auto;
+  }
+
+  #legendas-categorias h3,
+  #legendas-categorias h4 {
+    font-size: 11px;
+    line-height: 1.2;
+    margin: 0 0 4px;
+  }
+
+  #legendas-categorias p,
+  #legendas-categorias li,
+  #legendas-categorias div {
+    font-size: 10.5px;
+    line-height: 1.2;
+  }
+
   .header {
-    padding-left: 40px;
-    padding-right: 48px;
+    padding-left: 34px;
+    padding-right: 34px;
     box-sizing: border-box;
   }
 
   .header .header-institutional {
-    left: 8px;
+    left: 6px;
   }
 
   .header .header-brand {
-    gap: 4px;
+    gap: 3px;
     min-width: 0;
     flex: 0 1 auto;
-    max-width: 100%;
+    max-width: calc(100% - 56px);
   }
 
   .header .header-emblem {
-    height: 22px;
+    height: 18px;
   }
 
   .header .header-logo {
-    height: 26px;
+    height: 22px;
     flex-shrink: 0;
   }
 
   .header span {
-    font-size: 0.82rem;
-    letter-spacing: 0.5px;
+    font-size: 0.74rem;
+    letter-spacing: 0.45px;
     min-width: 0;
     max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 
@@ -1623,30 +1657,7 @@ body {
     left: 8px !important;
     right: auto !important;
     bottom: 96px !important;
-    width: min(38vw, 150px) !important;
-    max-width: min(38vw, 150px) !important;
-    max-height: 190px !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    font-size: 11px !important;
-    padding: 8px !important;
-    box-sizing: border-box !important;
-    pointer-events: auto !important;
     z-index: 2500 !important;
-  }
-
-  body:has(.layer-controls-box.expanded) #legendas-categorias h3,
-  body:has(.layer-controls-box.expanded) #legendas-categorias h4 {
-    font-size: 12px !important;
-    line-height: 1.2 !important;
-    margin: 0 0 6px !important;
-  }
-
-  body:has(.layer-controls-box.expanded) #legendas-categorias p,
-  body:has(.layer-controls-box.expanded) #legendas-categorias li,
-  body:has(.layer-controls-box.expanded) #legendas-categorias div {
-    font-size: 11px !important;
-    line-height: 1.25 !important;
   }
 }
 
