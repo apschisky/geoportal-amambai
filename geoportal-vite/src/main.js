@@ -20,7 +20,12 @@ import VectorLayer from 'ol/layer/Vector.js';
 
 window.addEventListener('DOMContentLoaded', () => {
   // Inicialização do mapa
-  const { map, osmLayer, satelliteLayer } = initMap('map');
+  const {
+    map,
+    osmLayer,
+    satelliteLayer,
+    baseMapZoomLimits
+  } = initMap('map');
 
   // Criação das camadas
   const layers = createAllLayers();
@@ -189,28 +194,42 @@ window.addEventListener('DOMContentLoaded', () => {
   const osmRadio = document.querySelector('input[name="basemap"][value="osm"]');
   const satRadio = document.querySelector('input[name="basemap"][value="satellite"]');
   if (osmRadio && satRadio) {
+    const setActiveBaseMap = (baseMap) => {
+      const view = map.getView();
+
+      osmLayer.setVisible(baseMap === 'osm');
+      satelliteLayer.setVisible(baseMap === 'satellite');
+
+      const maxZoom = baseMapZoomLimits[baseMap] ?? baseMapZoomLimits.osm;
+      view.setMaxZoom(maxZoom);
+      if (view.getZoom() > maxZoom) {
+        view.setZoom(maxZoom);
+      }
+    };
+
     osmRadio.addEventListener('change', function() {
       if (osmRadio.checked) {
-        osmLayer.setVisible(true);
-        satelliteLayer.setVisible(false);
-        map.getView().setMaxZoom(undefined); // Libera zoom para OSM
+        setActiveBaseMap('osm');
       }
     });
     satRadio.addEventListener('change', function() {
       if (satRadio.checked) {
-        osmLayer.setVisible(false);
-        satelliteLayer.setVisible(true);
-        map.getView().setMaxZoom(18); // Limita zoom para satélite
-        if (map.getView().getZoom() > 18) {
-          map.getView().setZoom(18); // Se estava acima, volta para 18
-        }
+        setActiveBaseMap('satellite');
       }
     });
-    // Impede zoom maior que 18 no satélite
     map.getView().on('change:resolution', function() {
-      if (satRadio.checked && map.getView().getZoom() > 18) {
-        map.getView().setZoom(18);
+      let currentBaseMap = 'osm';
+      if (satRadio.checked) {
+        currentBaseMap = 'satellite';
+      }
+
+      const currentMaxZoom = baseMapZoomLimits[currentBaseMap] ?? baseMapZoomLimits.osm;
+      if (map.getView().getZoom() > currentMaxZoom) {
+        map.getView().setZoom(currentMaxZoom);
       }
     });
   }
 });
+
+
+
