@@ -2,6 +2,11 @@ import VectorSource from 'ol/source/Vector.js';
 import VectorLayer from 'ol/layer/Vector.js';
 import { Style, Icon, Text, Fill, Circle, Stroke } from 'ol/style.js';
 import GeoJSON from 'ol/format/GeoJSON.js';
+import { toLonLat } from 'ol/proj.js';
+
+const FARMACIAS_WFS_URL = 'https://geoserver.amambai.ms.gov.br/geoserver/wfs?' +
+  'service=WFS&version=2.0.0&request=GetFeature&typeName=ne:Farm%C3%A1cias' +
+  '&outputFormat=application/json&SRSNAME=EPSG:32721';
 
 // Obter dia atual do mês
 function getTodayDay() {
@@ -27,6 +32,43 @@ function isFarmaciaDeOntem(properties) {
   const isOnDuty = daysOfDuty.includes(todayDay);
   
   return isOnDuty;
+}
+
+export function isFarmaciaDePlantao(properties) {
+  return isFarmaciaDeOntem(properties || {});
+}
+
+function getFarmaciaProperty(properties, names) {
+  if (!properties) return '';
+
+  for (const name of names) {
+    if (properties[name] !== undefined && properties[name] !== null) {
+      return properties[name];
+    }
+  }
+
+  const propertyKey = Object.keys(properties).find(key =>
+    names.some(name => key.toLowerCase() === name.toLowerCase())
+  );
+
+  return propertyKey ? properties[propertyKey] : '';
+}
+
+function isEmptyValue(value) {
+  return value === undefined || value === null || String(value).trim() === '' || String(value).trim().toUpperCase() === 'N/A';
+}
+
+function formatPopupValue(value) {
+  return isEmptyValue(value) ? 'N/A' : String(value).trim();
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 // Criar estilo para farmácia de plantão (DESTAQUE)
@@ -61,13 +103,10 @@ export function createFarmaciasDeOntemLayer() {
   layer.set('name', 'layer_farmacias_highlight');
   layer.set('farmaciasLoaded', false);
   layer.set('alreadyZoomed', false);
+  layer.set('alreadyOpenedPopup', false);
 
   // Carregar features de plantão da WFS quando a layer for criada
-  const url = 'https://geoserver.amambai.ms.gov.br/geoserver/wfs?' +
-    'service=WFS&version=2.0.0&request=GetFeature&typeName=ne:Farm%C3%A1cias' +
-    '&outputFormat=application/json&SRSNAME=EPSG:32721';
-  
-  fetch(url)
+  fetch(FARMACIAS_WFS_URL)
     .then(response => {
       return response.json();
     })
@@ -138,13 +177,156 @@ export function zoomToFarmaciaDePlantao(map, highlightLayer) {
 }
 
 // Obter farmácias de plantão por camada WFS
+export function getFarmaciaMapCoordinate(feature) {
+  const geometry = feature?.getGeometry?.();
+  if (!geometry) return null;
+
+  const geometryType = geometry.getType?.();
+  if (geometryType === 'Point') return geometry.getCoordinates();
+  if (geometryType === 'MultiPoint') return geometry.getCoordinates()?.[0] || null;
+
+  const extent = geometry.getExtent?.();
+  if (!extent) return null;
+
+  return [
+    (extent[0] + extent[2]) / 2,
+    (extent[1] + extent[3]) / 2
+  ];
+}
+
+export function getFarmaciaLonLatFromFeature(feature) {
+  const coord = getFarmaciaMapCoordinate(feature);
+  return coord ? toLonLat(coord) : null;
+}
+
+function formatMapCoordinateParam(lonLat) {
+  if (!Array.isArray(lonLat) || lonLat.length < 2) return null;
+
+  const lon = Number(lonLat[0]);
+  const lat = Number(lonLat[1]);
+  if (!Number.isFinite(lon) || !Number.isFinite(lat)) return null;
+
+  return `${lat.toFixed(6)},${lon.toFixed(6)}`;
+}
+
+export function buildGoogleMapsRouteUrl(destinationLonLat, originLonLat = window.__geoportalUserLonLat) {
+  const destination = formatMapCoordinateParam(destinationLonLat);
+  if (!destination) return '#';
+
+  const origin = formatMapCoordinateParam(originLonLat);
+  if (origin) {
+    return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`;
+  }
+
+  return `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`;
+}
+
+export function createFarmaciaPopupHTML(properties, options = {}) {
+  const isPlantao = options.isPlantao ?? isFarmaciaDePlantao(properties);
+  const destinationLonLat = options.destinationLonLat || null;
+  const nome = formatPopupValue(getFarmaciaProperty(properties, ['Farmacia', 'Farmacia_nome', 'Nome']));
+  const telefone = formatPopupValue(getFarmaciaProperty(properties, ['Telefone', 'Fone']));
+  const whatsapp = getFarmaciaProperty(properties, ['Whatsapp', 'WhatsApp', 'WHATSAPP']);
+  const whatsappFormatted = formatWhatsappNumber(whatsapp);
+  const whatsappLink = generateWhatsappLink(whatsapp);
+  const routeUrl = buildGoogleMapsRouteUrl(destinationLonLat);
+  const title = isPlantao ? 'Farm&aacute;cia de Plant&atilde;o' : 'Farm&aacute;cia';
+  const routeData = destinationLonLat
+    ? `data-destination-lon="${Number(destinationLonLat[0])}" data-destination-lat="${Number(destinationLonLat[1])}"`
+    : '';
+
+  return `
+    <div class="popup-block farmacia-popup farmacia-popup-modern${isPlantao ? ' is-plantao' : ''}">
+      <div class="farmacia-popup-header">
+        <span class="farmacia-popup-kicker">${title}</span>
+        <h3 class="farmacia-popup-title">${escapeHtml(nome)}</h3>
+        ${isPlantao ? '<span class="farmacia-popup-badge">Plant&atilde;o hoje</span>' : ''}
+      </div>
+
+      <div class="farmacia-popup-contact">
+        <div class="farmacia-contact-item">
+          <span class="farmacia-contact-label">Telefone</span>
+          <strong>${escapeHtml(telefone)}</strong>
+        </div>
+
+        <div class="farmacia-contact-item">
+          <span class="farmacia-contact-label">WhatsApp</span>
+          ${whatsappLink
+            ? `<a href="${whatsappLink}" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> ${escapeHtml(whatsappFormatted)}</a>`
+            : `<strong>${escapeHtml(whatsappFormatted)}</strong>`
+          }
+        </div>
+      </div>
+
+      <div class="farmacia-popup-actions">
+        ${whatsappLink
+          ? `<a class="farmacia-action farmacia-action-whatsapp" href="${whatsappLink}" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> WhatsApp</a>`
+          : ''
+        }
+        <a class="farmacia-action farmacia-action-route" href="${routeUrl}" ${routeData} data-farmacia-route="true" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-route" aria-hidden="true"></i> Rota</a>
+      </div>
+    </div>
+  `;
+}
+
+export function openFarmaciaDePlantaoPopup(map, highlightLayer, showPopup) {
+  if (!map || !highlightLayer || typeof showPopup !== 'function') return;
+
+  const source = highlightLayer.getSource();
+  if (!source) return;
+
+  const openPopup = () => {
+    const feature = source.getFeatures()?.[0];
+    if (!feature) return false;
+
+    const coord = getFarmaciaMapCoordinate(feature);
+    const destinationLonLat = getFarmaciaLonLatFromFeature(feature);
+    if (!coord || !destinationLonLat) return false;
+
+    const html = createFarmaciaPopupHTML(feature.getProperties(), {
+      isPlantao: true,
+      destinationLonLat
+    });
+    showPopup(map, coord, html);
+    return true;
+  };
+
+  if (openPopup()) {
+    highlightLayer.set('alreadyOpenedPopup', true);
+    return;
+  }
+
+  if (highlightLayer.get('farmaciasLoaded')) return;
+
+  source.once('addfeature', () => {
+    if (!highlightLayer.getVisible() || highlightLayer.get('alreadyOpenedPopup')) return;
+    if (openPopup()) {
+      highlightLayer.set('alreadyOpenedPopup', true);
+    }
+  });
+}
+
+export function setupFarmaciaRouteButtons() {
+  if (window.__geoportalFarmaciaRouteButtonsReady) return;
+  window.__geoportalFarmaciaRouteButtonsReady = true;
+
+  document.addEventListener('click', event => {
+    if (!(event.target instanceof Element)) return;
+
+    const routeButton = event.target.closest('[data-farmacia-route]');
+    if (!routeButton) return;
+
+    const destinationLon = Number(routeButton.dataset.destinationLon);
+    const destinationLat = Number(routeButton.dataset.destinationLat);
+    if (!Number.isFinite(destinationLon) || !Number.isFinite(destinationLat)) return;
+
+    routeButton.href = buildGoogleMapsRouteUrl([destinationLon, destinationLat]);
+  });
+}
+
 export async function getFarmaciasDeOntemData() {
   try {
-    const url = 'https://geoserver.amambai.ms.gov.br/geoserver/wfs?' +
-      'service=WFS&version=2.0.0&request=GetFeature&typeName=ne:Farm%C3%A1cias' +
-      '&outputFormat=application/json&SRSNAME=EPSG:32721';
-    
-    const response = await fetch(url);
+    const response = await fetch(FARMACIAS_WFS_URL);
     const data = await response.json();
     const features = new GeoJSON().readFeatures(data, {
       dataProjection: 'EPSG:32721',    // Projeção dos dados do WFS
@@ -176,10 +358,11 @@ function formatWhatsappNumber(whatsapp) {
   if (!whatsapp || whatsapp === 'N/A') return 'N/A';
   
   // Remove todos os caracteres não numéricos
-  const cleanNumber = whatsapp.replace(/\D/g, '');
+  const rawNumber = String(whatsapp);
+  const cleanNumber = rawNumber.replace(/\D/g, '');
   
   // Se não tiver pelo menos 10 dígitos, retorna como está
-  if (cleanNumber.length < 10) return whatsapp;
+  if (cleanNumber.length < 10) return rawNumber;
   
   // Pega os últimos 11 dígitos (para números brasileiros com DDD)
   const last11 = cleanNumber.slice(-11);
@@ -196,7 +379,7 @@ function formatWhatsappNumber(whatsapp) {
 function generateWhatsappLink(whatsapp) {
   if (!whatsapp || whatsapp === 'N/A') return null;
   
-  const cleanNumber = whatsapp.replace(/\D/g, '');
+  const cleanNumber = String(whatsapp).replace(/\D/g, '');
   if (cleanNumber.length < 10) return null;
   
   const last11 = cleanNumber.slice(-11);
@@ -205,6 +388,10 @@ function generateWhatsappLink(whatsapp) {
 
 // Atualizar painel de legenda com informações de farmácias de plantão
 export async function atualizarLegendaBotaoPonta(legendasDiv) {
+  const legendaAntigaCompacta = legendasDiv?.querySelector('.legenda-farmacia');
+  if (legendaAntigaCompacta) legendaAntigaCompacta.remove();
+  return;
+
   const farmaciasDeOntem = await getFarmaciasDeOntemData();
   
   let legendaHtml = '';

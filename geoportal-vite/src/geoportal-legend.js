@@ -1,6 +1,5 @@
 // Lógica de atualização e exibição de legendas
 import { LEGEND_CONFIG } from '@/geoportal-config.js';
-import { atualizarLegendaBotaoPonta } from '@/geoportal-farmacias.js';
 
 export function atualizarLegendas(layers) {
   const container = document.getElementById('legendas-categorias');
@@ -10,11 +9,15 @@ export function atualizarLegendas(layers) {
     if (checkbox && checkbox.checked) {
       // Legenda customizada para Farmácias (sem "Single symbol")
       if (layerId === 'layer_farmacias') {
-        html += `<div style="margin-bottom:12px;">
+        html += `<div class="farmacia-legend" style="margin-bottom:12px;">
                   <strong>${LEGEND_CONFIG[layerId].titulo}</strong><br>
-                  <div style="display:flex;align-items:center;margin-top:8px;">
-                    <div style="width:24px;height:24px;background-color:red;border-radius:50%;border:2px solid darkred;margin-right:8px;"></div>
-                    <span style="font-size:12px;color:#333;">Farmácia de Plantão</span>
+                  <div class="farmacia-legend-row">
+                    <span class="farmacia-legend-marker farmacia-legend-marker-plantao"></span>
+                    <span>Farm&aacute;cia de Plant&atilde;o</span>
+                  </div>
+                  <div class="farmacia-legend-row">
+                    <span class="farmacia-legend-marker farmacia-legend-marker-normal"></span>
+                    <span>Farm&aacute;cias</span>
                   </div>
                </div>`;
       } else {
@@ -31,10 +34,4 @@ export function atualizarLegendas(layers) {
   });
   container.innerHTML = html;
   container.style.display = html ? 'inline-block' : 'none';
-  
-  // Atualizar legenda de farmácias de plantão se a camada está ativa
-  const farmaciasCheckbox = document.getElementById('layer_farmacias');
-  if (farmaciasCheckbox && farmaciasCheckbox.checked) {
-    atualizarLegendaBotaoPonta(container);
-  }
 }

@@ -1000,6 +1000,164 @@ body {
   max-width: 320px;
 }
 
+.ol-popup.draggable-popup:has(.farmacia-popup-modern) .ol-popup-bar {
+  background: #f8fafc !important;
+  color: #1f2d3d !important;
+  padding: 9px 12px !important;
+  border-bottom: 1px solid #e5e7eb;
+  border-radius: 14px 14px 0 0;
+  font-size: 13px;
+}
+
+.ol-popup.draggable-popup:has(.farmacia-popup-modern) .ol-popup-close {
+  color: #64748b !important;
+}
+
+.ol-popup.draggable-popup:has(.farmacia-popup-modern) .ol-popup-content {
+  padding: 0 !important;
+}
+
+.farmacia-popup-modern {
+  min-width: 240px;
+  max-width: 290px;
+  padding: 10px 12px 12px;
+  color: #1f2d3d;
+  font-size: 14px;
+}
+
+.farmacia-popup-header {
+  margin-bottom: 10px;
+}
+
+.farmacia-popup-kicker {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--gp-primary, #1976d2);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.farmacia-popup-title {
+  margin: 0;
+  color: #172033;
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.farmacia-popup-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 8px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #fff4e5;
+  color: #b45309;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.farmacia-popup-contact {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.farmacia-contact-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.farmacia-contact-label {
+  flex: 0 0 auto;
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.farmacia-contact-item strong,
+.farmacia-contact-item a {
+  color: #1f2937;
+  font-size: 0.88rem;
+  font-weight: 800;
+  text-align: right;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.farmacia-contact-item a {
+  color: #128c7e;
+}
+
+.farmacia-popup-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.farmacia-action {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  color: #fff !important;
+  font-size: 0.86rem;
+  font-weight: 800;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.farmacia-action-whatsapp {
+  background: #128c7e;
+}
+
+.farmacia-action-route {
+  background: var(--gp-primary, #1976d2);
+}
+
+.farmacia-action:hover,
+.farmacia-contact-item a:hover {
+  filter: brightness(0.96);
+}
+
+.farmacia-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 7px;
+  color: #333;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.farmacia-legend-marker {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+}
+
+.farmacia-legend-marker-plantao {
+  background: #f00;
+  border: 2px solid #8b0000;
+}
+
+.farmacia-legend-marker-normal {
+  background: #1976d2;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 1px #9aa8b5;
+}
+
 @media (max-width: 600px) {
   .ol-popup.draggable-popup {
     width: min(86vw, 300px);
@@ -1039,6 +1197,39 @@ body {
   .ol-popup.draggable-popup th {
     word-break: break-word;
     padding: 3px 5px !important;
+  }
+
+  .farmacia-popup-modern {
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    padding: 8px 10px 10px;
+    font-size: 12px;
+  }
+
+  .farmacia-popup-title {
+    font-size: 1rem;
+  }
+
+  .farmacia-contact-item {
+    gap: 8px;
+    padding: 7px;
+  }
+
+  .farmacia-action {
+    padding: 8px;
+    font-size: 0.82rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .farmacia-popup-actions {
+    flex-direction: column;
+  }
+
+  .farmacia-action {
+    box-sizing: border-box;
+    width: 100%;
   }
 }
 /* Impressão: esconde botões, controles e zoom na impressão */
@@ -1583,7 +1774,218 @@ body {
   line-height: 1.5;
 }
 
+.ol-popup.draggable-popup {
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.10) !important;
+  border-radius: 14px !important;
+  background: #fff !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18) !important;
+}
+
+.ol-popup.draggable-popup .ol-popup-bar {
+  background: #f8fafc !important;
+  color: #1f2d3d !important;
+  padding: 9px 12px !important;
+  border-bottom: 1px solid #e5e7eb;
+  border-radius: 14px 14px 0 0 !important;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.ol-popup.draggable-popup .ol-popup-close,
+.ol-popup.draggable-popup .ol-popup-closer {
+  border-radius: 999px;
+  color: #64748b !important;
+}
+
+.ol-popup.draggable-popup .ol-popup-close:hover,
+.ol-popup.draggable-popup .ol-popup-closer:hover {
+  background: #e2e8f0 !important;
+  color: #1f2d3d !important;
+}
+
+.ol-popup.draggable-popup .ol-popup-content {
+  padding: 0 !important;
+  background: #fff !important;
+  box-shadow: none !important;
+}
+
+.ol-popup.draggable-popup .popup-block,
+.ol-popup.draggable-popup div[style*="max-width:320px"] {
+  max-width: 360px !important;
+  padding: 8px 10px 10px;
+  color: #243447;
+  font-size: 13px;
+  line-height: 1.35;
+  box-sizing: border-box;
+}
+
+.ol-popup.draggable-popup .popup-title {
+  margin: 0 0 10px;
+  padding: 0;
+  color: #155fa0;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.ol-popup.draggable-popup div[style*="max-width:320px"] > strong:first-child {
+  display: block;
+  margin: 0 0 10px;
+  color: #155fa0;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.ol-popup.draggable-popup .popup-title + table {
+  margin-top: 4px;
+}
+
+.ol-popup.draggable-popup .popup-block + .popup-block,
+.ol-popup.draggable-popup table + .popup-title,
+.ol-popup.draggable-popup .popup-section-title {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.ol-popup.draggable-popup .popup-separator {
+  margin: 10px 0 8px;
+  border: none;
+  border-top: 1px solid #e5e7eb;
+}
+
+.ol-popup.draggable-popup table {
+  display: block;
+  width: 100% !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  font-size: 13px;
+}
+
+.ol-popup.draggable-popup tbody {
+  display: grid;
+  gap: 5px;
+}
+
+.ol-popup.draggable-popup tr {
+  display: grid;
+  grid-template-columns: minmax(150px, 52%) 1fr;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid #eef2f7;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.ol-popup.draggable-popup td,
+.ol-popup.draggable-popup th {
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  vertical-align: top;
+}
+
+.ol-popup.draggable-popup td:first-child,
+.ol-popup.draggable-popup th:first-child {
+  color: #64748b;
+  font-weight: 700;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.ol-popup.draggable-popup td:first-child b,
+.ol-popup.draggable-popup th:first-child b {
+  font-weight: inherit;
+}
+
+.ol-popup.draggable-popup td:last-child,
+.ol-popup.draggable-popup th:last-child {
+  color: #1f2937;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.ol-popup.draggable-popup div[style*="fff8e6"] {
+  margin: 0 0 10px !important;
+  padding: 10px 12px !important;
+  border: 1px solid #f4d58d !important;
+  border-radius: 10px !important;
+  background: #fff8e6 !important;
+  color: #344256 !important;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.ol-popup.draggable-popup .farmacia-popup-modern {
+  max-width: 290px !important;
+  padding: 10px 12px 12px;
+}
+
 @media (max-width: 600px) {
+  .ol-popup.draggable-popup {
+    width: min(86vw, 300px);
+    max-width: calc(100vw - 24px);
+    max-height: 42dvh;
+  }
+
+  .ol-popup.draggable-popup .ol-popup-bar {
+    padding: 7px 10px !important;
+  }
+
+  .ol-popup.draggable-popup .ol-popup-content {
+    max-height: calc(42dvh - 42px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  .ol-popup.draggable-popup .popup-block,
+  .ol-popup.draggable-popup div[style*="max-width:320px"] {
+    max-width: 100% !important;
+    padding: 7px 8px 9px;
+    font-size: 12px !important;
+  }
+
+  .ol-popup.draggable-popup .popup-title {
+    font-size: 0.95rem;
+    margin-bottom: 8px;
+  }
+
+  .ol-popup.draggable-popup tbody {
+    gap: 4px;
+  }
+
+  .ol-popup.draggable-popup tr {
+    grid-template-columns: minmax(118px, 50%) 1fr;
+    gap: 5px;
+    padding: 5px 7px;
+  }
+
+  .ol-popup.draggable-popup td:first-child,
+  .ol-popup.draggable-popup th:first-child {
+    font-size: 11px;
+  }
+
+  .ol-popup.draggable-popup td:last-child,
+  .ol-popup.draggable-popup th:last-child {
+    font-size: 12px;
+  }
+
+  .ol-popup.draggable-popup div[style*="fff8e6"] {
+    padding: 8px 10px !important;
+    font-size: 12px;
+  }
+
+  .ol-popup.draggable-popup .farmacia-popup-modern {
+    max-width: 100% !important;
+  }
+
   .layer-controls-box.expanded {
     width: 44px !important;
     height: 44px !important;
@@ -1649,6 +2051,13 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+}
+
+@media (max-width: 360px) {
+  .ol-popup.draggable-popup tr {
+    grid-template-columns: 1fr;
+    gap: 3px;
   }
 }
 

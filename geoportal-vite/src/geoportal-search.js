@@ -24,6 +24,17 @@ export function setupSearchHandlers(map, layers, showLotesPopup, onLayersChanged
     poste: 'Digite o n\u00famero do poste',
     fazenda: 'Digite o nome do im\u00f3vel, ch\u00e1cara ou fazenda',
   };
+  const loteMap = {
+    quadra: 'Quadra',
+    vila: 'Vila',
+    lote: 'Lote',
+    bic: 'BIC',
+    area_lote: '\u00c1rea do Lote',
+    construcao: 'Constru\u00eddo',
+    endereco: 'Endere\u00e7o',
+    desc_uso: 'Descri\u00e7\u00e3o de Uso',
+    cep: 'CEP'
+  };
 
   function updateSearchPlaceholder() {
     if (!searchType || !searchInput) return;
@@ -208,7 +219,8 @@ export function setupSearchHandlers(map, layers, showLotesPopup, onLayersChanged
     html += `<table style='border-collapse:collapse;width:100%'>`;
     for (const key in feature.properties) {
       if (key === 'geometry' || key === 'id') continue;
-      html += `<tr><td style='border:1px solid #ccc;padding:4px 8px;background:#f7f7f7;'><b>${key}</b></td><td style='border:1px solid #ccc;padding:4px 8px;'>${feature.properties[key]}</td></tr>`;
+      const label = loteMap[key] || key;
+      html += `<tr><td style='border:1px solid #ccc;padding:4px 8px;background:#f7f7f7;'><b>${label}</b></td><td style='border:1px solid #ccc;padding:4px 8px;'>${feature.properties[key]}</td></tr>`;
     }
     html += '</table></div>';
 
@@ -353,8 +365,8 @@ export function setupSearchHandlers(map, layers, showLotesPopup, onLayersChanged
 
               const foundAddress = closestMatch.feature.properties?.endereco || 'N/A';
               const warningHtml = `
-                <div style='padding:8px;margin-bottom:8px;border:1px solid #ead7a5;border-radius:6px;background:#fff8e6;color:#2c3e50;'>
-                  <div style='font-weight:700;margin-bottom:4px;'>&#8505;&#65039; Endere\u00e7o aproximado</div>
+                <div style='padding:10px 12px;margin-bottom:8px;border:1px solid #f59e0b;border-left:4px solid #f59e0b;border-radius:6px;background:#fff8e6;color:#2c3e50;'>
+                  <div style='font-weight:800;margin-bottom:4px;color:#b45309;'>Endere\u00e7o aproximado</div>
                   <div>O n\u00famero exato n\u00e3o foi localizado. Exibindo o endere\u00e7o mais pr\u00f3ximo encontrado na base cadastral do munic\u00edpio.</div>
                   <div style='margin-top:6px;'>
                     <strong>Endere\u00e7o buscado:</strong> ${query}<br>
@@ -366,7 +378,7 @@ export function setupSearchHandlers(map, layers, showLotesPopup, onLayersChanged
 
               showAreaUrbanaFeatureResult(
                 closestMatch.feature,
-                'Endere\u00e7o aproximado encontrado',
+                '<span style="color:#b45309;">Endere\u00e7o aproximado encontrado</span>',
                 warningHtml
               );
             } catch (fallbackError) {

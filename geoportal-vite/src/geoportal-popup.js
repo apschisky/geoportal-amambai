@@ -2,18 +2,48 @@ import Overlay from 'ol/Overlay.js';
 
 // Criação e gerenciamento de popups usando ES Modules do OpenLayers
 //
+export function closeLotesPopup(map) {
+  if (!map) return false;
+
+  const popupOverlayLotes = map.getOverlays().getArray().find(ov => ov.get('popupLotes'));
+  if (!popupOverlayLotes) {
+    window.__geoportalActivePopupSource = null;
+    window.__geoportalActivePopupRefreshCoord = null;
+    return false;
+  }
+
+  map.removeOverlay(popupOverlayLotes);
+  window.__geoportalUltimoPopupHtml = '';
+  window.__geoportalActivePopupSource = null;
+  window.__geoportalActivePopupRefreshCoord = null;
+  return true;
+}
+
 export function showLotesPopup(map, coord, html, isPrint = false) {
   // Salva o HTML do popup para uso na impressão
-  window.__geoportalUltimoPopupHtml = html;
+  const popupSource = window.__geoportalNextPopupSource || null;
+  const popupRefreshCoord = window.__geoportalNextPopupRefreshCoord || null;
+  window.__geoportalNextPopupSource = null;
+  window.__geoportalNextPopupRefreshCoord = null;
   const popupPixel = map.getPixelFromCoordinate(coord);
   const mapSize = map.getSize() || [0, 0];
   const showOnRightSide = !popupPixel || popupPixel[0] <= mapSize[0] / 2;
-  const popupPositioning = showOnRightSide ? 'center-left' : 'center-right';
-  const popupOffset = showOnRightSide ? [24, 0] : [-24, 0];
+  const isFarmaciaPopup = html.includes('farmacia-popup-modern');
+  const isPostePopup = html.includes('popup-title">Poste') || html.includes("popup-title'>Poste");
+  const shouldShowAbovePoint = isFarmaciaPopup || isPostePopup;
+  const popupPositioning = shouldShowAbovePoint
+    ? 'bottom-center'
+    : showOnRightSide ? 'center-left' : 'center-right';
+  const popupOffset = shouldShowAbovePoint
+    ? [0, -18]
+    : showOnRightSide ? [24, 0] : [-24, 0];
   let popupOverlayLotes = map.getOverlays().getArray().find(ov => ov.get('popupLotes'));
   if (popupOverlayLotes) {
-    map.removeOverlay(popupOverlayLotes);
+    closeLotesPopup(map);
   }
+  window.__geoportalUltimoPopupHtml = html;
+  window.__geoportalActivePopupSource = popupSource;
+  window.__geoportalActivePopupRefreshCoord = popupRefreshCoord;
   const container = document.createElement('div');
   container.className = 'ol-popup draggable-popup';
   const bar = document.createElement('div');
@@ -26,8 +56,7 @@ export function showLotesPopup(map, coord, html, isPrint = false) {
   contentDiv.innerHTML = html;
   container.appendChild(contentDiv);
   bar.querySelector('.ol-popup-close').onclick = function() {
-    if (popupOverlayLotes) {
-      map.removeOverlay(popupOverlayLotes);
+    if (closeLotesPopup(map)) {
       popupOverlayLotes = null;
     }
   };

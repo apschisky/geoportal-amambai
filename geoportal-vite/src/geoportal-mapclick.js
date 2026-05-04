@@ -40,8 +40,9 @@ import Style from 'ol/style/Style.js';
 import Stroke from 'ol/style/Stroke.js';
 import Fill from 'ol/style/Fill.js';
 import CircleStyle from 'ol/style/Circle.js';
-import { transformExtent } from 'ol/proj.js';
+import { toLonLat, transformExtent } from 'ol/proj.js';
 import { LAYER_CONFIG, POSTE_FORM_CONFIG } from './geoportal-config.js';
+import { createFarmaciaPopupHTML, getFarmaciaLonLatFromFeature, getFarmaciaMapCoordinate, isFarmaciaDePlantao } from './geoportal-farmacias.js';
 import { createPostePopupHTML, queryPosteLayerWithBuffer } from './geoportal-postes-reparo.js';
 // Handler para clique no mapa: busca atributos e destaca feição usando ES Modules do OpenLayers
 export function setupMapClickHandler(map, layers, showLotesPopup) {
@@ -117,6 +118,8 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
     let loteExtent = null;
     let eixoExtent = null;
     let posteCoord = null;
+    let farmaciaHtml = '';
+    let farmaciaCoord = null;
     // Remove highlight anterior
     if (map.getLayers().getArray().some(l => l.get('highlightLayer'))) {
       const toRemove = map.getLayers().getArray().filter(l => l.get('highlightLayer'));
@@ -269,6 +272,47 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
       }
     }
 
+    const farmaciaLayer = layers['layer_farmacias'];
+    if (farmaciaLayer && farmaciaLayer.getVisible()) {
+      try {
+        const farmaciaLayerName = LAYER_CONFIG.layer_farmacias.layerName;
+        const url = farmaciaLayer.getSource().getFeatureInfoUrl(
+          coord,
+          resolution,
+          'EPSG:3857',
+          {
+            'INFO_FORMAT': 'application/json',
+            'QUERY_LAYERS': farmaciaLayerName,
+            'LAYERS': farmaciaLayerName,
+            'FEATURE_COUNT': 5
+          }
+        );
+
+        if (url) {
+          const response = await fetch(url);
+          const data = await response.json();
+          const farmaciaFeatureData = data?.features?.[0];
+
+          if (farmaciaFeatureData) {
+            const farmaciaFeature = new GeoJSON().readFeature(farmaciaFeatureData, {
+              dataProjection: 'EPSG:3857',
+              featureProjection: map.getView().getProjection()
+            });
+
+            farmaciaCoord = getFarmaciaMapCoordinate(farmaciaFeature) || coord;
+            const destinationLonLat = getFarmaciaLonLatFromFeature(farmaciaFeature) || toLonLat(coord);
+            highlightSource.addFeature(farmaciaFeature);
+            farmaciaHtml = createFarmaciaPopupHTML(farmaciaFeatureData.properties, {
+              isPlantao: isFarmaciaDePlantao(farmaciaFeatureData.properties),
+              destinationLonLat
+            });
+          }
+        }
+      } catch (error) {
+        // Mantem as demais consultas funcionando mesmo se o GetFeatureInfo falhar.
+      }
+    }
+
     if (highlightSource.getFeatures().length > 0) {
       map.addLayer(highlightLayer);
     }
@@ -277,6 +321,9 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
     if (posteCoord) {
       map.getView().cancelAnimations();
       map.getView().animate({ center: posteCoord, zoom: 19, duration: 800 });
+    } else if (farmaciaCoord) {
+      map.getView().cancelAnimations();
+      map.getView().animate({ center: farmaciaCoord, zoom: 19, duration: 800 });
     } else if (loteExtent) {
       map.getView().fit(loteExtent, { maxZoom: 19, duration: 800, padding: [40,40,40,40] });
     } else if (eixoExtent) {
@@ -288,8 +335,15 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
     }
     // Lógica de exibição dos popups
     // Prioriza Postes se encontrado (sem as outras camadas)
+    if (posteHtml || farmaciaHtml || eixoHtml || loteHtml || zoneamentoHtml || edificacoesHtml || coletaHtml || otherHtml) {
+      window.__geoportalNextPopupSource = 'mapclick';
+      window.__geoportalNextPopupRefreshCoord = coord;
+    }
+
     if (posteHtml) {
       showLotesPopup(map, posteCoord || coord, posteHtml);
+    } else if (farmaciaHtml) {
+      showLotesPopup(map, farmaciaCoord || coord, farmaciaHtml);
     } else if (eixoHtml && loteHtml) {
       // Se Eixo está presente, ignora Zoneamento
       showLotesPopup(map, coord, loteHtml + eixoHtml);

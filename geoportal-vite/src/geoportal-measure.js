@@ -71,12 +71,14 @@ export function setupMeasurement(map, source) {
     // Evita seleção de feição no último clique da medição
     window.measureActive = true;
     let singleClickHandler = () => {
-      window.measureActive = false;
-      // Se não houver mais feições de medição, remove o overlay do resultado
-      if (source.getFeatures().length === 0) {
-        removeOverlay();
-      }
       map.un('singleclick', singleClickHandler);
+      window.setTimeout(() => {
+        window.measureActive = false;
+        // Se não houver mais feições de medição, remove o overlay do resultado
+        if (source.getFeatures().length === 0) {
+          removeOverlay();
+        }
+      }, 0);
     };
     draw.on('drawend', (event) => {
       formatMeasurement(event.feature, type);

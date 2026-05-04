@@ -5,13 +5,13 @@ import { createAllLayers, addLayersToMap, setLayerVisibility } from '@/geoportal
 import { atualizarLegendas } from '@/geoportal-legend.js'; //ok
 import { setupMeasurement } from '@/geoportal-measure.js'; //ok
 window.measureActive = false;
-import { showLotesPopup } from '@/geoportal-popup.js'; //ok
+import { closeLotesPopup, showLotesPopup } from '@/geoportal-popup.js'; //ok
 import { setupSearchHandlers } from '@/geoportal-search.js'; //ok
 import { setupPrint } from '@/geoportal-print.js'; //ok
 import { setupUIHandlers, setupGeolocation } from '@/geoportal-ui.js'; //ok
 import { addSpecialLayers } from '@/geoportal-special-layers.js'; //ok
 import { setupMapClickHandler } from '@/geoportal-mapclick.js'; //ok
-import { createFarmaciasDeOntemLayer, zoomToFarmaciaDePlantao } from '@/geoportal-farmacias.js'; //ok
+import { createFarmaciasDeOntemLayer, openFarmaciaDePlantaoPopup, setupFarmaciaRouteButtons, zoomToFarmaciaDePlantao } from '@/geoportal-farmacias.js'; //ok
 import { setupWelcomeNotices } from '@/geoportal-notices.js'; //ok
 import { toLonLat } from 'ol/proj.js';
 import VectorSource from 'ol/source/Vector.js';
@@ -78,21 +78,46 @@ window.addEventListener('DOMContentLoaded', () => {
   // Camadas especiais (exemplo: pavimentação)
   const specialLayers = addSpecialLayers(map);
 
+  const clearTemporaryMapSelection = () => {
+    closeLotesPopup(map);
+
+    map.getLayers().getArray()
+      .filter(layer => layer.get('highlightLayer') && !layer.get('measureLayer'))
+      .forEach(layer => map.removeLayer(layer));
+  };
+
+  const collapseLayerPanelOnMobile = () => {
+    if (!window.matchMedia('(max-width: 600px)').matches) return;
+
+    const layerBox = document.querySelector('.layer-controls-box');
+    if (layerBox) layerBox.classList.remove('expanded');
+  };
+
   // Ativação de camadas via checkbox
   Object.keys(layers).forEach(layerId => {
     const checkbox = document.getElementById(layerId);
     if (checkbox) {
       checkbox.addEventListener('change', e => {
         setLayerVisibility(layers, layerId, e.target.checked);
+        if (!e.target.checked) {
+          clearTemporaryMapSelection();
+        }
         
         // Sincronizar visibilidade da camada de destaque de farmácias
         if (layerId === 'layer_farmacias') {
           farmaciasHighlightLayer.setVisible(e.target.checked);
+          if (e.target.checked) {
+            collapseLayerPanelOnMobile();
+          }
           if (e.target.checked && !farmaciasHighlightLayer.get('alreadyZoomed')) {
             zoomToFarmaciaDePlantao(map, farmaciasHighlightLayer);
           }
+          if (e.target.checked && !farmaciasHighlightLayer.get('alreadyOpenedPopup')) {
+            openFarmaciaDePlantaoPopup(map, farmaciasHighlightLayer, showLotesPopup);
+          }
           if (!e.target.checked) {
             farmaciasHighlightLayer.set('alreadyZoomed', false);
+            farmaciasHighlightLayer.set('alreadyOpenedPopup', false);
           }
         }
         
@@ -104,6 +129,8 @@ window.addEventListener('DOMContentLoaded', () => {
       // Sincronizar visibilidade inicial da camada de destaque de farmácias
       if (layerId === 'layer_farmacias' && checkbox.checked) {
         farmaciasHighlightLayer.setVisible(true);
+        zoomToFarmaciaDePlantao(map, farmaciasHighlightLayer);
+        openFarmaciaDePlantaoPopup(map, farmaciasHighlightLayer, showLotesPopup);
       }
     }
   });
@@ -129,6 +156,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Ativa geolocalização
   setupGeolocation(map);
+  setupFarmaciaRouteButtons();
 
   const tutorialLinks = {
     main: '#'
