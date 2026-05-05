@@ -1153,9 +1153,9 @@ body {
 }
 
 .farmacia-legend-marker-normal {
-  background: #1976d2;
+  background: var(--gp-farmacia-color, #22c55e);
   border: 2px solid #ffffff;
-  box-shadow: 0 0 0 1px #9aa8b5;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
 }
 
 @media (max-width: 600px) {
@@ -1584,6 +1584,7 @@ body {
   --gp-border: #e5eaf0;
   --gp-text: #22313f;
   --gp-text-muted: #5b6b79;
+  --gp-farmacia-color: #22c55e;
   --gp-success: #2c7a4b;
   --gp-shadow-soft: 0 8px 18px rgba(15, 23, 42, 0.10);
   --gp-shadow-card: 0 12px 28px rgba(15, 23, 42, 0.12);

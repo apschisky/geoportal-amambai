@@ -1,11 +1,19 @@
 import Draw from 'ol/interaction/Draw.js';
+import Snap from 'ol/interaction/Snap.js';
 import { getLength, getArea } from 'ol/sphere.js';
 import Overlay from 'ol/Overlay.js';
 
 
 export function setupMeasurement(map, source) {
   let draw;
+  let snapInteraction = null;
   let measureOverlay = null;
+  function removeSnapInteraction() {
+    if (snapInteraction) {
+      map.removeInteraction(snapInteraction);
+      snapInteraction = null;
+    }
+  }
   function removeOverlay() {
     if (measureOverlay) {
       map.removeOverlay(measureOverlay);
@@ -56,6 +64,7 @@ export function setupMeasurement(map, source) {
 
   function addInteraction(type) {
     if (draw) map.removeInteraction(draw);
+    removeSnapInteraction();
     removeOverlay();
     // Durante a medição, mantém apenas DragPan e MouseWheelZoom ativos
     const interactionsToKeep = ['DragPan', 'MouseWheelZoom'];
@@ -67,6 +76,7 @@ export function setupMeasurement(map, source) {
       }
     });
     draw = new Draw({ source: source, type: type });
+    snapInteraction = new Snap({ source: source });
     window.measureActive = true;
     // Evita seleção de feição no último clique da medição
     window.measureActive = true;
@@ -83,12 +93,14 @@ export function setupMeasurement(map, source) {
     draw.on('drawend', (event) => {
       formatMeasurement(event.feature, type);
       map.removeInteraction(draw);
+      removeSnapInteraction();
       // Só libera seleção após o próximo clique
       map.on('singleclick', singleClickHandler);
       // Reabilita todas as interações
       toDisable.forEach(interaction => interaction.setActive(true));
     });
     map.addInteraction(draw);
+    map.addInteraction(snapInteraction);
   }
 
   document.getElementById('measure-distance').addEventListener('click', () => {
@@ -100,6 +112,7 @@ export function setupMeasurement(map, source) {
   document.getElementById('clear-measurement').addEventListener('click', () => {
     source.clear();
     if (draw) map.removeInteraction(draw);
+    removeSnapInteraction();
     window.measureActive = false;
     removeOverlay();
     // Reabilita todas as interações

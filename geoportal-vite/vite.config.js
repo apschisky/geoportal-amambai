@@ -16,5 +16,8 @@ export default defineConfig({
     alias: {
       '@': resolve(__dirname, 'src')
     }
+  },
+  optimizeDeps: {
+    exclude: ['ol/interaction/Snap.js']
   }
 });
