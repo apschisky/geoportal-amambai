@@ -685,8 +685,8 @@ body {
     min-width: 200px;
     max-width: 260px;
     background: rgba(255,255,255,0.97);
-    border-radius: 8px;
-    box-shadow: 2px 2px 10px rgba(0,0,0,0.15);
+    border-radius: var(--gp-radius-sm);
+    box-shadow: var(--gp-shadow-floating);
     padding: 10px 18px 10px 10px;
     position: absolute;
     top: 0;
@@ -1001,16 +1001,16 @@ body {
 }
 
 .ol-popup.draggable-popup:has(.farmacia-popup-modern) .ol-popup-bar {
-  background: #f8fafc !important;
-  color: #1f2d3d !important;
+  background: var(--gp-surface-muted) !important;
+  color: var(--gp-text) !important;
   padding: 9px 12px !important;
-  border-bottom: 1px solid #e5e7eb;
-  border-radius: 14px 14px 0 0;
+  border-bottom: 1px solid var(--gp-border-strong);
+  border-radius: var(--gp-radius-xl) var(--gp-radius-xl) 0 0;
   font-size: 13px;
 }
 
 .ol-popup.draggable-popup:has(.farmacia-popup-modern) .ol-popup-close {
-  color: #64748b !important;
+  color: var(--gp-text-subtle) !important;
 }
 
 .ol-popup.draggable-popup:has(.farmacia-popup-modern) .ol-popup-content {
@@ -1021,7 +1021,7 @@ body {
   min-width: 240px;
   max-width: 290px;
   padding: 10px 12px 12px;
-  color: #1f2d3d;
+  color: var(--gp-text);
   font-size: 14px;
 }
 
@@ -1040,7 +1040,7 @@ body {
 
 .farmacia-popup-title {
   margin: 0;
-  color: #172033;
+  color: var(--gp-text-strong);
   font-size: 1.05rem;
   font-weight: 800;
   line-height: 1.2;
@@ -1051,9 +1051,9 @@ body {
   align-items: center;
   margin-top: 8px;
   padding: 4px 8px;
-  border-radius: 999px;
+  border-radius: var(--gp-radius-pill);
   background: #fff4e5;
-  color: #b45309;
+  color: var(--gp-warning);
   font-size: 0.75rem;
   font-weight: 800;
 }
@@ -1070,19 +1070,19 @@ body {
   justify-content: space-between;
   gap: 10px;
   padding: 7px 8px;
-  border-radius: 10px;
-  background: #f8fafc;
+  border-radius: var(--gp-radius-md);
+  background: var(--gp-surface-muted);
 }
 
 .farmacia-contact-label {
   flex: 0 0 auto;
-  color: #64748b;
+  color: var(--gp-text-subtle);
   font-size: 0.78rem;
 }
 
 .farmacia-contact-item strong,
 .farmacia-contact-item a {
-  color: #1f2937;
+  color: var(--gp-text-strong);
   font-size: 0.88rem;
   font-weight: 800;
   text-align: right;
@@ -1091,7 +1091,7 @@ body {
 }
 
 .farmacia-contact-item a {
-  color: #128c7e;
+  color: var(--gp-success-strong);
 }
 
 .farmacia-popup-actions {
@@ -1108,8 +1108,8 @@ body {
   gap: 6px;
   min-height: 34px;
   padding: 8px 10px;
-  border-radius: 10px;
-  color: #fff !important;
+  border-radius: var(--gp-radius-md);
+  color: var(--gp-surface) !important;
   font-size: 0.86rem;
   font-weight: 800;
   line-height: 1;
@@ -1118,7 +1118,7 @@ body {
 }
 
 .farmacia-action-whatsapp {
-  background: #128c7e;
+  background: var(--gp-success-strong);
 }
 
 .farmacia-action-route {
@@ -1135,7 +1135,7 @@ body {
   align-items: center;
   gap: 8px;
   margin-top: 7px;
-  color: #333;
+  color: var(--gp-text);
   font-size: 12px;
   line-height: 1.2;
 }
@@ -1148,13 +1148,13 @@ body {
 }
 
 .farmacia-legend-marker-plantao {
-  background: #f00;
-  border: 2px solid #8b0000;
+  background: var(--gp-farmacia-plantao-color);
+  border: 2px solid var(--gp-farmacia-plantao-border);
 }
 
 .farmacia-legend-marker-normal {
   background: var(--gp-farmacia-color, #22c55e);
-  border: 2px solid #ffffff;
+  border: 2px solid var(--gp-surface);
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
 }
 
@@ -1349,9 +1349,9 @@ body {
     max-width: 340px;
     max-height: 30vh;
     overflow-y: auto;
-    background: #fff !important;
-    border-radius: 8px;
-    box-shadow: 2px 2px 10px rgba(0,0,0,0.15);
+    background: var(--gp-surface) !important;
+    border-radius: var(--gp-radius-sm);
+    box-shadow: var(--gp-shadow-floating);
     padding: 10px 18px 10px 10px;
     display: block;
     font-size: 14px;
@@ -1370,11 +1370,11 @@ body {
 
 .welcome-notice-modal {
   width: min(760px, 100%);
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.22);
+  background: var(--gp-surface);
+  border-radius: var(--gp-radius-lg);
+  box-shadow: var(--gp-shadow-modal);
   overflow: hidden;
-  color: #22313f;
+  color: var(--gp-text);
 }
 
 .welcome-notice-header {
@@ -1383,26 +1383,26 @@ body {
   justify-content: space-between;
   gap: 16px;
   padding: 18px 20px 12px;
-  border-bottom: 1px solid #e6ebf0;
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .welcome-notice-header h2 {
   margin: 0 0 6px;
   font-size: 1.4rem;
-  color: #2a3a4a;
+  color: var(--gp-text);
 }
 
 .welcome-notice-header p {
   margin: 0;
   font-size: 0.96rem;
   line-height: 1.45;
-  color: #5b6b79;
+  color: var(--gp-text-muted);
 }
 
 .welcome-notice-close {
   border: none;
   background: none;
-  color: #5b6b79;
+  color: var(--gp-text-muted);
   font-size: 26px;
   line-height: 1;
   cursor: pointer;
@@ -1427,19 +1427,19 @@ body {
 }
 
 .welcome-notice-card {
-  border: 1px solid #e5eaf0;
-  border-radius: 10px;
+  border: 1px solid var(--gp-border);
+  border-radius: var(--gp-radius-md);
   padding: 16px;
-  background: #fbfcfe;
+  background: var(--gp-surface-soft);
 }
 
 .welcome-notice-badge {
   display: inline-block;
   margin-bottom: 10px;
   padding: 4px 10px;
-  border-radius: 999px;
-  background: #e8f1fb;
-  color: #1f5f99;
+  border-radius: var(--gp-radius-pill);
+  background: var(--gp-primary-soft);
+  color: var(--gp-primary-strong);
   font-size: 0.83rem;
   font-weight: 700;
 }
@@ -1448,7 +1448,7 @@ body {
   margin: 0 0 6px;
   font-size: 0.95rem;
   line-height: 1.55;
-  color: #334155;
+  color: var(--gp-text-strong);
 }
 
 .welcome-notice-list {
@@ -1456,7 +1456,7 @@ body {
   padding-left: 18px;
   font-size: 0.95rem;
   line-height: 1.5;
-  color: #334155;
+  color: var(--gp-text-strong);
 }
 
 .welcome-notice-list li {
@@ -1464,7 +1464,7 @@ body {
 }
 
 .welcome-notice-list li::marker {
-  color: #1976d2;
+  color: var(--gp-primary);
 }
 
 .welcome-notice-actions {
@@ -1482,7 +1482,7 @@ body {
   justify-content: center;
   min-height: 40px;
   padding: 0 14px;
-  border-radius: 8px;
+  border-radius: var(--gp-radius-sm);
   font-size: 0.94rem;
   font-weight: 600;
   text-decoration: none;
@@ -1492,18 +1492,18 @@ body {
 
 .welcome-notice-primary {
   border: none;
-  background: #1976d2;
-  color: #fff;
+  background: var(--gp-primary);
+  color: var(--gp-surface);
 }
 
 .welcome-notice-primary.is-secondary {
-  background: #2c7a4b;
+  background: var(--gp-success);
 }
 
 .welcome-notice-link {
   border: 1px solid #d3dbe4;
-  background: #fff;
-  color: #2a3a4a;
+  background: var(--gp-surface);
+  color: var(--gp-text);
 }
 
 .welcome-notice-link.is-disabled {
@@ -1514,7 +1514,7 @@ body {
 .welcome-notice-muted {
   border: none;
   background: transparent;
-  color: #526273;
+  color: var(--gp-text-muted);
 }
 
 .welcome-notice-primary:hover,
@@ -1577,19 +1577,44 @@ body {
 
 :root {
   --gp-primary: #1976d2;
+  --gp-primary-dark: #155fa0;
   --gp-primary-strong: #1f5f99;
   --gp-primary-soft: #e8f1fb;
+  --gp-header-start: #2f76bd;
+  --gp-header-end: #1f568f;
+  --gp-footer-bg: #1f3f66;
   --gp-surface: #ffffff;
   --gp-surface-soft: #fbfcfe;
+  --gp-surface-muted: #f8fafc;
   --gp-border: #e5eaf0;
+  --gp-border-strong: #e5e7eb;
+  --gp-border-soft: #eef2f7;
   --gp-text: #22313f;
+  --gp-text-strong: #1f2937;
+  --gp-text-soft: #243447;
   --gp-text-muted: #5b6b79;
+  --gp-text-subtle: #64748b;
   --gp-farmacia-color: #22c55e;
+  --gp-farmacia-plantao-color: #f00;
+  --gp-farmacia-plantao-border: #8b0000;
   --gp-success: #2c7a4b;
-  --gp-shadow-soft: 0 8px 18px rgba(15, 23, 42, 0.10);
-  --gp-shadow-card: 0 12px 28px rgba(15, 23, 42, 0.12);
+  --gp-success-strong: #128c7e;
+  --gp-warning: #b45309;
+  --gp-warning-border: #f59e0b;
+  --gp-warning-bg: #fff8e6;
+  --gp-danger: #ef4444;
+  --gp-radius-sm: 8px;
   --gp-radius-md: 10px;
   --gp-radius-lg: 12px;
+  --gp-radius-xl: 14px;
+  --gp-radius-pill: 999px;
+  --gp-shadow-soft: 0 8px 18px rgba(15, 23, 42, 0.10);
+  --gp-shadow-floating: 2px 2px 10px rgba(0,0,0,0.15);
+  --gp-shadow-card: 0 12px 28px rgba(15, 23, 42, 0.12);
+  --gp-shadow-popup: 0 12px 28px rgba(15, 23, 42, 0.18);
+  --gp-shadow-modal: 0 20px 48px rgba(0, 0, 0, 0.22);
+  --gp-shadow-focus: 0 0 0 3px rgba(25, 118, 210, 0.12);
+  --gp-shadow-button: 0 8px 18px rgba(25, 118, 210, 0.18);
 }
 
 body {
@@ -1597,8 +1622,8 @@ body {
 }
 
 .header {
-  background: linear-gradient(90deg, #2f76bd, #1f568f);
-  color: #fff;
+  background: linear-gradient(90deg, var(--gp-header-start), var(--gp-header-end));
+  color: var(--gp-surface);
   box-shadow: 0 2px 6px rgba(0,0,0,0.08);
   position: relative;
   justify-content: center;
@@ -1650,7 +1675,7 @@ body {
 
 .header span {
   font-family: 'Montserrat', 'Roboto', Arial, sans-serif;
-  color: #fff;
+  color: var(--gp-surface);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.8px;
@@ -1658,7 +1683,7 @@ body {
 }
 
 .footer {
-  background: #1f3f66;
+  background: var(--gp-footer-bg);
   box-shadow: 0 -6px 16px rgba(15, 23, 42, 0.14);
 }
 
@@ -1725,7 +1750,7 @@ body {
 .search-box select:focus {
   outline: none;
   border-color: rgba(25, 118, 210, 0.35);
-  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.12);
+  box-shadow: var(--gp-shadow-focus);
 }
 
 .measurement-box .options button,
@@ -1743,9 +1768,9 @@ body {
 #measure-area,
 .search-box button {
   background: var(--gp-primary);
-  color: #fff;
+  color: var(--gp-surface);
   border-color: var(--gp-primary);
-  box-shadow: 0 8px 18px rgba(25, 118, 210, 0.18);
+  box-shadow: var(--gp-shadow-button);
 }
 
 #clear-measurement,
@@ -1778,17 +1803,17 @@ body {
 .ol-popup.draggable-popup {
   overflow: hidden;
   border: 1px solid rgba(15, 23, 42, 0.10) !important;
-  border-radius: 14px !important;
-  background: #fff !important;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18) !important;
+  border-radius: var(--gp-radius-xl) !important;
+  background: var(--gp-surface) !important;
+  box-shadow: var(--gp-shadow-popup) !important;
 }
 
 .ol-popup.draggable-popup .ol-popup-bar {
-  background: #f8fafc !important;
-  color: #1f2d3d !important;
+  background: var(--gp-surface-muted) !important;
+  color: var(--gp-text) !important;
   padding: 9px 12px !important;
-  border-bottom: 1px solid #e5e7eb;
-  border-radius: 14px 14px 0 0 !important;
+  border-bottom: 1px solid var(--gp-border-strong);
+  border-radius: var(--gp-radius-xl) var(--gp-radius-xl) 0 0 !important;
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0;
@@ -1796,19 +1821,19 @@ body {
 
 .ol-popup.draggable-popup .ol-popup-close,
 .ol-popup.draggable-popup .ol-popup-closer {
-  border-radius: 999px;
-  color: #64748b !important;
+  border-radius: var(--gp-radius-pill);
+  color: var(--gp-text-subtle) !important;
 }
 
 .ol-popup.draggable-popup .ol-popup-close:hover,
 .ol-popup.draggable-popup .ol-popup-closer:hover {
   background: #e2e8f0 !important;
-  color: #1f2d3d !important;
+  color: var(--gp-text) !important;
 }
 
 .ol-popup.draggable-popup .ol-popup-content {
   padding: 0 !important;
-  background: #fff !important;
+  background: var(--gp-surface) !important;
   box-shadow: none !important;
 }
 
@@ -1816,7 +1841,7 @@ body {
 .ol-popup.draggable-popup div[style*="max-width:320px"] {
   max-width: 360px !important;
   padding: 8px 10px 10px;
-  color: #243447;
+  color: var(--gp-text-soft);
   font-size: 13px;
   line-height: 1.35;
   box-sizing: border-box;
@@ -1825,7 +1850,7 @@ body {
 .ol-popup.draggable-popup .popup-title {
   margin: 0 0 10px;
   padding: 0;
-  color: #155fa0;
+  color: var(--gp-primary-dark);
   font-size: 1rem;
   font-weight: 800;
   line-height: 1.2;
@@ -1835,7 +1860,7 @@ body {
 .ol-popup.draggable-popup div[style*="max-width:320px"] > strong:first-child {
   display: block;
   margin: 0 0 10px;
-  color: #155fa0;
+  color: var(--gp-primary-dark);
   font-size: 1rem;
   font-weight: 800;
   line-height: 1.2;
@@ -1850,13 +1875,13 @@ body {
 .ol-popup.draggable-popup .popup-section-title {
   margin-top: 10px;
   padding-top: 8px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--gp-border-strong);
 }
 
 .ol-popup.draggable-popup .popup-separator {
   margin: 10px 0 8px;
   border: none;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--gp-border-strong);
 }
 
 .ol-popup.draggable-popup table {
@@ -1877,9 +1902,9 @@ body {
   grid-template-columns: minmax(150px, 52%) 1fr;
   gap: 6px;
   padding: 6px 8px;
-  border: 1px solid #eef2f7;
-  border-radius: 8px;
-  background: #f8fafc;
+  border: 1px solid var(--gp-border-soft);
+  border-radius: var(--gp-radius-sm);
+  background: var(--gp-surface-muted);
 }
 
 .ol-popup.draggable-popup td,
@@ -1892,7 +1917,7 @@ body {
 
 .ol-popup.draggable-popup td:first-child,
 .ol-popup.draggable-popup th:first-child {
-  color: #64748b;
+  color: var(--gp-text-subtle);
   font-weight: 700;
   overflow-wrap: normal;
   word-break: normal;
@@ -1905,7 +1930,7 @@ body {
 
 .ol-popup.draggable-popup td:last-child,
 .ol-popup.draggable-popup th:last-child {
-  color: #1f2937;
+  color: var(--gp-text-strong);
   font-weight: 600;
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -1915,8 +1940,8 @@ body {
   margin: 0 0 10px !important;
   padding: 10px 12px !important;
   border: 1px solid #f4d58d !important;
-  border-radius: 10px !important;
-  background: #fff8e6 !important;
+  border-radius: var(--gp-radius-md) !important;
+  background: var(--gp-warning-bg) !important;
   color: #344256 !important;
   font-size: 13px;
   line-height: 1.45;
