@@ -30,7 +30,8 @@ export function showLotesPopup(map, coord, html, isPrint = false) {
   const showOnRightSide = !popupPixel || popupPixel[0] <= mapSize[0] / 2;
   const isFarmaciaPopup = html.includes('farmacia-popup-modern');
   const isPostePopup = html.includes('popup-title">Poste') || html.includes("popup-title'>Poste");
-  const shouldShowAbovePoint = isFarmaciaPopup || isPostePopup;
+  const isLocalInteressePopup = html.includes('local-interesse-popup-modern');
+  const shouldShowAbovePoint = isFarmaciaPopup || isPostePopup || isLocalInteressePopup;
   const popupPositioning = shouldShowAbovePoint
     ? 'bottom-center'
     : showOnRightSide ? 'center-left' : 'center-right';

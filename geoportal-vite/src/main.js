@@ -93,6 +93,121 @@ window.addEventListener('DOMContentLoaded', () => {
     if (layerBox) layerBox.classList.remove('expanded');
   };
 
+  const activateLayerByCheckboxId = (id) => {
+    const checkbox = document.getElementById(id);
+    if (!checkbox) return false;
+    if (!checkbox.checked) {
+      checkbox.checked = true;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    return true;
+  };
+
+  const clearAllActiveLayers = () => {
+    Object.keys(layers).forEach(layerId => {
+      const checkbox = document.getElementById(layerId);
+      if (!checkbox || !checkbox.checked) return;
+
+      checkbox.checked = false;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    clearTemporaryMapSelection();
+    atualizarLegendas(layers);
+  };
+
+  const openLayerPanel = () => {
+    const layerBox = document.querySelector('.layer-controls-box');
+    if (layerBox) layerBox.classList.add('expanded');
+  };
+
+  const publicNavLayerMap = {
+    assistencia: 'layer_assistencia_social',
+    educacao: 'layer_educacao',
+    prefeitura: 'layer_prefeitura',
+    saude: 'layer_saude',
+    farmacias: 'layer_farmacias',
+    'coleta-lixo': 'layer_coleta',
+    'coleta-seletiva': 'layer_coleta_seletiva',
+    postes: 'layer_postes'
+  };
+
+  const setupPublicNavHandlers = () => {
+    const publicNav = document.querySelector('.geoportal-public-nav');
+    if (!publicNav) return;
+
+    const closePublicNavMenus = () => {
+      publicNav.querySelectorAll('.geoportal-public-nav-item.is-open, .geoportal-public-nav-item.is-click-closed')
+        .forEach(item => item.classList.remove('is-open', 'is-click-closed'));
+      if (document.activeElement instanceof HTMLElement && publicNav.contains(document.activeElement)) {
+        document.activeElement.blur();
+      }
+    };
+
+    publicNav.addEventListener('click', event => {
+      const button = event.target.closest('button');
+      if (!button || !publicNav.contains(button)) return;
+
+      const layerShortcut = button.dataset.layerShortcut;
+      const action = button.dataset.action;
+      const navItem = button.closest('.geoportal-public-nav-item');
+
+      if (!layerShortcut && !action) {
+        if (!navItem) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const wasOpen = navItem.classList.contains('is-open');
+        closePublicNavMenus();
+        if (wasOpen) {
+          navItem.classList.add('is-click-closed');
+        } else {
+          navItem.classList.add('is-open');
+        }
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (layerShortcut) {
+        activateLayerByCheckboxId(publicNavLayerMap[layerShortcut]);
+        closePublicNavMenus();
+        return;
+      }
+
+      if (action === 'open-layer-panel' || action === 'open-basemap-panel') {
+        openLayerPanel();
+        closePublicNavMenus();
+        return;
+      }
+
+      if (action === 'clear-layers') {
+        clearAllActiveLayers();
+        closePublicNavMenus();
+      }
+    });
+
+    document.addEventListener('click', event => {
+      if (!publicNav.contains(event.target)) {
+        closePublicNavMenus();
+      }
+    });
+
+    publicNav.querySelectorAll('.geoportal-public-nav-item').forEach(item => {
+      item.addEventListener('mouseleave', () => {
+        item.classList.remove('is-click-closed');
+      });
+    });
+  };
+
+  // FUTURO eServiços:
+  // Fluxo previsto:
+  // eServiços -> Geoportal para seleção espacial -> Protocolo
+  // Geoportal -> eServiços com parâmetros de localização
+  // Exemplo futuro:
+  // /eservicos/novo?tipo=iluminacao&lat=...&lon=...&id=...
+  // Não ativado nesta etapa.
+
   // Ativação de camadas via checkbox
   Object.keys(layers).forEach(layerId => {
     const checkbox = document.getElementById(layerId);
@@ -139,6 +254,15 @@ window.addEventListener('DOMContentLoaded', () => {
   atualizarLegendas(layers);
 
   // Medição
+  const clearLayersButton = document.getElementById('clear-layers-button');
+  if (clearLayersButton) {
+    clearLayersButton.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      clearAllActiveLayers();
+    });
+  }
+
   const source = new VectorSource();
   const measureLayer = new VectorLayer({ source });
   measureLayer.set('measureLayer', true);
@@ -153,6 +277,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // UI/UX
   setupUIHandlers();
+  setupPublicNavHandlers();
 
   // Ativa geolocalização
   setupGeolocation(map);
@@ -162,21 +287,13 @@ window.addEventListener('DOMContentLoaded', () => {
     main: '#'
   };
 
-  const activateLayerFromNotice = (layerId) => {
-    const checkbox = document.getElementById(layerId);
-    if (!checkbox || checkbox.checked) return;
-
-    checkbox.checked = true;
-    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
-  };
-
   setupWelcomeNotices({
     tutorialLinks,
     onActivateLighting: () => {
-      activateLayerFromNotice('layer_postes');
+      activateLayerByCheckboxId('layer_postes');
     },
     onActivateFarmacia: () => {
-      activateLayerFromNotice('layer_farmacias');
+      activateLayerByCheckboxId('layer_farmacias');
     }
   });
 

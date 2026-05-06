@@ -87,8 +87,8 @@
 }
 #map-container {
   flex-grow: 1;
-  /* Header: 44px, Footer: 40px (padding+font+border) */
-  height: calc(100vh - 44px - 40px);
+  /* Header: 44px, navegação pública: 42px, Footer: 40px */
+  height: calc(100vh - 44px - 30px - 40px);
 }
 #map {
   height: 100%;
@@ -377,6 +377,121 @@ body {
   font-family: 'Roboto', Arial, sans-serif;
   letter-spacing: 0.5px;
 }
+
+.geoportal-public-nav {
+  min-height: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 0 14px;
+  background: var(--gp-surface);
+  border-bottom: 1px solid var(--gp-border);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+  position: relative;
+  z-index: 2600;
+}
+
+.geoportal-public-nav-item {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.geoportal-public-nav-item > button,
+.geoportal-public-nav-menu button {
+  border: none;
+  background: transparent;
+  color: #555;
+  font: inherit;
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+
+.geoportal-public-nav-item > button {
+  min-height: 30px;
+  height: 30px;
+  padding: 0 14px;
+  border-radius: 0;
+  border-bottom: 3px solid transparent;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+.geoportal-public-nav-item > button::after {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 12px;
+  border-right: 2px solid #606975;
+  border-bottom: 2px solid #606975;
+  transform: translateY(-2px) rotate(45deg);
+}
+
+.geoportal-public-nav-item > button:hover,
+.geoportal-public-nav-item.is-open > button {
+  background: #f7f9fc;
+  border-bottom-color: var(--gp-primary-dark);
+  color: var(--gp-primary-strong);
+}
+
+.geoportal-public-nav-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 230px;
+  display: none;
+  padding: 0;
+  border: 1px solid #d7dde6;
+  border-top: 3px solid var(--gp-primary-dark);
+  border-radius: 0;
+  background: var(--gp-surface);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.16);
+}
+
+.geoportal-public-nav-item.is-open .geoportal-public-nav-menu {
+  display: grid;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .geoportal-public-nav-item:not(.is-click-closed):hover > button {
+    background: #f7f9fc;
+    border-bottom-color: var(--gp-primary-dark);
+    color: var(--gp-primary-strong);
+  }
+
+  .geoportal-public-nav-item:not(.is-click-closed):hover .geoportal-public-nav-menu {
+    display: grid;
+  }
+}
+
+.geoportal-public-nav-menu button {
+  width: 100%;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 0;
+  border-bottom: 1px solid #edf0f4;
+  text-align: left;
+  color: #555;
+  font-size: 0.84rem;
+  text-transform: none;
+}
+
+.geoportal-public-nav-menu button:hover,
+.geoportal-public-nav-menu button:focus {
+  outline: none;
+  background: #f7f9fc;
+  color: var(--gp-primary-strong);
+}
+
+@media print {
+  .geoportal-public-nav {
+    display: none !important;
+  }
+}
+
 #map-container {
     flex-grow: 1;
     position: relative;
@@ -396,13 +511,13 @@ body {
 }
 .ol-zoom {
     position: absolute;
-    top: 30px; /* aumentado para descer abaixo do header */
+    top: 178px; /* abaixo do botão de camadas */
     right: 15px;
     left: auto;
     bottom: auto;
     z-index: 1500;
-    transform: rotate(90deg);
-    transform-origin: top right;
+    transform: none;
+    transform-origin: center;
     width: 24px;
     height: 48px;
 }
@@ -658,7 +773,7 @@ body {
 }
 .layer-controls-box {
     position: absolute;
-    top: 95px;
+    top: 114px;
     right: 15px;
     width: 50px;
     height: 50px;
@@ -677,6 +792,51 @@ body {
     width: 24px;
     height: 24px;
 }
+
+/* Coluna técnica no canto superior direito, abaixo da navegação pública */
+.layer-controls-box {
+    position: fixed;
+    top: 140px;
+    right: 16px;
+    z-index: 3200;
+}
+.ol-zoom {
+    position: fixed !important;
+    top: 100px !important;
+    right: 16px !important;
+    left: auto !important;
+    bottom: auto !important;
+    display: flex;
+    flex-direction: row;
+    gap: 2px;
+    width: 50px;
+    height: 28px;
+    z-index: 3210;
+    transform: none !important;
+    transform-origin: center;
+}
+.ol-zoom button {
+    width: 24px !important;
+    height: 24px !important;
+    margin: 2px 0 !important;
+}
+.layer-controls-content {
+    top: calc(100% + 8px);
+    right: 0;
+}
+
+@media (max-width: 600px) {
+  .layer-controls-box {
+    position: fixed;
+    top: 84px;
+    right: 8px;
+  }
+
+  .ol-zoom {
+    display: none !important;
+  }
+}
+
 .layer-controls-content {
     display: none;
     flex-direction: column;
@@ -689,8 +849,8 @@ body {
     box-shadow: var(--gp-shadow-floating);
     padding: 10px 18px 10px 10px;
     position: absolute;
-    top: 0;
-    right: 60px;
+    top: calc(100% + 8px);
+    right: 0;
     z-index: 1201;
 }
 .measurement-box.expanded,
@@ -845,8 +1005,33 @@ body {
     text-overflow: ellipsis;
     min-width: 0;
   }
+  .geoportal-public-nav {
+    min-height: 32px;
+    height: 32px;
+    justify-content: flex-start;
+    gap: 4px;
+    padding: 0 8px;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+  }
+  .geoportal-public-nav-item > button {
+    min-height: 32px;
+    height: 32px;
+    padding: 0 10px;
+    white-space: nowrap;
+    font-size: 0.72rem;
+  }
+  .geoportal-public-nav-menu {
+    position: fixed;
+    top: 76px;
+    left: 8px;
+    right: 8px;
+    min-width: 0;
+    z-index: 2600;
+  }
   #map-container {
-    height: calc(100dvh - 44px - 40px) !important;
+    height: calc(100dvh - 44px - 32px - 40px) !important;
     min-height: 200px;
     max-height: none;
   }
@@ -891,7 +1076,7 @@ body {
     height: 22px;
   }
   .layer-controls-box {
-    top: 54px;
+    top: 84px;
     right: 8px;
     width: 38px;
     height: 38px;
@@ -1130,6 +1315,136 @@ body {
   filter: brightness(0.96);
 }
 
+.ol-popup.draggable-popup:has(.local-interesse-popup-modern) .ol-popup-bar {
+  background: var(--gp-surface-muted) !important;
+  color: var(--gp-text) !important;
+  padding: 9px 12px !important;
+  border-bottom: 1px solid var(--gp-border-strong);
+  border-radius: var(--gp-radius-xl) var(--gp-radius-xl) 0 0;
+  font-size: 13px;
+}
+
+.ol-popup.draggable-popup:has(.local-interesse-popup-modern) .ol-popup-content {
+  padding: 0 !important;
+}
+
+.local-interesse-popup-modern {
+  min-width: 240px;
+  max-width: 300px;
+  padding: 10px 12px 12px;
+  color: var(--gp-text);
+  font-size: 14px;
+}
+
+.local-interesse-popup-header {
+  margin-bottom: 10px;
+}
+
+.local-interesse-popup-kicker {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--gp-primary, #1976d2);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.local-interesse-popup-title {
+  margin: 0;
+  color: var(--gp-text-strong);
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.local-interesse-popup-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 8px;
+  padding: 4px 8px;
+  border-radius: var(--gp-radius-pill);
+  background: var(--gp-primary-soft);
+  color: var(--gp-primary-dark);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.local-interesse-popup-info {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.local-interesse-info-item {
+  display: grid;
+  gap: 3px;
+  padding: 7px 8px;
+  border-radius: var(--gp-radius-md);
+  background: var(--gp-surface-muted);
+}
+
+.local-interesse-info-item span {
+  color: var(--gp-text-subtle);
+  font-size: 0.78rem;
+}
+
+.local-interesse-info-item strong,
+.local-interesse-info-item a {
+  color: var(--gp-text-strong);
+  font-size: 0.88rem;
+  font-weight: 800;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.local-interesse-info-item a {
+  color: var(--gp-success-strong);
+}
+
+.local-interesse-popup-actions,
+.poste-popup-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.local-interesse-action,
+.poste-popup-action {
+  flex: 1;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 8px 10px !important;
+  border-radius: var(--gp-radius-md) !important;
+  color: var(--gp-surface) !important;
+  font-size: 0.86rem;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+  text-decoration: none !important;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.local-interesse-action-whatsapp {
+  background: var(--gp-success-strong);
+}
+
+.local-interesse-action-route,
+.poste-popup-action-route {
+  background: var(--gp-primary, #1976d2);
+}
+
+.poste-popup-action-repair {
+  background: var(--gp-success-strong) !important;
+}
+
+.local-interesse-action:hover,
+.poste-popup-action:hover {
+  filter: brightness(0.96);
+}
+
 .farmacia-legend-row {
   display: flex;
   align-items: center;
@@ -1223,11 +1538,15 @@ body {
 }
 
 @media (max-width: 360px) {
-  .farmacia-popup-actions {
+  .farmacia-popup-actions,
+  .local-interesse-popup-actions,
+  .poste-popup-actions {
     flex-direction: column;
   }
 
-  .farmacia-action {
+  .farmacia-action,
+  .local-interesse-action,
+  .poste-popup-action {
     box-sizing: border-box;
     width: 100%;
   }
@@ -1790,6 +2109,27 @@ body {
   border-color: rgba(25, 118, 210, 0.24);
 }
 
+.clear-layers-button {
+  width: 100%;
+  min-height: 36px;
+  margin-top: 12px;
+  border: 1px solid rgba(239, 68, 68, 0.24);
+  border-radius: var(--gp-radius-md);
+  background: #fff7f7;
+  color: var(--gp-danger);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.clear-layers-button:hover {
+  background: #fee2e2;
+  border-color: rgba(239, 68, 68, 0.38);
+  transform: translateY(-1px);
+}
+
 .popup-title {
   color: var(--gp-primary-strong);
 }
@@ -2010,6 +2350,22 @@ body {
 
   .ol-popup.draggable-popup .farmacia-popup-modern {
     max-width: 100% !important;
+  }
+
+  .ol-popup.draggable-popup .local-interesse-popup-modern {
+    max-width: 100% !important;
+    min-width: 0;
+    padding: 8px 10px 10px;
+  }
+
+  .local-interesse-popup-title {
+    font-size: 1rem;
+  }
+
+  .local-interesse-action,
+  .poste-popup-action {
+    padding: 8px !important;
+    font-size: 0.82rem;
   }
 
   .layer-controls-box.expanded {

@@ -2,6 +2,7 @@
 // Integra com Google Forms pré-preenchido
 
 import { toLonLat, transform } from 'ol/proj.js';
+import { buildGoogleMapsRouteUrl } from './geoportal-routes.js';
 
 /**
  * Formata as coordenadas de um clique do mapa para lat/lon com 6 casas decimais
@@ -65,6 +66,8 @@ export function createPostePopupHTML(properties, coordinate, formBaseUrl, formFi
   
   // Formata as coordenadas
   const coords = formatPosteCoordinates(coordinate);
+  const destinationLonLat = coordinate && coordinate.length >= 2 ? toLonLat(coordinate) : null;
+  const routeUrl = buildGoogleMapsRouteUrl(destinationLonLat);
   
   // Constrói a URL do formulário
   const formUrl = buildPosteRepairFormUrl(
@@ -95,12 +98,17 @@ export function createPostePopupHTML(properties, coordinate, formBaseUrl, formFi
           </td>
         </tr>
       </table>
-      <div style="margin-top:12px;text-align:center;">
-        <a href="${formUrl}" 
+      <div class="poste-popup-actions" style="margin-top:12px;text-align:center;">
+        <a class="poste-popup-action poste-popup-action-repair" href="${formUrl}" 
            target="_blank" 
            rel="noopener noreferrer"
            style="display:inline-block;padding:8px 16px;background:#25d366;color:#fff;text-decoration:none;border-radius:4px;font-weight:bold;cursor:pointer;">
           <i class="fa-brands fa-whatsapp" style="margin-right:6px;"></i>Solicitar Reparo
+        </a>
+        <a class="poste-popup-action poste-popup-action-route" href="${routeUrl}"
+           target="_blank"
+           rel="noopener noreferrer">
+          <i class="fa-solid fa-route" style="margin-right:6px;"></i>Traçar rota
         </a>
       </div>
       <div style="margin-top:16px;padding:12px;background:#fff8e1;border-left:4px solid #ffc107;border-radius:4px;font-size:13px;line-height:1.5;color:#333;">

@@ -43,6 +43,7 @@ import CircleStyle from 'ol/style/Circle.js';
 import { toLonLat, transformExtent } from 'ol/proj.js';
 import { LAYER_CONFIG, POSTE_FORM_CONFIG } from './geoportal-config.js';
 import { createFarmaciaPopupHTML, getFarmaciaLonLatFromFeature, getFarmaciaMapCoordinate, isFarmaciaDePlantao } from './geoportal-farmacias.js';
+import { createLocalInteressePopupHTML, getLocalInteresseCoordinate, getLocalInteresseLonLatFromFeature } from './geoportal-locais-interesse.js';
 import { createPostePopupHTML, queryPosteLayerWithBuffer } from './geoportal-postes-reparo.js';
 // Handler para clique no mapa: busca atributos e destaca feição usando ES Modules do OpenLayers
 export function setupMapClickHandler(map, layers, showLotesPopup) {
@@ -107,6 +108,12 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
       { key: 'layer_imoveis_sigef', name: 'Imóveis SIGEF', queryLayer: 'ne:Imóveis SIGEF 05_25' },
       { key: 'layer_imoveis_snci', name: 'Imóveis SNCI', queryLayer: 'ne:Imóveis SNCI 05_25' }
     ];
+    const locaisInteresseLayers = [
+      { key: 'layer_assistencia_social', name: 'Assistência Social' },
+      { key: 'layer_educacao', name: 'Educação' },
+      { key: 'layer_prefeitura', name: 'Prefeitura' },
+      { key: 'layer_saude', name: 'Saúde' }
+    ];
   let html = '';
   let loteHtml = '';
   let eixoHtml = '';
@@ -120,6 +127,8 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
     let posteCoord = null;
     let farmaciaHtml = '';
     let farmaciaCoord = null;
+    let localInteresseHtml = '';
+    let localInteresseCoord = null;
     // Remove highlight anterior
     if (map.getLayers().getArray().some(l => l.get('highlightLayer'))) {
       const toRemove = map.getLayers().getArray().filter(l => l.get('highlightLayer'));
@@ -313,6 +322,50 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
       }
     }
 
+    for (const layerInfo of locaisInteresseLayers) {
+      if (localInteresseHtml) break;
+
+      const localLayer = layers[layerInfo.key];
+      if (!localLayer || !localLayer.getVisible()) continue;
+
+      try {
+        const layerName = LAYER_CONFIG[layerInfo.key]?.layerName;
+        const url = localLayer.getSource().getFeatureInfoUrl(
+          coord,
+          resolution,
+          'EPSG:3857',
+          {
+            'INFO_FORMAT': 'application/json',
+            'QUERY_LAYERS': layerName,
+            'LAYERS': layerName,
+            'FEATURE_COUNT': 5
+          }
+        );
+
+        if (!url) continue;
+
+        const response = await fetch(url);
+        const data = await response.json();
+        const localFeatureData = data?.features?.[0];
+        if (!localFeatureData) continue;
+
+        const localFeature = new GeoJSON().readFeature(localFeatureData, {
+          dataProjection: 'EPSG:3857',
+          featureProjection: map.getView().getProjection()
+        });
+
+        localInteresseCoord = getLocalInteresseCoordinate(localFeature) || coord;
+        const destinationLonLat = getLocalInteresseLonLatFromFeature(localFeature) || toLonLat(coord);
+        highlightSource.addFeature(localFeature);
+        localInteresseHtml = createLocalInteressePopupHTML(localFeatureData.properties, {
+          category: layerInfo.name,
+          destinationLonLat
+        });
+      } catch (error) {
+        // Mantém as demais consultas funcionando mesmo se um local de interesse falhar.
+      }
+    }
+
     if (highlightSource.getFeatures().length > 0) {
       map.addLayer(highlightLayer);
     }
@@ -324,6 +377,9 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
     } else if (farmaciaCoord) {
       map.getView().cancelAnimations();
       map.getView().animate({ center: farmaciaCoord, zoom: 19, duration: 800 });
+    } else if (localInteresseCoord) {
+      map.getView().cancelAnimations();
+      map.getView().animate({ center: localInteresseCoord, zoom: 19, duration: 800 });
     } else if (loteExtent) {
       map.getView().fit(loteExtent, { maxZoom: 19, duration: 800, padding: [40,40,40,40] });
     } else if (eixoExtent) {
@@ -335,7 +391,7 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
     }
     // Lógica de exibição dos popups
     // Prioriza Postes se encontrado (sem as outras camadas)
-    if (posteHtml || farmaciaHtml || eixoHtml || loteHtml || zoneamentoHtml || edificacoesHtml || coletaHtml || otherHtml) {
+    if (posteHtml || farmaciaHtml || localInteresseHtml || eixoHtml || loteHtml || zoneamentoHtml || edificacoesHtml || coletaHtml || otherHtml) {
       window.__geoportalNextPopupSource = 'mapclick';
       window.__geoportalNextPopupRefreshCoord = coord;
     }
@@ -344,6 +400,8 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
       showLotesPopup(map, posteCoord || coord, posteHtml);
     } else if (farmaciaHtml) {
       showLotesPopup(map, farmaciaCoord || coord, farmaciaHtml);
+    } else if (localInteresseHtml) {
+      showLotesPopup(map, localInteresseCoord || coord, localInteresseHtml);
     } else if (eixoHtml && loteHtml) {
       // Se Eixo está presente, ignora Zoneamento
       showLotesPopup(map, coord, loteHtml + eixoHtml);

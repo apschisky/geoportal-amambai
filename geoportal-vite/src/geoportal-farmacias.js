@@ -3,6 +3,7 @@ import VectorLayer from 'ol/layer/Vector.js';
 import { Style, Icon, Text, Fill, Circle, Stroke } from 'ol/style.js';
 import GeoJSON from 'ol/format/GeoJSON.js';
 import { toLonLat } from 'ol/proj.js';
+import { buildGoogleMapsRouteUrl } from './geoportal-routes.js';
 
 const FARMACIAS_WFS_URL = 'https://geoserver.amambai.ms.gov.br/geoserver/wfs?' +
   'service=WFS&version=2.0.0&request=GetFeature&typeName=ne:Farm%C3%A1cias' +
@@ -197,28 +198,6 @@ export function getFarmaciaMapCoordinate(feature) {
 export function getFarmaciaLonLatFromFeature(feature) {
   const coord = getFarmaciaMapCoordinate(feature);
   return coord ? toLonLat(coord) : null;
-}
-
-function formatMapCoordinateParam(lonLat) {
-  if (!Array.isArray(lonLat) || lonLat.length < 2) return null;
-
-  const lon = Number(lonLat[0]);
-  const lat = Number(lonLat[1]);
-  if (!Number.isFinite(lon) || !Number.isFinite(lat)) return null;
-
-  return `${lat.toFixed(6)},${lon.toFixed(6)}`;
-}
-
-export function buildGoogleMapsRouteUrl(destinationLonLat, originLonLat = window.__geoportalUserLonLat) {
-  const destination = formatMapCoordinateParam(destinationLonLat);
-  if (!destination) return '#';
-
-  const origin = formatMapCoordinateParam(originLonLat);
-  if (origin) {
-    return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`;
-  }
-
-  return `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`;
 }
 
 export function createFarmaciaPopupHTML(properties, options = {}) {

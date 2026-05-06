@@ -31,6 +31,35 @@
           </span>
         </div>
       </div>
+      <nav class="geoportal-public-nav" aria-label="Navega&ccedil;&atilde;o p&uacute;blica do Geoportal">
+        <div class="geoportal-public-nav-item">
+          <button type="button">Locais de Interesse</button>
+          <div class="geoportal-public-nav-menu">
+            <button type="button" data-layer-shortcut="assistencia">Assist&ecirc;ncia Social</button>
+            <button type="button" data-layer-shortcut="educacao">Educa&ccedil;&atilde;o</button>
+            <button type="button" data-layer-shortcut="prefeitura">Prefeitura</button>
+            <button type="button" data-layer-shortcut="saude">Sa&uacute;de</button>
+            <button type="button" data-layer-shortcut="farmacias">Farm&aacute;cias</button>
+          </div>
+        </div>
+
+        <div class="geoportal-public-nav-item">
+          <button type="button">Servi&ccedil;os</button>
+          <div class="geoportal-public-nav-menu">
+            <button type="button" data-layer-shortcut="coleta-lixo">Coleta de Lixo</button>
+            <button type="button" data-layer-shortcut="coleta-seletiva">Coleta Seletiva</button>
+            <button type="button" data-layer-shortcut="postes">Postes da Rede El&eacute;trica</button>
+          </div>
+        </div>
+
+        <div class="geoportal-public-nav-item">
+          <button type="button">Mapa</button>
+          <div class="geoportal-public-nav-menu">
+            <button type="button" data-action="open-layer-panel">Abrir painel de camadas</button>
+            <button type="button" data-action="clear-layers">Limpar camadas</button>
+          </div>
+        </div>
+      </nav>
       <!-- Container principal do mapa e ferramentas -->
       <div id="map-container">
         <div id="map">
@@ -162,6 +191,7 @@
           <strong>Mapa Base:</strong><br>
           <label><input type="radio" name="basemap" value="osm" checked> OpenStreetMap</label><br>
           <label><input type="radio" name="basemap" value="satellite"> Sat&eacute;lite ESRI</label>
+          <button type="button" id="clear-layers-button" class="clear-layers-button">Limpar camadas</button>
         </div>
     </div>
     <div class="coordinate-display" id="mouse-coordinates">Lon: --, Lat: --</div>
