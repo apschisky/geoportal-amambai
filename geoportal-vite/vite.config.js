@@ -4,6 +4,10 @@ import { resolve } from 'path';
 
 export default defineConfig({
   base: './',
+  server: {
+    port: 5195,
+    strictPort: true
+  },
   build: {
     outDir: 'dist',
     rollupOptions: {
