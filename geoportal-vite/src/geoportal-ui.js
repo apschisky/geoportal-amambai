@@ -79,6 +79,7 @@ import VectorSource from 'ol/source/Vector.js';
 import Style from 'ol/style/Style.js';
 import Icon from 'ol/style/Icon.js';
 import { showGeoportalNotice } from './geoportal-notice.js';
+import { setGeoportalStateValue } from './geoportal-state.js';
 
 export function setupGeolocation(map) {
   const geoBtn = document.getElementById('geolocate-btn');
@@ -90,7 +91,9 @@ export function setupGeolocation(map) {
     }
     navigator.geolocation.getCurrentPosition(
       pos => {
-        window.__geoportalUserLonLat = [pos.coords.longitude, pos.coords.latitude];
+        const userLonLat = [pos.coords.longitude, pos.coords.latitude];
+        setGeoportalStateValue('userLonLat', userLonLat);
+        window.__geoportalUserLonLat = userLonLat;
         const coords = fromLonLat([pos.coords.longitude, pos.coords.latitude]);
         // Zoom automático ao ativar geolocalização (nível 18 para mais proximidade)
         map.getView().animate({ center: coords, zoom: 18, duration: 800 });

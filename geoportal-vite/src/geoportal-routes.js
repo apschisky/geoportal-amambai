@@ -1,3 +1,5 @@
+import { getGeoportalStateValue } from './geoportal-state.js';
+
 function formatMapCoordinateParam(lonLat) {
   if (!Array.isArray(lonLat) || lonLat.length < 2) return null;
 
@@ -8,7 +10,10 @@ function formatMapCoordinateParam(lonLat) {
   return `${lat.toFixed(6)},${lon.toFixed(6)}`;
 }
 
-export function buildGoogleMapsRouteUrl(destinationLonLat, originLonLat = window.__geoportalUserLonLat) {
+export function buildGoogleMapsRouteUrl(
+  destinationLonLat,
+  originLonLat = getGeoportalStateValue('userLonLat') || window.__geoportalUserLonLat
+) {
   const destination = formatMapCoordinateParam(destinationLonLat);
   if (!destination) return '#';
 

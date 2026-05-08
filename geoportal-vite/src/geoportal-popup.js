@@ -1,4 +1,5 @@
 import Overlay from 'ol/Overlay.js';
+import { setGeoportalStateValue } from './geoportal-state.js';
 
 // Criação e gerenciamento de popups usando ES Modules do OpenLayers
 //
@@ -13,6 +14,7 @@ export function closeLotesPopup(map) {
   }
 
   map.removeOverlay(popupOverlayLotes);
+  setGeoportalStateValue('ultimoPopupHtml', '');
   window.__geoportalUltimoPopupHtml = '';
   window.__geoportalActivePopupSource = null;
   window.__geoportalActivePopupRefreshCoord = null;
@@ -42,6 +44,7 @@ export function showLotesPopup(map, coord, html, isPrint = false) {
   if (popupOverlayLotes) {
     closeLotesPopup(map);
   }
+  setGeoportalStateValue('ultimoPopupHtml', html);
   window.__geoportalUltimoPopupHtml = html;
   window.__geoportalActivePopupSource = popupSource;
   window.__geoportalActivePopupRefreshCoord = popupRefreshCoord;

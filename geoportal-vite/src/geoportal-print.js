@@ -1,4 +1,6 @@
 // Backup da versão de impressão somente do mapa
+import { getGeoportalStateValue } from './geoportal-state.js';
+
 export function setupPrint(map, layers) {
   const printBtn = document.getElementById('print-btn');
   if (!printBtn) return;
@@ -15,7 +17,7 @@ export function setupPrint(map, layers) {
   let legendPrevClass = null;
   let legendPrevParent = null;
   let legendPrevNext = null;
-    const popupHtml = window.__geoportalUltimoPopupHtml || '';
+    const popupHtml = getGeoportalStateValue('ultimoPopupHtml') || window.__geoportalUltimoPopupHtml || '';
     // Controle robusto: mostra a legenda só na primeira página usando eventos de impressão
     let legendRestored = false;
     function beforePrintHandler() {

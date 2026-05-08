@@ -22,27 +22,40 @@ function getFirstProperty(properties, names) {
   return propertyKey && !isEmptyValue(properties[propertyKey]) ? properties[propertyKey] : '';
 }
 
+function cleanPhoneNumber(value) {
+  if (isEmptyValue(value)) return '';
+  return String(value).replace(/\D/g, '');
+}
+
+function getBrazilianPhoneDigits(value) {
+  const cleanNumber = cleanPhoneNumber(value);
+  if (cleanNumber.length < 10) return '';
+  return cleanNumber.slice(-11);
+}
+
 function formatPhone(value) {
   if (isEmptyValue(value)) return '';
 
   const rawNumber = String(value).trim();
-  const cleanNumber = rawNumber.replace(/\D/g, '');
-  if (cleanNumber.length < 10) return rawNumber;
+  const phoneDigits = getBrazilianPhoneDigits(value);
+  if (!phoneDigits) return rawNumber;
 
-  const last11 = cleanNumber.slice(-11);
-  const ddd = last11.slice(0, 2);
-  const first = last11.length === 11 ? last11.slice(2, 7) : last11.slice(2, 6);
-  const last = last11.length === 11 ? last11.slice(7) : last11.slice(6);
+  const ddd = phoneDigits.slice(0, 2);
+  const first = phoneDigits.length === 11 ? phoneDigits.slice(2, 7) : phoneDigits.slice(2, 6);
+  const last = phoneDigits.length === 11 ? phoneDigits.slice(7) : phoneDigits.slice(6);
   return `(${ddd}) ${first}-${last}`;
 }
 
+function buildTelUrl(value) {
+  const phoneDigits = getBrazilianPhoneDigits(value);
+  if (!phoneDigits) return null;
+  return `tel:+55${phoneDigits}`;
+}
+
 function buildWhatsappUrl(value) {
-  if (isEmptyValue(value)) return null;
-
-  const cleanNumber = String(value).replace(/\D/g, '');
-  if (cleanNumber.length < 10) return null;
-
-  return `https://wa.me/55${cleanNumber.slice(-11)}`;
+  const phoneDigits = getBrazilianPhoneDigits(value);
+  if (!phoneDigits) return null;
+  return `https://wa.me/55${phoneDigits}`;
 }
 
 export function getLocalInteresseCoordinate(feature) {
@@ -75,7 +88,8 @@ export function createLocalInteressePopupHTML(properties, options = {}) {
   const nome = getFirstProperty(properties, ['nome', 'Nome', 'NOME', 'unidade', 'Unidade', 'descricao', 'Descrição', 'name']) || category;
   const endereco = getFirstProperty(properties, ['endereco', 'Endereço', 'ENDERECO', 'logradouro', 'Logradouro', 'address']);
   const telefone = getFirstProperty(properties, ['telefone', 'Telefone', 'TELEFONE', 'fone', 'Fone', 'contato', 'Contato']);
-  const whatsapp = getFirstProperty(properties, ['whatsapp', 'WhatsApp', 'Whatsapp', 'WHATSAPP', 'celular', 'Celular']);
+  const whatsapp = getFirstProperty(properties, ['whatsapp', 'WhatsApp', 'Whatsapp', 'WHATSAPP', 'whats', 'Whats', 'WHATS', 'celular', 'Celular', 'CELULAR']);
+  const telefoneUrl = buildTelUrl(telefone);
   const whatsappUrl = buildWhatsappUrl(whatsapp);
   const routeUrl = buildGoogleMapsRouteUrl(destinationLonLat);
   const routeData = destinationLonLat
@@ -84,7 +98,7 @@ export function createLocalInteressePopupHTML(properties, options = {}) {
 
   const infoItems = [
     endereco ? { label: 'Endereço', value: endereco } : null,
-    telefone ? { label: 'Telefone', value: formatPhone(telefone) } : null,
+    telefone ? { label: 'Telefone', value: formatPhone(telefone), link: telefoneUrl } : null,
     whatsapp ? { label: 'WhatsApp', value: formatPhone(whatsapp), link: whatsappUrl } : null
   ].filter(Boolean);
 
