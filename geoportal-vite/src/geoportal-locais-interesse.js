@@ -1,14 +1,6 @@
 import { toLonLat } from 'ol/proj.js';
 import { buildGoogleMapsRouteUrl } from './geoportal-routes.js';
-
-function escapeHtml(value) {
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
+import { escapeHtml } from './geoportal-utils.js';
 
 function isEmptyValue(value) {
   return value === undefined || value === null || String(value).trim() === '' || String(value).trim().toUpperCase() === 'N/A';

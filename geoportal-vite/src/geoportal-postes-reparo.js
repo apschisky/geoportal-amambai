@@ -3,6 +3,7 @@
 
 import { toLonLat, transform } from 'ol/proj.js';
 import { buildGoogleMapsRouteUrl } from './geoportal-routes.js';
+import { escapeHtml, fetchWithTimeout } from './geoportal-utils.js';
 
 /**
  * Formata as coordenadas de um clique do mapa para lat/lon com 6 casas decimais
@@ -86,7 +87,7 @@ export function createPostePopupHTML(properties, coordinate, formBaseUrl, formFi
             <b>ID do Poste</b>
           </td>
           <td style="border:1px solid #ccc;padding:4px 8px;">
-            ${id}
+            ${escapeHtml(id)}
           </td>
         </tr>
         <tr>
@@ -94,7 +95,7 @@ export function createPostePopupHTML(properties, coordinate, formBaseUrl, formFi
             <b>Coordenadas</b>
           </td>
           <td style="border:1px solid #ccc;padding:4px 8px;">
-            ${coords}
+            ${escapeHtml(coords)}
           </td>
         </tr>
       </table>
@@ -159,7 +160,7 @@ export async function queryPosteLayer(map, layerConfig, coord, resolution) {
       return null;
     }
     
-    const response = await fetch(url);
+    const response = await fetchWithTimeout(url);
     const data = await response.json();
     
     if (data && data.features && data.features.length > 0) {
@@ -168,6 +169,7 @@ export async function queryPosteLayer(map, layerConfig, coord, resolution) {
     
     return null;
   } catch (error) {
+    console.error('[Postes] Erro ao consultar camada por GetFeatureInfo:', error);
     return null;
   }
 }
@@ -217,7 +219,7 @@ export async function queryPosteLayerWithBuffer(coord, bufferDistance = '10', re
       `SRSNAME=${toCrs}&` +
       `bbox=${bboxStr},${toCrs}`;
     
-    const response = await fetch(wfsUrl);
+    const response = await fetchWithTimeout(wfsUrl);
     const data = await response.json();
     
     if (!data || !data.features || data.features.length === 0) {
@@ -260,6 +262,7 @@ export async function queryPosteLayerWithBuffer(coord, bufferDistance = '10', re
     
     return null;
   } catch (error) {
+    console.error('[Postes] Erro ao consultar camada com buffer:', error);
     return null;
   }
 }

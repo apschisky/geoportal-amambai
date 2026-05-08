@@ -78,13 +78,14 @@ import VectorLayer from 'ol/layer/Vector.js';
 import VectorSource from 'ol/source/Vector.js';
 import Style from 'ol/style/Style.js';
 import Icon from 'ol/style/Icon.js';
+import { showGeoportalNotice } from './geoportal-notice.js';
 
 export function setupGeolocation(map) {
   const geoBtn = document.getElementById('geolocate-btn');
   if (!geoBtn) return;
   geoBtn.addEventListener('click', () => {
     if (!navigator.geolocation) {
-      alert('Geolocalização não suportada pelo navegador.');
+      showGeoportalNotice({ type: 'warning', message: 'Geolocalização não suportada pelo navegador.' });
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -112,7 +113,7 @@ export function setupGeolocation(map) {
         map.addLayer(vectorLayer);
       },
       err => {
-        alert('Não foi possível obter sua localização.');
+        showGeoportalNotice({ type: 'error', message: 'Não foi possível obter sua localização.' });
       }
     );
   });

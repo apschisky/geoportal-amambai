@@ -45,6 +45,8 @@ import { LAYER_CONFIG, POSTE_FORM_CONFIG } from './geoportal-config.js';
 import { createFarmaciaPopupHTML, getFarmaciaLonLatFromFeature, getFarmaciaMapCoordinate, isFarmaciaDePlantao } from './geoportal-farmacias.js';
 import { createLocalInteressePopupHTML, getLocalInteresseCoordinate, getLocalInteresseLonLatFromFeature } from './geoportal-locais-interesse.js';
 import { createPostePopupHTML, queryPosteLayerWithBuffer } from './geoportal-postes-reparo.js';
+import { escapeHtml, fetchWithTimeout, getGeoServerErrorMessage } from './geoportal-utils.js';
+import { showGeoportalNotice } from './geoportal-notice.js';
 // Handler para clique no mapa: busca atributos e destaca feição usando ES Modules do OpenLayers
 export function setupMapClickHandler(map, layers, showLotesPopup) {
   // Mapeamento amigável para Eixo de Adensamento
@@ -129,6 +131,18 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
     let farmaciaCoord = null;
     let localInteresseHtml = '';
     let localInteresseCoord = null;
+    let mapClickNoticeShown = false;
+    const showMapClickErrorNotice = error => {
+      if (mapClickNoticeShown) return;
+      mapClickNoticeShown = true;
+      showGeoportalNotice({
+        type: 'error',
+        message: getGeoServerErrorMessage(error),
+        position: 'top-center',
+        cooldownKey: 'mapclick-geoserver-error',
+        cooldownMs: 8000
+      });
+    };
     // Remove highlight anterior
     if (map.getLayers().getArray().some(l => l.get('highlightLayer'))) {
       const toRemove = map.getLayers().getArray().filter(l => l.get('highlightLayer'));
@@ -181,7 +195,7 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
         );
         if (url) {
           try {
-            const response = await fetch(url);
+            const response = await fetchWithTimeout(url);
             let data = null;
             let isJson = true;
             try {
@@ -205,7 +219,7 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
                 if (layerInfo.key === 'layer_coleta' && coletaMap[key]) label = coletaMap[key];
                 if (layerInfo.key === 'layer_imoveis_snci' && snciMap[key]) label = snciMap[key];
                 if (layerInfo.key === 'layer_imoveis_sigef' && sigefMap[key]) label = sigefMap[key];
-                currentHtml += `<tr><td style='border:1px solid #ccc;padding:4px 8px;background:#f7f7f7;'><b>${label}</b></td><td style='border:1px solid #ccc;padding:4px 8px;'>${props[key]}</td></tr>`;
+                currentHtml += `<tr><td style='border:1px solid #ccc;padding:4px 8px;background:#f7f7f7;'><b>${escapeHtml(label)}</b></td><td style='border:1px solid #ccc;padding:4px 8px;'>${escapeHtml(props[key])}</td></tr>`;
               }
               currentHtml += '</table></div>';
               const format = new GeoJSON();
@@ -240,7 +254,8 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
               }
             }
           } catch (e) {
-            otherHtml += `<div style='color:#c00;font-size:14px;max-width:320px;'><b>${layerInfo.name}:</b> Erro ao buscar informações.</div>`;
+            otherHtml += `<div style='color:#c00;font-size:14px;max-width:320px;'><b>${escapeHtml(layerInfo.name)}:</b> ${escapeHtml(getGeoServerErrorMessage(e))}</div>`;
+            showMapClickErrorNotice(e);
           }
         }
       }
@@ -277,7 +292,8 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
           );
         }
       } catch (error) {
-        // Silenciosamente ignorar erro na consulta de postes
+        console.error('[Postes] Erro ao consultar poste no clique:', error);
+        showMapClickErrorNotice(error);
       }
     }
 
@@ -298,7 +314,7 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
         );
 
         if (url) {
-          const response = await fetch(url);
+          const response = await fetchWithTimeout(url);
           const data = await response.json();
           const farmaciaFeatureData = data?.features?.[0];
 
@@ -318,7 +334,8 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
           }
         }
       } catch (error) {
-        // Mantem as demais consultas funcionando mesmo se o GetFeatureInfo falhar.
+        console.error('[Farmácias] Erro ao consultar farmácia no clique:', error);
+        showMapClickErrorNotice(error);
       }
     }
 
@@ -344,7 +361,7 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
 
         if (!url) continue;
 
-        const response = await fetch(url);
+        const response = await fetchWithTimeout(url);
         const data = await response.json();
         const localFeatureData = data?.features?.[0];
         if (!localFeatureData) continue;
@@ -362,7 +379,8 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
           destinationLonLat
         });
       } catch (error) {
-        // Mantém as demais consultas funcionando mesmo se um local de interesse falhar.
+        console.error('[Locais de Interesse] Erro ao consultar local no clique:', error);
+        showMapClickErrorNotice(error);
       }
     }
 

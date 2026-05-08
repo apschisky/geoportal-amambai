@@ -9,6 +9,8 @@ import CircleStyle from 'ol/style/Circle.js';
 import { extend as extendExtent } from 'ol/extent.js';
 import { POSTE_FORM_CONFIG } from './geoportal-config.js';
 import { createPostePopupHTML } from './geoportal-postes-reparo.js';
+import { escapeHtml, fetchWithTimeout, getGeoServerErrorMessage } from './geoportal-utils.js';
+import { showGeoportalNotice } from './geoportal-notice.js';
 // FunÃ§Ãµes de busca (BIC, endereÃ§o, fazenda) usando ES Modules do OpenLayers
 export function setupSearchHandlers(map, layers, showLotesPopup, onLayersChanged = () => {}) {
   const ADDRESS_APPROX_MIN_DIFF = 150;
@@ -48,46 +50,8 @@ export function setupSearchHandlers(map, layers, showLotesPopup, onLayersChanged
     }
   }
 
-  let searchNoticeTimeout = null;
-
   function showSearchNotice(message) {
-    const existingNotice = document.getElementById('geoportal-search-notice');
-    if (existingNotice) {
-      existingNotice.remove();
-    }
-
-    if (searchNoticeTimeout) {
-      window.clearTimeout(searchNoticeTimeout);
-      searchNoticeTimeout = null;
-    }
-
-    const notice = document.createElement('div');
-    notice.id = 'geoportal-search-notice';
-    notice.textContent = message;
-    Object.assign(notice.style, {
-      position: 'fixed',
-      top: '72px',
-      left: '50%',
-      transform: 'translateX(-50%)',
-      zIndex: '3200',
-      maxWidth: 'min(420px, calc(100vw - 32px))',
-      padding: '10px 14px',
-      borderRadius: '10px',
-      background: 'rgba(34, 49, 63, 0.94)',
-      color: '#fff',
-      fontSize: '14px',
-      lineHeight: '1.4',
-      boxShadow: '0 10px 24px rgba(15, 23, 42, 0.18)',
-      pointerEvents: 'none',
-      textAlign: 'center'
-    });
-
-    document.body.appendChild(notice);
-
-    searchNoticeTimeout = window.setTimeout(() => {
-      notice.remove();
-      searchNoticeTimeout = null;
-    }, 3000);
+    showGeoportalNotice({ type: 'info', message, duration: 3000, position: 'top-center' });
   }
 
   function buildEnderecoCqlFilter(rawQuery) {
@@ -205,6 +169,33 @@ export function setupSearchHandlers(map, layers, showLotesPopup, onLayersChanged
     }
   }
 
+  function ensurePostesLayerVisible() {
+    const posteLayer = layers['layer_postes'];
+    if (posteLayer && !posteLayer.getVisible()) {
+      posteLayer.setVisible(true);
+      const checkbox = document.getElementById('layer_postes');
+      if (checkbox) checkbox.checked = true;
+      onLayersChanged();
+    }
+  }
+
+  function ensureRuralLayersVisible() {
+    let layersChanged = false;
+    const ruralLayerIds = ['layer_imoveis_sigef', 'layer_imoveis_snci'];
+
+    ruralLayerIds.forEach(layerId => {
+      const layer = layers[layerId];
+      if (!layer || layer.getVisible()) return;
+
+      layer.setVisible(true);
+      const checkbox = document.getElementById(layerId);
+      if (checkbox) checkbox.checked = true;
+      layersChanged = true;
+    });
+
+    if (layersChanged) onLayersChanged();
+  }
+
   function showAreaUrbanaFeatureResult(feature, titleHtml, extraHtml = '') {
     const format = new GeoJSON();
     const olFeature = format.readFeature(feature, {
@@ -220,7 +211,7 @@ export function setupSearchHandlers(map, layers, showLotesPopup, onLayersChanged
     for (const key in feature.properties) {
       if (key === 'geometry' || key === 'id') continue;
       const label = loteMap[key] || key;
-      html += `<tr><td style='border:1px solid #ccc;padding:4px 8px;background:#f7f7f7;'><b>${label}</b></td><td style='border:1px solid #ccc;padding:4px 8px;'>${feature.properties[key]}</td></tr>`;
+      html += `<tr><td style='border:1px solid #ccc;padding:4px 8px;background:#f7f7f7;'><b>${escapeHtml(label)}</b></td><td style='border:1px solid #ccc;padding:4px 8px;'>${escapeHtml(feature.properties[key])}</td></tr>`;
     }
     html += '</table></div>';
 
@@ -271,7 +262,7 @@ export function setupSearchHandlers(map, layers, showLotesPopup, onLayersChanged
     const query = document.getElementById('search-input').value.trim();
     const searchType = document.getElementById('search-type').value;
     if (!query) {
-      alert('Digite um valor para buscar.');
+      showGeoportalNotice({ type: 'warning', message: 'Digite um valor para buscar.', position: 'top-center' });
       return;
     }
     // Remove seleÃ§Ã£o anterior (destaque de busca)
@@ -297,13 +288,13 @@ export function setupSearchHandlers(map, layers, showLotesPopup, onLayersChanged
         ? `${field} ${op} '${value}'`
         : buildEnderecoCqlFilter(query);
       if (searchType === 'endereco' && !cqlFilter) {
-        alert(`${label} n\u00e3o encontrado.`);
+        showGeoportalNotice({ type: 'warning', message: 'Nenhum resultado encontrado.', position: 'top-center' });
         return;
       }
       const maxFeaturesParam = searchType === 'endereco' ? '&maxFeatures=300' : '';
       const wfsUrl = `https://geoserver.amambai.ms.gov.br/geoserver/ne/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=${typeName}&outputFormat=application/json${maxFeaturesParam}&CQL_FILTER=${encodeURIComponent(cqlFilter)}`;
       try {
-        const response = await fetch(wfsUrl);
+        const response = await fetchWithTimeout(wfsUrl);
         const data = await response.json();
         const features = Array.isArray(data.features) ? data.features : [];
         if (searchType === 'endereco' && parsedEndereco && !parsedEndereco.hasNumber) {
@@ -336,10 +327,10 @@ export function setupSearchHandlers(map, layers, showLotesPopup, onLayersChanged
               showSearchNotice('Rua localizada. Informe o n\u00famero para um resultado mais preciso.');
               collapseSearchBoxOnMobile();
             } else {
-              alert(`${label} n\u00e3o encontrado.`);
+              showGeoportalNotice({ type: 'warning', message: 'Nenhum resultado encontrado.', position: 'top-center' });
             }
           } else {
-            alert(`${label} n\u00e3o encontrado.`);
+            showGeoportalNotice({ type: 'warning', message: 'Nenhum resultado encontrado.', position: 'top-center' });
           }
         } else if (searchType === 'endereco' && parsedEndereco?.hasNumber) {
           const exactNumberFeatures = features.filter(
@@ -350,14 +341,14 @@ export function setupSearchHandlers(map, layers, showLotesPopup, onLayersChanged
             ensureLotesLayerVisible();
             showAreaUrbanaFeatureResult(
               exactNumberFeatures[0],
-              `${label} encontrado: ${query}`
+              `${escapeHtml(label)} encontrado: ${escapeHtml(query)}`
             );
           } else {
             try {
               const closestMatch = findClosestAddressFeature(features, parsedEndereco.targetNumber);
 
               if (!closestMatch) {
-                alert(`${label} n\u00e3o encontrado.`);
+                showGeoportalNotice({ type: 'warning', message: 'Nenhum resultado encontrado.', position: 'top-center' });
                 return;
               }
 
@@ -369,9 +360,9 @@ export function setupSearchHandlers(map, layers, showLotesPopup, onLayersChanged
                   <div style='font-weight:800;margin-bottom:4px;color:#b45309;'>Endere\u00e7o aproximado</div>
                   <div>O n\u00famero exato n\u00e3o foi localizado. Exibindo o endere\u00e7o mais pr\u00f3ximo encontrado na base cadastral do munic\u00edpio.</div>
                   <div style='margin-top:6px;'>
-                    <strong>Endere\u00e7o buscado:</strong> ${query}<br>
-                    <strong>Endere\u00e7o encontrado:</strong> ${foundAddress}<br>
-                    <strong>Diferen\u00e7a aproximada:</strong> ${closestMatch.diff} n\u00fameros
+                    <strong>Endere\u00e7o buscado:</strong> ${escapeHtml(query)}<br>
+                    <strong>Endere\u00e7o encontrado:</strong> ${escapeHtml(foundAddress)}<br>
+                    <strong>Diferen\u00e7a aproximada:</strong> ${escapeHtml(closestMatch.diff)} n\u00fameros
                   </div>
                 </div>
               `;
@@ -382,42 +373,35 @@ export function setupSearchHandlers(map, layers, showLotesPopup, onLayersChanged
                 warningHtml
               );
             } catch (fallbackError) {
-              alert(`${label} n\u00e3o encontrado.`);
+              showGeoportalNotice({ type: 'warning', message: 'Nenhum resultado encontrado.', position: 'top-center' });
             }
           }
         } else if (features.length > 0) {
           // Se busca por BIC ou Endereco e camada de lotes nao esta visivel, ativa
           ensureLotesLayerVisible();
           const feature = features[0];
-          showAreaUrbanaFeatureResult(feature, `${label} encontrado: ${query}`);
+          showAreaUrbanaFeatureResult(feature, `${escapeHtml(label)} encontrado: ${escapeHtml(query)}`);
         } else {
-          alert(`${label} n\u00e3o encontrado.`);
+          showGeoportalNotice({ type: 'warning', message: 'Nenhum resultado encontrado.', position: 'top-center' });
         }
       } catch (e) {
-        alert(`Erro ao buscar por ${label}.`);
+        showGeoportalNotice({ type: 'error', message: getGeoServerErrorMessage(e), position: 'top-center', cooldownKey: 'search-geoserver-error', cooldownMs: 8000 });
       }
       return;
     }
     if (searchType === 'poste') {
       const posteId = query.trim();
       if (!/^\d+$/.test(posteId)) {
-        alert('Digite um ID de poste vÃ¡lido.');
+        showGeoportalNotice({ type: 'warning', message: 'Digite um ID de poste válido.', position: 'top-center' });
         return;
-      }
-
-      const posteLayer = layers['layer_postes'];
-      if (posteLayer && !posteLayer.getVisible()) {
-        posteLayer.setVisible(true);
-        const checkbox = document.getElementById('layer_postes');
-        if (checkbox) checkbox.checked = true;
-        onLayersChanged();
       }
 
       const posteUrl = `https://geoserver.amambai.ms.gov.br/geoserver/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=ne:Postes%20-%20IDs%20-%20AU&outputFormat=application/json&SRSNAME=EPSG:32721&CQL_FILTER=IDs_coord%20%3D%20${encodeURIComponent(posteId)}`;
       try {
-        const response = await fetch(posteUrl);
+        const response = await fetchWithTimeout(posteUrl);
         const data = await response.json();
         if (data.features && data.features.length > 0) {
+          ensurePostesLayerVisible();
           const feature = data.features[0];
           const format = new GeoJSON();
           const olFeature = format.readFeature(feature, {
@@ -449,49 +433,33 @@ export function setupSearchHandlers(map, layers, showLotesPopup, onLayersChanged
           showLotesPopup(map, coord, html);
           collapseSearchBoxOnMobile();
         } else {
-          alert('Poste nÃ£o encontrado.');
+          showGeoportalNotice({ type: 'warning', message: 'Nenhum resultado encontrado.', position: 'top-center' });
         }
       } catch (e) {
-        alert('Erro ao buscar poste.');
+        showGeoportalNotice({ type: 'error', message: getGeoServerErrorMessage(e), position: 'top-center', cooldownKey: 'search-geoserver-error', cooldownMs: 8000 });
       }
       return;
     }
     if (searchType === 'fazenda') {
-      const sigefLayer = layers['layer_imoveis_sigef'];
-      const snciLayer = layers['layer_imoveis_snci'];
-      let layersChanged = false;
-      // Ativa as camadas SIGEF e SNCI se não estiverem visíveis
-      if (sigefLayer && !sigefLayer.getVisible()) {
-        sigefLayer.setVisible(true);
-        const checkbox = document.getElementById('layer_imoveis_sigef');
-        if (checkbox) checkbox.checked = true;
-        layersChanged = true;
-      }
-      if (snciLayer && !snciLayer.getVisible()) {
-        snciLayer.setVisible(true);
-        const checkbox = document.getElementById('layer_imoveis_snci');
-        if (checkbox) checkbox.checked = true;
-        layersChanged = true;
-      }
-      if (layersChanged) onLayersChanged();
       const sigefUrl = `https://geoserver.amambai.ms.gov.br/geoserver/ne/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=ne:Imóveis SIGEF 05_25&outputFormat=application/json&CQL_FILTER=nome_area ILIKE '%25${encodeURIComponent(query)}%25'`;
       const snciUrl = `https://geoserver.amambai.ms.gov.br/geoserver/ne/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=ne:Imóveis SNCI 05_25&outputFormat=application/json&CQL_FILTER=nome_imove ILIKE '%25${encodeURIComponent(query)}%25'`;
       let foundFeatures = [];
       try {
         const [sigefResp, snciResp] = await Promise.all([
-          fetch(sigefUrl).then(r => r.json()),
-          fetch(snciUrl).then(r => r.json())
+          fetchWithTimeout(sigefUrl).then(r => r.json()),
+          fetchWithTimeout(snciUrl).then(r => r.json())
         ]);
         if (sigefResp.features) foundFeatures = foundFeatures.concat(sigefResp.features.map(f => ({...f, origem: 'SIGEF', nome_fazenda: f.properties.nome_area})));
         if (snciResp.features) foundFeatures = foundFeatures.concat(snciResp.features.map(f => ({...f, origem: 'SNCI', nome_fazenda: f.properties.nome_imove})));
       } catch (e) {
-        alert('Erro ao buscar imóveis rurais.');
+        showGeoportalNotice({ type: 'error', message: getGeoServerErrorMessage(e), position: 'top-center', cooldownKey: 'search-geoserver-error', cooldownMs: 8000 });
         return;
       }
       if (foundFeatures.length === 0) {
-        alert('Nenhum imóvel rural encontrado com esse nome.');
+        showGeoportalNotice({ type: 'warning', message: 'Nenhum resultado encontrado.', position: 'top-center' });
         return;
       }
+      ensureRuralLayersVisible();
       const format = new GeoJSON();
       const olFeatures = foundFeatures.map(f => format.readFeature(f, {
         dataProjection: 'EPSG:32721',
@@ -499,7 +467,7 @@ export function setupSearchHandlers(map, layers, showLotesPopup, onLayersChanged
       }));
       let html = `<div style='font-size:14px;max-width:320px;'><strong>Imóveis Rurais encontrados</strong><br><table style='border-collapse:collapse;width:100%'>`;
       foundFeatures.forEach(f => {
-        html += `<tr><td style='border:1px solid #ccc;padding:4px 8px;background:#f7f7f7;'><b>${f.nome_fazenda || 'Sem nome'}</b></td><td style='border:1px solid #ccc;padding:4px 8px;'>${f.origem}</td></tr>`;
+        html += `<tr><td style='border:1px solid #ccc;padding:4px 8px;background:#f7f7f7;'><b>${escapeHtml(f.nome_fazenda || 'Sem nome')}</b></td><td style='border:1px solid #ccc;padding:4px 8px;'>${escapeHtml(f.origem)}</td></tr>`;
       });
       html += '</table></div>';
       if (olFeatures.length > 0) {

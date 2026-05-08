@@ -4,6 +4,8 @@ import { Style, Icon, Text, Fill, Circle, Stroke } from 'ol/style.js';
 import GeoJSON from 'ol/format/GeoJSON.js';
 import { toLonLat } from 'ol/proj.js';
 import { buildGoogleMapsRouteUrl } from './geoportal-routes.js';
+import { escapeHtml, fetchWithTimeout } from './geoportal-utils.js';
+import { showGeoportalNotice } from './geoportal-notice.js';
 
 const FARMACIAS_WFS_URL = 'https://geoserver.amambai.ms.gov.br/geoserver/wfs?' +
   'service=WFS&version=2.0.0&request=GetFeature&typeName=ne:Farm%C3%A1cias' +
@@ -63,15 +65,6 @@ function formatPopupValue(value) {
   return isEmptyValue(value) ? 'N/A' : String(value).trim();
 }
 
-function escapeHtml(value) {
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
-
 // Criar estilo para farmácia de plantão (DESTAQUE)
 function createDeOntemStyle(feature) {
   return new Style({
@@ -107,7 +100,7 @@ export function createFarmaciasDeOntemLayer() {
   layer.set('alreadyOpenedPopup', false);
 
   // Carregar features de plantão da WFS quando a layer for criada
-  fetch(FARMACIAS_WFS_URL)
+  fetchWithTimeout(FARMACIAS_WFS_URL)
     .then(response => {
       return response.json();
     })
@@ -132,6 +125,13 @@ export function createFarmaciasDeOntemLayer() {
     .catch(error => {
       layer.set('farmaciasLoaded', true);
       console.error('[Farmácias Highlight] ✗ ERRO:', error);
+      showGeoportalNotice({
+        type: 'error',
+        message: 'Não foi possível consultar os dados no momento.',
+        position: 'top-center',
+        cooldownKey: 'farmacias-geoserver-error',
+        cooldownMs: 8000
+      });
     });
 
   return layer;
@@ -305,7 +305,7 @@ export function setupFarmaciaRouteButtons() {
 
 export async function getFarmaciasDeOntemData() {
   try {
-    const response = await fetch(FARMACIAS_WFS_URL);
+    const response = await fetchWithTimeout(FARMACIAS_WFS_URL);
     const data = await response.json();
     const features = new GeoJSON().readFeatures(data, {
       dataProjection: 'EPSG:32721',    // Projeção dos dados do WFS
@@ -320,6 +320,13 @@ export async function getFarmaciasDeOntemData() {
     return result;
   } catch (error) {
     console.error('[Farmácias Legenda] Erro ao carregar dados:', error);
+    showGeoportalNotice({
+      type: 'error',
+      message: 'Não foi possível consultar os dados no momento.',
+      position: 'top-center',
+      cooldownKey: 'farmacias-geoserver-error',
+      cooldownMs: 8000
+    });
     return [];
   }
 }
@@ -387,14 +394,14 @@ export async function atualizarLegendaBotaoPonta(legendasDiv) {
       
       legendaHtml += `
         <div style="margin: 8px 0; padding: 8px; border-bottom: 1px solid #ddd;">
-          <strong>${props.Farmacia || 'N/A'}</strong><br>
-          📞 ${props.Telefone || 'N/A'}<br>
+          <strong>${escapeHtml(props.Farmacia || 'N/A')}</strong><br>
+          📞 ${escapeHtml(props.Telefone || 'N/A')}<br>
           ${whatsappLink ? 
             `<a href="${whatsappLink}" target="_blank" style="color: #25d366; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
-              <i class="fa-brands fa-whatsapp" style="font-size: 16px;"></i> ${whatsappFormatted}
+              <i class="fa-brands fa-whatsapp" style="font-size: 16px;"></i> ${escapeHtml(whatsappFormatted)}
             </a>` : 
             `<span style="color: #666; display: inline-flex; align-items: center; gap: 4px;">
-              <i class="fa-brands fa-whatsapp" style="font-size: 16px;"></i> ${whatsappFormatted}
+              <i class="fa-brands fa-whatsapp" style="font-size: 16px;"></i> ${escapeHtml(whatsappFormatted)}
             </span>`
           }
         </div>

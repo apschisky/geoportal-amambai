@@ -1936,6 +1936,109 @@ body {
   --gp-shadow-button: 0 8px 18px rgba(25, 118, 210, 0.18);
 }
 
+.geoportal-notice-container {
+  position: fixed;
+  z-index: 4200;
+  display: grid;
+  gap: 8px;
+  width: min(360px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.geoportal-notice-container-bottom-right {
+  right: 16px;
+  bottom: 64px;
+}
+
+.geoportal-notice-container-top-center {
+  top: calc(44px + 30px + 28px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(460px, calc(100vw - 32px));
+}
+
+.geoportal-notice {
+  padding: 11px 13px;
+  border: 1px solid var(--gp-border);
+  border-left: 4px solid var(--gp-primary);
+  border-radius: var(--gp-radius-md);
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--gp-text);
+  box-shadow: var(--gp-shadow-soft);
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.35;
+  pointer-events: none;
+  animation: geoportalNoticeIn 0.18s ease-out both;
+}
+
+.geoportal-notice-info {
+  border-left-color: var(--gp-primary);
+}
+
+.geoportal-notice-warning {
+  border-left-color: var(--gp-warning-border);
+  background: var(--gp-warning-bg);
+}
+
+.geoportal-notice-error {
+  border-left-color: var(--gp-danger);
+}
+
+.geoportal-notice-success {
+  border-left-color: var(--gp-success);
+}
+
+.geoportal-notice.is-leaving {
+  animation: geoportalNoticeOut 0.18s ease-in both;
+}
+
+@keyframes geoportalNoticeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes geoportalNoticeOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (max-width: 600px) {
+  .geoportal-notice-container-bottom-right {
+    right: 8px;
+    left: 8px;
+    bottom: 78px;
+    width: auto;
+  }
+
+  .geoportal-notice-container-top-center {
+    top: calc(44px + 32px + 10px);
+    left: 8px;
+    right: 8px;
+    transform: none;
+    width: auto;
+  }
+
+  .geoportal-notice {
+    padding: 10px 12px;
+    font-size: 0.84rem;
+  }
+}
+
 body {
   color: var(--gp-text);
 }
@@ -2453,3 +2556,69 @@ body {
 }
 
 /* Removido bloco duplicado/conflictivo para #legendas-categorias na impressão. O controle de exibição da legenda é feito apenas pelo bloco principal @media print. */
+/* Rolagem interna do painel de camadas em telas com pouca altura. */
+.layer-controls-content {
+  width: 260px;
+  min-width: 260px;
+  max-width: min(260px, calc(100vw - 32px));
+  max-height: calc(100dvh - 245px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 28px;
+  box-sizing: border-box;
+}
+
+@media (max-height: 760px) {
+  .layer-controls-content {
+    max-height: calc(100dvh - 270px);
+  }
+}
+
+@media (max-height: 660px) and (min-width: 601px) {
+  .layer-controls-content {
+    max-height: calc(100dvh - 290px);
+  }
+}
+
+@media (max-width: 600px) {
+  .layer-controls-content {
+    width: min(54vw, 185px);
+    min-width: 0;
+    max-width: calc(100vw - 120px);
+    max-height: calc(100dvh - 230px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 12px;
+    box-sizing: border-box;
+  }
+
+  .layer-controls-content label {
+    margin: 0;
+    padding: 1px 0;
+    gap: 4px;
+    line-height: 1.25;
+    font-size: 12px;
+  }
+
+  .layer-controls-content input[type="checkbox"],
+  .layer-controls-content input[type="radio"] {
+    margin: 0 3px 0 0;
+    transform: scale(0.92);
+  }
+
+  .layer-controls-content .theme-group {
+    margin-bottom: 4px;
+  }
+
+  .layer-controls-content .theme-layers {
+    padding-top: 2px;
+    padding-bottom: 2px;
+    margin-bottom: 1px;
+  }
+
+  .layer-controls-content .theme-layers br {
+    display: none;
+  }
+}
