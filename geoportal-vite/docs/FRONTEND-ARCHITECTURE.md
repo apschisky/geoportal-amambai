@@ -149,7 +149,16 @@ Os HTMLs de popup usam `escapeHtml` para valores vindos do GeoServer. Isso e ess
 
 ## 6. Busca
 
-`src/geoportal-search.js` registra os handlers da caixa de busca.
+`src/geoportal-search.js` registra os handlers da caixa de busca e coordena os fluxos de consulta, destaque, ativacao de camadas e abertura de popup.
+
+`src/geoportal-search-utils.js` concentra funcoes puras de endereco extraidas da busca:
+
+- `parseEnderecoQuery`;
+- `buildRuaCandidatesCqlFilter`;
+- `buildEnderecoCqlFilter`;
+- `extractNumeroFromEndereco`.
+
+Essas funcoes sao cobertas por testes unitarios em `src/geoportal-search-utils.test.js`.
 
 Fluxos atuais:
 
@@ -159,7 +168,7 @@ Fluxos atuais:
 - Poste: valida ID numerico, consulta WFS de postes, ativa camada de postes, destaca o ponto e abre popup com Solicitar Reparo.
 - Fazenda/imovel rural: consulta SIGEF e SNCI por nome, ativa camadas rurais e enquadra as feicoes encontradas.
 
-A busca usa `fetchWithTimeout`, `getGeoServerErrorMessage` e `showGeoportalNotice` para tratar falhas de rede/GeoServer.
+A busca usa `fetchWithTimeout`, `getGeoServerErrorMessage` e `showGeoportalNotice` para tratar falhas de rede/GeoServer. O fluxo completo ainda depende de GeoServer, mapa, camadas, popup e teste manual.
 
 ## 7. Rotas e botoes externos
 
