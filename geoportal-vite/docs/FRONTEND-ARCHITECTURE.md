@@ -299,6 +299,7 @@ Regras praticas:
 - `window.measureActive` ainda e o controle efetivo da medicao; apesar de existir `measureActive` em `geoportal-state.js`, nao deve ser migrado sem uma etapa propria.
 - `showLotesPopup` e um nome historico e hoje representa o popup geral do Geoportal.
 - Alguns estados de compatibilidade ainda usam `window.__geoportal...`, como `window.__geoportalActivePopupRefreshCoord`, `window.__geoportalNextPopupRefreshCoord`, `window.__geoportalFarmaciaRouteButtonsReady` e `window.__geoportalNoticeCooldowns`.
+- A impressao atual e funcional, mas provisoria. Pode haver diferencas entre desktop, desktop simulando mobile e mobile real; futuras melhorias devem evitar remendos grandes em `src/geoportal-print.js` e priorizar um modulo/layout oficial de impressao com escala, legenda padronizada, titulo, logotipo/brasao, norte, data de emissao, fonte dos dados e informacoes detalhadas da feicao selecionada.
 - `geoportal-ui.js` possui codigo executado no topo do modulo antes das exportacoes, relacionado a elementos da search-box. Isso deve ser considerado com cuidado em futuras refatoracoes.
 - Ha textos e comentarios com encoding inconsistente em alguns arquivos; evitar refatoracoes amplas apenas para corrigir acentuacao.
 - Farmacias usam a nomenclatura historica `DeOntem` em algumas funcoes, embora a regra atual compare o dia do mes atual.
