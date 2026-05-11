@@ -76,6 +76,7 @@ Em etapa posterior, avaliar testes com ambiente controlado para:
   - Monta URL com origem e destino quando ambos existem.
   - Formata coordenadas como `lat,lon` com 6 casas.
   - Deve testar passando `originLonLat` explicitamente para evitar depender de estado global.
+  - A integracao geolocalizacao -> `userLonLat` no estado centralizado -> rota continua no checklist manual.
 
 Ponto de atencao futuro:
 
@@ -107,7 +108,7 @@ Ponto de atencao futuro:
 
 ### `src/geoportal-state.js`
 
-- `getGeoportalStateValue`, `setGeoportalStateValue`, `clearGeoportalStateValue`.
+- `getGeoportalStateValue`, `setGeoportalStateValue`, `clearGeoportalStateValue`, incluindo `userLonLat`.
 - `getActivePopupSource`, `setActivePopupSource`, `clearActivePopupSource`.
 - `getNextPopupSource`, `setNextPopupSource`, `clearNextPopupSource`.
 

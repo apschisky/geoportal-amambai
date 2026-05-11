@@ -165,7 +165,9 @@ A busca usa `fetchWithTimeout`, `getGeoServerErrorMessage` e `showGeoportalNotic
 
 Rotas sao geradas em `src/geoportal-routes.js` por `buildGoogleMapsRouteUrl`.
 
-- Se `userLonLat` estiver disponivel, a URL do Google Maps inclui origem e destino.
+- Se `originLonLat` for passado explicitamente, a URL do Google Maps inclui origem e destino.
+- Quando `originLonLat` nao e passado, `src/geoportal-routes.js` usa `userLonLat` do estado centralizado como fallback.
+- `src/geoportal-ui.js` grava `userLonLat` em `src/geoportal-state.js` apos geolocalizacao bem-sucedida.
 - Sem origem, a URL inclui apenas destino.
 - Farmacias, postes e locais de interesse usam essa funcao para botoes de rota.
 
@@ -218,7 +220,7 @@ Pontos importantes:
 
 - `activePopupSource` e `nextPopupSource` nao devem voltar para `window.__geoportalActivePopupSource` ou `window.__geoportalNextPopupSource`.
 - `measureActive` ainda e controlado por `window.measureActive` em `main.js`, `geoportal-measure.js` e `geoportal-mapclick.js`. Nao mexer sem uma etapa planejada e testada.
-- Ainda ha globais de compatibilidade para alguns dados, como HTML de popup, coordenada de refresh e localizacao do usuario. Tratar em etapas pequenas.
+- Ainda ha globais de compatibilidade para alguns dados, como coordenadas de refresh de popup e flags internas de modulo. Tratar em etapas pequenas.
 
 ## 10. Seguranca no front-end
 
@@ -287,7 +289,7 @@ Regras praticas:
 
 - `window.measureActive` ainda e o controle efetivo da medicao; apesar de existir `measureActive` em `geoportal-state.js`, nao deve ser migrado sem uma etapa propria.
 - `showLotesPopup` e um nome historico e hoje representa o popup geral do Geoportal.
-- Alguns estados de compatibilidade ainda usam `window.__geoportal...`, como refresh de coordenada, ultimo HTML de popup e localizacao do usuario.
+- Alguns estados de compatibilidade ainda usam `window.__geoportal...`, como `window.__geoportalActivePopupRefreshCoord`, `window.__geoportalNextPopupRefreshCoord`, `window.__geoportalFarmaciaRouteButtonsReady` e `window.__geoportalNoticeCooldowns`.
 - `geoportal-ui.js` possui codigo executado no topo do modulo antes das exportacoes, relacionado a elementos da search-box. Isso deve ser considerado com cuidado em futuras refatoracoes.
 - Ha textos e comentarios com encoding inconsistente em alguns arquivos; evitar refatoracoes amplas apenas para corrigir acentuacao.
 - Farmacias usam a nomenclatura historica `DeOntem` em algumas funcoes, embora a regra atual compare o dia do mes atual.
