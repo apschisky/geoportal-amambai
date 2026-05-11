@@ -125,20 +125,26 @@ Ponto de atencao:
   - Verificar cooldown.
   - Verificar criacao de container e elemento de aviso.
 
-### `src/geoportal-search.js`
+### `src/geoportal-search-utils.js`
 
-Funcoes internas candidatas no futuro:
+Helpers de endereco ja extraidos de `src/geoportal-search.js`:
 
-- normalizacao de endereco;
 - `parseEnderecoQuery`;
 - `buildRuaCandidatesCqlFilter`;
 - `buildEnderecoCqlFilter`;
 - `extractNumeroFromEndereco`;
+
+Essas funcoes sao puras, nao dependem de DOM, OpenLayers ou GeoServer, e devem permanecer cobertas por testes unitarios.
+
+### `src/geoportal-search.js`
+
+Funcoes internas candidatas no futuro:
+
 - `findClosestAddressFeature`.
 
 Ponto de atencao:
 
-- Essas funcoes hoje estao internas a `setupSearchHandlers`. Para testa-las, seria preciso isola-las ou exporta-las em etapa propria. Nao fazer isso apenas para satisfazer teste sem avaliar impacto de acoplamento.
+- `findClosestAddressFeature` ainda esta interna a `setupSearchHandlers`. Para testa-la, seria preciso isola-la ou exporta-la em etapa propria, junto com suas constantes de tolerancia. Nao fazer isso apenas para satisfazer teste sem avaliar impacto de acoplamento.
 
 ### `src/geoportal-mapclick.js`
 
