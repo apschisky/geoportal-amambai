@@ -17,7 +17,7 @@ export function setupPrint(map, layers) {
   let legendPrevClass = null;
   let legendPrevParent = null;
   let legendPrevNext = null;
-    const popupHtml = getGeoportalStateValue('ultimoPopupHtml') || window.__geoportalUltimoPopupHtml || '';
+    const popupHtml = getGeoportalStateValue('ultimoPopupHtml') || '';
     // Controle robusto: mostra a legenda só na primeira página usando eventos de impressão
     let legendRestored = false;
     function beforePrintHandler() {

@@ -21,7 +21,6 @@ export function closeLotesPopup(map) {
 
   map.removeOverlay(popupOverlayLotes);
   setGeoportalStateValue('ultimoPopupHtml', '');
-  window.__geoportalUltimoPopupHtml = '';
   clearActivePopupSource();
   window.__geoportalActivePopupRefreshCoord = null;
   return true;
@@ -51,7 +50,6 @@ export function showLotesPopup(map, coord, html, isPrint = false) {
     closeLotesPopup(map);
   }
   setGeoportalStateValue('ultimoPopupHtml', html);
-  window.__geoportalUltimoPopupHtml = html;
   setActivePopupSource(popupSource);
   window.__geoportalActivePopupRefreshCoord = popupRefreshCoord;
   const container = document.createElement('div');
