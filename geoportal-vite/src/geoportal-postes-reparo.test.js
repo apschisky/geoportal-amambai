@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildPosteRepairFormUrl } from './geoportal-postes-reparo.js';
+import { buildPosteRepairFormUrl, calculateDistance } from './geoportal-postes-reparo.js';
 
 const FORM_BASE_URL = 'https://docs.google.com/forms/d/e/test-form/viewform?usp=pp_url';
 const FORM_FIELDS = {
@@ -100,5 +100,27 @@ describe('buildPosteRepairFormUrl', () => {
     expect(formUrl).toContain('-23.100000%2C+-55.200000');
     expect(params.get(FORM_FIELDS.identificacaoPoste)).toBe('Poste 12 & 13');
     expect(params.get(FORM_FIELDS.coordenadas)).toBe('-23.100000, -55.200000');
+  });
+});
+
+describe('calculateDistance', () => {
+  it('retorna zero para o mesmo ponto', () => {
+    expect(calculateDistance([10, 20], [10, 20])).toBe(0);
+  });
+
+  it('calcula distancia horizontal', () => {
+    expect(calculateDistance([0, 0], [5, 0])).toBe(5);
+  });
+
+  it('calcula distancia vertical', () => {
+    expect(calculateDistance([0, 0], [0, 7])).toBe(7);
+  });
+
+  it('calcula distancia diagonal 3-4-5', () => {
+    expect(calculateDistance([0, 0], [3, 4])).toBe(5);
+  });
+
+  it('calcula distancia com coordenadas negativas', () => {
+    expect(calculateDistance([-5, -5], [-1, -2])).toBe(5);
   });
 });
