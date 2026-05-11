@@ -93,7 +93,6 @@ export function setupGeolocation(map) {
       pos => {
         const userLonLat = [pos.coords.longitude, pos.coords.latitude];
         setGeoportalStateValue('userLonLat', userLonLat);
-        window.__geoportalUserLonLat = userLonLat;
         const coords = fromLonLat([pos.coords.longitude, pos.coords.latitude]);
         // Zoom automático ao ativar geolocalização (nível 18 para mais proximidade)
         map.getView().animate({ center: coords, zoom: 18, duration: 800 });

@@ -12,7 +12,7 @@ function formatMapCoordinateParam(lonLat) {
 
 export function buildGoogleMapsRouteUrl(
   destinationLonLat,
-  originLonLat = getGeoportalStateValue('userLonLat') || window.__geoportalUserLonLat
+  originLonLat = getGeoportalStateValue('userLonLat')
 ) {
   const destination = formatMapCoordinateParam(destinationLonLat);
   if (!destination) return '#';
