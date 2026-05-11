@@ -1,5 +1,11 @@
 import Overlay from 'ol/Overlay.js';
-import { setGeoportalStateValue } from './geoportal-state.js';
+import {
+  clearActivePopupSource,
+  clearNextPopupSource,
+  getNextPopupSource,
+  setActivePopupSource,
+  setGeoportalStateValue
+} from './geoportal-state.js';
 
 // Criação e gerenciamento de popups usando ES Modules do OpenLayers
 //
@@ -8,7 +14,7 @@ export function closeLotesPopup(map) {
 
   const popupOverlayLotes = map.getOverlays().getArray().find(ov => ov.get('popupLotes'));
   if (!popupOverlayLotes) {
-    window.__geoportalActivePopupSource = null;
+    clearActivePopupSource();
     window.__geoportalActivePopupRefreshCoord = null;
     return false;
   }
@@ -16,16 +22,16 @@ export function closeLotesPopup(map) {
   map.removeOverlay(popupOverlayLotes);
   setGeoportalStateValue('ultimoPopupHtml', '');
   window.__geoportalUltimoPopupHtml = '';
-  window.__geoportalActivePopupSource = null;
+  clearActivePopupSource();
   window.__geoportalActivePopupRefreshCoord = null;
   return true;
 }
 
 export function showLotesPopup(map, coord, html, isPrint = false) {
   // Salva o HTML do popup para uso na impressão
-  const popupSource = window.__geoportalNextPopupSource || null;
+  const popupSource = getNextPopupSource() || null;
   const popupRefreshCoord = window.__geoportalNextPopupRefreshCoord || null;
-  window.__geoportalNextPopupSource = null;
+  clearNextPopupSource();
   window.__geoportalNextPopupRefreshCoord = null;
   const popupPixel = map.getPixelFromCoordinate(coord);
   const mapSize = map.getSize() || [0, 0];
@@ -46,7 +52,7 @@ export function showLotesPopup(map, coord, html, isPrint = false) {
   }
   setGeoportalStateValue('ultimoPopupHtml', html);
   window.__geoportalUltimoPopupHtml = html;
-  window.__geoportalActivePopupSource = popupSource;
+  setActivePopupSource(popupSource);
   window.__geoportalActivePopupRefreshCoord = popupRefreshCoord;
   const container = document.createElement('div');
   container.className = 'ol-popup draggable-popup';

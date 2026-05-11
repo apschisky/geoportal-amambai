@@ -22,3 +22,29 @@ export function setGeoportalStateValue(key, value) {
 export function clearGeoportalStateValue(key) {
   geoportalState[key] = null;
 }
+
+export function getActivePopupSource() {
+  return geoportalState.activePopupSource;
+}
+
+export function setActivePopupSource(value) {
+  geoportalState.activePopupSource = value;
+  return value;
+}
+
+export function clearActivePopupSource() {
+  geoportalState.activePopupSource = null;
+}
+
+export function getNextPopupSource() {
+  return geoportalState.nextPopupSource;
+}
+
+export function setNextPopupSource(value) {
+  geoportalState.nextPopupSource = value;
+  return value;
+}
+
+export function clearNextPopupSource() {
+  geoportalState.nextPopupSource = null;
+}

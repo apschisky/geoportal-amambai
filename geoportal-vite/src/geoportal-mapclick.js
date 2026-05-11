@@ -47,6 +47,7 @@ import { createLocalInteressePopupHTML, getLocalInteresseCoordinate, getLocalInt
 import { createPostePopupHTML, queryPosteLayerWithBuffer } from './geoportal-postes-reparo.js';
 import { escapeHtml, fetchWithTimeout, getGeoServerErrorMessage } from './geoportal-utils.js';
 import { showGeoportalNotice } from './geoportal-notice.js';
+import { setNextPopupSource } from './geoportal-state.js';
 // Handler para clique no mapa: busca atributos e destaca feição usando ES Modules do OpenLayers
 export function setupMapClickHandler(map, layers, showLotesPopup) {
   // Mapeamento amigável para Eixo de Adensamento
@@ -410,7 +411,7 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
     // Lógica de exibição dos popups
     // Prioriza Postes se encontrado (sem as outras camadas)
     if (posteHtml || farmaciaHtml || localInteresseHtml || eixoHtml || loteHtml || zoneamentoHtml || edificacoesHtml || coletaHtml || otherHtml) {
-      window.__geoportalNextPopupSource = 'mapclick';
+      setNextPopupSource('mapclick');
       window.__geoportalNextPopupRefreshCoord = coord;
     }
 
@@ -436,6 +437,8 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
       showLotesPopup(map, coord, loteHtml + '<hr class="popup-separator">' + coletaHtml);
     } else if (loteHtml) {
       showLotesPopup(map, coord, loteHtml);
+    } else if (edificacoesHtml) {
+      showLotesPopup(map, coord, edificacoesHtml);
     } else if (zoneamentoHtml) {
       showLotesPopup(map, coord, zoneamentoHtml);
     } else if (coletaHtml) {
