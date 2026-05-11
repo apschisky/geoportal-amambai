@@ -12,7 +12,7 @@
   white-space: nowrap;
   z-index: 4000;
 }
-@media (max-width: 600px) {
+@media screen and (max-width: 600px) {
   .measurement-result {
     left: 50% !important;
     top: auto !important;
@@ -455,7 +455,7 @@ body {
   display: grid;
 }
 
-@media (hover: hover) and (pointer: fine) {
+@media screen and (hover: hover) and (pointer: fine) {
   .geoportal-public-nav-item:not(.is-click-closed):hover > button {
     background: #f7f9fc;
     border-bottom-color: var(--gp-primary-dark);
@@ -527,7 +527,7 @@ body {
     font-size: 14px !important;
     margin: 2px 0 !important;
 }
-@media (max-width: 600px) {
+@media screen and (max-width: 600px) {
   .ol-zoom {
     top: 25px; /* também desce no mobile, ajustado para header menor */
     right: 6px;
@@ -540,7 +540,7 @@ body {
     font-size: 11px !important;
   }
 }
-@media (max-width: 600px) {
+@media screen and (max-width: 600px) {
   .ol-zoom {
     bottom: 15px;
     right: 15px;
@@ -825,7 +825,7 @@ body {
     right: 0;
 }
 
-@media (max-width: 600px) {
+@media screen and (max-width: 600px) {
   .layer-controls-box {
     position: fixed;
     top: 84px;
@@ -936,7 +936,7 @@ body {
   z-index: 2001;
   display: inline-block;
 }
-@media (max-width: 600px) {
+@media screen and (max-width: 600px) {
   .coordinate-display {
     font-size: 12px;
     bottom: 60px; /* Fica acima do rodapé */
@@ -950,7 +950,7 @@ body {
     display: inline-block;
   }
 }
-@media (max-width: 900px) {
+@media screen and (max-width: 900px) {
   .header {
     flex-direction: column;
     height: auto;
@@ -976,7 +976,7 @@ body {
   }
 }
 
-@media (max-width: 600px) {
+@media screen and (max-width: 600px) {
   body {
     height: 100dvh;
     min-height: 100dvh;
@@ -1473,7 +1473,7 @@ body {
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
 }
 
-@media (max-width: 600px) {
+@media screen and (max-width: 600px) {
   .ol-popup.draggable-popup {
     width: min(86vw, 300px);
     max-width: calc(100vw - 24px);
@@ -1537,7 +1537,7 @@ body {
   }
 }
 
-@media (max-width: 360px) {
+@media screen and (max-width: 360px) {
   .farmacia-popup-actions,
   .local-interesse-popup-actions,
   .poste-popup-actions {
@@ -1851,7 +1851,7 @@ body {
   padding: 0 20px 18px;
 }
 
-@media (max-width: 600px) {
+@media screen and (max-width: 600px) {
   .welcome-notice-overlay {
     padding: 12px;
     align-items: flex-start;
@@ -2017,7 +2017,7 @@ body {
   }
 }
 
-@media (max-width: 600px) {
+@media screen and (max-width: 600px) {
   .geoportal-notice-container-bottom-right {
     right: 8px;
     left: 8px;
@@ -2395,7 +2395,7 @@ body {
   padding: 10px 12px 12px;
 }
 
-@media (max-width: 600px) {
+@media screen and (max-width: 600px) {
   .ol-popup.draggable-popup {
     width: min(86vw, 300px);
     max-width: calc(100vw - 24px);
@@ -2539,14 +2539,14 @@ body {
   }
 }
 
-@media (max-width: 360px) {
+@media screen and (max-width: 360px) {
   .ol-popup.draggable-popup tr {
     grid-template-columns: 1fr;
     gap: 3px;
   }
 }
 
-@media (max-width: 600px) {
+@media screen and (max-width: 600px) {
   body:has(.layer-controls-box.expanded) #legendas-categorias {
     left: 8px !important;
     right: auto !important;
@@ -2569,19 +2569,19 @@ body {
   box-sizing: border-box;
 }
 
-@media (max-height: 760px) {
+@media screen and (max-height: 760px) {
   .layer-controls-content {
     max-height: calc(100dvh - 270px);
   }
 }
 
-@media (max-height: 660px) and (min-width: 601px) {
+@media screen and (max-height: 660px) and (min-width: 601px) {
   .layer-controls-content {
     max-height: calc(100dvh - 290px);
   }
 }
 
-@media (max-width: 600px) {
+@media screen and (max-width: 600px) {
   .layer-controls-content {
     width: min(54vw, 185px);
     min-width: 0;
@@ -2622,3 +2622,50 @@ body {
     display: none;
   }
 }
+
+/* Regra final de impressao: estabiliza o tamanho do mapa e evita que regras mobile afetem o PDF. */
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 0;
+  }
+
+  #map-container {
+    width: 265mm !important;
+    height: 140mm !important;
+    max-width: 265mm !important;
+    max-height: 140mm !important;
+    min-width: 265mm !important;
+    min-height: 140mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    display: block !important;
+    position: relative !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    background: #fff !important;
+  }
+
+  #map,
+  #map .ol-viewport,
+  #map canvas,
+  #map .ol-layer canvas {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    position: relative !important;
+    left: auto !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: auto !important;
+    transform: none !important;
+    box-sizing: border-box !important;
+  }
+}
+
