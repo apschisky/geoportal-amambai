@@ -133,6 +133,7 @@ Helpers de endereco ja extraidos de `src/geoportal-search.js`:
 - `buildRuaCandidatesCqlFilter`;
 - `buildEnderecoCqlFilter`;
 - `extractNumeroFromEndereco`;
+- `findClosestAddressFeature`;
 
 Essas funcoes sao puras, nao dependem de DOM, OpenLayers ou GeoServer, e devem permanecer cobertas por testes unitarios.
 
@@ -140,11 +141,11 @@ Essas funcoes sao puras, nao dependem de DOM, OpenLayers ou GeoServer, e devem p
 
 Funcoes internas candidatas no futuro:
 
-- `findClosestAddressFeature`.
+- fluxos completos de busca por endereco, BIC, poste e fazenda com mocks ou testes de integracao.
 
 Ponto de atencao:
 
-- `findClosestAddressFeature` ainda esta interna a `setupSearchHandlers`. Para testa-la, seria preciso isola-la ou exporta-la em etapa propria, junto com suas constantes de tolerancia. Nao fazer isso apenas para satisfazer teste sem avaliar impacto de acoplamento.
+- Os fluxos completos ainda dependem de DOM, OpenLayers, GeoServer, camadas e popups. Nao testar em unitario sem uma etapa propria de isolamento.
 
 ### `src/geoportal-mapclick.js`
 

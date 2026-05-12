@@ -1,3 +1,7 @@
+const ADDRESS_APPROX_MIN_DIFF = 150;
+const ADDRESS_APPROX_MAX_DIFF = 200;
+const ADDRESS_APPROX_PERCENT = 0.05;
+
 export function buildEnderecoCqlFilter(rawQuery) {
   const parsed = parseEnderecoQuery(rawQuery);
   return buildRuaCandidatesCqlFilter(parsed);
@@ -60,4 +64,46 @@ export function extractNumeroFromEndereco(endereco) {
 
   const numero = Number.parseInt(matches[matches.length - 1], 10);
   return Number.isInteger(numero) ? numero : null;
+}
+
+export function findClosestAddressFeature(features, targetNumber) {
+  const normalizedTargetNumber = Number(targetNumber);
+  if (!Array.isArray(features) || !Number.isInteger(normalizedTargetNumber)) return null;
+
+  const maxDiff = Math.min(
+    ADDRESS_APPROX_MAX_DIFF,
+    Math.max(
+      ADDRESS_APPROX_MIN_DIFF,
+      Math.round(normalizedTargetNumber * ADDRESS_APPROX_PERCENT)
+    )
+  );
+  const candidates = features
+    .map(feature => {
+      const numero = Number(extractNumeroFromEndereco(feature?.properties?.endereco));
+      if (!Number.isInteger(numero)) return null;
+
+      return {
+        feature,
+        numero,
+        diff: Math.abs(numero - normalizedTargetNumber)
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => {
+      if (a.diff !== b.diff) return a.diff - b.diff;
+
+      const parityA = a.numero % 2 === normalizedTargetNumber % 2 ? 0 : 1;
+      const parityB = b.numero % 2 === normalizedTargetNumber % 2 ? 0 : 1;
+
+      if (parityA !== parityB) return parityA - parityB;
+      return a.numero - b.numero;
+    });
+
+  if (candidates.length === 0) return null;
+  if (candidates[0].diff > maxDiff) return null;
+
+  return {
+    ...candidates[0],
+    maxDiff
+  };
 }
