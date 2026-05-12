@@ -76,3 +76,16 @@ export function setNextPopupRefreshCoord(value) {
 export function clearNextPopupRefreshCoord() {
   geoportalState.nextPopupRefreshCoord = null;
 }
+
+export function getMeasureActive() {
+  return geoportalState.measureActive;
+}
+
+export function setMeasureActive(value) {
+  geoportalState.measureActive = value;
+  return value;
+}
+
+export function clearMeasureActive() {
+  geoportalState.measureActive = false;
+}

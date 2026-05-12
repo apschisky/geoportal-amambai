@@ -2,7 +2,9 @@ import Draw from 'ol/interaction/Draw.js';
 import Snap from 'ol/interaction/Snap.js';
 import { getLength, getArea } from 'ol/sphere.js';
 import Overlay from 'ol/Overlay.js';
+import { clearMeasureActive, setMeasureActive } from './geoportal-state.js';
 
+const MEASURE_RELEASE_DELAY_MS = 350;
 
 export function setupMeasurement(map, source) {
   let draw;
@@ -77,18 +79,18 @@ export function setupMeasurement(map, source) {
     });
     draw = new Draw({ source: source, type: type });
     snapInteraction = new Snap({ source: source });
-    window.measureActive = true;
+    setMeasureActive(true);
     // Evita seleção de feição no último clique da medição
-    window.measureActive = true;
+    setMeasureActive(true);
     let singleClickHandler = () => {
       map.un('singleclick', singleClickHandler);
       window.setTimeout(() => {
-        window.measureActive = false;
+        clearMeasureActive();
         // Se não houver mais feições de medição, remove o overlay do resultado
         if (source.getFeatures().length === 0) {
           removeOverlay();
         }
-      }, 0);
+      }, MEASURE_RELEASE_DELAY_MS);
     };
     draw.on('drawend', (event) => {
       formatMeasurement(event.feature, type);
@@ -113,7 +115,7 @@ export function setupMeasurement(map, source) {
     source.clear();
     if (draw) map.removeInteraction(draw);
     removeSnapInteraction();
-    window.measureActive = false;
+    clearMeasureActive();
     removeOverlay();
     // Reabilita todas as interações
     map.getInteractions().forEach(interaction => {

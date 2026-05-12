@@ -4,7 +4,8 @@ import { initMap } from '@/geoportal-map.js'; //ok
 import { createAllLayers, addLayersToMap, setLayerVisibility } from '@/geoportal-layers.js'; //ok
 import { atualizarLegendas } from '@/geoportal-legend.js'; //ok
 import { setupMeasurement } from '@/geoportal-measure.js'; //ok
-window.measureActive = false;
+import { clearMeasureActive, setMeasureActive } from '@/geoportal-state.js';
+clearMeasureActive();
 import { closeLotesPopup, showLotesPopup } from '@/geoportal-popup.js'; //ok
 import { setupSearchHandlers } from '@/geoportal-search.js'; //ok
 import { setupPrint } from '@/geoportal-print.js'; //ok
@@ -301,7 +302,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 
   // Handler único de singleclick: mostra apenas coordenadas
-  window.measureActive = false;
+  clearMeasureActive();
   const coordDiv = document.getElementById('mouse-coordinates');
   map.on('singleclick', function(evt) {
     const coord = evt.coordinate;
@@ -320,9 +321,9 @@ window.addEventListener('DOMContentLoaded', () => {
   const btnArea = document.getElementById('measure-area');
   const btnClear = document.getElementById('clear-measurement');
   if (btnDist && btnArea && btnClear) {
-    btnDist.addEventListener('click', () => { window.measureActive = true; });
-    btnArea.addEventListener('click', () => { window.measureActive = true; });
-    btnClear.addEventListener('click', () => { window.measureActive = false; });
+    btnDist.addEventListener('click', () => { setMeasureActive(true); });
+    btnArea.addEventListener('click', () => { setMeasureActive(true); });
+    btnClear.addEventListener('click', () => { clearMeasureActive(); });
   }
 
   // Atualização das coordenadas do mouse

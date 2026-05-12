@@ -47,7 +47,7 @@ import { createLocalInteressePopupHTML, getLocalInteresseCoordinate, getLocalInt
 import { createPostePopupHTML, queryPosteLayerWithBuffer } from './geoportal-postes-reparo.js';
 import { escapeHtml, fetchWithTimeout, getGeoServerErrorMessage } from './geoportal-utils.js';
 import { showGeoportalNotice } from './geoportal-notice.js';
-import { setNextPopupRefreshCoord, setNextPopupSource } from './geoportal-state.js';
+import { getMeasureActive, setNextPopupRefreshCoord, setNextPopupSource } from './geoportal-state.js';
 // Handler para clique no mapa: busca atributos e destaca feição usando ES Modules do OpenLayers
 export function setupMapClickHandler(map, layers, showLotesPopup) {
   // Mapeamento amigável para Eixo de Adensamento
@@ -97,7 +97,7 @@ export function setupMapClickHandler(map, layers, showLotesPopup) {
     setor: 'Setor'
   };
   map.on('singleclick', async function(evt) {
-    if (window.measureActive) return; // Bloqueia seleção/popup durante medição
+    if (getMeasureActive()) return; // Bloqueia seleção/popup durante medição
     const view = map.getView();
     const coord = evt.coordinate;
     const resolution = view.getResolution();

@@ -3,16 +3,19 @@ import {
   clearActivePopupRefreshCoord,
   clearActivePopupSource,
   clearGeoportalStateValue,
+  clearMeasureActive,
   clearNextPopupRefreshCoord,
   clearNextPopupSource,
   getActivePopupRefreshCoord,
   getActivePopupSource,
   getGeoportalStateValue,
+  getMeasureActive,
   getNextPopupRefreshCoord,
   getNextPopupSource,
   setActivePopupRefreshCoord,
   setActivePopupSource,
   setGeoportalStateValue,
+  setMeasureActive,
   setNextPopupRefreshCoord,
   setNextPopupSource
 } from './geoportal-state.js';
@@ -24,6 +27,7 @@ function resetTestState() {
   clearNextPopupSource();
   clearActivePopupRefreshCoord();
   clearNextPopupRefreshCoord();
+  clearMeasureActive();
 }
 
 beforeEach(() => {
@@ -157,5 +161,53 @@ describe('popup refresh coord isolation', () => {
 
     expect(getActivePopupRefreshCoord()).toBeNull();
     expect(getNextPopupRefreshCoord()).toBeNull();
+  });
+});
+
+describe('measureActive', () => {
+  it('inicia false', () => {
+    expect(getMeasureActive()).toBe(false);
+  });
+
+  it('setMeasureActive(true) define true', () => {
+    expect(setMeasureActive(true)).toBe(true);
+    expect(getMeasureActive()).toBe(true);
+  });
+
+  it('clearMeasureActive volta para false', () => {
+    setMeasureActive(true);
+    clearMeasureActive();
+
+    expect(getMeasureActive()).toBe(false);
+  });
+
+  it('setMeasureActive(false) define false', () => {
+    setMeasureActive(true);
+
+    expect(setMeasureActive(false)).toBe(false);
+    expect(getMeasureActive()).toBe(false);
+  });
+
+  it('nao interfere nos estados de popup', () => {
+    setActivePopupSource('active');
+    setNextPopupSource('next');
+    setActivePopupRefreshCoord([1, 2]);
+    setNextPopupRefreshCoord([3, 4]);
+
+    setMeasureActive(true);
+
+    expect(getMeasureActive()).toBe(true);
+    expect(getActivePopupSource()).toBe('active');
+    expect(getNextPopupSource()).toBe('next');
+    expect(getActivePopupRefreshCoord()).toEqual([1, 2]);
+    expect(getNextPopupRefreshCoord()).toEqual([3, 4]);
+
+    clearMeasureActive();
+
+    expect(getMeasureActive()).toBe(false);
+    expect(getActivePopupSource()).toBe('active');
+    expect(getNextPopupSource()).toBe('next');
+    expect(getActivePopupRefreshCoord()).toEqual([1, 2]);
+    expect(getNextPopupRefreshCoord()).toEqual([3, 4]);
   });
 });
