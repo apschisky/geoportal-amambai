@@ -105,6 +105,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
   const clearAllActiveLayers = () => {
     Object.keys(layers).forEach(layerId => {
+      if (layerId === 'layer1') return;
+
       const checkbox = document.getElementById(layerId);
       if (!checkbox || !checkbox.checked) return;
 

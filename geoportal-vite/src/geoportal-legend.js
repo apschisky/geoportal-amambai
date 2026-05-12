@@ -16,8 +16,7 @@ export function atualizarLegendas(layers) {
                     <span>Farm&aacute;cia de Plant&atilde;o</span>
                   </div>
                   <div class="farmacia-legend-row">
-                    <span class="farmacia-legend-marker farmacia-legend-marker-normal"></span>
-                    <span>Farm&aacute;cias</span>
+                    <img src="${LEGEND_CONFIG[layerId].url}" alt="Legenda Farm&aacute;cias" style="max-width:220px;">
                   </div>
                </div>`;
       } else {
