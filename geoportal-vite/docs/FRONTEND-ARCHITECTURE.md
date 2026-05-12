@@ -84,7 +84,7 @@ Camadas especiais e com comportamento adicional incluem:
 
 ### `src/geoportal-mapclick.js`
 
-Concentra a logica do clique no mapa. O handler ignora cliques quando `window.measureActive` esta ativo, monta consultas para camadas visiveis e decide qual popup abrir.
+Concentra a logica do clique no mapa. O handler consulta `getMeasureActive()` para ignorar cliques durante a medicao, monta consultas para camadas visiveis e decide qual popup abrir.
 
 Fluxo em alto nivel:
 
@@ -223,12 +223,13 @@ Estado atualmente centralizado:
 - `ultimoPopupHtml`: HTML usado na impressao.
 - `activePopupSource`: origem do popup ativo.
 - `nextPopupSource`: origem planejada para o proximo popup.
-- `measureActive`: existe no objeto de estado, mas ainda nao deve ser migrado nesta fase.
+- `measureActive`: indica quando a ferramenta de medicao esta ativa.
 
 Pontos importantes:
 
 - `activePopupSource` e `nextPopupSource` nao devem voltar para `window.__geoportalActivePopupSource` ou `window.__geoportalNextPopupSource`.
-- `measureActive` ainda e controlado por `window.measureActive` em `main.js`, `geoportal-measure.js` e `geoportal-mapclick.js`. Nao mexer sem uma etapa planejada e testada.
+- `geoportal-measure.js` usa `setMeasureActive()` e `clearMeasureActive()` para controlar a medicao.
+- `geoportal-mapclick.js` usa `getMeasureActive()` para bloquear selecao/popup enquanto a medicao esta ativa.
 - Ainda ha globais de compatibilidade para alguns dados, como coordenadas de refresh de popup e flags internas de modulo. Tratar em etapas pequenas.
 
 ## 10. Seguranca no front-end
@@ -296,7 +297,7 @@ Regras praticas:
 
 ## Pontos de atencao
 
-- `window.measureActive` ainda e o controle efetivo da medicao; apesar de existir `measureActive` em `geoportal-state.js`, nao deve ser migrado sem uma etapa propria.
+- A medicao usa um pequeno atraso de liberacao apos o fim do desenho para evitar popup residual em cliques/toques rapidos, especialmente no mobile. Sempre testar medicao manualmente em desktop e mobile apos alteracoes.
 - `showLotesPopup` e um nome historico e hoje representa o popup geral do Geoportal.
 - Alguns estados de compatibilidade ainda usam `window.__geoportal...`, como `window.__geoportalActivePopupRefreshCoord`, `window.__geoportalNextPopupRefreshCoord`, `window.__geoportalFarmaciaRouteButtonsReady` e `window.__geoportalNoticeCooldowns`.
 - A impressao atual e funcional, mas provisoria. Pode haver diferencas entre desktop, desktop simulando mobile e mobile real; futuras melhorias devem evitar remendos grandes em `src/geoportal-print.js` e priorizar um modulo/layout oficial de impressao com escala, legenda padronizada, titulo, logotipo/brasao, norte, data de emissao, fonte dos dados e informacoes detalhadas da feicao selecionada.
