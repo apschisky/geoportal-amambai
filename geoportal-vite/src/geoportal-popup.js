@@ -1,8 +1,12 @@
 import Overlay from 'ol/Overlay.js';
 import {
+  clearActivePopupRefreshCoord,
   clearActivePopupSource,
+  clearNextPopupRefreshCoord,
   clearNextPopupSource,
+  getNextPopupRefreshCoord,
   getNextPopupSource,
+  setActivePopupRefreshCoord,
   setActivePopupSource,
   setGeoportalStateValue
 } from './geoportal-state.js';
@@ -15,23 +19,23 @@ export function closeLotesPopup(map) {
   const popupOverlayLotes = map.getOverlays().getArray().find(ov => ov.get('popupLotes'));
   if (!popupOverlayLotes) {
     clearActivePopupSource();
-    window.__geoportalActivePopupRefreshCoord = null;
+    clearActivePopupRefreshCoord();
     return false;
   }
 
   map.removeOverlay(popupOverlayLotes);
   setGeoportalStateValue('ultimoPopupHtml', '');
   clearActivePopupSource();
-  window.__geoportalActivePopupRefreshCoord = null;
+  clearActivePopupRefreshCoord();
   return true;
 }
 
 export function showLotesPopup(map, coord, html, isPrint = false) {
   // Salva o HTML do popup para uso na impressão
   const popupSource = getNextPopupSource() || null;
-  const popupRefreshCoord = window.__geoportalNextPopupRefreshCoord || null;
+  const popupRefreshCoord = getNextPopupRefreshCoord() || null;
   clearNextPopupSource();
-  window.__geoportalNextPopupRefreshCoord = null;
+  clearNextPopupRefreshCoord();
   const popupPixel = map.getPixelFromCoordinate(coord);
   const mapSize = map.getSize() || [0, 0];
   const showOnRightSide = !popupPixel || popupPixel[0] <= mapSize[0] / 2;
@@ -51,7 +55,7 @@ export function showLotesPopup(map, coord, html, isPrint = false) {
   }
   setGeoportalStateValue('ultimoPopupHtml', html);
   setActivePopupSource(popupSource);
-  window.__geoportalActivePopupRefreshCoord = popupRefreshCoord;
+  setActivePopupRefreshCoord(popupRefreshCoord);
   const container = document.createElement('div');
   container.className = 'ol-popup draggable-popup';
   const bar = document.createElement('div');

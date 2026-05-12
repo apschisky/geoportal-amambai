@@ -1,13 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+  clearActivePopupRefreshCoord,
   clearActivePopupSource,
   clearGeoportalStateValue,
+  clearNextPopupRefreshCoord,
   clearNextPopupSource,
+  getActivePopupRefreshCoord,
   getActivePopupSource,
   getGeoportalStateValue,
+  getNextPopupRefreshCoord,
   getNextPopupSource,
+  setActivePopupRefreshCoord,
   setActivePopupSource,
   setGeoportalStateValue,
+  setNextPopupRefreshCoord,
   setNextPopupSource
 } from './geoportal-state.js';
 
@@ -16,6 +22,8 @@ function resetTestState() {
   clearGeoportalStateValue('missingKey');
   clearActivePopupSource();
   clearNextPopupSource();
+  clearActivePopupRefreshCoord();
+  clearNextPopupRefreshCoord();
 }
 
 beforeEach(() => {
@@ -92,5 +100,62 @@ describe('popup source isolation', () => {
 
     expect(getActivePopupSource()).toBeNull();
     expect(getNextPopupSource()).toBeNull();
+  });
+});
+
+describe('activePopupRefreshCoord', () => {
+  it('inicia limpo', () => {
+    expect(getActivePopupRefreshCoord()).toBeNull();
+  });
+
+  it('aceita valor e depois limpa', () => {
+    const coord = [123, 456];
+
+    expect(setActivePopupRefreshCoord(coord)).toBe(coord);
+    expect(getActivePopupRefreshCoord()).toBe(coord);
+
+    clearActivePopupRefreshCoord();
+
+    expect(getActivePopupRefreshCoord()).toBeNull();
+  });
+});
+
+describe('nextPopupRefreshCoord', () => {
+  it('inicia limpo', () => {
+    expect(getNextPopupRefreshCoord()).toBeNull();
+  });
+
+  it('aceita valor e depois limpa', () => {
+    const coord = [789, 101];
+
+    expect(setNextPopupRefreshCoord(coord)).toBe(coord);
+    expect(getNextPopupRefreshCoord()).toBe(coord);
+
+    clearNextPopupRefreshCoord();
+
+    expect(getNextPopupRefreshCoord()).toBeNull();
+  });
+});
+
+describe('popup refresh coord isolation', () => {
+  it('activePopupRefreshCoord e nextPopupRefreshCoord nao interferem um no outro', () => {
+    const activeCoord = [1, 2];
+    const nextCoord = [3, 4];
+
+    setActivePopupRefreshCoord(activeCoord);
+    setNextPopupRefreshCoord(nextCoord);
+
+    expect(getActivePopupRefreshCoord()).toBe(activeCoord);
+    expect(getNextPopupRefreshCoord()).toBe(nextCoord);
+
+    clearActivePopupRefreshCoord();
+
+    expect(getActivePopupRefreshCoord()).toBeNull();
+    expect(getNextPopupRefreshCoord()).toBe(nextCoord);
+
+    clearNextPopupRefreshCoord();
+
+    expect(getActivePopupRefreshCoord()).toBeNull();
+    expect(getNextPopupRefreshCoord()).toBeNull();
   });
 });

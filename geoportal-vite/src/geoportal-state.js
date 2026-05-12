@@ -3,6 +3,8 @@ const geoportalState = {
   ultimoPopupHtml: '',
   activePopupSource: null,
   nextPopupSource: null,
+  activePopupRefreshCoord: null,
+  nextPopupRefreshCoord: null,
   measureActive: false
 };
 
@@ -47,4 +49,30 @@ export function setNextPopupSource(value) {
 
 export function clearNextPopupSource() {
   geoportalState.nextPopupSource = null;
+}
+
+export function getActivePopupRefreshCoord() {
+  return geoportalState.activePopupRefreshCoord;
+}
+
+export function setActivePopupRefreshCoord(value) {
+  geoportalState.activePopupRefreshCoord = value;
+  return value;
+}
+
+export function clearActivePopupRefreshCoord() {
+  geoportalState.activePopupRefreshCoord = null;
+}
+
+export function getNextPopupRefreshCoord() {
+  return geoportalState.nextPopupRefreshCoord;
+}
+
+export function setNextPopupRefreshCoord(value) {
+  geoportalState.nextPopupRefreshCoord = value;
+  return value;
+}
+
+export function clearNextPopupRefreshCoord() {
+  geoportalState.nextPopupRefreshCoord = null;
 }
