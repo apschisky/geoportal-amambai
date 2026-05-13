@@ -33,17 +33,18 @@ Endpoints publicos devem expor apenas o necessario. Endpoints internos devem exi
 
 Endpoints conceituais publicos:
 
-- `POST /public/iluminacao/solicitacoes`
-- `GET /public/iluminacao/protocolo/{protocolo}`
+- `POST /api/public/iluminacao/solicitacoes`
+- `GET /api/public/iluminacao/protocolo/{protocolo}`
 
 Endpoints conceituais internos:
 
-- `GET /internal/iluminacao/solicitacoes`
-- `GET /internal/iluminacao/solicitacoes/{id}`
-- `PATCH /internal/iluminacao/solicitacoes/{id}/status`
-- `POST /internal/iluminacao/solicitacoes/{id}/observacoes`
-- `POST /internal/iluminacao/solicitacoes/{id}/anexos`
-- `PATCH /internal/iluminacao/solicitacoes/{id}/finalizar`
+- `GET /api/internal/iluminacao/solicitacoes`
+- `GET /api/internal/iluminacao/solicitacoes/{id}`
+- `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`
+- `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes`
+- `POST /api/internal/iluminacao/solicitacoes/{id}/anexos`
+- `PATCH /api/internal/iluminacao/solicitacoes/{id}/finalizar`
+- `PATCH /api/internal/iluminacao/solicitacoes/{id}/cancelar`
 
 Estes endpoints sao apenas desenho conceitual. Nenhum codigo deve ser criado antes da validacao de schema, autenticacao, permissoes, auditoria e anexos.
 

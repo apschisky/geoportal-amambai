@@ -126,7 +126,7 @@ Gerencia o overlay do popup:
 - define posicionamento conforme o tipo do popup;
 - usa `ultimoPopupHtml` para suporte a impressao;
 - permite arrastar o popup por mouse e toque;
-- centraliza `activePopupSource` e `nextPopupSource` via helpers de `geoportal-state.js`.
+- centraliza `activePopupSource`, `nextPopupSource`, `activePopupRefreshCoord` e `nextPopupRefreshCoord` via helpers de `geoportal-state.js`.
 
 Embora o nome `showLotesPopup` seja historico, ele hoje e usado por varios tipos de popup: lotes, edificacoes, farmacias, postes, locais de interesse e outros blocos de atributos.
 
@@ -223,14 +223,17 @@ Estado atualmente centralizado:
 - `ultimoPopupHtml`: HTML usado na impressao.
 - `activePopupSource`: origem do popup ativo.
 - `nextPopupSource`: origem planejada para o proximo popup.
+- `activePopupRefreshCoord`: coordenada de refresh associada ao popup ativo.
+- `nextPopupRefreshCoord`: coordenada de refresh planejada para o proximo popup.
 - `measureActive`: indica quando a ferramenta de medicao esta ativa.
 
 Pontos importantes:
 
 - `activePopupSource` e `nextPopupSource` nao devem voltar para `window.__geoportalActivePopupSource` ou `window.__geoportalNextPopupSource`.
+- `activePopupRefreshCoord` e `nextPopupRefreshCoord` nao devem voltar para `window.__geoportalActivePopupRefreshCoord` ou `window.__geoportalNextPopupRefreshCoord`.
 - `geoportal-measure.js` usa `setMeasureActive()` e `clearMeasureActive()` para controlar a medicao.
 - `geoportal-mapclick.js` usa `getMeasureActive()` para bloquear selecao/popup enquanto a medicao esta ativa.
-- Ainda ha globais de compatibilidade para alguns dados, como coordenadas de refresh de popup e flags internas de modulo. Tratar em etapas pequenas.
+- Ainda ha globais de compatibilidade para flags internas de modulo. Tratar em etapas pequenas.
 
 ## 10. Seguranca no front-end
 
@@ -299,7 +302,7 @@ Regras praticas:
 
 - A medicao usa um pequeno atraso de liberacao apos o fim do desenho para evitar popup residual em cliques/toques rapidos, especialmente no mobile. Sempre testar medicao manualmente em desktop e mobile apos alteracoes.
 - `showLotesPopup` e um nome historico e hoje representa o popup geral do Geoportal.
-- Alguns estados de compatibilidade ainda usam `window.__geoportal...`, como `window.__geoportalActivePopupRefreshCoord`, `window.__geoportalNextPopupRefreshCoord`, `window.__geoportalFarmaciaRouteButtonsReady` e `window.__geoportalNoticeCooldowns`.
+- Alguns estados de compatibilidade ainda usam `window.__geoportal...`, como `window.__geoportalFarmaciaRouteButtonsReady` e `window.__geoportalNoticeCooldowns`.
 - A impressao atual e funcional, mas provisoria. Pode haver diferencas entre desktop, desktop simulando mobile e mobile real; futuras melhorias devem evitar remendos grandes em `src/geoportal-print.js` e priorizar um modulo/layout oficial de impressao com escala, legenda padronizada, titulo, logotipo/brasao, norte, data de emissao, fonte dos dados e informacoes detalhadas da feicao selecionada.
 - `geoportal-ui.js` possui codigo executado no topo do modulo antes das exportacoes, relacionado a elementos da search-box. Isso deve ser considerado com cuidado em futuras refatoracoes.
 - Ha textos e comentarios com encoding inconsistente em alguns arquivos; evitar refatoracoes amplas apenas para corrigir acentuacao.
