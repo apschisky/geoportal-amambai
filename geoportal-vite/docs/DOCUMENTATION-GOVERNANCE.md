@@ -42,6 +42,7 @@ Atualizar documentacao quando houver:
 | Banco de dados | `DATABASE-INVENTORY.md` |
 | Modulos internos | `INTERNAL-MODULES-ARCHITECTURE.md` |
 | Iluminacao publica | `MODULE-ILUMINACAO-PUBLICA.md` |
+| Validacao operacional de iluminacao | `ILUMINACAO-VALIDATION-CHECKLIST.md` |
 | Schema PostGIS | `POSTGIS-SCHEMA-PLAN.md` |
 | API | `API-ARCHITECTURE.md` |
 | Permissoes | `AUTH-PERMISSIONS-PLAN.md` |
