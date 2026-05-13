@@ -39,16 +39,18 @@ Payload conceitual:
 - `coordenada`;
 - `tipo_problema`;
 - `descricao`;
+- `ponto_referencia`;
+- `poste_proximo_informado`, quando o cidadao nao localizar o poste correto;
 - `solicitante_nome` opcional;
 - `solicitante_contato` opcional;
-- `foto` opcional futuramente.
+- sem `foto` publica na primeira versao.
 
 Resposta conceitual:
 
 - `protocolo`;
-- `status_inicial`;
+- `status_inicial`, inicialmente Aberta;
 - `data_abertura`;
-- `mensagem`.
+- `mensagem`, com texto sugerido: "Solicitacao realizada. Protocolo no IP-AAAA-NNNNNN."
 
 Validacoes:
 
@@ -56,7 +58,9 @@ Validacoes:
 - `tipo_problema` obrigatorio;
 - `descricao` com limite de tamanho;
 - coordenada valida;
+- ponto de referencia opcional, com limite de tamanho;
 - contato opcional com validacao;
+- protocolo no formato sugerido `IP-2026-000001`, com prefixo, ano e sequencial;
 - rate limit;
 - protecao contra spam.
 
@@ -81,7 +85,8 @@ Resposta conceitual:
 Regras:
 
 - nunca retornar dados internos;
-- nunca retornar dados pessoais sensiveis sem decisao formal;
+- nunca retornar dados pessoais;
+- nao retornar previsao inicialmente;
 - evitar exposicao de historico interno.
 
 Validacoes:
@@ -256,10 +261,15 @@ Transicoes conceituais permitidas:
 
 - Aberta -> Em triagem.
 - Em triagem -> Encaminhada.
+- Em triagem/Encaminhada -> Aguardando material.
 - Encaminhada -> Em execucao.
+- Em execucao -> Aguardando material.
 - Em execucao -> Resolvida.
+- Aberta/Em triagem/Encaminhada/Em execucao -> Nao localizado.
 - Aberta/Em triagem -> Indeferida.
 - Aberta/Em triagem/Encaminhada -> Cancelada.
+
+Regras iniciais: Cancelada representa falso chamado; Indeferida representa caso sem seguranca para executar ou outra justificativa definida. "Aguardando equipe" nao entra no conjunto inicial.
 
 Transicoes devem ser validadas pela API, nao apenas pelo front-end.
 
@@ -269,13 +279,13 @@ Transicoes devem ser validadas pela API, nao apenas pelo front-end.
 |---|---|---|---|---|---|---|
 | `POST /api/public/iluminacao/solicitacoes` | Sim | Sim | Nao | Sim | Sim | Nao |
 | `GET /api/public/iluminacao/protocolo/{protocolo}` | Sim | Sim | Sim | Sim | Sim | Sim |
-| `GET /api/internal/iluminacao/solicitacoes` | Nao | Sim | Sim limitado | Sim | Sim | Sim |
-| `GET /api/internal/iluminacao/solicitacoes/{id}` | Nao | Sim | Sim limitado | Sim | Sim | Sim |
-| `PATCH /api/internal/iluminacao/solicitacoes/{id}/status` | Nao | Sim | Sim limitado | Sim | Sim | Nao |
-| `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes` | Nao | Sim | Sim | Sim | Sim | Nao |
-| `POST /api/internal/iluminacao/solicitacoes/{id}/anexos` | Nao | Sim | Sim | Sim | Sim | Nao |
-| `PATCH /api/internal/iluminacao/solicitacoes/{id}/finalizar` | Nao | Nao ou limitado | Sim | Sim | Sim | Nao |
-| `PATCH /api/internal/iluminacao/solicitacoes/{id}/cancelar` | Nao | Sim limitado | Nao | Sim | Sim | Nao |
+| `GET /api/internal/iluminacao/solicitacoes` | Nao | Sim se acumulado com campo | Sim | Sim | Sim | Sim |
+| `GET /api/internal/iluminacao/solicitacoes/{id}` | Nao | Sim se acumulado com campo | Sim | Sim | Sim | Sim |
+| `PATCH /api/internal/iluminacao/solicitacoes/{id}/status` | Nao | Sim se acumulado com campo | Sim | Sim | Sim | Nao |
+| `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes` | Nao | Sim se acumulado com campo | Sim | Sim | Sim | Nao |
+| `POST /api/internal/iluminacao/solicitacoes/{id}/anexos` | Nao | Nao ou acumulado com campo | Sim | Sim | Sim | Nao |
+| `PATCH /api/internal/iluminacao/solicitacoes/{id}/finalizar` | Nao | Nao ou acumulado com campo | Sim | Sim | Sim | Nao |
+| `PATCH /api/internal/iluminacao/solicitacoes/{id}/cancelar` | Nao | Nao | Nao | Sim | Sim | Nao |
 
 ## 9. Auditoria por endpoint
 
@@ -293,20 +303,23 @@ Transicoes devem ser validadas pela API, nao apenas pelo front-end.
 
 ## 10. Dados pessoais
 
-- Nome e contato sao opcionais ou dependem de politica definida.
-- Endpoint publico de protocolo nao deve retornar dados pessoais, salvo decisao formal.
-- Acesso interno a dados pessoais deve ser limitado por perfil.
+- Nome e contato nao devem ser obrigatorios.
+- Contato pode ser util quando o poste nao for localizado ou faltar informacao.
+- Endpoint publico de protocolo nao deve retornar dados pessoais.
+- Acesso interno a dados pessoais deve ser limitado a gestor e administrador.
 - Finalidade da coleta deve ser registrada.
 - Dados pessoais nao devem aparecer no mapa publico.
+- Retencao inicial sugerida: manter dados pessoais ate a finalizacao do chamado, sujeita a validacao juridica/LGPD.
 
 ## 11. Anexos
 
-- Upload publico pode ser fase posterior.
-- Comecar sem anexo ou com anexo opcional controlado.
-- Validar tipo e tamanho.
+- Nao prever upload publico na primeira versao.
+- Equipe pode anexar foto antes/depois em casos mais graves.
+- Tipo inicial aceito: `jpg`.
+- Tamanho maximo inicial: 5 MB.
 - Armazenar metadados.
 - Nao expor caminho fisico.
-- Acesso interno protegido.
+- Acesso interno protegido para equipe, gestor e administrador.
 - Registrar hash e usuario que enviou.
 
 ## 12. Integracao com Geoportal publico
@@ -314,15 +327,16 @@ Transicoes devem ser validadas pela API, nao apenas pelo front-end.
 - Botao Solicitar Reparo futuramente chamara formulario/API propria.
 - Camada publica de postes continua sendo base visual.
 - Status publico podera vir de endpoint publico ou view controlada.
-- Google Forms podera ser substituido gradualmente.
+- Google Forms deve continuar como fallback ate o modulo proprio estar estavel; a troca definitiva deve ser validada pelo Prefeito.
 - O front-end publico nao deve acessar endpoints internos.
 
 ## 13. Integracao com painel interno
 
 - Painel interno usara endpoints internos.
-- Filtros por status, periodo, tipo, prioridade e regiao.
+- Filtros por status, periodo, tipo, prioridade, regiao, `poste_id` e protocolo.
 - Mapa operacional usara dados internos protegidos.
-- Indicadores serao derivados de endpoints internos ou views internas.
+- Mapa operacional e essencial desde o inicio, com cores por status e reincidencia por poste.
+- Indicadores iniciais: solicitacoes por tipo, solicitacoes por regiao e reincidencia por poste; periodo de analise mais usado: semanal.
 - Acoes de status, observacao e anexo devem respeitar permissao.
 
 ## 14. Criterios antes de implementar

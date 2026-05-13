@@ -78,9 +78,13 @@ Campos conceituais:
 - `status_id`;
 - `tipo_problema_id`;
 - `descricao`;
+- `ponto_referencia`;
+- `poste_proximo_informado`;
 - `solicitante_nome`;
 - `solicitante_contato`;
 - `prioridade`;
+- `alerta_atraso` ou campo derivado equivalente;
+- `dias_parado` ou calculo equivalente;
 - `origem`;
 - `data_ultima_atualizacao`;
 - `data_conclusao`;
@@ -91,10 +95,12 @@ Diretrizes:
 
 - Dados pessoais devem ser minimizados.
 - `protocolo` deve ser unico.
+- Protocolo sugerido: `IP-2026-000001`, com prefixo, ano e sequencial.
 - `geom` deve ter SRID definido.
 - `poste_id` deve referenciar o identificador publico do poste, sem depender diretamente da tabela publica.
 - Criar indice espacial para `geom`.
 - Criar indices por status, data e protocolo.
+- Prazo inicial para alerta de atraso: 15 dias, preferencialmente calculado por view ou regra de aplicacao para evitar duplicidade desnecessaria.
 - A tabela principal nao deve armazenar historico detalhado; historico fica em tabela propria.
 
 ## 7. Tabela `solicitacao_historico`
@@ -154,6 +160,28 @@ Campos conceituais:
 
 Essas tabelas evitam texto livre para status e tipo de problema, facilitando relatorios, filtros e auditoria.
 
+Status iniciais validados preliminarmente:
+
+- Aberta;
+- Em triagem;
+- Encaminhada;
+- Em execucao;
+- Aguardando material;
+- Nao localizado;
+- Resolvida;
+- Indeferida;
+- Cancelada.
+
+Tipos de problema iniciais:
+
+- Lampada apagada;
+- Lampada piscando;
+- Lampada acesa durante o dia;
+- Poste danificado;
+- Braco/luminaria danificada;
+- Fiacao aparente;
+- Outro.
+
 ## 10. Views publicas/controladas
 
 Views sugeridas:
@@ -165,7 +193,7 @@ Views sugeridas:
 Diretrizes:
 
 - Views publicas nao devem expor nome ou contato do cidadao.
-- Views publicas devem mostrar apenas status agregado ou campos aprovados.
+- Views publicas devem mostrar apenas status agregado ou campos aprovados, como protocolo, status publico, datas e mensagem simples.
 - Views internas podem conter dados operacionais, protegidas por permissao e API.
 - GeoServer publico deve consumir preferencialmente views publicas, nao tabelas operacionais.
 
@@ -240,13 +268,15 @@ Logs e historicos nao devem ser editaveis por usuarios comuns.
 
 - Definir SRID.
 - Validar campos com setor responsavel.
-- Definir status oficiais.
-- Definir tipos de problema.
+- Confirmar status oficiais a partir da validacao preliminar.
+- Confirmar tipos de problema a partir da validacao preliminar.
 - Definir politica de anexos.
 - Definir papeis reais de banco.
 - Definir ambiente de homologacao.
 - Definir se autenticacao ficara no PostGIS ou fora dele.
 - Definir padrao de protocolo.
+- Validar retencao de dados pessoais, com sugestao inicial de manter ate a finalizacao do chamado.
+- Confirmar regra de alerta de atraso, inicialmente 15 dias.
 - Definir retencao de historico e anexos.
 - Definir quais dados podem aparecer em views publicas.
 

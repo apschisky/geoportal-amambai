@@ -47,7 +47,7 @@ Homologacao deve ser usada antes de qualquer alteracao em producao.
 1. Cidadao solicita reparo pelo Geoportal publico.
 2. Sistema gera protocolo.
 3. Solicitacao aparece no painel interno.
-4. Atendente faz triagem.
+4. Atendente/equipe de manutencao faz triagem, junto com secretario ou chefe de setor quando necessario.
 5. Equipe de campo executa.
 6. Servidor atualiza status.
 7. Gestor acompanha indicadores.
@@ -78,6 +78,7 @@ Homologacao deve ser usada antes de qualquer alteracao em producao.
 - Filtros por status, periodo, tipo, prioridade, bairro/regiao, `poste_id` e protocolo.
 - Ordenacao.
 - Busca rapida.
+- Decisao inicial: a lista de solicitacoes e suficiente para a primeira versao, desde que integrada ao mapa operacional.
 
 ### Mapa operacional
 
@@ -86,7 +87,10 @@ Homologacao deve ser usada antes de qualquer alteracao em producao.
 - Resolvidas.
 - Filtros por status/periodo.
 - Destaque de reincidencia.
+- Cores por status.
+- Visualizacao de postes/solicitacoes em diferentes estados.
 - Sem dados pessoais no mapa publico.
+- Decisao inicial: o mapa operacional e essencial desde o inicio.
 
 ### Detalhe da solicitacao
 
@@ -117,22 +121,24 @@ Homologacao deve ser usada antes de qualquer alteracao em producao.
 ### Indicadores
 
 - Solicitacoes por status.
-- Tempo medio de atendimento.
+- Solicitacoes por tipo.
 - Reincidencia por poste.
 - Solicitacoes por regiao.
+- Atrasadas, com alerta inicial para mais de 15 dias paradas.
 - Finalizadas no periodo.
+- Periodo de analise mais usado: semanal.
 
 ## 7. Permissoes por tela
 
 | Tela | Atendente | Equipe de campo | Gestor | Admin | Auditor |
 |---|---|---|---|---|---|
 | Login | Sim | Sim | Sim | Sim | Sim |
-| Painel inicial | Sim | Sim limitado | Sim | Sim | Sim |
-| Lista de solicitacoes | Sim | Sim limitado | Sim | Sim | Sim |
-| Mapa operacional | Sim | Sim | Sim | Sim | Sim |
-| Detalhe da solicitacao | Sim | Sim limitado | Sim | Sim | Sim |
-| Alteracao de status | Sim | Sim limitado | Sim | Sim | Nao |
-| Anexos | Sim | Sim | Sim | Sim | Nao |
+| Painel inicial | Sim se acumulado com campo | Sim | Sim | Sim | Sim |
+| Lista de solicitacoes | Sim se acumulado com campo | Sim | Sim | Sim | Sim |
+| Mapa operacional | Sim se acumulado com campo | Sim | Sim | Sim | Sim |
+| Detalhe da solicitacao | Sim se acumulado com campo | Sim | Sim | Sim | Sim |
+| Alteracao de status | Sim se acumulado com campo | Sim | Sim | Sim | Nao |
+| Anexos | Nao ou acumulado com campo | Sim | Sim | Sim | Nao |
 | Indicadores | Nao ou limitado | Nao ou limitado | Sim | Sim | Sim |
 | Administracao | Nao | Nao | Nao ou limitado | Sim | Nao |
 
@@ -163,7 +169,9 @@ Cada estado deve ter mensagem clara, sem detalhes tecnicos sensiveis.
 7. Publicacao interna restrita.
 8. Integracao opcional com botao publico.
 9. Manter Google Forms como fallback temporario.
-10. Retirada do fallback apenas apos estabilidade comprovada.
+10. Retirada do fallback apenas apos estabilidade comprovada, com validacao final do Prefeito.
+
+Decisao inicial de transicao: o setor aceita testar primeiro internamente. Se for facil retornar ao Google Forms em caso de inconsistencia, a troca do botao publico pode ocorrer apos testes controlados.
 
 ## 10. Pontos de configuracao de infraestrutura
 

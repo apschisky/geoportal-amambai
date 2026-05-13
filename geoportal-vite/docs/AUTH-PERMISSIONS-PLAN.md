@@ -53,7 +53,7 @@ Usuarios humanos e usuarios de servico devem ser separados.
 - Administrador sistema.
 - Auditor/consulta.
 
-Os nomes devem ser validados com o setor responsavel antes da implementacao.
+Validacao operacional inicial: Atendente/Triagem e Equipe de Campo podem ser a mesma pessoa na primeira versao. Equipe de campo, gestor e administrador concentram as principais acoes operacionais.
 
 ## 6. Matriz inicial de permissoes
 
@@ -61,17 +61,17 @@ Os nomes devem ser validados com o setor responsavel antes da implementacao.
 |---|---|---|---|---|---|---|
 | Criar solicitacao publica | Sim | Sim | Nao | Sim | Sim | Nao |
 | Consultar protocolo publico | Sim | Sim | Sim | Sim | Sim | Sim |
-| Listar solicitacoes internas | Nao | Sim | Sim limitado | Sim | Sim | Sim |
-| Ver dados pessoais | Nao | Sim restrito | Nao | Sim | Sim | Sim restrito |
-| Alterar status | Nao | Sim | Sim limitado | Sim | Sim | Nao |
-| Finalizar atendimento | Nao | Nao ou limitado | Sim | Sim | Sim | Nao |
-| Cancelar/indeferir | Nao | Sim limitado | Nao | Sim | Sim | Nao |
-| Anexar foto/documento | Cidadao opcional | Sim | Sim | Sim | Sim | Nao |
+| Listar solicitacoes internas | Nao | Sim se acumulado com campo | Sim | Sim | Sim | Sim |
+| Ver dados pessoais | Nao | Nao | Nao | Sim | Sim | Nao ou restrito |
+| Alterar status | Nao | Sim se acumulado com campo | Sim | Sim | Sim | Nao |
+| Finalizar atendimento | Nao | Nao ou acumulado com campo | Sim | Sim | Sim | Nao |
+| Cancelar/indeferir | Nao | Nao | Nao | Sim | Sim | Nao |
+| Anexar foto/documento | Nao na primeira versao | Nao ou acumulado com campo | Sim | Sim | Sim | Nao |
 | Editar tabelas de dominio | Nao | Nao | Nao | Sim | Sim | Nao |
 | Gerenciar usuarios | Nao | Nao | Nao | Nao | Sim | Nao |
 | Consultar auditoria | Nao | Nao | Nao | Sim | Sim | Sim |
 
-Esta matriz e inicial e deve ser ajustada com o setor responsavel.
+Esta matriz e inicial e deve ser ajustada com o setor responsavel. A primeira versao pode unir papel de triagem e campo para simplificar operacao.
 
 ## 7. Permissoes por acao
 
@@ -159,7 +159,9 @@ Eventos de auditoria devem ser protegidos contra edicao por usuarios comuns.
 - Coletar apenas o necessario.
 - Limitar acesso a nome/contato do cidadao.
 - Nao exibir dados pessoais no mapa publico.
-- Definir retencao de dados.
+- Nome e contato nao devem ser obrigatorios.
+- Contato pode ser util quando o poste nao for localizado ou faltar informacao.
+- Retencao inicial sugerida: manter dados pessoais ate a finalizacao do chamado, sujeita a validacao juridica/LGPD.
 - Registrar finalidade.
 - Controlar anexos.
 - Restringir exportacoes.
