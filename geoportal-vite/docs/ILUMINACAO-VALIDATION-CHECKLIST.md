@@ -69,7 +69,7 @@ Fluxo inicial para validacao:
 11. Historico fica auditado.
 12. Cidadao consulta status pelo protocolo.
 
-Perguntas:
+Registro preliminar:
 
 - Fluxo proposto: faz sentido inicialmente.
 - Pode haver atualizacao no mapa como parte do fluxo futuro.
@@ -111,7 +111,7 @@ Tipos iniciais sugeridos:
 - Fiacao aparente
 - Outro
 
-Perguntas:
+Registro preliminar:
 
 - Tipos iniciais mantidos.
 - Prioridade deve considerar seguranca da populacao, seguranca da equipe de manutencao, transito e necessidade de insumos.
@@ -140,7 +140,7 @@ Decisoes preliminares:
 
 ## 9. Protocolo
 
-Perguntas:
+Registro preliminar:
 
 - Qual formato de protocolo e desejado?
 - Deve conter ano?
@@ -168,7 +168,7 @@ Pontos para validar:
 - informar finalidade da coleta;
 - definir se o cidadao pode solicitar anonimamente.
 
-Perguntas:
+Registro preliminar:
 
 - Nome nao deve ser obrigatorio.
 - Contato nao deve ser obrigatorio.
@@ -187,7 +187,7 @@ Perfis sugeridos:
 - Administrador
 - Auditor/Consulta
 
-Perguntas:
+Registro preliminar:
 
 - Atendente/Triagem e Equipe de Campo podem ser a mesma pessoa na primeira versao.
 - Equipe de campo, gestor e administrador veem todas as solicitacoes.
@@ -229,7 +229,7 @@ Filtros sugeridos:
 
 ## 13. Mapa operacional
 
-Perguntas:
+Registro preliminar:
 
 - O setor precisa ver solicitacoes abertas no mapa.
 - Deve mostrar reincidencia por poste.
@@ -239,7 +239,7 @@ Perguntas:
 
 ## 14. Prazos e prioridade
 
-Perguntas:
+Registro preliminar:
 
 - Prazo ideal deve existir, mas pode nao ser formalizado no inicio.
 - Existem solicitacoes urgentes.
@@ -249,7 +249,7 @@ Perguntas:
 
 ## 15. Anexos e fotos
 
-Perguntas:
+Registro preliminar:
 
 - Cidadao nao envia foto na primeira versao.
 - Equipe pode enviar foto antes/depois somente em casos mais graves.
@@ -292,9 +292,8 @@ Decisoes preliminares:
 - Deve existir plano de voltar para o Forms se houver problema.
 - Integracao publica deve ser gradual.
 
-Perguntas:
+Registro preliminar:
 
-- Google Forms continua ativo ate o modulo proprio estar estavel.
 - Se for facil retornar ao Forms em caso de inconsistencia, a troca pode ocorrer apos testes.
 - Validacao da troca definitiva: Prefeito.
 - Setor aceita testar primeiro internamente.

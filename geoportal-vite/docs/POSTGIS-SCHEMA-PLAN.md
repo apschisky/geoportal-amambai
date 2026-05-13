@@ -83,8 +83,7 @@ Campos conceituais:
 - `solicitante_nome`;
 - `solicitante_contato`;
 - `prioridade`;
-- `alerta_atraso` ou campo derivado equivalente;
-- `dias_parado` ou calculo equivalente;
+- `alerta_atraso`/`dias_parado` ou calculo derivado equivalente;
 - `origem`;
 - `data_ultima_atualizacao`;
 - `data_conclusao`;
