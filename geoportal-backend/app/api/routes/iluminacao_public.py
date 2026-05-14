@@ -1,5 +1,10 @@
 from fastapi import APIRouter
 
+from app.schemas.iluminacao import (
+    IluminacaoSolicitacaoCreate,
+    IluminacaoSolicitacaoResponse,
+)
+
 
 router = APIRouter(prefix="/public/iluminacao", tags=["iluminacao-publica"])
 
@@ -10,3 +15,15 @@ def iluminacao_public_health_check() -> dict[str, str]:
         "status": "ok",
         "module": "iluminacao-publica",
     }
+
+
+@router.post("/solicitacoes", response_model=IluminacaoSolicitacaoResponse, status_code=201)
+def create_iluminacao_solicitacao(
+    solicitacao: IluminacaoSolicitacaoCreate,
+) -> IluminacaoSolicitacaoResponse:
+    # POC sem persistência em banco.
+    return IluminacaoSolicitacaoResponse(
+        protocolo="IP-2026-000001",
+        status="Aberta",
+        message="Solicitação registrada em ambiente de teste.",
+    )

@@ -29,6 +29,24 @@ pytest
 - `GET /api/health`
 - `GET /api/version`
 - `GET /api/public/iluminacao/health`
+- `POST /api/public/iluminacao/solicitacoes`
+
+### Exemplo de solicitacao publica simulada
+
+```json
+{
+  "poste_id": "POSTE-001",
+  "coordenada": {
+    "latitude": -23.105,
+    "longitude": -55.225
+  },
+  "tipo_problema": "lampada_apagada",
+  "descricao": "Lampada apagada durante a noite.",
+  "ponto_referencia": "Proximo a praca central."
+}
+```
+
+O endpoint `POST /api/public/iluminacao/solicitacoes` e simulado nesta POC: ele valida o payload e retorna um protocolo ficticio, mas nao grava em banco de dados. Dados reais ainda nao devem ser enviados para esta prova de conceito.
 
 ## CORS
 
