@@ -33,7 +33,7 @@ Os nomes finais podem mudar na implementacao, desde que a separacao entre public
 
 Finalidade: criar solicitacao publica de reparo de poste.
 
-Status da POC local: endpoint simulado disponivel em `geoportal-backend/`, com validacao Pydantic, resposta de protocolo ficticio e sem persistencia em banco.
+Status da POC local: endpoint simulado disponivel em `geoportal-backend/`, com validacao Pydantic, resposta de protocolo ficticio, status tecnico padronizado como `aberta` e sem persistencia em banco.
 
 Payload conceitual:
 

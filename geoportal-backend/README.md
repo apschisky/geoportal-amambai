@@ -48,6 +48,18 @@ pytest
 
 O endpoint `POST /api/public/iluminacao/solicitacoes` e simulado nesta POC: ele valida o payload e retorna um protocolo ficticio, mas nao grava em banco de dados. Dados reais ainda nao devem ser enviados para esta prova de conceito.
 
+Exemplo de resposta simulada:
+
+```json
+{
+  "protocolo": "IP-2026-000001",
+  "status": "aberta",
+  "message": "Solicitacao registrada em ambiente de teste."
+}
+```
+
+Os status tecnicos usam valores padronizados em minusculo e sem acento. Rotulos amigaveis podem ser tratados futuramente no front-end ou painel interno.
+
 ## CORS
 
 As origens permitidas sao lidas da configuracao `ALLOWED_ORIGINS`, em lista separada por virgulas. Para esta POC local, o padrao permite `http://localhost:5195` e `http://127.0.0.1:5195`.

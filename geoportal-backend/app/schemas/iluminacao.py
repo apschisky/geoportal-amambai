@@ -13,6 +13,18 @@ class TipoProblemaIluminacao(str, Enum):
     outro = "outro"
 
 
+class StatusSolicitacaoIluminacao(str, Enum):
+    aberta = "aberta"
+    em_triagem = "em_triagem"
+    encaminhada = "encaminhada"
+    em_execucao = "em_execucao"
+    aguardando_material = "aguardando_material"
+    nao_localizado = "nao_localizado"
+    resolvida = "resolvida"
+    indeferida = "indeferida"
+    cancelada = "cancelada"
+
+
 class Coordenada(BaseModel):
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
@@ -48,5 +60,5 @@ class IluminacaoSolicitacaoCreate(BaseModel):
 
 class IluminacaoSolicitacaoResponse(BaseModel):
     protocolo: str
-    status: str
+    status: StatusSolicitacaoIluminacao
     message: str

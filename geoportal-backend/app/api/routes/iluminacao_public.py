@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.schemas.iluminacao import (
     IluminacaoSolicitacaoCreate,
     IluminacaoSolicitacaoResponse,
+    StatusSolicitacaoIluminacao,
 )
 
 
@@ -24,6 +25,6 @@ def create_iluminacao_solicitacao(
     # POC sem persistência em banco.
     return IluminacaoSolicitacaoResponse(
         protocolo="IP-2026-000001",
-        status="Aberta",
+        status=StatusSolicitacaoIluminacao.aberta,
         message="Solicitação registrada em ambiente de teste.",
     )

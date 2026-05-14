@@ -30,7 +30,17 @@ def test_create_solicitacao_valid_payload_returns_simulated_protocol() -> None:
 
     assert response.status_code in (200, 201)
     assert response.json()["protocolo"] == "IP-2026-000001"
-    assert response.json()["status"] == "Aberta"
+    assert response.json()["status"] == "aberta"
+
+
+def test_status_enum_is_exposed_in_openapi_schema() -> None:
+    response = client.get("/openapi.json")
+
+    assert response.status_code == 200
+    status_schema = response.json()["components"]["schemas"][
+        "StatusSolicitacaoIluminacao"
+    ]
+    assert "aberta" in status_schema["enum"]
 
 
 def test_create_solicitacao_rejects_invalid_tipo_problema() -> None:
