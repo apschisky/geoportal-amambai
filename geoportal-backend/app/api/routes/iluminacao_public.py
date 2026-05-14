@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.schemas.common import IluminacaoHealthResponse
 from app.schemas.iluminacao import (
     IluminacaoSolicitacaoCreate,
     IluminacaoSolicitacaoResponse,
@@ -10,12 +11,9 @@ from app.schemas.iluminacao import (
 router = APIRouter(prefix="/public/iluminacao", tags=["iluminacao-publica"])
 
 
-@router.get("/health")
-def iluminacao_public_health_check() -> dict[str, str]:
-    return {
-        "status": "ok",
-        "module": "iluminacao-publica",
-    }
+@router.get("/health", response_model=IluminacaoHealthResponse)
+def iluminacao_public_health_check() -> IluminacaoHealthResponse:
+    return IluminacaoHealthResponse(status="ok", module="iluminacao-publica")
 
 
 @router.post("/solicitacoes", response_model=IluminacaoSolicitacaoResponse, status_code=201)

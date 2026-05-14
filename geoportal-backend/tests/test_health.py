@@ -37,6 +37,16 @@ def test_version_returns_api_metadata() -> None:
     }
 
 
+def test_openapi_contains_common_response_schemas() -> None:
+    response = client.get("/openapi.json")
+
+    assert response.status_code == 200
+    schemas = response.json()["components"]["schemas"]
+    assert "HealthResponse" in schemas
+    assert "VersionResponse" in schemas
+    assert "IluminacaoHealthResponse" in schemas
+
+
 def test_cors_allows_configured_origin() -> None:
     response = client.options(
         "/api/version",

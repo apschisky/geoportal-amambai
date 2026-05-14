@@ -1,12 +1,11 @@
 from fastapi import APIRouter
 
+from app.schemas.common import HealthResponse
+
 
 router = APIRouter(tags=["health"])
 
 
-@router.get("/health")
-def health_check() -> dict[str, str]:
-    return {
-        "status": "ok",
-        "service": "geoportal-api",
-    }
+@router.get("/health", response_model=HealthResponse)
+def health_check() -> HealthResponse:
+    return HealthResponse(status="ok", service="geoportal-api")
