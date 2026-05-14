@@ -4,8 +4,8 @@ from app.schemas.common import IluminacaoHealthResponse
 from app.schemas.iluminacao import (
     IluminacaoSolicitacaoCreate,
     IluminacaoSolicitacaoResponse,
-    StatusSolicitacaoIluminacao,
 )
+from app.services.iluminacao_service import create_solicitacao_simulada
 
 
 router = APIRouter(prefix="/public/iluminacao", tags=["iluminacao-publica"])
@@ -20,9 +20,4 @@ def iluminacao_public_health_check() -> IluminacaoHealthResponse:
 def create_iluminacao_solicitacao(
     solicitacao: IluminacaoSolicitacaoCreate,
 ) -> IluminacaoSolicitacaoResponse:
-    # POC sem persistência em banco.
-    return IluminacaoSolicitacaoResponse(
-        protocolo="IP-2026-000001",
-        status=StatusSolicitacaoIluminacao.aberta,
-        message="Solicitação registrada em ambiente de teste.",
-    )
+    return create_solicitacao_simulada(solicitacao)
