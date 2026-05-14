@@ -228,6 +228,8 @@ Foi iniciada uma prova de conceito local em `geoportal-backend/`, com FastAPI e 
 
 Esta prova de conceito nao usa banco de dados, nao possui autenticacao real, nao contem dados sensiveis e nao tem impacto no Geoportal publico em producao.
 
+A POC local tambem possui CORS controlado por configuracao e endpoint `GET /api/version` para identificacao basica do servico.
+
 ## 19. Criterios antes de implementar
 
 - [ ] Schema validado.

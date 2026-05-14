@@ -27,7 +27,14 @@ pytest
 ## Endpoints disponiveis
 
 - `GET /api/health`
+- `GET /api/version`
 - `GET /api/public/iluminacao/health`
+
+## CORS
+
+As origens permitidas sao lidas da configuracao `ALLOWED_ORIGINS`, em lista separada por virgulas. Para esta POC local, o padrao permite `http://localhost:5195` e `http://127.0.0.1:5195`.
+
+Nao usar `*` como origem permitida em producao.
 
 ## Seguranca
 
