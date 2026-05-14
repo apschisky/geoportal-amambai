@@ -43,6 +43,7 @@ Atualizar documentacao quando houver:
 | Modulos internos | `INTERNAL-MODULES-ARCHITECTURE.md` |
 | Iluminacao publica | `MODULE-ILUMINACAO-PUBLICA.md` |
 | Validacao operacional de iluminacao | `ILUMINACAO-VALIDATION-CHECKLIST.md` |
+| Requisitos minimos de iluminacao | `ILUMINACAO-REQUIREMENTS.md` |
 | Schema PostGIS | `POSTGIS-SCHEMA-PLAN.md` |
 | API | `API-ARCHITECTURE.md` |
 | Permissoes | `AUTH-PERMISSIONS-PLAN.md` |
