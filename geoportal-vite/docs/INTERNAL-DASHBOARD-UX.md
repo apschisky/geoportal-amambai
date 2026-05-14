@@ -21,7 +21,7 @@ O objetivo e garantir que novas funcionalidades internas sejam criadas de forma 
 
 ### Opcao A - rotas no mesmo dominio
 
-- `geoportal.amambai.ms.gov.br` para publico.
+- `geoportal.amambai.ms.gov.br/` para publico.
 - `geoportal.amambai.ms.gov.br/interno` para ambiente interno.
 - `geoportal.amambai.ms.gov.br/api` para API.
 
@@ -237,7 +237,6 @@ Este documento complementa:
 ## 14. Proximos passos
 
 - Validar fluxo com setor responsavel.
-- Decidir estrategia de homologacao.
-- Decidir rotas de homologacao, mantendo subdominios como evolucao possivel.
+- Decidir estrategia de homologacao por rotas, mantendo subdominios como evolucao possivel.
 - Desenhar wireframes simples.
 - So depois preparar primeira prova de conceito em homologacao.
