@@ -1,8 +1,13 @@
 # Geoportal de Amambai - MS
 
-Este projeto é um geoportal web desenvolvido para a Prefeitura de Amambai - MS, como parte do trabalho "A Importância do Webmapping para Amambai, Mato Grosso do Sul: Concepção e Replicabilidade".
+Geoportal web municipal desenvolvido para Amambai/MS como parte de trabalho acadêmico/TCC. O projeto evoluiu para uma arquitetura baseada em Vite, OpenLayers e JavaScript ES Modules, com integração a serviços públicos WMS/WFS do GeoServer/PostGIS.
 
-**Autores:**
+## Link de produção
+
+https://geoportal.amambai.ms.gov.br
+
+## Autores
+
 - Ana Carla de Queiroz Paiva¹ (Prefeitura Municipal de Fortaleza, ORCID: https://orcid.org/0009-0006-8826-6285)
 - Anderson Pschisky² (Prefeitura Municipal de Amambai-MS, ORCID: https://orcid.org/0009-0007-0768-1135)
 - Daniel Luan P. Espindola³ (Prefeitura Municipal de Amambai-MS, ORCID: https://orcid.org/0000-0000-0000-0000)
@@ -12,56 +17,89 @@ Este projeto é um geoportal web desenvolvido para a Prefeitura de Amambai - MS,
 - Orientador: Alexandro Gularte Schafer (ORCID: https://orcid.org/0000-0001-8700-0860)
 
 ## Resumo
-O avanço tecnológico global transformou áreas como comunicação, transporte e gestão pública, consolidando um mundo interconectado. No Brasil, os municípios buscam integrar suas gestões ao ambiente digital, destacando-se o governo digital. O webmapping surge como ferramenta essencial, permitindo a visualização e gestão de dados geográficos em plataformas acessíveis. Ele otimiza o uso de recursos, promove transparência e auxilia na identificação de problemas urbanos, beneficiando gestores no planejamento de infraestrutura, saúde e educação, e a população, com maior acesso a informações sobre serviços. Em Amambai, Mato Grosso do Sul, a ausência de um sistema de webmapping limita a eficiência administrativa. Este trabalho propõe a criação de um sistema de webmapping para o município, utilizando ferramentas de código aberto. O sistema centralizará dados geográficos, como infraestrutura e serviços públicos. Além disso, o estudo busca desenvolver um modelo replicável, inspirando outros municípios brasileiros a adotarem soluções semelhantes.
 
-## Funcionalidades
-- Visualização de diversas camadas temáticas (lotes urbanos, edificações, zoneamento, infraestrutura, áreas de interesse, etc)
-- Popups informativos ao clicar em feições das camadas principais (lotes, zoneamento, edificações)
-- Ferramentas de medição de distância e área
-- Busca de endereço integrada ao OpenStreetMap
-- Impressão do mapa
-- Geolocalização do usuário
-- Controle de legendas dinâmicas conforme as camadas ativas
-- Painel lateral com grupos de camadas expansíveis
-- Alternância entre mapas base (OpenStreetMap e Satélite)
+O webmapping permite a visualização e a gestão de dados geográficos online, promovendo eficiência administrativa, transparência e planejamento urbano. Este projeto propõe um geoportal para o município de Amambai-MS, centralizando dados espaciais em uma plataforma interativa e replicável, utilizando tecnologias abertas.
 
-## Estrutura dos arquivos
-- `index.html`: Estrutura da interface web e integração dos scripts
-- `style.css`: Estilos visuais e responsividade
-- `main.js`: Lógica do mapa, integração com GeoServer, ferramentas e popups
-- `logo.png`: Logotipo da Prefeitura de Amambai
+## Funcionalidades atuais
+
+- Visualização de camadas temáticas via GeoServer.
+- Mapas base.
+- Painel de camadas.
+- Barra pública com menus.
+- Locais de interesse.
+- Serviços.
+- Busca por endereço, BIC, postes e imóveis/fazendas quando aplicável.
+- Popups informativos.
+- Rotas externas via Google Maps.
+- Farmácias com destaque de plantão.
+- Postes com solicitação de reparo via formulário externo provisório.
+- Medição de distância e área.
+- Geolocalização.
+- Impressão.
+- Legendas dinâmicas.
+- Layout responsivo/mobile.
+- Documentação técnica em `geoportal-vite/docs/`.
+
+## Tecnologias utilizadas
+
+- [Vite](https://vitejs.dev/)
+- [OpenLayers](https://openlayers.org/)
+- JavaScript ES Modules
+- GeoServer/PostGIS via WMS/WFS públicos
+- HTML e CSS
+
+## Estrutura atual
+
+- `geoportal-vite/`: projeto atual do Geoportal.
+- `geoportal-vite/src/`: módulos JavaScript da aplicação.
+- `geoportal-vite/docs/`: documentação técnica e planejamento.
+- `geoportal-vite/public/`: assets públicos.
+- `geoportal-vite/index.html`: entrada da aplicação.
+- `geoportal-vite/style.css`: estilos globais.
+- `geoportal-vite/package.json`: scripts e dependências do projeto.
+- Arquivos antigos fora de `geoportal-vite/` foram removidos do versionamento público.
 
 ## Como rodar localmente
-1. Clone este repositório:
-   ```
-   git clone https://github.com/SEU_USUARIO/geoportal-amambai.git
-   ```
-2. Acesse a pasta do projeto:
-   ```
-   cd geoportal-amambai
-   ```
-3. Abra o arquivo `index.html` em seu navegador (basta dar duplo clique ou usar o menu "Abrir com" do navegador).
 
-> Não é necessário backend, apenas um navegador moderno. O acesso aos dados depende do GeoServer público configurado no código.
+Pré-requisito: Node.js instalado.
 
-## Como foi elaborado
-O geoportal foi desenvolvido utilizando HTML, CSS e JavaScript puro, com a biblioteca OpenLayers para renderização do mapa e integração com serviços WMS do GeoServer. O código está organizado para facilitar a manutenção e a adição de novas camadas ou ferramentas.
+```bash
+git clone https://github.com/apschisky/geoportal-amambai.git
+cd geoportal-amambai/geoportal-vite
+npm install
+npm run dev
+```
 
-- As camadas são configuradas no arquivo `main.js`, com controle de visibilidade via painel lateral.
-- O popup de informações é exibido ao clicar sobre feições das camadas principais, mostrando os atributos retornados pelo GeoServer.
-- O painel de legendas é dinâmico e exibe apenas as legendas das camadas ativas.
-- O layout é responsivo e otimizado para uso em desktop.
+O Vite indicará a URL local no terminal.
 
-## Requisitos
-- Navegador moderno (Chrome, Firefox, Edge, etc)
-- Acesso à internet para consumir o GeoServer e o OpenLayers CDN
+## Como gerar build
+
+```bash
+npm run build
+```
+
+A pasta `dist/` é gerada localmente e não deve ser versionada.
+
+## Testes
+
+```bash
+npm test
+```
+
+## Segurança e dados sensíveis
+
+- Não versionar `.env`, backups, dumps SQL, credenciais, chaves, senhas, arquivos `.backup`, `.sql`, `.docx` ou dados internos.
+- Endpoints WMS/WFS públicos do GeoServer aparecem no front-end porque são necessários para o funcionamento do Geoportal público.
+- Futuras APIs internas, login e módulos operacionais devem ser desenvolvidos em ambiente separado/homologação e com credenciais fora do Git.
+
+## Documentação
+
+Os documentos técnicos ficam em `geoportal-vite/docs/`, incluindo arquitetura, segurança, banco, API futura, permissões, módulo de iluminação pública e governança documental.
 
 ## Licença
-Este projeto está licenciado sob a [Creative Commons Atribuição 4.0 Internacional (CC BY 4.0)](LICENSE). O uso, adaptação e replicação são permitidos, inclusive para fins comerciais, desde que seja feita a devida atribuição aos autores e à Prefeitura de Amambai - MS.
+
+Este projeto está licenciado sob a licença Creative Commons Atribuição 4.0 Internacional (CC BY 4.0).
 
 ## Créditos
-Desenvolvido por Ana Carla de Queiroz Paiva, Anderson Pschisky, Daniel Luan P. Espindola, Eduardo Augusto Andreatta, Rafael Alves Esteves Julio, Rafael Ronconi Bezerra e orientador Alexandro Gularte Schafer.
 
----
-
-**Este repositório pode ser utilizado como referência para projetos de geoportais municipais, integração OpenLayers + GeoServer e organização de mapas temáticos urbanos e rurais.**
+Projeto desenvolvido no contexto do trabalho "A Importância do Webmapping para Amambai, Mato Grosso do Sul: Concepção e Replicabilidade", com uso de tecnologias abertas e serviços geográficos para apoio à gestão municipal e à transparência pública.
