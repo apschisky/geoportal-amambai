@@ -19,19 +19,21 @@ O objetivo e garantir que novas funcionalidades internas sejam criadas de forma 
 
 ## 3. Separacao entre publico, interno e API
 
-### Opcao A
-
-- `geoportal.amambai.ms.gov.br` para publico.
-- `interno.geoportal.amambai.ms.gov.br` para ambiente interno.
-- `api.geoportal.amambai.ms.gov.br` para API.
-
-### Opcao B
+### Opcao A - rotas no mesmo dominio
 
 - `geoportal.amambai.ms.gov.br` para publico.
 - `geoportal.amambai.ms.gov.br/interno` para ambiente interno.
 - `geoportal.amambai.ms.gov.br/api` para API.
 
-A escolha final depende de Apache, Tomcat, FastAPI, HTTPS, CORS, certificados, firewall, proxy reverso e seguranca. A decisao deve ser tomada antes da prova de conceito.
+Esta e a decisao preliminar recomendada para a primeira homologacao, por simplicidade operacional, menor complexidade inicial de DNS/certificado e menor risco de CORS.
+
+### Opcao B - subdominios futuros
+
+- `geoportal.amambai.ms.gov.br` para publico.
+- `interno.geoportal.amambai.ms.gov.br` para ambiente interno.
+- `api.geoportal.amambai.ms.gov.br` para API.
+
+Subdominios continuam como alternativa futura se a arquitetura exigir maior separacao operacional. A decisao final deve considerar Apache, Tomcat, FastAPI, HTTPS, CORS, certificados, firewall, proxy reverso e seguranca antes da prova de conceito.
 
 ## 4. Ambientes recomendados
 
@@ -177,7 +179,7 @@ Decisao inicial de transicao: o setor aceita testar primeiro internamente. Se fo
 
 Itens a decidir:
 
-- subdominio ou rota;
+- rotas de homologacao e possivel evolucao para subdominios;
 - Apache reverse proxy;
 - Tomcat/GeoServer existente;
 - FastAPI rodando como servico separado;
@@ -212,7 +214,7 @@ Este documento nao implementa configuracao. Ele apenas registra decisoes futuras
 - [ ] Perfis aprovados.
 - [ ] Status aprovados.
 - [ ] Ambiente de homologacao definido.
-- [ ] Estrategia de subdominio/rota definida.
+- [ ] Estrategia de rotas de homologacao definida, com subdominios como evolucao possivel.
 - [ ] Politica de anexos definida.
 - [ ] Banco/schema aprovado.
 - [ ] API desenhada.
@@ -236,6 +238,6 @@ Este documento complementa:
 
 - Validar fluxo com setor responsavel.
 - Decidir estrategia de homologacao.
-- Decidir subdominio ou rota.
+- Decidir rotas de homologacao, mantendo subdominios como evolucao possivel.
 - Desenhar wireframes simples.
 - So depois preparar primeira prova de conceito em homologacao.

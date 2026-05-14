@@ -220,6 +220,8 @@ Auditoria deve ser obrigatoria para mudancas de status, observacoes, anexos, fin
 
 Cada fase deve ter teste, revisao de permissao e possibilidade de rollback.
 
+A primeira abordagem recomendada para homologacao e publicar API e painel interno por rotas, como `/api` e `/interno`, reduzindo complexidade inicial de DNS/certificado e risco de CORS. A separacao por subdominios pode ser adotada futuramente, caso haja necessidade operacional.
+
 ## 18. Criterios antes de implementar
 
 - [ ] Schema validado.

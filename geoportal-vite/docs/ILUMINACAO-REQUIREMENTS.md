@@ -1,81 +1,81 @@
-# Requisitos do Modulo de Iluminacao Publica
+# Requisitos do Módulo de Iluminação Pública
 
 ## 1. Objetivo
 
-Este documento consolida os requisitos minimos da primeira versao do modulo de Iluminacao Publica / Manutencao de Postes, antes de qualquer implementacao em banco, API ou painel interno.
+Este documento consolida os requisitos mínimos da primeira versão do módulo de Iluminação Pública / Manutenção de Postes, antes de qualquer implementação em banco, API ou painel interno.
 
-O objetivo e transformar as decisoes preliminares registradas no checklist de validacao operacional em uma base clara para revisao, homologacao e evolucao gradual, sem interromper o Geoportal publico em producao.
+O objetivo é transformar as decisões preliminares registradas no checklist de validação operacional em uma base clara para revisão, homologação e evolução gradual, sem interromper o Geoportal público em produção.
 
-## 2. Principios do modulo
+## 2. Princípios do módulo
 
-- Preservar o Geoportal publico funcionando.
-- Desenvolver primeiro em homologacao.
-- Manter Google Forms como fallback ate estabilidade comprovada.
-- Nao expor dados pessoais no mapa publico.
-- Aplicar menor privilegio.
-- Auditar acoes internas.
-- Validar permissoes no servidor.
-- Evitar complexidade excessiva na primeira versao.
-- Priorizar protocolo, status, mapa operacional, historico e rastreabilidade.
+- Preservar o Geoportal público funcionando.
+- Desenvolver primeiro em homologação.
+- Manter Google Forms como fallback até estabilidade comprovada.
+- Não expor dados pessoais no mapa público.
+- Aplicar menor privilégio.
+- Auditar ações internas.
+- Validar permissões no servidor.
+- Evitar complexidade excessiva na primeira versão.
+- Priorizar protocolo, status, mapa operacional, histórico e rastreabilidade.
 
-## 3. Escopo da primeira versao
+## 3. Escopo da primeira versão
 
-- Solicitacao publica de reparo a partir do Geoportal.
+- Solicitação pública de reparo a partir do Geoportal.
 - Captura do ID do poste e coordenada.
 - Campo de tipo de problema.
-- Descricao.
-- Ponto de referencia.
-- Indicacao de poste mais proximo quando o cidadao nao localizar o poste correto.
-- Geracao de protocolo.
-- Consulta publica simples por protocolo.
-- Painel interno com lista de solicitacoes.
+- Descrição.
+- Ponto de referência.
+- Indicação de poste mais próximo quando o cidadão não localizar o poste correto.
+- Geração de protocolo.
+- Consulta pública simples por protocolo.
+- Painel interno com lista de solicitações.
 - Mapa operacional.
-- Alteracao de status.
-- Historico/auditoria.
-- Filtros basicos.
+- Alteração de status.
+- Histórico/auditoria.
+- Filtros básicos.
 - Indicadores simples.
 
 ## 4. Fora do escopo inicial
 
 - Aplicativo mobile dedicado.
-- Login do cidadao.
-- Upload publico de foto na primeira versao.
-- Integracao automatica com WhatsApp/e-mail.
-- Ordens de servico complexas.
+- Login do cidadão.
+- Upload público de foto na primeira versão.
+- Integração automática com WhatsApp/e-mail.
+- Ordens de serviço complexas.
 - Custos detalhados.
-- Integracao automatica com almoxarifado.
+- Integração automática com almoxarifado.
 - Retirada imediata do Google Forms.
-- Exposicao de dados pessoais no mapa publico.
-- Automacoes avancadas antes da estabilizacao.
+- Exposição de dados pessoais no mapa público.
+- Automações avançadas antes da estabilização.
 
-## 5. Fluxo operacional minimo
+## 5. Fluxo operacional mínimo
 
-1. Cidadao acessa o Geoportal.
-2. Cidadao clica em um poste ou acessa a solicitacao de reparo.
-3. Sistema leva ID do poste e coordenada quando possivel.
-4. Cidadao informa tipo de problema, descricao e ponto de referencia.
-5. Caso nao encontre o poste correto, informa o poste mais proximo ou referencia.
+1. Cidadão acessa o Geoportal.
+2. Cidadão clica em um poste ou acessa a solicitação de reparo.
+3. Sistema leva ID do poste e coordenada quando possível.
+4. Cidadão informa tipo de problema, descrição e ponto de referência.
+5. Caso não encontre o poste correto, informa o poste mais próximo ou referência.
 6. Sistema gera protocolo.
-7. Solicitacao entra como Aberta.
+7. Solicitação entra como Aberta.
 8. Equipe/atendente faz triagem.
-9. Solicitacao pode ser encaminhada, indeferida, cancelada, marcada como nao localizada ou aguardando material.
-10. Equipe executa o servico.
+9. Solicitação pode ser encaminhada, indeferida, cancelada, marcada como não localizada ou aguardando material.
+10. Equipe executa o serviço.
 11. Equipe/gestor/admin finaliza.
-12. Cidadao consulta andamento basico pelo protocolo.
+12. Cidadão consulta andamento básico pelo protocolo.
 13. Gestor acompanha mapa e indicadores.
 
-A triagem pode ser feita pela equipe de manutencao junto com secretario ou chefe de setor.
+A triagem pode ser feita pela equipe de manutenção junto com secretário ou chefe de setor.
 
-## 6. Status da solicitacao
+## 6. Status da solicitação
 
 Status preliminares:
 
 - Aberta
 - Em triagem
 - Encaminhada
-- Em execucao
+- Em execução
 - Aguardando material
-- Nao localizado
+- Não localizado
 - Resolvida
 - Indeferida
 - Cancelada
@@ -83,31 +83,31 @@ Status preliminares:
 Regras:
 
 - "Cancelada" pode ser usada para falso chamado ou duplicidade evidente.
-- "Indeferida" pode ser usada quando nao houver seguranca para executar ou quando a solicitacao nao for de competencia do setor.
-- "Nao localizado" deve ser usado quando o poste/problema nao for encontrado.
-- "Aguardando material" deve indicar pendencia de insumos.
-- Finalizacao pode ser feita pela equipe responsavel, gestor ou administrador.
+- "Indeferida" pode ser usada quando não houver segurança para executar ou quando a solicitação não for de competência do setor.
+- "Não localizado" deve ser usado quando o poste/problema não for encontrado.
+- "Aguardando material" deve indicar pendência de insumos.
+- Finalização pode ser feita pela equipe responsável, gestor ou administrador.
 
 ## 7. Tipos de problema
 
 Tipos iniciais:
 
-- Lampada apagada
-- Lampada piscando
-- Lampada acesa durante o dia
+- Lâmpada apagada
+- Lâmpada piscando
+- Lâmpada acesa durante o dia
 - Poste danificado
-- Braco/luminaria danificada
-- Fiacao aparente
+- Braço/luminária danificada
+- Fiação aparente
 - Outro
 
-Observacoes:
+Observações:
 
-- Casos envolvendo seguranca publica, transito, risco a populacao ou risco a equipe podem receber prioridade alta.
-- Foto pode ser recomendada em situacoes graves, mas nao deve ser obrigatoria no formulario publico da primeira versao.
+- Casos envolvendo segurança pública, trânsito, risco à população ou risco à equipe podem receber prioridade alta.
+- Foto pode ser recomendada em situações graves, mas não deve ser obrigatória no formulário público da primeira versão.
 
-## 8. Campos do formulario publico
+## 8. Campos do formulário público
 
-Campos minimos:
+Campos mínimos:
 
 - `poste_id`
 - `coordenada`
@@ -120,17 +120,17 @@ Campos minimos:
 
 Regras:
 
-- Nome nao obrigatorio.
-- Contato nao obrigatorio.
-- Contato pode ajudar se o poste nao for localizado.
-- Foto publica nao entra na primeira versao.
-- Descricao deve ter limite de tamanho.
+- Nome não obrigatório.
+- Contato não obrigatório.
+- Contato pode ajudar se o poste não for localizado.
+- Foto pública não entra na primeira versão.
+- Descrição deve ter limite de tamanho.
 - Entrada deve ser validada no servidor.
-- Campos vindos do Geoportal nao devem ser aceitos cegamente sem validacao pela API.
+- Campos vindos do Geoportal não devem ser aceitos cegamente sem validação pela API.
 
-Mensagem sugerida ao cidadao:
+Mensagem sugerida ao cidadão:
 
-> Solicitacao realizada. Protocolo no IP-AAAA-NNNNNN.
+> Solicitação realizada. Protocolo nº IP-AAAA-NNNNNN.
 
 ## 9. Protocolo
 
@@ -141,125 +141,125 @@ Formato preliminar:
 
 Requisitos:
 
-- Deve conter prefixo do servico.
+- Deve conter prefixo do serviço.
 - Deve conter ano.
-- Deve ser exibido apos envio.
-- Deve permitir consulta publica sem login.
-- Deve ter protecao contra enumeracao.
-- Endpoint publico deve ter rate limit.
-- Envio futuro por WhatsApp/e-mail pode ser avaliado, mas nao e obrigatorio na primeira versao.
+- Deve ser exibido após envio.
+- Deve permitir consulta pública sem login.
+- Deve ter proteção contra enumeração.
+- Endpoint público deve ter rate limit.
+- Envio futuro por WhatsApp/e-mail pode ser avaliado, mas não é obrigatório na primeira versão.
 
-Perguntas tecnicas a resolver antes da implementacao:
+Perguntas técnicas a resolver antes da implementação:
 
-- O sequencial sera global por ano ou por modulo?
-- O protocolo sera gerado no banco ou na API?
-- Como evitar colisao em requisicoes simultaneas?
-- Qual mensagem publica sera exibida para protocolo inexistente sem facilitar enumeracao?
+- O sequencial será global por ano ou por módulo?
+- O protocolo será gerado no banco ou na API?
+- Como evitar colisão em requisições simultâneas?
+- Qual mensagem pública será exibida para protocolo inexistente sem facilitar enumeração?
 
-## 10. Consulta publica por protocolo
+## 10. Consulta pública por protocolo
 
-Retorno publico permitido:
+Retorno público permitido:
 
 - protocolo
-- status publico
+- status público
 - data de abertura
-- ultima atualizacao
+- última atualização
 - mensagem simples
 
-Nao retornar:
+Não retornar:
 
 - nome do solicitante;
 - contato;
-- historico interno completo;
-- observacoes internas;
-- usuario responsavel;
+- histórico interno completo;
+- observações internas;
+- usuário responsável;
 - anexos internos;
-- detalhes tecnicos do banco/API.
+- detalhes técnicos do banco/API.
 
-Perguntas para validacao:
+Perguntas para validação:
 
-- A consulta publica deve mostrar previsao de atendimento no futuro?
-- Quais status internos devem ser agrupados em mensagens publicas mais simples?
+- A consulta pública deve mostrar previsão de atendimento no futuro?
+- Quais status internos devem ser agrupados em mensagens públicas mais simples?
 
 ## 11. Dados pessoais e LGPD
 
 Requisitos:
 
-- Coletar o minimo necessario.
-- Nome e contato sao opcionais.
-- Dados pessoais nao aparecem no mapa publico.
-- Dados pessoais so podem ser acessados por perfis autorizados.
+- Coletar o mínimo necessário.
+- Nome e contato são opcionais.
+- Dados pessoais não aparecem no mapa público.
+- Dados pessoais só podem ser acessados por perfis autorizados.
 - Registrar finalidade da coleta.
-- Evitar exportacao indiscriminada.
-- Definir retencao minima.
+- Evitar exportação indiscriminada.
+- Definir retenção mínima.
 
-Decisao preliminar:
+Decisão preliminar:
 
-- Dados pessoais devem ficar armazenados pelo menor tempo necessario, inicialmente ate a finalizacao do chamado, sujeito a validacao juridica/LGPD.
+- Dados pessoais devem ficar armazenados pelo menor tempo necessário, inicialmente até a finalização do chamado, sujeito a validação jurídica/LGPD.
 
-Perguntas para validacao juridica:
+Perguntas para validação jurídica:
 
-- Qual prazo oficial de retencao?
-- O cidadao pode solicitar atendimento anonimo?
-- O texto do formulario precisa de aceite/ciencia de finalidade?
-- Quem e responsavel por responder solicitacoes de acesso/remocao de dados?
+- Qual prazo oficial de retenção?
+- O cidadão pode solicitar atendimento anônimo?
+- O texto do formulário precisa de aceite/ciência de finalidade?
+- Quem é responsável por responder solicitações de acesso/remoção de dados?
 
-## 12. Perfis e permissoes
+## 12. Perfis e permissões
 
 Perfis iniciais:
 
 - Atendente/Triagem
 - Equipe de Campo
-- Gestor do Modulo
+- Gestor do Módulo
 - Administrador
 - Auditor/Consulta
 
-Decisoes preliminares:
+Decisões preliminares:
 
-- Atendente/Triagem e Equipe de Campo podem ser a mesma pessoa na primeira versao.
-- Equipe de campo, gestor e administrador podem ver todas as solicitacoes.
+- Atendente/Triagem e Equipe de Campo podem ser a mesma pessoa na primeira versão.
+- Equipe de campo, gestor e administrador podem ver todas as solicitações.
 - Equipe de campo, gestor e administrador podem alterar status e finalizar.
 - Gestor e administrador podem cancelar/indeferir.
 - Equipe de campo, gestor e administrador podem anexar foto.
 - Gestor e administrador podem ver dados pessoais.
 - Administrador e auditor podem consultar auditoria.
 
-| Acao | Atendente/Triagem | Equipe de Campo | Gestor | Administrador | Auditor |
+| Ação | Atendente/Triagem | Equipe de Campo | Gestor | Administrador | Auditor |
 |---|---|---|---|---|---|
-| Listar solicitacoes | Sim | Sim | Sim | Sim | Limitado |
+| Listar solicitações | Sim | Sim | Sim | Sim | Limitado |
 | Ver detalhe | Sim | Sim | Sim | Sim | Limitado |
-| Ver dados pessoais | Nao | Nao | Sim | Sim | Nao |
-| Alterar status | Sim | Sim | Sim | Sim | Nao |
-| Finalizar | Nao | Sim | Sim | Sim | Nao |
-| Cancelar/indeferir | Nao | Nao | Sim | Sim | Nao |
-| Anexar foto | Nao | Sim | Sim | Sim | Nao |
-| Ver auditoria | Nao | Nao | Nao | Sim | Sim |
-| Gerenciar usuarios | Nao | Nao | Nao | Sim | Nao |
+| Ver dados pessoais | Não | Não | Sim | Sim | Não |
+| Alterar status | Sim | Sim | Sim | Sim | Não |
+| Finalizar | Não | Sim | Sim | Sim | Não |
+| Cancelar/indeferir | Não | Não | Sim | Sim | Não |
+| Anexar foto | Não | Sim | Sim | Sim | Não |
+| Ver auditoria | Não | Não | Não | Sim | Sim |
+| Gerenciar usuários | Não | Não | Não | Sim | Não |
 
 ## 13. Painel interno
 
-Requisitos minimos:
+Requisitos mínimos:
 
-- Lista de solicitacoes.
+- Lista de solicitações.
 - Filtros.
-- Detalhe da solicitacao.
-- Alteracao de status.
+- Detalhe da solicitação.
+- Alteração de status.
 - Mapa operacional.
 - Indicadores simples.
 
-Filtros uteis:
+Filtros úteis:
 
 - status;
-- periodo;
+- período;
 - tipo de problema;
 - prioridade;
-- bairro/regiao;
+- bairro/região;
 - poste_id;
 - protocolo.
 
 Perguntas de UX:
 
-- Quais colunas sao indispensaveis na lista?
+- Quais colunas são indispensáveis na lista?
 - A tela inicial deve abrir em lista ou mapa?
 - O setor precisa exportar CSV/PDF futuramente?
 - O painel deve destacar atrasadas automaticamente?
@@ -268,178 +268,180 @@ Perguntas de UX:
 
 Requisitos:
 
-- Mostrar solicitacoes abertas no mapa.
+- Mostrar solicitações abertas no mapa.
 - Mostrar cores por status.
-- Permitir filtro por periodo.
-- Indicar reincidencia por poste.
-- Nao mostrar dados pessoais.
-- Permitir abrir detalhe da solicitacao a partir do mapa.
+- Permitir filtro por período.
+- Indicar reincidência por poste.
+- Não mostrar dados pessoais.
+- Permitir abrir detalhe da solicitação a partir do mapa.
 
-Perguntas de avanco:
+Perguntas de avanço:
 
 - Quais cores devem representar cada status?
-- A reincidencia sera calculada por quantidade de chamados no mesmo poste em determinado periodo?
-- Deve haver camada separada para solicitacoes atrasadas?
+- A reincidência será calculada por quantidade de chamados no mesmo poste em determinado período?
+- Deve haver camada separada para solicitações atrasadas?
 - O mapa interno deve usar GeoServer, API GeoJSON ou ambos?
 
 ## 15. Prazos e prioridade
 
-Decisoes preliminares:
+Decisões preliminares:
 
-- Prazo ideal deve existir, mas pode nao ser formalizado no inicio.
-- Existem solicitacoes urgentes.
-- Prioridade alta para casos envolvendo seguranca publica ou transito.
-- Alertar solicitacoes paradas ha mais de 15 dias.
+- Prazo ideal deve existir, mas pode não ser formalizado no início.
+- Existem solicitações urgentes.
+- Prioridade alta para casos envolvendo segurança pública ou trânsito.
+- Alertar solicitações paradas há mais de 15 dias.
 - Prazo inicial para considerar atrasada: 15 dias.
 
 Requisitos:
 
 - Campo de prioridade.
-- Calculo de dias parados.
+- Cálculo de dias parados.
 - Indicador de atraso.
 - Filtro de atrasadas.
 
 Perguntas:
 
 - O prazo de 15 dias vale para todos os tipos?
-- Casos de seguranca devem ter prazo menor?
+- Casos de segurança devem ter prazo menor?
 - Aguardando material pausa o prazo ou continua contando?
-- "Nao localizado" encerra ou suspende o chamado?
+- "Não localizado" encerra ou suspende o chamado?
 
 ## 16. Anexos e fotos
 
-Decisoes preliminares:
+Decisões preliminares:
 
-- Cidadao nao envia foto na primeira versao.
+- Cidadão não envia foto na primeira versão.
 - Equipe pode enviar foto antes/depois apenas em casos mais graves.
 - Tipo inicial aceito: jpg.
-- Tamanho maximo inicial: 5 MB.
+- Tamanho máximo inicial: 5 MB.
 - Equipe, gestor e administrador podem visualizar anexos.
-- Upload publico pode ser adicionado em etapa futura.
+- Upload público pode ser adicionado em etapa futura.
 
-Requisitos de seguranca:
+Requisitos de segurança:
 
-- Validar extensao e MIME type.
+- Validar extensão e MIME type.
 - Limitar tamanho.
-- Nao expor caminho fisico.
+- Não expor caminho físico.
 - Armazenar metadados.
-- Planejar varredura antivirus.
+- Planejar varredura antivírus.
 - Controlar acesso por perfil.
 - Registrar upload em auditoria.
 
 Perguntas:
 
-- Fotos internas devem ser obrigatorias em caso de poste danificado ou fiacao aparente?
-- Onde os anexos serao armazenados na homologacao?
-- Qual politica de retencao dos anexos?
+- Fotos internas devem ser obrigatórias em caso de poste danificado ou fiação aparente?
+- Onde os anexos serão armazenados na homologação?
+- Qual política de retenção dos anexos?
 
-## 17. Indicadores minimos
+## 17. Indicadores mínimos
 
 Indicadores iniciais:
 
-- solicitacoes abertas;
-- solicitacoes resolvidas;
-- solicitacoes por tipo;
-- solicitacoes por regiao;
-- reincidencia por poste;
+- solicitações abertas;
+- solicitações resolvidas;
+- solicitações por tipo;
+- solicitações por região;
+- reincidência por poste;
 - atrasadas;
-- tempo medio de atendimento.
+- tempo médio de atendimento.
 
-Decisao preliminar:
+Decisão preliminar:
 
-- Relatorio/exportacao nao e necessario no inicio.
-- Periodo de analise mais usado: semanal.
+- Relatório/exportação não é necessário no início.
+- Período de análise mais usado: semanal.
 
 Perguntas:
 
-- O gestor precisa de visao mensal alem da semanal?
-- O indicador de tempo medio deve ignorar chamados cancelados/indeferidos?
+- O gestor precisa de visão mensal além da semanal?
+- O indicador de tempo médio deve ignorar chamados cancelados/indeferidos?
 - Como tratar chamados "Aguardando material"?
 
-## 18. Integracao com Geoportal publico
+## 18. Integração com Geoportal público
 
 Requisitos:
 
-- Manter botao atual com Google Forms ate modulo proprio estar estavel.
-- Substituicao deve ser gradual.
+- Manter botão atual com Google Forms até módulo próprio estar estável.
+- Substituição deve ser gradual.
 - Deve existir fallback para voltar ao Forms.
-- Camada publica de postes continua sendo base visual.
-- Integracao futura deve preservar popup, rota e busca de postes.
-- Qualquer alteracao publica deve ser testada em homologacao antes de producao.
+- Camada pública de postes continua sendo base visual.
+- Integração futura deve preservar popup, rota e busca de postes.
+- Qualquer alteração pública deve ser testada em homologação antes de produção.
 
-## 19. Integracao com API futura
+## 19. Integração com API futura
 
 Requisitos conceituais:
 
-- Endpoints publicos para criar solicitacao e consultar protocolo.
+- Endpoints públicos para criar solicitação e consultar protocolo.
 - Endpoints internos autenticados para listar, detalhar, alterar status, anexar, finalizar e cancelar.
-- Validacao no servidor.
-- Rate limit nos endpoints publicos.
-- Autenticacao e autorizacao nos endpoints internos.
-- Auditoria em acoes internas.
-- Respostas publicas sem dados sensiveis.
+- Validação no servidor.
+- Rate limit nos endpoints públicos.
+- Autenticação e autorização nos endpoints internos.
+- Auditoria em ações internas.
+- Respostas públicas sem dados sensíveis.
 
-Referencia: `docs/API-ENDPOINTS-ILUMINACAO.md`.
+Decisão preliminar: para a primeira homologação, a arquitetura tende a usar rotas no mesmo domínio, como `/api` e `/interno`, por simplicidade operacional, menor complexidade inicial de DNS/certificado e menor risco de CORS. A arquitetura deve permanecer preparada para futura separação por subdomínios, se necessário.
 
-## 20. Integracao com PostGIS futuro
+Referência: `docs/API-ENDPOINTS-ILUMINACAO.md`.
+
+## 20. Integração com PostGIS futuro
 
 Requisitos conceituais:
 
-- Criar schema proprio do modulo, como `mod_iluminacao`.
-- Nao gravar operacao em `web_map`.
-- Solicitacoes devem referenciar `poste_id`.
-- Dados pessoais nao devem aparecer em views publicas.
-- Criar historico/auditoria.
-- Criar indices por status, protocolo, `poste_id`, data e geometria.
-- Criar views controladas para painel e, se necessario, visualizacao publica.
+- Criar schema próprio do módulo, como `mod_iluminacao`.
+- Não gravar operação em `web_map`.
+- Solicitações devem referenciar `poste_id`.
+- Dados pessoais não devem aparecer em views públicas.
+- Criar histórico/auditoria.
+- Criar índices por status, protocolo, `poste_id`, data e geometria.
+- Criar views controladas para painel e, se necessário, visualização pública.
 
-Referencia: `docs/POSTGIS-SCHEMA-PLAN.md`.
+Referência: `docs/POSTGIS-SCHEMA-PLAN.md`.
 
-## 21. Seguranca minima obrigatoria
+## 21. Segurança mínima obrigatória
 
-- HTTPS obrigatorio.
+- HTTPS obrigatório.
 - Credenciais fora do Git.
-- Sem superuser em aplicacao.
-- Usuario do GeoServer somente leitura.
-- Usuario da API com menor privilegio.
-- Validacao de entrada.
+- Sem superuser em aplicação.
+- Usuário do GeoServer somente leitura.
+- Usuário da API com menor privilégio.
+- Validação de entrada.
 - Rate limit.
 - Logs e auditoria.
-- Tratamento generico de erro publico.
-- Protecao contra enumeracao de protocolo.
+- Tratamento genérico de erro público.
+- Proteção contra enumeração de protocolo.
 - Backups antes de migrations.
-- Homologacao antes de producao.
+- Homologação antes de produção.
 
-## 22. Criterios para iniciar SQL/API em homologacao
+## 22. Critérios para iniciar SQL/API em homologação
 
-- [ ] Requisitos minimos aprovados.
+- [ ] Requisitos mínimos aprovados.
 - [ ] Status aprovados.
 - [ ] Tipos de problema aprovados.
-- [ ] Campos publicos aprovados.
+- [ ] Campos públicos aprovados.
 - [ ] Formato de protocolo aprovado.
-- [ ] Permissoes aprovadas.
-- [ ] Politica de dados pessoais validada.
-- [ ] Politica de anexos definida.
+- [ ] Permissões aprovadas.
+- [ ] Política de dados pessoais validada.
+- [ ] Política de anexos definida.
 - [ ] SRID operacional definido.
-- [ ] Ambiente de homologacao definido.
-- [ ] Estrategia de subdominio ou rota definida.
+- [ ] Ambiente de homologação definido.
+- [ ] Estratégia de rotas ou subdomínios definida.
 - [ ] Rollback definido.
 - [ ] Fallback com Google Forms confirmado.
 
 ## 23. Perguntas pendentes para amadurecimento
 
-- O modulo deve futuramente permitir avaliacao do atendimento pelo cidadao?
-- A reincidencia por poste deve gerar alerta automatico?
-- O painel deve indicar regioes com maior demanda?
-- O sistema deve permitir planejamento preventivo de troca de lampadas?
-- O modulo deve futuramente integrar inventario de luminarias, potencia, tipo de lampada e consumo estimado?
-- O modulo deve futuramente integrar ordem de servico formal?
-- O modulo deve futuramente permitir SLA por tipo de problema?
-- O modulo deve futuramente publicar indicadores abertos, sem dados pessoais, para transparencia?
-- O modulo deve futuramente integrar outros servicos urbanos no mesmo padrao?
-- Quais dados podem ser abertos ao cidadao sem comprometer seguranca, privacidade ou operacao?
+- O módulo deve futuramente permitir avaliação do atendimento pelo cidadão?
+- A reincidência por poste deve gerar alerta automático?
+- O painel deve indicar regiões com maior demanda?
+- O sistema deve permitir planejamento preventivo de troca de lâmpadas?
+- O módulo deve futuramente integrar inventário de luminárias, potência, tipo de lâmpada e consumo estimado?
+- O módulo deve futuramente integrar ordem de serviço formal?
+- O módulo deve futuramente permitir SLA por tipo de problema?
+- O módulo deve futuramente publicar indicadores abertos, sem dados pessoais, para transparência?
+- O módulo deve futuramente integrar outros serviços urbanos no mesmo padrão?
+- Quais dados podem ser abertos ao cidadão sem comprometer segurança, privacidade ou operação?
 
-## 24. Relacao com documentos existentes
+## 24. Relação com documentos existentes
 
 - `docs/MODULE-ILUMINACAO-PUBLICA.md`
 - `docs/ILUMINACAO-VALIDATION-CHECKLIST.md`
@@ -451,14 +453,14 @@ Referencia: `docs/POSTGIS-SCHEMA-PLAN.md`.
 - `docs/SECURITY-HARDENING-PLAN.md`
 - `docs/DOCUMENTATION-GOVERNANCE.md`
 
-## 25. Proximos passos
+## 25. Próximos passos
 
-1. Revisar este documento com o setor responsavel.
-2. Atualizar documentos relacionados caso haja mudanca.
+1. Revisar este documento com o setor responsável.
+2. Atualizar documentos relacionados caso haja mudança.
 3. Definir SRID operacional.
-4. Definir homologacao.
-5. Definir subdominio ou rota para API/painel interno.
-6. Preparar primeira migration SQL apenas em homologacao.
-7. Preparar prova de conceito FastAPI apenas em homologacao.
-8. Testar sem alterar o Geoportal publico.
-9. Integrar ao botao publico somente apos estabilidade e fallback definido.
+4. Definir homologação.
+5. Definir rotas ou subdomínios para API/painel interno, mantendo `/api` e `/interno` como primeira opção de homologação.
+6. Preparar primeira migration SQL apenas em homologação.
+7. Preparar prova de conceito FastAPI apenas em homologação.
+8. Testar sem alterar o Geoportal público.
+9. Integrar ao botão público somente após estabilidade e fallback definido.
