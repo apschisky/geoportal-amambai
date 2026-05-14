@@ -1,0 +1,96 @@
+# Arquivos do sistema
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Pastas do VS Code
+.vscode/
+
+# Arquivos temporários
+*.tmp
+*.log
+
+# Backups do Windows/OneDrive
+~$*
+*.bak
+
+# Arquivos ocultos do sistema
+ehthumbs.db
+
+# Pasta de cache do navegador (se existir)
+.cache/
+
+# Arquivos do Git
+.gitignore
+
+# Outros arquivos que não devem ir para o repositório
+*.rar
+*.zip
+
+# Arquivos e pastas legadas fora do projeto Vite
+.vscode/
+geoportal_complementos_esmodules/
+geoportal_esmodules/
+js/
+/index.html
+/main.js
+/style.css
+/logo.png
+/image.svg
+/brasao_separado1.png
+/brasao_separado2.png
+
+# Dependencias e build
+node_modules/
+dist/
+.vite/
+
+# Segredos, backups e arquivos sensiveis
+.env
+.env.*
+!.env.example
+*.backup
+*.bak
+*.dump
+*.sql
+*.key
+*.pem
+*.p12
+*.pfx
+.pgpass
+*.docx
+~$*.docx
+
+# Arquivos e pastas legadas fora do projeto Vite
+.vscode/
+geoportal_complementos_esmodules/
+geoportal_esmodules/
+js/
+/index.html
+/main.js
+/style.css
+/logo.png
+/image.svg
+/brasao_separado1.png
+/brasao_separado2.png
+
+# Dependencias e build
+node_modules/
+dist/
+.vite/
+
+# Segredos, backups e arquivos sensiveis
+.env
+.env.*
+!.env.example
+*.backup
+*.bak
+*.dump
+*.sql
+*.key
+*.pem
+*.p12
+*.pfx
+.pgpass
+*.docx
+~$*.docx
