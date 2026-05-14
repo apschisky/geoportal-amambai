@@ -94,3 +94,4 @@ dist/
 .pgpass
 *.docx
 ~$*.docx
+/README_Publicacao_e_Teste.txt
