@@ -1,0 +1,26 @@
+from fastapi.testclient import TestClient
+
+from app.main import app
+
+
+client = TestClient(app)
+
+
+def test_health_check_returns_ok() -> None:
+    response = client.get("/api/health")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "ok",
+        "service": "geoportal-api",
+    }
+
+
+def test_iluminacao_public_health_check_returns_ok() -> None:
+    response = client.get("/api/public/iluminacao/health")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "ok",
+        "module": "iluminacao-publica",
+    }

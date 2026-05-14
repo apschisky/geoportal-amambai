@@ -222,7 +222,13 @@ Cada fase deve ter teste, revisao de permissao e possibilidade de rollback.
 
 A primeira abordagem recomendada para homologacao e publicar API e painel interno por rotas, como `/api` e `/interno`, reduzindo complexidade inicial de DNS/certificado e risco de CORS. A separacao por subdominios pode ser adotada futuramente, caso haja necessidade operacional.
 
-## 18. Criterios antes de implementar
+## 18. Prova de conceito local
+
+Foi iniciada uma prova de conceito local em `geoportal-backend/`, com FastAPI e endpoints de health check para validar a estrutura inicial da futura API.
+
+Esta prova de conceito nao usa banco de dados, nao possui autenticacao real, nao contem dados sensiveis e nao tem impacto no Geoportal publico em producao.
+
+## 19. Criterios antes de implementar
 
 - [ ] Schema validado.
 - [ ] Autenticacao definida.
@@ -235,7 +241,7 @@ A primeira abordagem recomendada para homologacao e publicar API e painel intern
 - [ ] CORS planejado.
 - [ ] Segredos definidos fora do codigo.
 
-## 19. Relacao com documentos existentes
+## 20. Relacao com documentos existentes
 
 Este documento complementa:
 
@@ -246,7 +252,7 @@ Este documento complementa:
 - `docs/DATABASE-INVENTORY.md`;
 - `docs/LAYER-INVENTORY.md`.
 
-## 20. Proximos documentos recomendados
+## 21. Proximos documentos recomendados
 
 - `docs/AUTH-PERMISSIONS-PLAN.md`
 - futuro `docs/API-ENDPOINTS-ILUMINACAO.md`
