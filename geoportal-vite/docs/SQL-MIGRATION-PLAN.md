@@ -56,6 +56,8 @@ db/
 
 Os nomes finais podem mudar. O importante e manter ordem, finalidade clara e rastreabilidade.
 
+A estrutura inicial de pastas para scripts futuros foi criada em `geoportal-backend/db/`.
+
 ## 5. Convencao de nomes
 
 Padrao sugerido:
