@@ -109,6 +109,7 @@ Observações:
 
 Campos mínimos:
 
+- `localizacao_tipo`
 - `poste_id`
 - `coordenada`
 - `tipo_problema`
@@ -127,6 +128,12 @@ Regras:
 - Descrição deve ter limite de tamanho.
 - Entrada deve ser validada no servidor.
 - Campos vindos do Geoportal não devem ser aceitos cegamente sem validação pela API.
+
+Fluxo de localizacao manual:
+
+- Quando o poste nao estiver no mapa, o fluxo deve oferecer "O poste nao esta no mapa? Marcar local do poste".
+- O cidadao deve posicionar um pin manualmente.
+- A coordenada marcada manualmente deve ser usada quando o poste nao estiver cadastrado ou nao for encontrado.
 
 Mensagem sugerida ao cidadão:
 
@@ -389,7 +396,7 @@ Requisitos conceituais:
 
 - Criar schema próprio do módulo, como `mod_iluminacao`.
 - Não gravar operação em `web_map`.
-- Solicitações devem referenciar `poste_id`.
+- Solicitações devem referenciar `poste_id` quando houver poste selecionado no mapa.
 - Dados pessoais não devem aparecer em views públicas.
 - Criar histórico/auditoria.
 - Criar índices por status, protocolo, `poste_id`, data e geometria.

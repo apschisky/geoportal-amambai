@@ -37,15 +37,22 @@ Status da POC local: endpoint simulado disponivel em `geoportal-backend/`, com v
 
 Payload conceitual:
 
-- `poste_id`;
+- `localizacao_tipo`, com valores `poste_mapa` ou `ponto_manual`;
+- `poste_id`, obrigatorio apenas em `poste_mapa`;
 - `coordenada`;
 - `tipo_problema`;
 - `descricao`;
 - `ponto_referencia`;
+- `observacoes_localizacao`, quando o cidadao marcar manualmente o local;
 - `poste_proximo_informado`, quando o cidadao nao localizar o poste correto;
 - `solicitante_nome` opcional;
 - `solicitante_contato` opcional;
 - sem `foto` publica na primeira versao.
+
+Cenarios de localizacao:
+
+- `poste_mapa`: cidadao seleciona poste existente no mapa; `poste_id` e `coordenada` sao obrigatorios.
+- `ponto_manual`: cidadao nao encontra o poste no mapa; `poste_id` pode ser nulo, `coordenada` e obrigatoria e deve haver `observacoes_localizacao` ou `ponto_referencia`.
 
 Resposta conceitual:
 
@@ -56,10 +63,11 @@ Resposta conceitual:
 
 Validacoes:
 
-- `poste_id` obrigatorio;
+- `poste_id` obrigatorio apenas quando `localizacao_tipo` for `poste_mapa`;
 - `tipo_problema` obrigatorio;
 - `descricao` com limite de tamanho;
 - coordenada valida;
+- `localizacao_tipo` obrigatorio;
 - ponto de referencia opcional, com limite de tamanho;
 - contato opcional com validacao;
 - protocolo no formato sugerido `IP-2026-000001`, com prefixo, ano e sequencial;

@@ -31,10 +31,11 @@ pytest
 - `GET /api/public/iluminacao/health`
 - `POST /api/public/iluminacao/solicitacoes`
 
-### Exemplo de solicitacao publica simulada
+### Exemplo de solicitacao publica simulada com poste no mapa
 
 ```json
 {
+  "localizacao_tipo": "poste_mapa",
   "poste_id": "POSTE-001",
   "coordenada": {
     "latitude": -23.105,
@@ -42,9 +43,28 @@ pytest
   },
   "tipo_problema": "lampada_apagada",
   "descricao": "Lampada apagada durante a noite.",
-  "ponto_referencia": "Proximo a praca central."
+  "ponto_referencia": "Proximo a praca central.",
+  "observacoes_localizacao": null
 }
 ```
+
+### Exemplo de solicitacao publica simulada com ponto manual
+
+```json
+{
+  "localizacao_tipo": "ponto_manual",
+  "poste_id": null,
+  "coordenada": {
+    "latitude": -23.106,
+    "longitude": -55.226
+  },
+  "tipo_problema": "poste_danificado",
+  "descricao": "Poste nao encontrado no mapa.",
+  "observacoes_localizacao": "Pin marcado manualmente no local do poste."
+}
+```
+
+Quando o poste nao estiver no mapa, use `localizacao_tipo = "ponto_manual"` e envie a coordenada marcada no mapa com `observacoes_localizacao` ou `ponto_referencia`.
 
 O endpoint `POST /api/public/iluminacao/solicitacoes` e simulado nesta POC: ele valida o payload e retorna um protocolo ficticio, mas nao grava em banco de dados. Dados reais ainda nao devem ser enviados para esta prova de conceito.
 

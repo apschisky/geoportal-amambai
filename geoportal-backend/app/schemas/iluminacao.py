@@ -1,6 +1,6 @@
 from enum import Enum
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class TipoProblemaIluminacao(str, Enum):
@@ -11,6 +11,11 @@ class TipoProblemaIluminacao(str, Enum):
     braco_luminaria_danificada = "braco_luminaria_danificada"
     fiacao_aparente = "fiacao_aparente"
     outro = "outro"
+
+
+class TipoLocalizacaoIluminacao(str, Enum):
+    poste_mapa = "poste_mapa"
+    ponto_manual = "ponto_manual"
 
 
 class StatusSolicitacaoIluminacao(str, Enum):
@@ -33,11 +38,13 @@ class Coordenada(BaseModel):
 class IluminacaoSolicitacaoCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    poste_id: str = Field(min_length=1, max_length=80)
+    localizacao_tipo: TipoLocalizacaoIluminacao
+    poste_id: str | None = Field(default=None, max_length=80)
     coordenada: Coordenada
     tipo_problema: TipoProblemaIluminacao
     descricao: str = Field(min_length=5, max_length=1000)
     ponto_referencia: str | None = Field(default=None, max_length=300)
+    observacoes_localizacao: str | None = Field(default=None, max_length=500)
     poste_proximo_informado: str | None = Field(default=None, max_length=120)
     nome_solicitante: str | None = Field(default=None, max_length=120)
     contato_solicitante: str | None = Field(default=None, max_length=120)
@@ -46,6 +53,7 @@ class IluminacaoSolicitacaoCreate(BaseModel):
         "poste_id",
         "descricao",
         "ponto_referencia",
+        "observacoes_localizacao",
         "poste_proximo_informado",
         "nome_solicitante",
         "contato_solicitante",
@@ -56,6 +64,21 @@ class IluminacaoSolicitacaoCreate(BaseModel):
         if isinstance(value, str):
             return value.strip()
         return value
+
+    @model_validator(mode="after")
+    def validate_localizacao(self) -> "IluminacaoSolicitacaoCreate":
+        if self.localizacao_tipo == TipoLocalizacaoIluminacao.poste_mapa:
+            if not self.poste_id:
+                raise ValueError("poste_id is required when localizacao_tipo is poste_mapa")
+
+        if self.localizacao_tipo == TipoLocalizacaoIluminacao.ponto_manual:
+            if not self.observacoes_localizacao and not self.ponto_referencia:
+                raise ValueError(
+                    "observacoes_localizacao or ponto_referencia is required "
+                    "when localizacao_tipo is ponto_manual"
+                )
+
+        return self
 
 
 class IluminacaoSolicitacaoResponse(BaseModel):

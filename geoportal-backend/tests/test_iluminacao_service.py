@@ -5,6 +5,7 @@ from app.services.iluminacao_service import create_solicitacao_simulada
 def test_create_solicitacao_simulada_returns_protocol_and_initial_status() -> None:
     solicitacao = IluminacaoSolicitacaoCreate.model_validate(
         {
+            "localizacao_tipo": "poste_mapa",
             "poste_id": "POSTE-001",
             "coordenada": {
                 "latitude": -23.105,

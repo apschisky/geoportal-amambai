@@ -81,6 +81,7 @@ Campos conceituais:
 
 - `id`;
 - `protocolo`;
+- `localizacao_tipo`;
 - `poste_id`;
 - `geom`;
 - `data_abertura`;
@@ -88,6 +89,7 @@ Campos conceituais:
 - `tipo_problema_id`;
 - `descricao`;
 - `ponto_referencia`;
+- `observacoes_localizacao`;
 - `poste_proximo_informado`;
 - `solicitante_nome`;
 - `solicitante_contato`;
@@ -104,8 +106,8 @@ Diretrizes:
 - Dados pessoais devem ser minimizados.
 - `protocolo` deve ser unico.
 - Protocolo sugerido: `IP-2026-000001`, com prefixo, ano e sequencial.
-- `geom` deve ter SRID definido.
-- `poste_id` deve referenciar o identificador publico do poste, sem depender diretamente da tabela publica.
+- `geom` deve ser obrigatorio e ter SRID definido.
+- `poste_id` deve ser opcional para localizacao manual e referenciar o identificador publico do poste quando houver selecao no mapa.
 - Criar indice espacial para `geom`.
 - Criar indices por status, data e protocolo.
 - Prazo inicial para alerta de atraso: 15 dias, preferencialmente calculado por view ou regra de aplicacao para evitar duplicidade desnecessaria.
@@ -206,7 +208,7 @@ Diretrizes:
 - Views internas podem conter dados operacionais, protegidas por permissao e API.
 - GeoServer publico deve consumir preferencialmente views publicas, nao tabelas operacionais.
 
-Exemplo conceitual: `mod_iluminacao.solicitacoes` guarda chamados e referencia o poste por `poste_id`. Uma view operacional pode cruzar a solicitacao com dados basicos do poste para mapa interno. Uma view publica/controlada deve omitir nome, contato, observacoes internas e anexos.
+Exemplo conceitual: `mod_iluminacao.solicitacoes` guarda chamados e referencia o poste por `poste_id` quando houver poste selecionado no mapa. Uma view operacional pode cruzar a solicitacao com dados basicos do poste para mapa interno. Uma view publica/controlada deve omitir nome, contato, observacoes internas e anexos.
 
 ## 11. Permissoes de banco
 
