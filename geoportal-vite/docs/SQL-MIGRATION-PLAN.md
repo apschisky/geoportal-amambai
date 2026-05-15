@@ -164,6 +164,8 @@ Futuras migrations conceituais:
 
 Nenhuma dessas migrations deve ser criada antes da validacao do schema, permissoes, SRID, status e tipos de problema.
 
+Antes da primeira migration SQL, tambem devem estar definidos o modelo de permissoes e a relacao entre schemas operacionais, `web_map`/`plano` e views controladas.
+
 ## 12. Cuidados com dados existentes
 
 - Nao alterar camada publica de postes diretamente.

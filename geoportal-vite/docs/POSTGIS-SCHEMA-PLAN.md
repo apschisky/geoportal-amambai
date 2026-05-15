@@ -54,6 +54,15 @@ Leitura inicial:
 
 Modulos internos nao devem gravar diretamente em `web_map`. Tabelas operacionais devem ficar em schemas proprios, com views controladas quando alguma informacao precisar aparecer no Geoportal publico.
 
+Decisao de arquitetura:
+
+- modulos internos terao schemas proprios, como `mod_iluminacao`;
+- `web_map` continua como schema de publicacao/consumo pelo GeoServer e Geoportal;
+- `plano` continua como base tecnica/autoritativa quando aplicavel;
+- modulos internos devem referenciar feicoes existentes por identificador, como `poste_id`, `gid` ou codigo;
+- evitar copia direta de dados geograficos, salvo necessidade tecnica justificada;
+- preferir views controladas para cruzar dados operacionais com dados geograficos.
+
 ## 5. Modulo piloto: `mod_iluminacao`
 
 Tabelas candidatas:
@@ -192,9 +201,12 @@ Views sugeridas:
 Diretrizes:
 
 - Views publicas nao devem expor nome ou contato do cidadao.
+- Views publicas/controladas nao devem expor dados pessoais, observacoes internas ou anexos.
 - Views publicas devem mostrar apenas status agregado ou campos aprovados, como protocolo, status publico, datas e mensagem simples.
 - Views internas podem conter dados operacionais, protegidas por permissao e API.
 - GeoServer publico deve consumir preferencialmente views publicas, nao tabelas operacionais.
+
+Exemplo conceitual: `mod_iluminacao.solicitacoes` guarda chamados e referencia o poste por `poste_id`. Uma view operacional pode cruzar a solicitacao com dados basicos do poste para mapa interno. Uma view publica/controlada deve omitir nome, contato, observacoes internas e anexos.
 
 ## 11. Permissoes de banco
 

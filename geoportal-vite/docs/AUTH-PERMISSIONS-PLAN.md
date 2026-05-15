@@ -73,7 +73,22 @@ Validacao operacional inicial: Atendente/Triagem e Equipe de Campo podem ser a m
 
 Esta matriz e inicial e deve ser ajustada com o setor responsavel. A primeira versao pode unir papel de triagem e campo para simplificar operacao.
 
-## 7. Permissoes por acao
+## 7. Modelo futuro de autorizacao
+
+O modelo futuro deve relacionar usuario, modulo e permissao/acao. Um usuario podera acessar um ou mais modulos, sempre com permissoes especificas por modulo.
+
+Exemplos conceituais:
+
+- usuario com acesso apenas ao modulo de Iluminacao Publica, com permissao para listar e alterar status;
+- usuario com acesso a Iluminacao Publica e Limpeza de Lotes, com permissoes diferentes em cada modulo;
+- Prefeito/Gestor Geral com acesso estrategico de consulta e indicadores em todos ou varios modulos, sem permissao operacional desnecessaria;
+- administrador do sistema com gestao de usuarios, modulos e permissoes.
+
+O administrador do sistema podera definir quais modulos e niveis de permissao cada usuario possui. Permissoes operacionais devem seguir menor privilegio.
+
+DELETE real deve ser evitado para usuarios comuns. Exclusoes devem preferir cancelamento, inativacao, arquivamento ou soft delete com auditoria. Acoes sensiveis devem ser auditadas.
+
+## 8. Permissoes por acao
 
 Acoes padronizadas:
 
@@ -92,7 +107,7 @@ Acoes padronizadas:
 
 Exclusao fisica deve ser evitada. Preferir cancelamento logico, desativacao ou status equivalente, preservando historico e auditoria.
 
-## 8. Autenticacao
+## 9. Autenticacao
 
 Opcoes e criterios conceituais:
 
@@ -107,7 +122,7 @@ Opcoes e criterios conceituais:
 
 A implementacao final ainda deve ser definida. Este documento registra criterios minimos, nao uma escolha tecnica fechada.
 
-## 9. Autorizacao na API
+## 10. Autorizacao na API
 
 - Endpoints internos sempre exigem autenticacao.
 - Cada endpoint verifica permissao especifica.
@@ -116,7 +131,7 @@ A implementacao final ainda deve ser definida. Este documento registra criterios
 - API deve registrar tentativas negadas quando relevante.
 - Alteracoes de status e dados sensiveis exigem auditoria.
 
-## 10. Relacao com PostGIS
+## 11. Relacao com PostGIS
 
 - API usa usuario proprio de banco.
 - Usuarios humanos nao acessam banco diretamente para operar modulos.
@@ -126,7 +141,7 @@ A implementacao final ainda deve ser definida. Este documento registra criterios
 - Roles de banco devem seguir menor privilegio.
 - Escrita operacional deve ser limitada ao schema do modulo.
 
-## 11. Auditoria de acesso e acoes
+## 12. Auditoria de acesso e acoes
 
 Registrar:
 
@@ -143,7 +158,7 @@ Registrar:
 
 Eventos de auditoria devem ser protegidos contra edicao por usuarios comuns.
 
-## 12. Gestao de ciclo de vida de usuarios
+## 13. Gestao de ciclo de vida de usuarios
 
 - Criacao com perfil inicial.
 - Alteracao de perfil.
@@ -154,7 +169,7 @@ Eventos de auditoria devem ser protegidos contra edicao por usuarios comuns.
 - Manter relacao entre usuario e auditoria.
 - Registrar quem criou, alterou, bloqueou ou desativou usuario.
 
-## 13. Dados pessoais e LGPD
+## 14. Dados pessoais e LGPD
 
 - Coletar apenas o necessario.
 - Limitar acesso a nome/contato do cidadao.
@@ -167,7 +182,7 @@ Eventos de auditoria devem ser protegidos contra edicao por usuarios comuns.
 - Restringir exportacoes.
 - Evitar uso de dados pessoais em relatorios publicos.
 
-## 14. Seguranca operacional
+## 15. Seguranca operacional
 
 - Senhas fora do Git.
 - Segredos em variaveis de ambiente.
@@ -180,7 +195,7 @@ Eventos de auditoria devem ser protegidos contra edicao por usuarios comuns.
 - Avaliacao futura de 2FA.
 - Separar desenvolvimento, homologacao e producao.
 
-## 15. Escalonamento para outros modulos
+## 16. Escalonamento para outros modulos
 
 O mesmo modelo deve ser reaproveitado para:
 
@@ -192,7 +207,7 @@ O mesmo modelo deve ser reaproveitado para:
 
 Cada modulo pode ter perfis especificos, mas deve seguir o padrao comum de permissoes, auditoria, menor privilegio e separacao entre publico e interno.
 
-## 16. Criterios antes de implementar
+## 17. Criterios antes de implementar
 
 - [ ] Perfis aprovados.
 - [ ] Matriz de permissoes aprovada.
@@ -205,7 +220,7 @@ Cada modulo pode ter perfis especificos, mas deve seguir o padrao comum de permi
 - [ ] Regras de LGPD revisadas.
 - [ ] Procedimento de recuperacao/bloqueio de conta definido.
 
-## 17. Relacao com documentos existentes
+## 18. Relacao com documentos existentes
 
 Este documento complementa:
 
@@ -215,7 +230,7 @@ Este documento complementa:
 - `docs/INTERNAL-MODULES-ARCHITECTURE.md`;
 - `docs/SECURITY-HARDENING-PLAN.md`.
 
-## 18. Proximos documentos recomendados
+## 19. Proximos documentos recomendados
 
 - futuro `docs/API-ENDPOINTS-ILUMINACAO.md`
 - futuro `docs/SQL-MIGRATION-PLAN.md`
