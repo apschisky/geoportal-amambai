@@ -72,6 +72,9 @@ Validacoes:
 - nome e contato obrigatorios, com limite de tamanho e validacao;
 - protocolo no formato sugerido `IP-2026-000001`, com prefixo, ano e sequencial;
 - rate limit;
+- validacao futura de duplicidade por poste e por proximidade espacial;
+- resposta controlada para possivel duplicidade;
+- protecao contra abuso automatizado;
 - protecao contra spam.
 
 Auditoria/log:

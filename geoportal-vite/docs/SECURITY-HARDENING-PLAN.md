@@ -100,7 +100,17 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [ ] Documentacao controlada da API.
 - [ ] Inventario de endpoints.
 
-## 9. Usuarios, login e permissoes
+## 9. Protecao contra abuso em endpoints publicos
+
+- [ ] Aplicar rate limit por IP no futuro, com limite de chamadas por periodo.
+- [ ] Proteger contra multiplos chamados para o mesmo poste em curto intervalo.
+- [ ] Proteger chamados manuais proximos usando PostGIS no futuro.
+- [ ] Avaliar CAPTCHA, Turnstile ou reCAPTCHA se houver abuso automatizado.
+- [ ] Nao logar dados pessoais desnecessariamente.
+- [ ] Evitar armazenar IP puro sem politica de retencao/LGPD.
+- [ ] Proteger consulta publica por protocolo contra enumeracao.
+
+## 10. Usuarios, login e permissoes
 
 - [ ] Usuarios individuais, nunca compartilhados.
 - [ ] Perfis por secretaria e modulo.
@@ -111,7 +121,7 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [ ] Politica de senha.
 - [ ] Avaliacao futura de 2FA para perfis sensiveis.
 
-## 10. Auditoria e rastreabilidade
+## 11. Auditoria e rastreabilidade
 
 Registrar, conforme o modulo:
 
@@ -125,7 +135,7 @@ Registrar, conforme o modulo:
 - [ ] Fechamento ou finalizacao de atendimento.
 - [ ] Historico de encaminhamentos.
 
-## 11. Backups, rollback e continuidade
+## 12. Backups, rollback e continuidade
 
 - [ ] Backup do PostgreSQL.
 - [ ] Backup do GeoServer `data_dir`.
@@ -136,7 +146,7 @@ Registrar, conforme o modulo:
 - [ ] Documentacao dos caminhos, scripts e responsaveis.
 - [ ] Retencao minima definida para backups.
 
-## 12. Monitoramento e resposta a incidentes
+## 13. Monitoramento e resposta a incidentes
 
 - [ ] Acompanhar logs de Apache.
 - [ ] Acompanhar logs do Tomcat.
@@ -149,7 +159,7 @@ Registrar, conforme o modulo:
 - [ ] Troca de senhas e revisao de acessos apos incidente.
 - [ ] Registro pos-incidente com causa, impacto e correcao.
 
-## 13. Criterios minimos antes de iniciar modulos internos
+## 14. Criterios minimos antes de iniciar modulos internos
 
 Antes de iniciar modulos com login/API, deve existir:
 
@@ -164,7 +174,7 @@ Antes de iniciar modulos com login/API, deve existir:
 - [ ] Inventario de camadas e dados sensiveis.
 - [ ] Estrategia de publicacao e rollback.
 
-## 14. Relacao com outros documentos
+## 15. Relacao com outros documentos
 
 Este plano deve ser lido junto com:
 
@@ -175,7 +185,7 @@ Este plano deve ser lido junto com:
 - futuro `docs/MODULE-ILUMINACAO-PUBLICA.md`
 - futuro `docs/LAYER-INVENTORY.md`
 
-## 15. Nivel atual e caminho recomendado
+## 16. Nivel atual e caminho recomendado
 
 Nivel atual estimado: **base publica em amadurecimento, ainda antes do nivel seguro para modulos internos com login/API**.
 

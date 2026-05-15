@@ -81,12 +81,14 @@ Campos conceituais:
 
 - `id`;
 - `protocolo`;
+- `origem`;
 - `localizacao_tipo`;
 - `poste_id`;
 - `geom`;
 - `data_abertura`;
 - `status_id`;
 - `tipo_problema_id`;
+- `duplicidade_suspeita`;
 - `descricao`;
 - `ponto_referencia`;
 - `observacoes_localizacao`;
@@ -98,6 +100,8 @@ Campos conceituais:
 - `origem`;
 - `data_ultima_atualizacao`;
 - `data_conclusao`;
+- `deleted_at`;
+- `deleted_reason`;
 - `criado_por`;
 - `atualizado_por`.
 
@@ -109,6 +113,13 @@ Diretrizes:
 - Protocolo sugerido: `IP-2026-000001`, com prefixo, ano e sequencial.
 - `geom` deve ser obrigatorio e ter SRID definido.
 - `poste_id` deve ser opcional para localizacao manual e referenciar o identificador publico do poste quando houver selecao no mapa.
+- `localizacao_tipo` deve validar `poste_mapa` e `ponto_manual`.
+- `origem` deve identificar a origem tecnica da solicitacao.
+- `duplicidade_suspeita` deve apoiar triagem e protecao contra abuso.
+- Futuras regras podem marcar duplicidade por `poste_id` ou por proximidade espacial.
+- `status` inicial deve ser `aberta`.
+- `prioridade` inicial deve ser `normal`.
+- Soft delete deve usar `deleted_at` e `deleted_reason`.
 - Criar indice espacial para `geom`.
 - Criar indices por status, data e protocolo.
 - Prazo inicial para alerta de atraso: 15 dias, preferencialmente calculado por view ou regra de aplicacao para evitar duplicidade desnecessaria.

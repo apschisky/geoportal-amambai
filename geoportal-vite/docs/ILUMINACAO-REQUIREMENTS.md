@@ -412,6 +412,10 @@ Referência: `docs/POSTGIS-SCHEMA-PLAN.md`.
 - Usuário da API com menor privilégio.
 - Validação de entrada.
 - Rate limit.
+- Controle contra spam/bot.
+- Controle de multiplos chamados para o mesmo poste.
+- Marcacao de duplicidade suspeita.
+- Protecao contra abuso por criacao em massa.
 - Logs e auditoria.
 - Tratamento genérico de erro público.
 - Proteção contra enumeração de protocolo.

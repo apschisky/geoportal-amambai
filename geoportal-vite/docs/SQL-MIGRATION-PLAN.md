@@ -168,6 +168,8 @@ Antes da primeira migration SQL, tambem devem estar definidos o modelo de permis
 
 A primeira migration planejada cria apenas o schema `mod_iluminacao`, sem tabelas, permissoes ou execucao em banco nesta etapa.
 
+A migration 0002 planejada cria a tabela `mod_iluminacao.solicitacoes`, ainda sem execucao no banco nesta etapa.
+
 ## 12. Cuidados com dados existentes
 
 - Nao alterar camada publica de postes diretamente.
