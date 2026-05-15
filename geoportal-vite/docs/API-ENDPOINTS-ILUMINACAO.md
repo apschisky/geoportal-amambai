@@ -45,8 +45,8 @@ Payload conceitual:
 - `ponto_referencia`;
 - `observacoes_localizacao`, quando o cidadao marcar manualmente o local;
 - `poste_proximo_informado`, quando o cidadao nao localizar o poste correto;
-- `solicitante_nome` opcional;
-- `solicitante_contato` opcional;
+- `nome_solicitante` obrigatorio na POC/local e na primeira versao planejada;
+- `contato_solicitante` obrigatorio na POC/local e na primeira versao planejada;
 - sem `foto` publica na primeira versao.
 
 Cenarios de localizacao:
@@ -69,7 +69,7 @@ Validacoes:
 - coordenada valida;
 - `localizacao_tipo` obrigatorio;
 - ponto de referencia opcional, com limite de tamanho;
-- contato opcional com validacao;
+- nome e contato obrigatorios, com limite de tamanho e validacao;
 - protocolo no formato sugerido `IP-2026-000001`, com prefixo, ano e sequencial;
 - rate limit;
 - protecao contra spam.

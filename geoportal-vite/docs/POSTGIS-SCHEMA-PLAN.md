@@ -104,6 +104,7 @@ Campos conceituais:
 Diretrizes:
 
 - Dados pessoais devem ser minimizados.
+- `solicitante_nome` e `solicitante_contato` devem ser considerados NOT NULL na primeira versao, sujeitos a validacao LGPD/final.
 - `protocolo` deve ser unico.
 - Protocolo sugerido: `IP-2026-000001`, com prefixo, ano e sequencial.
 - `geom` deve ser obrigatorio e ter SRID definido.

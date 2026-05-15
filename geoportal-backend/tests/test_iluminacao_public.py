@@ -163,15 +163,40 @@ def test_create_solicitacao_rejects_public_status_field() -> None:
     assert response.status_code == 422
 
 
-def test_create_solicitacao_accepts_omitted_optional_name_and_contact() -> None:
+def test_create_solicitacao_rejects_missing_nome_solicitante() -> None:
     payload = valid_payload()
     payload.pop("nome_solicitante")
+
+    response = client.post("/api/public/iluminacao/solicitacoes", json=payload)
+
+    assert response.status_code == 422
+
+
+def test_create_solicitacao_rejects_missing_contato_solicitante() -> None:
+    payload = valid_payload()
     payload.pop("contato_solicitante")
 
     response = client.post("/api/public/iluminacao/solicitacoes", json=payload)
 
-    assert response.status_code in (200, 201)
-    assert response.json()["protocolo"] == "IP-2026-000001"
+    assert response.status_code == 422
+
+
+def test_create_solicitacao_rejects_blank_nome_solicitante() -> None:
+    payload = valid_payload()
+    payload["nome_solicitante"] = "   "
+
+    response = client.post("/api/public/iluminacao/solicitacoes", json=payload)
+
+    assert response.status_code == 422
+
+
+def test_create_solicitacao_rejects_blank_contato_solicitante() -> None:
+    payload = valid_payload()
+    payload["contato_solicitante"] = "   "
+
+    response = client.post("/api/public/iluminacao/solicitacoes", json=payload)
+
+    assert response.status_code == 422
 
 
 @pytest.mark.parametrize(
@@ -184,7 +209,7 @@ def test_create_solicitacao_accepts_omitted_optional_name_and_contact() -> None:
         ("contato_solicitante", 120),
     ],
 )
-def test_create_solicitacao_rejects_too_long_optional_fields(
+def test_create_solicitacao_rejects_too_long_text_fields(
     field_name: str,
     max_length: int,
 ) -> None:

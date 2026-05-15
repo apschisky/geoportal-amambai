@@ -13,6 +13,8 @@ def test_create_solicitacao_simulada_returns_protocol_and_initial_status() -> No
             },
             "tipo_problema": "lampada_apagada",
             "descricao": "Lampada apagada durante a noite.",
+            "nome_solicitante": "Solicitante de teste",
+            "contato_solicitante": "contato de teste",
         }
     )
 

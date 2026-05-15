@@ -44,7 +44,9 @@ pytest
   "tipo_problema": "lampada_apagada",
   "descricao": "Lampada apagada durante a noite.",
   "ponto_referencia": "Proximo a praca central.",
-  "observacoes_localizacao": null
+  "observacoes_localizacao": null,
+  "nome_solicitante": "Solicitante de teste",
+  "contato_solicitante": "contato de teste"
 }
 ```
 
@@ -60,11 +62,15 @@ pytest
   },
   "tipo_problema": "poste_danificado",
   "descricao": "Poste nao encontrado no mapa.",
-  "observacoes_localizacao": "Pin marcado manualmente no local do poste."
+  "observacoes_localizacao": "Pin marcado manualmente no local do poste.",
+  "nome_solicitante": "Solicitante de teste",
+  "contato_solicitante": "contato de teste"
 }
 ```
 
 Quando o poste nao estiver no mapa, use `localizacao_tipo = "ponto_manual"` e envie a coordenada marcada no mapa com `observacoes_localizacao` ou `ponto_referencia`.
+
+Na primeira versao, `nome_solicitante` e `contato_solicitante` sao obrigatorios porque nao havera login do cidadao e a equipe pode precisar confirmar a localizacao ou detalhes do chamado. Esses dados nao devem ser expostos em mapas ou views publicas.
 
 O endpoint `POST /api/public/iluminacao/solicitacoes` e simulado nesta POC: ele valida o payload e retorna um protocolo ficticio, mas nao grava em banco de dados. Dados reais ainda nao devem ser enviados para esta prova de conceito.
 

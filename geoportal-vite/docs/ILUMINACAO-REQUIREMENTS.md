@@ -116,14 +116,13 @@ Campos mínimos:
 - `descricao`
 - `ponto_referencia`
 - `poste_proximo_informado`
-- `nome_solicitante` opcional
-- `contato_solicitante` opcional
+- `nome_solicitante`
+- `contato_solicitante`
 
 Regras:
 
-- Nome não obrigatório.
-- Contato não obrigatório.
-- Contato pode ajudar se o poste não for localizado.
+- Nome e contato sao obrigatorios na primeira versao sem login.
+- Nome e contato sao usados para retorno/esclarecimento e nao devem aparecer no mapa publico.
 - Foto pública não entra na primeira versão.
 - Descrição deve ter limite de tamanho.
 - Entrada deve ser validada no servidor.

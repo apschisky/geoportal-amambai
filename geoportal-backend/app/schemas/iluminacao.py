@@ -46,8 +46,8 @@ class IluminacaoSolicitacaoCreate(BaseModel):
     ponto_referencia: str | None = Field(default=None, max_length=300)
     observacoes_localizacao: str | None = Field(default=None, max_length=500)
     poste_proximo_informado: str | None = Field(default=None, max_length=120)
-    nome_solicitante: str | None = Field(default=None, max_length=120)
-    contato_solicitante: str | None = Field(default=None, max_length=120)
+    nome_solicitante: str = Field(min_length=2, max_length=120)
+    contato_solicitante: str = Field(min_length=5, max_length=120)
 
     @field_validator(
         "poste_id",
