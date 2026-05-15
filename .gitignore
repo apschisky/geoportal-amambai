@@ -94,4 +94,9 @@ dist/
 .pgpass
 *.docx
 ~$*.docx
+
+# SQL versionado do backend
+!geoportal-backend/db/migrations/*.sql
+!geoportal-backend/db/rollbacks/*.sql
+!geoportal-backend/db/seeds/*.sql
 /README_Publicacao_e_Teste.txt

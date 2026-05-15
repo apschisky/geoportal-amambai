@@ -166,6 +166,8 @@ Nenhuma dessas migrations deve ser criada antes da validacao do schema, permisso
 
 Antes da primeira migration SQL, tambem devem estar definidos o modelo de permissoes e a relacao entre schemas operacionais, `web_map`/`plano` e views controladas.
 
+A primeira migration planejada cria apenas o schema `mod_iluminacao`, sem tabelas, permissoes ou execucao em banco nesta etapa.
+
 ## 12. Cuidados com dados existentes
 
 - Nao alterar camada publica de postes diretamente.
