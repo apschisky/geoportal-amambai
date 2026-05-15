@@ -86,20 +86,19 @@ Campos conceituais:
 - `poste_id`;
 - `geom`;
 - `data_abertura`;
-- `status_id`;
-- `tipo_problema_id`;
+- `status`;
+- `tipo_problema`;
 - `duplicidade_suspeita`;
 - `descricao`;
 - `ponto_referencia`;
 - `observacoes_localizacao`;
 - `poste_proximo_informado`;
-- `solicitante_nome`;
-- `solicitante_contato`;
+- `nome_solicitante`;
+- `contato_solicitante`;
 - `prioridade`;
 - `alerta_atraso`/`dias_parado` ou calculo derivado equivalente;
-- `origem`;
 - `data_ultima_atualizacao`;
-- `data_conclusao`;
+- `finalizado_em`;
 - `deleted_at`;
 - `deleted_reason`;
 - `criado_por`;
@@ -108,7 +107,7 @@ Campos conceituais:
 Diretrizes:
 
 - Dados pessoais devem ser minimizados.
-- `solicitante_nome` e `solicitante_contato` devem ser considerados NOT NULL na primeira versao, sujeitos a validacao LGPD/final.
+- `nome_solicitante` e `contato_solicitante` devem ser considerados NOT NULL na primeira versao, sujeitos a validacao LGPD/final.
 - `protocolo` deve ser unico.
 - Protocolo sugerido: `IP-2026-000001`, com prefixo, ano e sequencial.
 - `geom` deve ser obrigatorio e ter SRID definido.

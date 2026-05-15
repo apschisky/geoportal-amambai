@@ -6,6 +6,9 @@
 -- Nao cria triggers.
 -- Nao cria historico.
 -- Nao cria anexos.
+-- Requer que a migration 0001 ja tenha criado o schema mod_iluminacao.
+-- Requer PostGIS habilitado no banco antes da execucao.
+-- Nao cria extensao PostGIS.
 -- Nao deve ser executada em producao sem backup, revisao e autorizacao.
 
 CREATE TABLE IF NOT EXISTS mod_iluminacao.solicitacoes (

@@ -43,7 +43,7 @@ Estrutura conceitual:
 db/
   migrations/
     0001_create_mod_iluminacao_schema.sql
-    0002_create_mod_iluminacao_tables.sql
+    0002_create_iluminacao_solicitacoes.sql
     0003_create_mod_iluminacao_indexes.sql
     0004_create_mod_iluminacao_views.sql
     0005_create_mod_iluminacao_permissions.sql
@@ -69,7 +69,7 @@ NNNN_acao_modulo_objeto.sql
 Exemplos:
 
 - `0001_create_mod_iluminacao_schema.sql`
-- `0002_create_mod_iluminacao_tables.sql`
+- `0002_create_iluminacao_solicitacoes.sql`
 - `0003_create_mod_iluminacao_indexes.sql`
 - `0004_create_mod_iluminacao_views.sql`
 - `0005_create_mod_iluminacao_permissions.sql`
