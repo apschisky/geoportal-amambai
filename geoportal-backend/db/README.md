@@ -15,4 +15,6 @@ Regras desta pasta:
 
 O modulo piloto sera Iluminacao Publica. O schema futuro previsto e `mod_iluminacao`.
 
+`HOMOLOGATION-RUNBOOK.md` contem o roteiro seguro com placeholders para futura execucao em homologacao.
+
 Ainda nao ha SQL executavel nesta etapa.

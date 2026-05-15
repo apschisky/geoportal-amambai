@@ -170,6 +170,8 @@ A primeira migration planejada cria apenas o schema `mod_iluminacao`, sem tabela
 
 A migration 0002 planejada cria a tabela `mod_iluminacao.solicitacoes`, ainda sem execucao no banco nesta etapa.
 
+O runbook de homologacao foi criado em `geoportal-backend/db/HOMOLOGATION-RUNBOOK.md`, sem dados sensiveis e usando apenas placeholders.
+
 ## 12. Cuidados com dados existentes
 
 - Nao alterar camada publica de postes diretamente.
