@@ -97,6 +97,9 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [ ] Tratamento seguro de erros.
 - [ ] Nenhum segredo no codigo.
 - [ ] Credenciais por variaveis de ambiente.
+- [ ] Credenciais de banco apenas em variavel de ambiente ou arquivo local nao versionado.
+- [ ] Nunca usar `DATABASE_URL` em variavel `VITE_`.
+- [ ] API sem usuario superuser do PostgreSQL.
 - [ ] Documentacao controlada da API.
 - [ ] Inventario de endpoints.
 

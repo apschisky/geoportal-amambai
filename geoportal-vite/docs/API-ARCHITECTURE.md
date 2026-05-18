@@ -89,6 +89,8 @@ Finalidade:
 - Evitar superuser em servicos.
 - Registrar erros tecnicos em log interno, sem expor detalhes ao usuario.
 
+A API usa `DATABASE_URL` por variavel de ambiente ou arquivo local nao versionado. O front-end nao conhece credenciais do banco. A API sera publicada separadamente do build `dist`; futuramente, o Apache podera encaminhar `/api` para o servico FastAPI.
+
 ## 7. Validacao de entrada
 
 A API deve validar:

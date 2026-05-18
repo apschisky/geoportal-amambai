@@ -24,6 +24,18 @@ uvicorn app.main:app --reload
 pytest
 ```
 
+## Configuracao de banco
+
+A conexao com PostgreSQL/PostGIS usa `DATABASE_URL` em arquivo `.env` local ou variavel de ambiente.
+
+O arquivo `.env` real nao deve ser versionado. Use `.env.example` apenas como referencia com placeholders:
+
+```text
+DATABASE_URL=postgresql+psycopg://<USER>:<PASSWORD>@<HOST>:<PORT>/<DATABASE>
+```
+
+Credenciais de banco nunca devem ir para o front-end, Vite ou `dist`. A API roda separada do build do front-end.
+
 ## Endpoints disponiveis
 
 - `GET /api/health`
