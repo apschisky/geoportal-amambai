@@ -174,6 +174,8 @@ As migrations 0001 e 0002 foram validadas em ambiente de homologacao separado, c
 
 A migration 0003 cria sequence dedicada para geracao segura de protocolos.
 
+A migration 0003 foi validada em homologacao, com sequence criada, `nextval` testado e consumo pelo usuario restrito da API confirmado.
+
 O runbook de homologacao foi criado em `geoportal-backend/db/HOMOLOGATION-RUNBOOK.md`, sem dados sensiveis e usando apenas placeholders.
 
 ## 12. Cuidados com dados existentes

@@ -307,3 +307,17 @@ Registro seguro, sem dados sensiveis:
 - Um teste de `INSERT` com `ROLLBACK` confirmou funcionamento.
 - `COUNT(*)` confirmou ausencia de dados de teste persistidos.
 - Credenciais reais permaneceram fora do Git.
+
+## Registro de validacao da sequence de protocolo
+
+A migration `0003_create_iluminacao_protocolo_sequence.sql` foi aplicada com sucesso em banco de homologacao, em ambiente separado.
+
+Registro seguro, sem dados sensiveis:
+
+- A sequence dedicada `mod_iluminacao.solicitacoes_protocolo_seq` foi criada.
+- `nextval` foi validado.
+- A montagem de protocolo no formato `IP-YYYY-NNNNNN` foi validada.
+- O usuario restrito da API recebeu permissao minima na sequence.
+- O usuario restrito da API conseguiu consumir a sequence.
+- O banco ativo nao foi alterado.
+- Nao houve dados sensiveis no registro.

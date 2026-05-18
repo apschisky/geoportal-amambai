@@ -78,6 +78,7 @@ Validacoes:
 - nome e contato obrigatorios, com limite de tamanho e validacao;
 - protocolo no formato previsto `IP-YYYY-000001`, com prefixo, ano e sequencial;
 - protocolo deixara de ser fixo/simulado e sera gerado com sequence do banco;
+- a sequence de protocolo foi validada em homologacao e substituira o protocolo fixo/simulado na etapa de persistencia real;
 - rate limit;
 - validacao futura de duplicidade por poste e por proximidade espacial;
 - resposta controlada para possivel duplicidade;
