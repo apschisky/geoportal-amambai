@@ -101,6 +101,8 @@ Endpoints nao devem conter SQL direto. A persistencia deve ficar em repositories
 
 Existe script manual para validar o repository contra homologacao sem acoplar o endpoint publico a persistencia real.
 
+A persistencia de solicitacoes e controlada por configuracao (`PERSIST_SOLICITACOES`). O service decide entre modo simulado e repository; o endpoint nao contem SQL.
+
 ## 7. Validacao de entrada
 
 A API deve validar:

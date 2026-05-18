@@ -32,9 +32,17 @@ O arquivo `.env` real nao deve ser versionado. Use `.env.example` apenas como re
 
 ```text
 DATABASE_URL=postgresql+psycopg://<USER>:<PASSWORD>@<HOST>:<PORT>/<DATABASE>
+PERSIST_SOLICITACOES=false
 ```
 
 Credenciais de banco nunca devem ir para o front-end, Vite ou `dist`. A API roda separada do build do front-end.
+
+`PERSIST_SOLICITACOES` controla a persistencia real:
+
+- `false`: mantem o endpoint em modo simulado, sem gravar no banco.
+- `true`: usa o repository e `DATABASE_URL` para gravar em `mod_iluminacao.solicitacoes`.
+
+Em homologacao/producao, ative apenas apos banco, usuario restrito e testes validados.
 
 ## Endpoints disponiveis
 

@@ -39,6 +39,8 @@ A persistencia real sera feita via repository com SQLAlchemy Core, mas o endpoin
 
 O teste de persistencia e feito por script manual antes da ativacao no endpoint publico.
 
+O endpoint pode operar em modo simulado ou persistente conforme `PERSIST_SOLICITACOES`. A ativacao real depende de homologacao validada.
+
 Payload conceitual:
 
 - `localizacao_tipo`, com valores `poste_mapa` ou `ponto_manual`;
