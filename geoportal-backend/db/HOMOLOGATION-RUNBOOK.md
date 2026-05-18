@@ -284,3 +284,26 @@ Registro seguro, sem dados sensiveis:
 - A validacao visual foi feita em ferramenta administrativa.
 - O banco ativo nao foi alterado.
 - Nao houve persistencia de dados de teste.
+
+## Registro de validacao do usuario restrito da API
+
+O usuario restrito da API foi criado e validado em homologacao, sem registro de credenciais reais no Git.
+
+Registro seguro, sem dados sensiveis:
+
+- Permissoes administrativas foram negadas.
+- O usuario nao possui `SUPERUSER`.
+- O usuario nao possui `CREATEDB`.
+- O usuario nao possui `CREATEROLE`.
+- O usuario nao possui `REPLICATION`.
+- O usuario nao possui `BYPASSRLS`.
+- Permissoes minimas foram concedidas somente para `mod_iluminacao`.
+- `CONNECT` no banco de homologacao foi confirmado.
+- `USAGE` no schema `mod_iluminacao` foi confirmado.
+- `INSERT` e `SELECT` na tabela `mod_iluminacao.solicitacoes` foram confirmados.
+- `USAGE` e `SELECT` na sequence `mod_iluminacao.solicitacoes_id_seq` foram confirmados.
+- `UPDATE` e `DELETE` foram negados.
+- Acesso a schemas nao necessarios foi negado.
+- Um teste de `INSERT` com `ROLLBACK` confirmou funcionamento.
+- `COUNT(*)` confirmou ausencia de dados de teste persistidos.
+- Credenciais reais permaneceram fora do Git.

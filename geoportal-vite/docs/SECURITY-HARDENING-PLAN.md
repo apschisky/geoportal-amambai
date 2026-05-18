@@ -103,6 +103,7 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [ ] API com usuario restrito por modulo/ambiente.
 - [ ] Permissoes minimas por modulo.
 - [ ] Sem acesso direto a schemas `plano`/`web_map`, salvo necessidade futura muito bem justificada.
+- [x] Padrao de usuario restrito da API validado em homologacao, sem superuser e sem acesso direto a schemas nao necessarios.
 - [ ] Documentacao controlada da API.
 - [ ] Inventario de endpoints.
 

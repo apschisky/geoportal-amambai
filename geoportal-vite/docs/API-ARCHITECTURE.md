@@ -93,6 +93,8 @@ A API usa `DATABASE_URL` por variavel de ambiente ou arquivo local nao versionad
 
 A API deve conectar ao banco usando usuario restrito por modulo e ambiente. O endpoint publico de solicitacoes deve ter apenas permissao minima para inserir e retornar os dados necessarios.
 
+A arquitetura de banco da API foi validada em homologacao com usuario restrito, sem superuser e sem acesso direto a schemas nao necessarios.
+
 ## 7. Validacao de entrada
 
 A API deve validar:
