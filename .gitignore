@@ -100,4 +100,5 @@ dist/
 !geoportal-backend/db/migrations/*.sql
 !geoportal-backend/db/rollbacks/*.sql
 !geoportal-backend/db/seeds/*.sql
+!geoportal-backend/db/security/*.sql
 /README_Publicacao_e_Teste.txt
