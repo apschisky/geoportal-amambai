@@ -91,6 +91,8 @@ Finalidade:
 
 A API usa `DATABASE_URL` por variavel de ambiente ou arquivo local nao versionado. O front-end nao conhece credenciais do banco. A API sera publicada separadamente do build `dist`; futuramente, o Apache podera encaminhar `/api` para o servico FastAPI.
 
+A API deve conectar ao banco usando usuario restrito por modulo e ambiente. O endpoint publico de solicitacoes deve ter apenas permissao minima para inserir e retornar os dados necessarios.
+
 ## 7. Validacao de entrada
 
 A API deve validar:

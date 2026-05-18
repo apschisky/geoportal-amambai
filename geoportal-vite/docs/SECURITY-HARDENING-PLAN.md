@@ -100,6 +100,9 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [ ] Credenciais de banco apenas em variavel de ambiente ou arquivo local nao versionado.
 - [ ] Nunca usar `DATABASE_URL` em variavel `VITE_`.
 - [ ] API sem usuario superuser do PostgreSQL.
+- [ ] API com usuario restrito por modulo/ambiente.
+- [ ] Permissoes minimas por modulo.
+- [ ] Sem acesso direto a schemas `plano`/`web_map`, salvo necessidade futura muito bem justificada.
 - [ ] Documentacao controlada da API.
 - [ ] Inventario de endpoints.
 

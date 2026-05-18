@@ -17,4 +17,6 @@ O modulo piloto sera Iluminacao Publica. O schema futuro previsto e `mod_ilumina
 
 `HOMOLOGATION-RUNBOOK.md` contem o roteiro seguro com placeholders para futura execucao em homologacao.
 
+`security/` contem templates seguros de permissoes e roles com placeholders.
+
 Ainda nao ha SQL executavel nesta etapa.

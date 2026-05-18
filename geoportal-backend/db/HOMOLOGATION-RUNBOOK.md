@@ -229,6 +229,23 @@ Nao usar em producao sem backup, autorizacao formal e revisao.
 
 `DROP TABLE` e `DROP SCHEMA` podem causar perda de dados.
 
+## Usuario restrito da API
+
+A API nao deve usar `postgres`, usuario admin ou superuser.
+
+Criar usuario proprio e restrito para a API, com permissoes minimas por modulo e ambiente.
+
+Permissoes previstas para a etapa publica inicial:
+
+- `CONNECT` no banco de homologacao.
+- `USAGE` no schema `mod_iluminacao`.
+- `INSERT` e `SELECT` na tabela `mod_iluminacao.solicitacoes`.
+- `USAGE` e `SELECT` na sequence `mod_iluminacao.solicitacoes_id_seq`.
+
+`UPDATE` fica para etapa futura do painel interno.
+
+Usar o template `db/security/create_api_user_template.sql` apenas como modelo. Substituir placeholders localmente fora do repositorio. Dados reais devem ficar fora do Git.
+
 ## O que nao fazer
 
 - Nao executar em producao.
