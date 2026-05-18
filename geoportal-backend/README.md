@@ -88,6 +88,14 @@ O endpoint `POST /api/public/iluminacao/solicitacoes` e simulado nesta POC: ele 
 
 O repository de Iluminacao Publica ja esta preparado para persistencia futura com SQLAlchemy Core, mas o endpoint publico ainda nao foi conectado a gravacao real. A coordenada recebida pela API em EPSG:4326 sera transformada pelo PostGIS para `geometry(Point, 32721)`.
 
+## Teste manual do repository
+
+```powershell
+python scripts/test_iluminacao_repository_manual.py
+```
+
+Esse teste manual requer `.env` local com `DATABASE_URL`. O endpoint publico nao e alterado por esse script. Ele pode criar registro de teste em homologacao; limpe os dados de teste apos a validacao.
+
 Exemplo de resposta simulada:
 
 ```json

@@ -99,6 +99,8 @@ A arquitetura de banco da API foi validada em homologacao com usuario restrito, 
 
 Endpoints nao devem conter SQL direto. A persistencia deve ficar em repositories usando SQLAlchemy Core, bind parameters e transacoes controladas.
 
+Existe script manual para validar o repository contra homologacao sem acoplar o endpoint publico a persistencia real.
+
 ## 7. Validacao de entrada
 
 A API deve validar:

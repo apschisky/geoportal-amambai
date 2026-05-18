@@ -37,6 +37,8 @@ Status da POC local: endpoint simulado disponivel em `geoportal-backend/`, com v
 
 A persistencia real sera feita via repository com SQLAlchemy Core, mas o endpoint publico ainda esta em transicao/controlado e permanece sem gravacao real.
 
+O teste de persistencia e feito por script manual antes da ativacao no endpoint publico.
+
 Payload conceitual:
 
 - `localizacao_tipo`, com valores `poste_mapa` ou `ponto_manual`;
