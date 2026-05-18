@@ -47,13 +47,13 @@ def create_solicitacao(
             :nome_solicitante,
             :contato_solicitante,
             CASE
-                WHEN :poste_id IS NULL THEN false
+                WHEN CAST(:poste_id AS varchar) IS NULL THEN false
                 ELSE EXISTS (
                     SELECT 1
                     FROM mod_iluminacao.solicitacoes existente
                     WHERE existente.deleted_at IS NULL
-                      AND existente.poste_id = :poste_id
-                      AND existente.tipo_problema = :tipo_problema
+                      AND existente.poste_id = CAST(:poste_id AS varchar)
+                      AND existente.tipo_problema = CAST(:tipo_problema AS varchar)
                       AND existente.status IN (
                           'aberta',
                           'em_triagem',

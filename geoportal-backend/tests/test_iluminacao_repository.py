@@ -95,6 +95,8 @@ def test_create_solicitacao_uses_postgis_transform_and_bind_params() -> None:
     assert "'aguardando_material'" in sql
     assert ":poste_id" in sql
     assert ":tipo_problema" in sql
+    assert "CAST(:poste_id AS varchar)" in sql
+    assert "CAST(:tipo_problema AS varchar)" in sql
     assert "RAISE" not in sql.upper()
     assert "EXCEPTION" not in sql.upper()
     assert params["longitude"] == -55.225
