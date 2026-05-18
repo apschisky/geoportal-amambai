@@ -42,8 +42,10 @@ def main() -> None:
             return
         raise
 
+    status = response.status.value if hasattr(response.status, "value") else response.status
+
     print(f"Protocolo retornado: {response.protocolo}")
-    print(f"Status retornado: {response.status}")
+    print(f"Status retornado: {status}")
     print("Teste manual do repository finalizado.")
 
 
