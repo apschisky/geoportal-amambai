@@ -102,6 +102,8 @@ Com `PERSIST_SOLICITACOES=false`, o endpoint `POST /api/public/iluminacao/solici
 
 Com `PERSIST_SOLICITACOES=true`, o service usa repository com SQLAlchemy Core para persistir a solicitacao e gerar protocolo pela sequence do banco. A coordenada recebida pela API em EPSG:4326 sera transformada pelo PostGIS para `geometry(Point, 32721)`.
 
+Em modo persistente, o repository marca `duplicidade_suspeita` quando houver solicitacao ativa semelhante nas ultimas 24h para o mesmo poste. Nesta etapa, a solicitacao nao e bloqueada.
+
 ## Teste manual do repository
 
 ```powershell

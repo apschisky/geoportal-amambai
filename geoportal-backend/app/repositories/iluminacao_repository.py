@@ -28,7 +28,8 @@ def create_solicitacao(
             ponto_referencia,
             poste_proximo_informado,
             nome_solicitante,
-            contato_solicitante
+            contato_solicitante,
+            duplicidade_suspeita
         )
         VALUES (
             :protocolo,
@@ -44,7 +45,25 @@ def create_solicitacao(
             :ponto_referencia,
             :poste_proximo_informado,
             :nome_solicitante,
-            :contato_solicitante
+            :contato_solicitante,
+            CASE
+                WHEN :poste_id IS NULL THEN false
+                ELSE EXISTS (
+                    SELECT 1
+                    FROM mod_iluminacao.solicitacoes existente
+                    WHERE existente.deleted_at IS NULL
+                      AND existente.poste_id = :poste_id
+                      AND existente.tipo_problema = :tipo_problema
+                      AND existente.status IN (
+                          'aberta',
+                          'em_triagem',
+                          'encaminhada',
+                          'em_execucao',
+                          'aguardando_material'
+                      )
+                      AND existente.criado_em >= now() - interval '24 hours'
+                )
+            END
         )
         RETURNING protocolo, status
         """

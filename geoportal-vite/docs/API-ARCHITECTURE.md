@@ -109,6 +109,8 @@ A sequence de protocolo foi validada em homologacao; quando `PERSIST_SOLICITACOE
 
 O fluxo endpoint -> service -> protocol_service -> repository -> banco foi validado em homologacao com persistencia ativa e protocolo real por sequence.
 
+A deteccao leve de duplicidade suspeita e avaliada na camada repository/banco. A regra inicial marca possiveis repeticoes para triagem interna, sem bloquear a solicitacao; protecoes mais fortes e rate limit ficam para etapa posterior.
+
 ## 7. Validacao de entrada
 
 A API deve validar:

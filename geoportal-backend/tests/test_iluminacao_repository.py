@@ -85,11 +85,27 @@ def test_create_solicitacao_uses_postgis_transform_and_bind_params() -> None:
     assert "ST_MakePoint" in sql
     assert ":longitude" in sql
     assert ":latitude" in sql
+    assert "duplicidade_suspeita" in sql
+    assert "EXISTS" in sql
+    assert "interval '24 hours'" in sql
+    assert "'aberta'" in sql
+    assert "'em_triagem'" in sql
+    assert "'encaminhada'" in sql
+    assert "'em_execucao'" in sql
+    assert "'aguardando_material'" in sql
+    assert ":poste_id" in sql
+    assert ":tipo_problema" in sql
+    assert "RAISE" not in sql.upper()
+    assert "EXCEPTION" not in sql.upper()
     assert params["longitude"] == -55.225
     assert params["latitude"] == -23.105
     assert params["protocolo"] == "IP-2026-000001"
+    assert params["poste_id"] == "POSTE-001"
+    assert params["tipo_problema"] == "lampada_apagada"
     assert params["nome_solicitante"] == "Solicitante de teste"
     assert params["contato_solicitante"] == "contato de teste"
+    assert "POSTE-001" not in sql
+    assert "lampada_apagada" not in sql
     assert "Solicitante de teste" not in sql
     assert "contato de teste" not in sql
     assert response.protocolo == "IP-2026-000001"

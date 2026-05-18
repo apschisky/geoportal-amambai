@@ -415,6 +415,7 @@ Referência: `docs/POSTGIS-SCHEMA-PLAN.md`.
 - Controle contra spam/bot.
 - Controle de multiplos chamados para o mesmo poste.
 - Marcacao de duplicidade suspeita.
+- Duplicidades provaveis nao bloqueiam o cidadao inicialmente; devem ser marcadas para triagem interna.
 - Protecao contra abuso por criacao em massa.
 - Logs e auditoria.
 - Tratamento genérico de erro público.

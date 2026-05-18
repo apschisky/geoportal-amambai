@@ -108,6 +108,7 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [ ] Ativar persistencia apenas em ambiente controlado com usuario restrito e `DATABASE_URL` segura.
 - [x] Padrao de usuario restrito da API validado em homologacao, sem superuser e sem acesso direto a schemas nao necessarios.
 - [ ] Investigar estabilidade de rede, firewall e antivirus entre API e PostgreSQL antes de uso continuo.
+- [x] Deteccao leve de duplicidade suspeita implementada antes de rate limit.
 - [ ] Documentacao controlada da API.
 - [ ] Inventario de endpoints.
 

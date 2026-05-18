@@ -43,6 +43,8 @@ O endpoint pode operar em modo simulado ou persistente conforme `PERSIST_SOLICIT
 
 O endpoint foi validado em modo persistente em homologacao, com protocolo real por sequence e gravacao em `mod_iluminacao.solicitacoes`; a ativacao deve continuar controlada por ambiente.
 
+Solicitacoes repetidas podem ser marcadas internamente como `duplicidade_suspeita`, mas a resposta publica permanece simples e a solicitacao nao e bloqueada nesta etapa.
+
 Payload conceitual:
 
 - `localizacao_tipo`, com valores `poste_mapa` ou `ponto_manual`;
