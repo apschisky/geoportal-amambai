@@ -76,7 +76,8 @@ Validacoes:
 - `localizacao_tipo` obrigatorio;
 - ponto de referencia opcional, com limite de tamanho;
 - nome e contato obrigatorios, com limite de tamanho e validacao;
-- protocolo no formato sugerido `IP-2026-000001`, com prefixo, ano e sequencial;
+- protocolo no formato previsto `IP-YYYY-000001`, com prefixo, ano e sequencial;
+- protocolo deixara de ser fixo/simulado e sera gerado com sequence do banco;
 - rate limit;
 - validacao futura de duplicidade por poste e por proximidade espacial;
 - resposta controlada para possivel duplicidade;

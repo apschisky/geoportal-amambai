@@ -44,7 +44,7 @@ db/
   migrations/
     0001_create_mod_iluminacao_schema.sql
     0002_create_iluminacao_solicitacoes.sql
-    0003_create_mod_iluminacao_indexes.sql
+    0003_create_iluminacao_protocolo_sequence.sql
     0004_create_mod_iluminacao_views.sql
     0005_create_mod_iluminacao_permissions.sql
   rollbacks/
@@ -70,7 +70,7 @@ Exemplos:
 
 - `0001_create_mod_iluminacao_schema.sql`
 - `0002_create_iluminacao_solicitacoes.sql`
-- `0003_create_mod_iluminacao_indexes.sql`
+- `0003_create_iluminacao_protocolo_sequence.sql`
 - `0004_create_mod_iluminacao_views.sql`
 - `0005_create_mod_iluminacao_permissions.sql`
 - `0006_alter_mod_iluminacao_solicitacoes_add_prioridade.sql`
@@ -171,6 +171,8 @@ A migration 0001 cria apenas o schema `mod_iluminacao`, sem tabelas ou permissoe
 A migration 0002 cria a tabela `mod_iluminacao.solicitacoes`.
 
 As migrations 0001 e 0002 foram validadas em ambiente de homologacao separado, com schema, tabela, constraints, indices e geometria confirmados.
+
+A migration 0003 cria sequence dedicada para geracao segura de protocolos.
 
 O runbook de homologacao foi criado em `geoportal-backend/db/HOMOLOGATION-RUNBOOK.md`, sem dados sensiveis e usando apenas placeholders.
 

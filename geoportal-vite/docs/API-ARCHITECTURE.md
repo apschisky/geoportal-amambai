@@ -103,6 +103,8 @@ Existe script manual para validar o repository contra homologacao sem acoplar o 
 
 A persistencia de solicitacoes e controlada por configuracao (`PERSIST_SOLICITACOES`). O service decide entre modo simulado e repository; o endpoint nao contem SQL.
 
+A geracao de protocolo deve ser segura contra concorrencia, usando sequence do PostgreSQL em vez de `COUNT(*)` ou logica no front-end.
+
 ## 7. Validacao de entrada
 
 A API deve validar:
