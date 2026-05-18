@@ -166,9 +166,11 @@ Nenhuma dessas migrations deve ser criada antes da validacao do schema, permisso
 
 Antes da primeira migration SQL, tambem devem estar definidos o modelo de permissoes e a relacao entre schemas operacionais, `web_map`/`plano` e views controladas.
 
-A primeira migration planejada cria apenas o schema `mod_iluminacao`, sem tabelas, permissoes ou execucao em banco nesta etapa.
+A migration 0001 cria apenas o schema `mod_iluminacao`, sem tabelas ou permissoes.
 
-A migration 0002 planejada cria a tabela `mod_iluminacao.solicitacoes`, ainda sem execucao no banco nesta etapa.
+A migration 0002 cria a tabela `mod_iluminacao.solicitacoes`.
+
+As migrations 0001 e 0002 foram validadas em ambiente de homologacao separado, com schema, tabela, constraints, indices e geometria confirmados.
 
 O runbook de homologacao foi criado em `geoportal-backend/db/HOMOLOGATION-RUNBOOK.md`, sem dados sensiveis e usando apenas placeholders.
 

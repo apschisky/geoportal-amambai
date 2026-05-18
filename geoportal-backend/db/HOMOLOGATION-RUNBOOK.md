@@ -249,3 +249,21 @@ Nao usar em producao sem backup, autorizacao formal e revisao.
 - Commit/hash da migration executada.
 - Data/hora da execucao.
 - Responsavel tecnico.
+
+## Registro de homologacao inicial
+
+As migrations `0001_create_mod_iluminacao_schema.sql` e `0002_create_iluminacao_solicitacoes.sql` foram aplicadas com sucesso em banco de homologacao, em ambiente separado e restaurado a partir de backup recente.
+
+Registro seguro, sem dados sensiveis:
+
+- PostGIS estava habilitado.
+- O schema `mod_iluminacao` foi criado.
+- A tabela `mod_iluminacao.solicitacoes` foi criada.
+- `geometry_columns` confirmou `geom` como `POINT` com SRID `32721`.
+- Constraints e indices foram conferidos.
+- Um teste de insert valido foi feito em transacao com `ROLLBACK`.
+- Testes invalidos confirmaram bloqueio por `CHECK` constraints.
+- `COUNT(*)` confirmou ausencia de dados de teste persistidos.
+- A validacao visual foi feita em ferramenta administrativa.
+- O banco ativo nao foi alterado.
+- Nao houve persistencia de dados de teste.

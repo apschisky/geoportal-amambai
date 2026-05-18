@@ -75,6 +75,8 @@ Tabelas candidatas:
 
 Esse schema deve concentrar dados operacionais do modulo de Iluminacao Publica / Manutencao de Postes.
 
+A estrutura `mod_iluminacao.solicitacoes` foi validada em homologacao com geometria `geometry(Point, 32721)`.
+
 ## 6. Tabela `solicitacoes`
 
 Campos conceituais:
