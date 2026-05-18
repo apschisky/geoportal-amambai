@@ -39,10 +39,10 @@ Credenciais de banco nunca devem ir para o front-end, Vite ou `dist`. A API roda
 
 `PERSIST_SOLICITACOES` controla a persistencia real:
 
-- `false`: mantem o endpoint em modo simulado, sem gravar no banco.
-- `true`: usa o repository e `DATABASE_URL` para gravar em `mod_iluminacao.solicitacoes`.
+- `false`: mantem o endpoint em modo simulado, sem gravar no banco, com protocolo fixo de POC/testes.
+- `true`: usa o repository e `DATABASE_URL` para gravar em `mod_iluminacao.solicitacoes`, com protocolo gerado pela sequence `mod_iluminacao.solicitacoes_protocolo_seq`.
 
-Em homologacao/producao, ative apenas apos banco, usuario restrito e testes validados.
+A sequence do banco evita duplicidade em cenarios concorrentes. Em homologacao/producao, ative apenas apos banco, usuario restrito e testes validados.
 
 ## Endpoints disponiveis
 
@@ -92,9 +92,9 @@ Quando o poste nao estiver no mapa, use `localizacao_tipo = "ponto_manual"` e en
 
 Na primeira versao, `nome_solicitante` e `contato_solicitante` sao obrigatorios porque nao havera login do cidadao e a equipe pode precisar confirmar a localizacao ou detalhes do chamado. Esses dados nao devem ser expostos em mapas ou views publicas.
 
-O endpoint `POST /api/public/iluminacao/solicitacoes` e simulado nesta POC: ele valida o payload e retorna um protocolo ficticio, mas nao grava em banco de dados. Dados reais ainda nao devem ser enviados para esta prova de conceito.
+Com `PERSIST_SOLICITACOES=false`, o endpoint `POST /api/public/iluminacao/solicitacoes` permanece simulado: ele valida o payload e retorna um protocolo ficticio, mas nao grava em banco de dados. Dados reais ainda nao devem ser enviados para esta prova de conceito.
 
-O repository de Iluminacao Publica ja esta preparado para persistencia futura com SQLAlchemy Core, mas o endpoint publico ainda nao foi conectado a gravacao real. A coordenada recebida pela API em EPSG:4326 sera transformada pelo PostGIS para `geometry(Point, 32721)`.
+Com `PERSIST_SOLICITACOES=true`, o service usa repository com SQLAlchemy Core para persistir a solicitacao e gerar protocolo pela sequence do banco. A coordenada recebida pela API em EPSG:4326 sera transformada pelo PostGIS para `geometry(Point, 32721)`.
 
 ## Teste manual do repository
 

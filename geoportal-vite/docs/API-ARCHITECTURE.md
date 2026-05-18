@@ -105,7 +105,7 @@ A persistencia de solicitacoes e controlada por configuracao (`PERSIST_SOLICITAC
 
 A geracao de protocolo deve ser segura contra concorrencia, usando sequence do PostgreSQL em vez de `COUNT(*)` ou logica no front-end.
 
-A sequence de protocolo foi validada em homologacao; a geracao real passara a consumir `mod_iluminacao.solicitacoes_protocolo_seq` para montar protocolos no formato `IP-YYYY-NNNNNN`.
+A sequence de protocolo foi validada em homologacao; quando `PERSIST_SOLICITACOES=true`, a geracao real consome `mod_iluminacao.solicitacoes_protocolo_seq` para montar protocolos no formato `IP-YYYY-NNNNNN`.
 
 ## 7. Validacao de entrada
 

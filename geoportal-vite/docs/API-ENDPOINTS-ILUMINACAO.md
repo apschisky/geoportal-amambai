@@ -33,13 +33,13 @@ Os nomes finais podem mudar na implementacao, desde que a separacao entre public
 
 Finalidade: criar solicitacao publica de reparo de poste.
 
-Status da POC local: endpoint simulado disponivel em `geoportal-backend/`, com validacao Pydantic, resposta de protocolo ficticio, status tecnico padronizado como `aberta` e sem persistencia em banco.
+Status da POC local: endpoint disponivel em `geoportal-backend/`, com validacao Pydantic, status tecnico padronizado como `aberta` e persistencia controlada por configuracao.
 
-A persistencia real sera feita via repository com SQLAlchemy Core, mas o endpoint publico ainda esta em transicao/controlado e permanece sem gravacao real.
+A persistencia real e feita via repository com SQLAlchemy Core quando `PERSIST_SOLICITACOES=true`; a ativacao deve permanecer controlada por ambiente.
 
 O teste de persistencia e feito por script manual antes da ativacao no endpoint publico.
 
-O endpoint pode operar em modo simulado ou persistente conforme `PERSIST_SOLICITACOES`. A ativacao real depende de homologacao validada.
+O endpoint pode operar em modo simulado ou persistente conforme `PERSIST_SOLICITACOES`. Em modo simulado, usa protocolo fixo de POC/testes; em modo persistente, gera protocolo pela sequence do banco. A ativacao real depende de homologacao validada.
 
 Payload conceitual:
 
@@ -78,7 +78,7 @@ Validacoes:
 - nome e contato obrigatorios, com limite de tamanho e validacao;
 - protocolo no formato previsto `IP-YYYY-000001`, com prefixo, ano e sequencial;
 - protocolo deixara de ser fixo/simulado e sera gerado com sequence do banco;
-- a sequence de protocolo foi validada em homologacao e substituira o protocolo fixo/simulado na etapa de persistencia real;
+- em persistencia ativa, a sequence de protocolo gera o protocolo real no formato `IP-YYYY-NNNNNN`;
 - rate limit;
 - validacao futura de duplicidade por poste e por proximidade espacial;
 - resposta controlada para possivel duplicidade;

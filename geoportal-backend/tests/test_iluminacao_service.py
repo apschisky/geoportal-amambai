@@ -39,6 +39,11 @@ def test_create_solicitacao_simulada_returns_protocol_without_repository(
         "create_solicitacao",
         fail_if_called,
     )
+    monkeypatch.setattr(
+        iluminacao_service,
+        "generate_protocol_from_database",
+        fail_if_called,
+    )
 
     response = iluminacao_service.create_solicitacao_simulada(valid_solicitacao())
 
@@ -73,11 +78,16 @@ def test_create_solicitacao_simulada_calls_repository_when_enabled(
         "create_solicitacao",
         fake_create_solicitacao,
     )
+    monkeypatch.setattr(
+        iluminacao_service,
+        "generate_protocol_from_database",
+        lambda: "IP-2026-000123",
+    )
 
     solicitacao = valid_solicitacao()
     response = iluminacao_service.create_solicitacao_simulada(solicitacao)
 
     assert calls["solicitacao"] is solicitacao
-    assert calls["protocolo"] == "IP-2026-000001"
-    assert response.protocolo == "IP-2026-000001"
+    assert calls["protocolo"] == "IP-2026-000123"
+    assert response.protocolo == "IP-2026-000123"
     assert response.status == "aberta"

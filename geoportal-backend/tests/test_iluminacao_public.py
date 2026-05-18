@@ -4,9 +4,23 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.services import iluminacao_service
 
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def force_simulated_mode(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fail_if_database_protocol_is_requested(*args: object, **kwargs: object) -> None:
+        raise AssertionError("database protocol should not be used in public tests")
+
+    monkeypatch.setattr(iluminacao_service.settings, "persist_solicitacoes", False)
+    monkeypatch.setattr(
+        iluminacao_service,
+        "generate_protocol_from_database",
+        fail_if_database_protocol_is_requested,
+    )
 
 
 def valid_payload() -> dict[str, object]:
