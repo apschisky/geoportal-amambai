@@ -86,6 +86,8 @@ Na primeira versao, `nome_solicitante` e `contato_solicitante` sao obrigatorios 
 
 O endpoint `POST /api/public/iluminacao/solicitacoes` e simulado nesta POC: ele valida o payload e retorna um protocolo ficticio, mas nao grava em banco de dados. Dados reais ainda nao devem ser enviados para esta prova de conceito.
 
+O repository de Iluminacao Publica ja esta preparado para persistencia futura com SQLAlchemy Core, mas o endpoint publico ainda nao foi conectado a gravacao real. A coordenada recebida pela API em EPSG:4326 sera transformada pelo PostGIS para `geometry(Point, 32721)`.
+
 Exemplo de resposta simulada:
 
 ```json

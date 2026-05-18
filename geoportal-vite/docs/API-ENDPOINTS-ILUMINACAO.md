@@ -35,6 +35,8 @@ Finalidade: criar solicitacao publica de reparo de poste.
 
 Status da POC local: endpoint simulado disponivel em `geoportal-backend/`, com validacao Pydantic, resposta de protocolo ficticio, status tecnico padronizado como `aberta` e sem persistencia em banco.
 
+A persistencia real sera feita via repository com SQLAlchemy Core, mas o endpoint publico ainda esta em transicao/controlado e permanece sem gravacao real.
+
 Payload conceitual:
 
 - `localizacao_tipo`, com valores `poste_mapa` ou `ponto_manual`;

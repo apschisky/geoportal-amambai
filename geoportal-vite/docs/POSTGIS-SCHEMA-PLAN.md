@@ -113,6 +113,7 @@ Diretrizes:
 - `protocolo` deve ser unico.
 - Protocolo sugerido: `IP-2026-000001`, com prefixo, ano e sequencial.
 - `geom` deve ser obrigatorio e ter SRID definido.
+- A API recebe coordenadas em EPSG:4326 e o banco armazena `geom` em SRID 32721 via `ST_Transform(ST_SetSRID(ST_MakePoint(longitude, latitude), 4326), 32721)`.
 - `poste_id` deve ser opcional para localizacao manual e referenciar o identificador publico do poste quando houver selecao no mapa.
 - `localizacao_tipo` deve validar `poste_mapa` e `ponto_manual`.
 - `origem` deve identificar a origem tecnica da solicitacao.

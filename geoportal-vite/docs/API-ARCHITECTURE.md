@@ -56,6 +56,7 @@ Organizacao conceitual:
 app/
   main.py
   core/
+  repositories/
   db/
   auth/
   modules/
@@ -72,6 +73,7 @@ Finalidade:
 
 - `main.py`: inicializacao da aplicacao e registro de rotas.
 - `core/`: configuracoes, variaveis de ambiente, seguranca e inicializacao.
+- `repositories/`: persistencia com SQLAlchemy Core e SQL textual controlado.
 - `db/`: conexao, pool, transacoes e utilitarios de banco.
 - `auth/`: login, tokens/sessoes, usuarios e permissoes.
 - `modules/`: regras, rotas e schemas por modulo.
@@ -94,6 +96,8 @@ A API usa `DATABASE_URL` por variavel de ambiente ou arquivo local nao versionad
 A API deve conectar ao banco usando usuario restrito por modulo e ambiente. O endpoint publico de solicitacoes deve ter apenas permissao minima para inserir e retornar os dados necessarios.
 
 A arquitetura de banco da API foi validada em homologacao com usuario restrito, sem superuser e sem acesso direto a schemas nao necessarios.
+
+Endpoints nao devem conter SQL direto. A persistencia deve ficar em repositories usando SQLAlchemy Core, bind parameters e transacoes controladas.
 
 ## 7. Validacao de entrada
 
