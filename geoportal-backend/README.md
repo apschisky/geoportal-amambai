@@ -44,6 +44,8 @@ Credenciais de banco nunca devem ir para o front-end, Vite ou `dist`. A API roda
 
 A sequence do banco evita duplicidade em cenarios concorrentes. Em homologacao/producao, ative apenas apos banco, usuario restrito e testes validados.
 
+A persistencia real com protocolo por sequence ja foi validada em homologacao. Mantenha `PERSIST_SOLICITACOES=false` por padrao e ative `true` somente em ambiente controlado.
+
 ## Endpoints disponiveis
 
 - `GET /api/health`

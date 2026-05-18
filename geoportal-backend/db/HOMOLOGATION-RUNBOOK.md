@@ -321,3 +321,21 @@ Registro seguro, sem dados sensiveis:
 - O usuario restrito da API conseguiu consumir a sequence.
 - O banco ativo nao foi alterado.
 - Nao houve dados sensiveis no registro.
+
+## Registro de validacao do endpoint persistente
+
+O endpoint publico `POST /api/public/iluminacao/solicitacoes` foi validado em homologacao com persistencia ativa.
+
+Registro seguro, sem dados sensiveis:
+
+- O fluxo endpoint -> service -> protocol_service -> repository -> banco foi validado.
+- O endpoint retornou `201 Created`.
+- O protocolo real foi gerado pela sequence no formato `IP-YYYY-NNNNNN`.
+- O protocolo retornado foi sequencial, nao fixo/simulado.
+- O registro foi gravado em `mod_iluminacao.solicitacoes`.
+- O status retornou `aberta`.
+- Os defaults `prioridade = normal`, `origem = geoportal_publico` e `duplicidade_suspeita = false` foram confirmados.
+- A geometria foi gravada com SRID `32721`.
+- O registro de teste foi limpo apos a validacao.
+- O banco ativo nao foi alterado.
+- Credenciais reais permaneceram fora do Git.

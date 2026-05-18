@@ -107,6 +107,8 @@ A geracao de protocolo deve ser segura contra concorrencia, usando sequence do P
 
 A sequence de protocolo foi validada em homologacao; quando `PERSIST_SOLICITACOES=true`, a geracao real consome `mod_iluminacao.solicitacoes_protocolo_seq` para montar protocolos no formato `IP-YYYY-NNNNNN`.
 
+O fluxo endpoint -> service -> protocol_service -> repository -> banco foi validado em homologacao com persistencia ativa e protocolo real por sequence.
+
 ## 7. Validacao de entrada
 
 A API deve validar:
