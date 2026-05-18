@@ -1,9 +1,13 @@
+import pytest
+from sqlalchemy.exc import SQLAlchemyError
+
 from app.schemas.iluminacao import (
     IluminacaoSolicitacaoCreate,
     IluminacaoSolicitacaoResponse,
     StatusSolicitacaoIluminacao,
 )
 from app.services import iluminacao_service
+from app.services.exceptions import DatabaseUnavailableError
 
 
 def valid_solicitacao() -> IluminacaoSolicitacaoCreate:
@@ -91,3 +95,39 @@ def test_create_solicitacao_simulada_calls_repository_when_enabled(
     assert calls["protocolo"] == "IP-2026-000123"
     assert response.protocolo == "IP-2026-000123"
     assert response.status == "aberta"
+
+
+def test_create_solicitacao_converts_database_error_to_safe_error(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        iluminacao_service.settings,
+        "persist_solicitacoes",
+        True,
+    )
+    monkeypatch.setattr(
+        iluminacao_service,
+        "generate_protocol_from_database",
+        lambda: "IP-2026-000123",
+    )
+
+    def fail_with_database_error(*args: object, **kwargs: object) -> None:
+        raise SQLAlchemyError(
+            "could not connect using DATABASE_URL on host db.internal:5432 SELECT"
+        )
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "create_solicitacao",
+        fail_with_database_error,
+    )
+
+    with pytest.raises(DatabaseUnavailableError) as exc_info:
+        iluminacao_service.create_solicitacao_simulada(valid_solicitacao())
+
+    message = str(exc_info.value)
+    assert message == "Servico temporariamente indisponivel. Tente novamente mais tarde."
+    assert "DATABASE_URL" not in message
+    assert "db.internal" not in message
+    assert "senha" not in message.lower()
+    assert "SELECT" not in message

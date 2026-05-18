@@ -1,10 +1,11 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from app.schemas.common import IluminacaoHealthResponse
 from app.schemas.iluminacao import (
     IluminacaoSolicitacaoCreate,
     IluminacaoSolicitacaoResponse,
 )
+from app.services.exceptions import DatabaseUnavailableError
 from app.services.iluminacao_service import create_solicitacao_simulada
 
 
@@ -20,4 +21,7 @@ def iluminacao_public_health_check() -> IluminacaoHealthResponse:
 def create_iluminacao_solicitacao(
     solicitacao: IluminacaoSolicitacaoCreate,
 ) -> IluminacaoSolicitacaoResponse:
-    return create_solicitacao_simulada(solicitacao)
+    try:
+        return create_solicitacao_simulada(solicitacao)
+    except DatabaseUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc

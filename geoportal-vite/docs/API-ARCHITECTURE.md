@@ -156,6 +156,7 @@ Auditoria deve ser obrigatoria para mudancas de status, observacoes, anexos, fin
 ## 10. Tratamento de erros
 
 - Erros tecnicos nao devem aparecer para o cidadao.
+- Erros tecnicos de banco devem ser convertidos em respostas seguras, como `503` temporario.
 - Logs internos devem guardar detalhes suficientes para diagnostico.
 - Respostas publicas devem ser simples.
 - Usar codigos HTTP adequados.

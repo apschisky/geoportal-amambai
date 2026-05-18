@@ -274,6 +274,7 @@ Padrao conceitual:
 - `413`: anexo muito grande.
 - `415`: tipo de arquivo nao permitido.
 - `429`: muitas requisicoes.
+- `503`: servico temporariamente indisponivel, por exemplo falha controlada de banco.
 - `500`: erro interno generico.
 
 Erros tecnicos nao devem ser expostos ao cidadao. Stack trace, SQL, caminho de arquivo e credenciais nunca devem aparecer em resposta HTTP.

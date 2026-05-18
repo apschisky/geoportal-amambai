@@ -46,6 +46,8 @@ A sequence do banco evita duplicidade em cenarios concorrentes. Em homologacao/p
 
 A persistencia real com protocolo por sequence ja foi validada em homologacao. Mantenha `PERSIST_SOLICITACOES=false` por padrao e ative `true` somente em ambiente controlado.
 
+Se houver falha temporaria de banco em modo persistente, o endpoint publico retorna `503` com mensagem segura. Detalhes tecnicos, SQL, stack trace e credenciais nao sao expostos ao cidadao.
+
 ## Endpoints disponiveis
 
 - `GET /api/health`

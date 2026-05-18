@@ -3,8 +3,10 @@ from copy import deepcopy
 import pytest
 from fastapi.testclient import TestClient
 
+from app.api.routes import iluminacao_public
 from app.main import app
 from app.services import iluminacao_service
+from app.services.exceptions import DatabaseUnavailableError
 
 
 client = TestClient(app)
@@ -46,6 +48,34 @@ def test_create_solicitacao_valid_payload_returns_simulated_protocol() -> None:
     assert response.status_code in (200, 201)
     assert response.json()["protocolo"] == "IP-2026-000001"
     assert response.json()["status"] == "aberta"
+
+
+def test_create_solicitacao_returns_safe_503_when_database_is_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_with_safe_error(*args: object, **kwargs: object) -> None:
+        raise DatabaseUnavailableError(
+            "Servico temporariamente indisponivel. Tente novamente mais tarde."
+        )
+
+    monkeypatch.setattr(
+        iluminacao_public,
+        "create_solicitacao_simulada",
+        fail_with_safe_error,
+    )
+
+    response = client.post("/api/public/iluminacao/solicitacoes", json=valid_payload())
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": "Servico temporariamente indisponivel. Tente novamente mais tarde."
+    }
+    body = response.text
+    assert "traceback" not in body.lower()
+    assert "DATABASE_URL" not in body
+    assert "host" not in body.lower()
+    assert "senha" not in body.lower()
+    assert "SELECT" not in body
 
 
 def test_create_solicitacao_rejects_poste_mapa_without_poste_id() -> None:

@@ -95,6 +95,7 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [ ] Paginacao em listagens.
 - [ ] Protecao contra enumeracao de IDs.
 - [ ] Tratamento seguro de erros.
+- [ ] Respostas de erro sem detalhes internos, SQL, host, porta, credenciais ou stack trace.
 - [ ] Nenhum segredo no codigo.
 - [ ] Credenciais por variaveis de ambiente.
 - [ ] Credenciais de banco apenas em variavel de ambiente ou arquivo local nao versionado.
