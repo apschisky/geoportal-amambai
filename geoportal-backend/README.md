@@ -48,6 +48,8 @@ A persistencia real com protocolo por sequence ja foi validada em homologacao. M
 
 Se houver falha temporaria de banco em modo persistente, o endpoint publico retorna `503` com mensagem segura. Detalhes tecnicos, SQL, stack trace e credenciais nao sao expostos ao cidadao.
 
+O retorno `503` seguro para indisponibilidade temporaria de banco foi validado manualmente em ambiente controlado, sem registrar detalhes sensiveis.
+
 ## Endpoints disponiveis
 
 - `GET /api/health`

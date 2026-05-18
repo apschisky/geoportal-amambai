@@ -339,3 +339,16 @@ Registro seguro, sem dados sensiveis:
 - O registro de teste foi limpo apos a validacao.
 - O banco ativo nao foi alterado.
 - Credenciais reais permaneceram fora do Git.
+
+## Registro de validacao do erro seguro 503
+
+O endpoint publico `POST /api/public/iluminacao/solicitacoes` foi testado com banco indisponivel em ambiente controlado.
+
+Registro seguro, sem dados sensiveis:
+
+- A persistencia estava ativa para o teste controlado.
+- A resposta HTTP `503` foi retornada.
+- A resposta trouxe apenas mensagem generica e segura.
+- Detalhes internos nao foram expostos.
+- A configuracao local deve ser restaurada apos esse tipo de teste.
+- `PERSIST_SOLICITACOES` deve permanecer `false` por padrao.
