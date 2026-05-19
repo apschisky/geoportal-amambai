@@ -111,6 +111,8 @@ O fluxo endpoint -> service -> protocol_service -> repository -> banco foi valid
 
 A deteccao leve de duplicidade suspeita e avaliada na camada repository/banco. A regra inicial marca possiveis repeticoes para triagem interna, sem bloquear a solicitacao; protecoes mais fortes e rate limit ficam para etapa posterior.
 
+A camada repository/banco validou em homologacao a marcacao de `duplicidade_suspeita` para solicitacoes semelhantes, mantendo a gravacao normal.
+
 ## 7. Validacao de entrada
 
 A API deve validar:

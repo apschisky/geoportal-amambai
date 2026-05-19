@@ -352,3 +352,17 @@ Registro seguro, sem dados sensiveis:
 - Detalhes internos nao foram expostos.
 - A configuracao local deve ser restaurada apos esse tipo de teste.
 - `PERSIST_SOLICITACOES` deve permanecer `false` por padrao.
+
+## Registro de validacao da duplicidade suspeita
+
+O endpoint persistente foi usado em homologacao para validar a marcacao leve de duplicidade suspeita.
+
+Registro seguro, sem dados sensiveis:
+
+- Duas solicitacoes semelhantes foram enviadas para o mesmo poste e tipo de problema.
+- A primeira solicitacao foi gravada sem marca de duplicidade.
+- A segunda solicitacao foi marcada como `duplicidade_suspeita`.
+- Nenhuma solicitacao foi bloqueada.
+- Os registros de teste foram limpos ou devem ser limpos apos a validacao.
+- O banco ativo nao foi alterado.
+- Credenciais reais permaneceram fora do Git.

@@ -45,6 +45,8 @@ O endpoint foi validado em modo persistente em homologacao, com protocolo real p
 
 Solicitacoes repetidas podem ser marcadas internamente como `duplicidade_suspeita`, mas a resposta publica permanece simples e a solicitacao nao e bloqueada nesta etapa.
 
+A marcacao interna de `duplicidade_suspeita` foi validada em homologacao; mesmo quando marcada, a resposta publica continua simples.
+
 Payload conceitual:
 
 - `localizacao_tipo`, com valores `poste_mapa` ou `ponto_manual`;

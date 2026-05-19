@@ -104,6 +104,8 @@ Com `PERSIST_SOLICITACOES=true`, o service usa repository com SQLAlchemy Core pa
 
 Em modo persistente, o repository marca `duplicidade_suspeita` quando houver solicitacao ativa semelhante nas ultimas 24h para o mesmo poste. Nesta etapa, a solicitacao nao e bloqueada.
 
+A marcacao `duplicidade_suspeita` foi validada em homologacao: a regra inicial apenas encaminha a situacao para triagem interna e nao bloqueia o cidadao.
+
 ## Teste manual do repository
 
 ```powershell

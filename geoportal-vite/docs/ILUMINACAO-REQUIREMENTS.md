@@ -416,6 +416,7 @@ Referência: `docs/POSTGIS-SCHEMA-PLAN.md`.
 - Controle de multiplos chamados para o mesmo poste.
 - Marcacao de duplicidade suspeita.
 - Duplicidades provaveis nao bloqueiam o cidadao inicialmente; devem ser marcadas para triagem interna.
+- Duplicidades provaveis devem seguir para triagem interna, sem bloqueio automatico nesta fase.
 - Protecao contra abuso por criacao em massa.
 - Logs e auditoria.
 - Tratamento genérico de erro público.
