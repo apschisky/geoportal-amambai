@@ -64,7 +64,7 @@ Payload conceitual:
 Cenarios de localizacao:
 
 - `poste_mapa`: cidadao seleciona poste existente no mapa; `poste_id` e `coordenada` sao obrigatorios.
-- `ponto_manual`: cidadao nao encontra o poste no mapa; `poste_id` pode ser nulo, `coordenada` e obrigatoria e deve haver `observacoes_localizacao` ou `ponto_referencia`.
+- `ponto_manual`: cidadao nao encontra o poste no mapa; `poste_id` pode ser nulo, `coordenada` e obrigatoria e deve haver `observacoes_localizacao`.
 
 Resposta conceitual:
 
@@ -82,6 +82,7 @@ Validacoes:
 - `localizacao_tipo` obrigatorio;
 - ponto de referencia opcional, com limite de tamanho;
 - nome e contato obrigatorios, com limite de tamanho e validacao;
+- `observacoes_localizacao` obrigatoria quando `localizacao_tipo = ponto_manual`;
 - protocolo no formato previsto `IP-YYYY-000001`, com prefixo, ano e sequencial;
 - protocolo deixara de ser fixo/simulado e sera gerado com sequence do banco;
 - em persistencia ativa, a sequence de protocolo gera o protocolo real no formato `IP-YYYY-NNNNNN`;
@@ -362,7 +363,8 @@ Transicoes devem ser validadas pela API, nao apenas pelo front-end.
 - A integracao inicial com a API propria deve ser paralela ao Google Forms, sem substituicao imediata.
 - Um segundo botao de teste podera ser criado futuramente para enviar solicitacao pela API.
 - O botao de teste da API deve ser controlado por feature flag ou configuracao do front-end, permitindo ativar e desativar facilmente.
-- O botao de teste preparado nesta etapa ainda nao envia dados para a API; ele apenas informa que o fluxo esta em teste e orienta o uso do formulario atual.
+- O botao de teste preparado nesta etapa abre um formulario local de teste e ainda nao chama o endpoint nem envia dados para a API.
+- A selecao manual do formulario de teste permanece local no front-end e ainda nao envia dados ao endpoint.
 - Camada publica de postes continua sendo base visual.
 - Status publico podera vir de endpoint publico ou view controlada.
 - Google Forms deve continuar como fallback ate o modulo proprio estar estavel; a troca definitiva deve ser validada pelo Prefeito.

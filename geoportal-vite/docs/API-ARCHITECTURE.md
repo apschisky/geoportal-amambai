@@ -213,7 +213,9 @@ Auditoria deve ser obrigatoria para mudancas de status, observacoes, anexos, fin
 - A integracao inicial do front-end com a API de Iluminacao deve ser paralela ao Google Forms.
 - O botao atual do Google Forms deve permanecer ativo durante a validacao da API.
 - Um segundo botao de teste podera acionar futuramente o fluxo da API, controlado por feature flag ou configuracao do front-end.
-- O botao de teste da API foi preparado com feature flag desativada por padrao; nesta etapa ele nao envia dados e nao chama a API.
+- O botao de teste da API foi preparado com feature flag desativada por padrao e abre um modal/formulario local de teste; nesta etapa ele nao envia dados e nao chama a API.
+- A selecao manual no formulario de teste usa marcador visual temporario e exige confirmacao do local antes de preencher o formulario.
+- O modal de teste aplica obrigatoriedade dinamica: `poste_id` obrigatorio apenas em `poste_mapa` e `observacoes_localizacao` obrigatoria em `ponto_manual`.
 - O Google Forms permanece como fallback enquanto a API estiver em validacao.
 - A substituicao definitiva do Forms so deve ocorrer apos testes em homologacao/producao, estabilidade de rede, logs, monitoramento e plano de rollback validados.
 

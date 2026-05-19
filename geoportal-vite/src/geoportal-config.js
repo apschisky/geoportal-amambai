@@ -337,5 +337,5 @@ export const POSTE_FORM_CONFIG = {
 export const ILUMINACAO_API_TEST_CONFIG = {
   enabled: false,
   buttonLabel: 'Solicitar pela API (teste)',
-  disabledMessage: 'Fluxo de solicitacao pela API ainda esta em teste. Use o formulario atual por enquanto.'
+  disabledMessage: 'Fluxo de solicitação pela API ainda está em teste. Use o formulário atual por enquanto.'
 };
