@@ -109,7 +109,8 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [x] Padrao de usuario restrito da API validado em homologacao, sem superuser e sem acesso direto a schemas nao necessarios.
 - [ ] Investigar estabilidade de rede, firewall e antivirus entre API e PostgreSQL antes de uso continuo.
 - [x] Deteccao leve de duplicidade suspeita implementada e validada antes de rate limit.
-- [ ] Rate limit e protecao por IP ficam para etapa posterior.
+- [x] Rate limit inicial em memoria implementado para desenvolvimento/homologacao.
+- [ ] Rate limit definitivo para producao ainda pendente, com avaliacao de proxy, Redis, WAF ou API gateway.
 - [ ] Documentacao controlada da API.
 - [ ] Inventario de endpoints.
 

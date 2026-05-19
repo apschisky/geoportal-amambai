@@ -414,6 +414,7 @@ Referência: `docs/POSTGIS-SCHEMA-PLAN.md`.
 - Rate limit.
 - Controle contra spam/bot.
 - Controle de multiplos chamados para o mesmo poste.
+- Limitar volume de solicitacoes por origem/IP para reduzir abuso automatizado.
 - Marcacao de duplicidade suspeita.
 - Duplicidades provaveis nao bloqueiam o cidadao inicialmente; devem ser marcadas para triagem interna.
 - Duplicidades provaveis devem seguir para triagem interna, sem bloqueio automatico nesta fase.

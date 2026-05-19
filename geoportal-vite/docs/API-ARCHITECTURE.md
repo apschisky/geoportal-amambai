@@ -113,6 +113,8 @@ A deteccao leve de duplicidade suspeita e avaliada na camada repository/banco. A
 
 A camada repository/banco validou em homologacao a marcacao de `duplicidade_suspeita` para solicitacoes semelhantes, mantendo a gravacao normal.
 
+O rate limit inicial fica na API e usa memoria local para desenvolvimento/homologacao. Em producao, a estrategia deve ser revista para proxy reverso, Redis, WAF ou API gateway.
+
 ## 7. Validacao de entrada
 
 A API deve validar:

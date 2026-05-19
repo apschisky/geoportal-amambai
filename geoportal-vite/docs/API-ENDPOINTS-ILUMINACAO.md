@@ -281,6 +281,8 @@ Padrao conceitual:
 - `503`: servico temporariamente indisponivel, por exemplo falha controlada de banco.
 - `500`: erro interno generico.
 
+Para criacao publica de solicitacoes, `429` indica muitas solicitacoes em pouco tempo.
+
 Erros tecnicos nao devem ser expostos ao cidadao. Stack trace, SQL, caminho de arquivo e credenciais nunca devem aparecer em resposta HTTP.
 
 O retorno `503` foi validado manualmente para indisponibilidade temporaria de banco, mantendo resposta generica e sem detalhes internos.

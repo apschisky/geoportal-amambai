@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.api.routes import iluminacao_public
+from app.core.rate_limit import reset_rate_limit_state
 from app.main import app
 from app.services import iluminacao_service
 from app.services.exceptions import DatabaseUnavailableError
@@ -17,12 +18,16 @@ def force_simulated_mode(monkeypatch: pytest.MonkeyPatch) -> None:
     def fail_if_database_protocol_is_requested(*args: object, **kwargs: object) -> None:
         raise AssertionError("database protocol should not be used in public tests")
 
+    reset_rate_limit_state()
     monkeypatch.setattr(iluminacao_service.settings, "persist_solicitacoes", False)
+    monkeypatch.setattr(iluminacao_public.settings, "rate_limit_enabled", False)
     monkeypatch.setattr(
         iluminacao_service,
         "generate_protocol_from_database",
         fail_if_database_protocol_is_requested,
     )
+    yield
+    reset_rate_limit_state()
 
 
 def valid_payload() -> dict[str, object]:
@@ -76,6 +81,41 @@ def test_create_solicitacao_returns_safe_503_when_database_is_unavailable(
     assert "host" not in body.lower()
     assert "senha" not in body.lower()
     assert "SELECT" not in body
+
+
+def test_create_solicitacao_returns_429_when_rate_limit_is_exceeded(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = {"service": 0}
+
+    def fake_create_solicitacao(*args: object, **kwargs: object) -> object:
+        calls["service"] += 1
+        return iluminacao_service.create_solicitacao_simulada(*args, **kwargs)
+
+    monkeypatch.setattr(iluminacao_public.settings, "rate_limit_enabled", True)
+    monkeypatch.setattr(iluminacao_public.settings, "rate_limit_max_requests", 1)
+    monkeypatch.setattr(iluminacao_public.settings, "rate_limit_window_seconds", 600)
+    monkeypatch.setattr(
+        iluminacao_public,
+        "create_solicitacao_simulada",
+        fake_create_solicitacao,
+    )
+
+    first_response = client.post(
+        "/api/public/iluminacao/solicitacoes",
+        json=valid_payload(),
+    )
+    second_response = client.post(
+        "/api/public/iluminacao/solicitacoes",
+        json=valid_payload(),
+    )
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 429
+    assert second_response.json() == {
+        "detail": "Muitas solicitacoes em pouco tempo. Tente novamente mais tarde."
+    }
+    assert calls["service"] == 1
 
 
 def test_create_solicitacao_rejects_poste_mapa_without_poste_id() -> None:

@@ -7,6 +7,9 @@ class Settings(BaseSettings):
     allowed_origins: str = "http://localhost:5195,http://127.0.0.1:5195"
     database_url: str | None = None
     persist_solicitacoes: bool = False
+    rate_limit_enabled: bool = True
+    rate_limit_max_requests: int = 5
+    rate_limit_window_seconds: int = 600
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

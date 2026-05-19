@@ -50,6 +50,8 @@ Se houver falha temporaria de banco em modo persistente, o endpoint publico reto
 
 O retorno `503` seguro para indisponibilidade temporaria de banco foi validado manualmente em ambiente controlado, sem registrar detalhes sensiveis.
 
+O endpoint publico possui rate limit inicial em memoria. O padrao e 5 solicitacoes por IP em 10 minutos; em producao futura, avaliar solucao persistente ou distribuida, como reverse proxy, Redis, WAF ou API gateway.
+
 ## Endpoints disponiveis
 
 - `GET /api/health`
