@@ -366,3 +366,18 @@ Registro seguro, sem dados sensiveis:
 - Os registros de teste foram limpos ou devem ser limpos apos a validacao.
 - O banco ativo nao foi alterado.
 - Credenciais reais permaneceram fora do Git.
+
+## Registro de validacao do rate limit 429
+
+O endpoint publico `POST /api/public/iluminacao/solicitacoes` foi testado com rate limit ativo em ambiente controlado.
+
+Registro seguro, sem dados sensiveis:
+
+- A primeira chamada foi permitida.
+- A segunda chamada foi bloqueada pelo limite configurado para o teste.
+- A resposta HTTP `429` foi retornada.
+- A resposta trouxe mensagem publica segura.
+- O service nao foi chamado quando o rate limit bloqueou a requisicao.
+- O banco nao foi acionado quando a requisicao foi bloqueada.
+- A configuracao local deve voltar aos valores padrao apos esse tipo de teste.
+- `PERSIST_SOLICITACOES` deve permanecer `false` por padrao.

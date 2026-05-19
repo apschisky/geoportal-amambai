@@ -52,6 +52,8 @@ O retorno `503` seguro para indisponibilidade temporaria de banco foi validado m
 
 O endpoint publico possui rate limit inicial em memoria. O padrao e 5 solicitacoes por IP em 10 minutos; em producao futura, avaliar solucao persistente ou distribuida, como reverse proxy, Redis, WAF ou API gateway.
 
+O retorno `429` do rate limit foi validado manualmente em ambiente controlado. O padrao planejado e 5 solicitacoes por IP em 10 minutos.
+
 ## Endpoints disponiveis
 
 - `GET /api/health`

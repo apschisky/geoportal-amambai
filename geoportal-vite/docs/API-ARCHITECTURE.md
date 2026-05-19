@@ -115,6 +115,8 @@ A camada repository/banco validou em homologacao a marcacao de `duplicidade_susp
 
 O rate limit inicial fica na API e usa memoria local para desenvolvimento/homologacao. Em producao, a estrategia deve ser revista para proxy reverso, Redis, WAF ou API gateway.
 
+O rate limit atua antes da chamada ao service; requisicoes bloqueadas nao acionam a camada de persistencia.
+
 ## 7. Validacao de entrada
 
 A API deve validar:

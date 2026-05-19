@@ -283,6 +283,8 @@ Padrao conceitual:
 
 Para criacao publica de solicitacoes, `429` indica muitas solicitacoes em pouco tempo.
 
+O retorno `429` foi validado manualmente para excesso de solicitacoes em ambiente controlado.
+
 Erros tecnicos nao devem ser expostos ao cidadao. Stack trace, SQL, caminho de arquivo e credenciais nunca devem aparecer em resposta HTTP.
 
 O retorno `503` foi validado manualmente para indisponibilidade temporaria de banco, mantendo resposta generica e sem detalhes internos.
