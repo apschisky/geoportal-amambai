@@ -373,6 +373,7 @@ Requisitos:
 - O botao atual do Forms deve permanecer ativo durante a validacao.
 - Um segundo botao de teste da API deve ser previsto para etapa futura.
 - O botao de teste da API deve ser controlado por feature flag ou configuracao do front-end, com ativacao e desativacao simples.
+- A configuracao inicial do botao de teste da API deve ficar desativada por padrao e nao deve enviar dados enquanto o fluxo estiver em preparacao.
 - Camada pública de postes continua sendo base visual.
 - Integração futura deve preservar popup, rota e busca de postes.
 - Qualquer alteração pública deve ser testada em homologação antes de produção.

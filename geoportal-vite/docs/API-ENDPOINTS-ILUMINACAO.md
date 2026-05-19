@@ -362,6 +362,7 @@ Transicoes devem ser validadas pela API, nao apenas pelo front-end.
 - A integracao inicial com a API propria deve ser paralela ao Google Forms, sem substituicao imediata.
 - Um segundo botao de teste podera ser criado futuramente para enviar solicitacao pela API.
 - O botao de teste da API deve ser controlado por feature flag ou configuracao do front-end, permitindo ativar e desativar facilmente.
+- O botao de teste preparado nesta etapa ainda nao envia dados para a API; ele apenas informa que o fluxo esta em teste e orienta o uso do formulario atual.
 - Camada publica de postes continua sendo base visual.
 - Status publico podera vir de endpoint publico ou view controlada.
 - Google Forms deve continuar como fallback ate o modulo proprio estar estavel; a troca definitiva deve ser validada pelo Prefeito.

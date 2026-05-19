@@ -3,7 +3,27 @@
 
 import { toLonLat, transform } from 'ol/proj.js';
 import { buildGoogleMapsRouteUrl } from './geoportal-routes.js';
+import { ILUMINACAO_API_TEST_CONFIG } from './geoportal-config.js';
 import { escapeHtml, fetchWithTimeout } from './geoportal-utils.js';
+
+let iluminacaoApiTestButtonHandlerReady = false;
+
+export function setupIluminacaoApiTestButtonHandler() {
+  if (iluminacaoApiTestButtonHandlerReady || typeof document === 'undefined') {
+    return;
+  }
+
+  iluminacaoApiTestButtonHandlerReady = true;
+  document.addEventListener('click', event => {
+    if (!(event.target instanceof Element)) return;
+
+    const button = event.target.closest('[data-iluminacao-api-test="true"]');
+    if (!button) return;
+
+    event.preventDefault();
+    alert(ILUMINACAO_API_TEST_CONFIG.disabledMessage);
+  });
+}
 
 /**
  * Formata as coordenadas de um clique do mapa para lat/lon com 6 casas decimais
@@ -58,6 +78,10 @@ export function buildPosteRepairFormUrl(data, formBaseUrl, formFields) {
  * @returns {string} HTML do popup
  */
 export function createPostePopupHTML(properties, coordinate, formBaseUrl, formFields) {
+  if (ILUMINACAO_API_TEST_CONFIG.enabled) {
+    setupIluminacaoApiTestButtonHandler();
+  }
+
   // Busca o ID do poste com fallbacks
   const id = properties['IDs_coord'] || 
              properties['ids_coord'] || 
@@ -78,6 +102,18 @@ export function createPostePopupHTML(properties, coordinate, formBaseUrl, formFi
   );
   
   // Constrói o HTML do popup
+  const apiTestButtonHtml = ILUMINACAO_API_TEST_CONFIG.enabled
+    ? `
+      <div class="poste-popup-actions poste-popup-api-test-actions" style="margin-top:8px;text-align:center;">
+        <button type="button"
+                class="poste-popup-action poste-popup-action-api-test"
+                data-iluminacao-api-test="true"
+                style="display:block;width:100%;padding:8px 16px;background:#1976d2;color:#fff;border:0;text-decoration:none;border-radius:4px;font-weight:bold;cursor:pointer;">
+          <i class="fa-solid fa-flask" style="margin-right:6px;"></i>${escapeHtml(ILUMINACAO_API_TEST_CONFIG.buttonLabel)}
+        </button>
+      </div>`
+    : '';
+
   const html = `
     <div class="popup-block">
       <div class="popup-title">Poste</div>
@@ -112,6 +148,7 @@ export function createPostePopupHTML(properties, coordinate, formBaseUrl, formFi
           <i class="fa-solid fa-route" style="margin-right:6px;"></i>Traçar rota
         </a>
       </div>
+      ${apiTestButtonHtml}
       <div style="margin-top:16px;padding:12px;background:#fff8e1;border-left:4px solid #ffc107;border-radius:4px;font-size:13px;line-height:1.5;color:#333;">
         <div style="margin-bottom:8px;font-weight:bold;color:#ff9800;">
           <i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>Não encontrou o poste correto?

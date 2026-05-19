@@ -332,3 +332,10 @@ export const POSTE_FORM_CONFIG = {
     coordenadas: 'entry.2043543033'
   }
 };
+
+// Feature flag para botao experimental da API de Iluminacao Publica.
+export const ILUMINACAO_API_TEST_CONFIG = {
+  enabled: false,
+  buttonLabel: 'Solicitar pela API (teste)',
+  disabledMessage: 'Fluxo de solicitacao pela API ainda esta em teste. Use o formulario atual por enquanto.'
+};
