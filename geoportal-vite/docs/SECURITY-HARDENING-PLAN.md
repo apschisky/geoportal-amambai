@@ -75,6 +75,10 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [ ] `escapeHtml` usado em dados vindos do GeoServer antes de inserir em HTML.
 - [ ] Tokens, chaves e credenciais ausentes do front-end.
 - [ ] Endpoints internos nao expostos no front-end publico.
+- [ ] Integracao inicial com API publica de Iluminacao feita em paralelo ao Google Forms.
+- [ ] Botao atual do Google Forms mantido ativo durante validacao.
+- [ ] Botao de teste da API controlado por feature flag ou configuracao do front-end.
+- [ ] Google Forms mantido como fallback ate estabilidade comprovada.
 - [ ] Links externos com `rel="noopener noreferrer"`.
 - [ ] Popups sem dados sensiveis.
 - [ ] Camadas publicas revisadas.
@@ -187,6 +191,7 @@ Antes de iniciar modulos com login/API, deve existir:
 - [ ] Checklist de seguranca revisado.
 - [ ] Inventario de camadas e dados sensiveis.
 - [ ] Estrategia de publicacao e rollback.
+- [ ] Substituicao definitiva do Google Forms aprovada somente apos testes em homologacao/producao, estabilidade de rede, logs, monitoramento e rollback validados.
 
 ## 15. Relacao com outros documentos
 

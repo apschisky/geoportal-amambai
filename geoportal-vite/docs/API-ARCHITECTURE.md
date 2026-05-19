@@ -210,6 +210,11 @@ Auditoria deve ser obrigatoria para mudancas de status, observacoes, anexos, fin
 - Visualizacoes publicas devem vir de views controladas ou endpoints publicos filtrados.
 - Manter compatibilidade com GeoServer para camadas publicas.
 - Fluxos publicos devem coletar apenas dados necessarios.
+- A integracao inicial do front-end com a API de Iluminacao deve ser paralela ao Google Forms.
+- O botao atual do Google Forms deve permanecer ativo durante a validacao da API.
+- Um segundo botao de teste podera acionar futuramente o fluxo da API, controlado por feature flag ou configuracao do front-end.
+- O Google Forms permanece como fallback enquanto a API estiver em validacao.
+- A substituicao definitiva do Forms so deve ocorrer apos testes em homologacao/producao, estabilidade de rede, logs, monitoramento e plano de rollback validados.
 
 ## 15. Integracao com ambiente interno
 

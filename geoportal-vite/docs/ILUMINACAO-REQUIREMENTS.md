@@ -369,9 +369,14 @@ Requisitos:
 - Manter botão atual com Google Forms até módulo próprio estar estável.
 - Substituição deve ser gradual.
 - Deve existir fallback para voltar ao Forms.
+- A primeira integracao do front-end com a API deve acontecer em paralelo ao Google Forms.
+- O botao atual do Forms deve permanecer ativo durante a validacao.
+- Um segundo botao de teste da API deve ser previsto para etapa futura.
+- O botao de teste da API deve ser controlado por feature flag ou configuracao do front-end, com ativacao e desativacao simples.
 - Camada pública de postes continua sendo base visual.
 - Integração futura deve preservar popup, rota e busca de postes.
 - Qualquer alteração pública deve ser testada em homologação antes de produção.
+- A substituicao definitiva do Forms so deve ocorrer apos testes em homologacao/producao, estabilidade de rede, logs, monitoramento e plano de rollback validados.
 
 ## 19. Integração com API futura
 
@@ -477,4 +482,5 @@ Referência: `docs/POSTGIS-SCHEMA-PLAN.md`.
 6. Preparar primeira migration SQL apenas em homologação.
 7. Preparar prova de conceito FastAPI apenas em homologação.
 8. Testar sem alterar o Geoportal público.
-9. Integrar ao botão público somente após estabilidade e fallback definido.
+9. Preparar integracao paralela por botao de teste da API, controlado por feature flag/configuracao.
+10. Manter Google Forms como fallback ate estabilidade comprovada e plano de rollback validado.
