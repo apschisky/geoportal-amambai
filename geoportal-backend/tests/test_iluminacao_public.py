@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from copy import deepcopy
 
 import pytest
@@ -14,7 +15,9 @@ client = TestClient(app)
 
 
 @pytest.fixture(autouse=True)
-def force_simulated_mode(monkeypatch: pytest.MonkeyPatch) -> None:
+def force_simulated_mode(
+    monkeypatch: pytest.MonkeyPatch,
+) -> Generator[None, None, None]:
     def fail_if_database_protocol_is_requested(*args: object, **kwargs: object) -> None:
         raise AssertionError("database protocol should not be used in public tests")
 
