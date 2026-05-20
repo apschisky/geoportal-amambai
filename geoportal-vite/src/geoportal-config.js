@@ -335,7 +335,7 @@ export const POSTE_FORM_CONFIG = {
 
 // Feature flag para botao experimental da API de Iluminacao Publica.
 export const ILUMINACAO_API_TEST_CONFIG = {
-  enabled: false,
+  enabled: false, // habilita o fluxo de solicitação pela API (em teste)
   submitEnabled: false, // desabilita envio para API mesmo se a feature estiver habilitada
   apiUrl: 'http://127.0.0.1:8000/api/public/iluminacao/solicitacoes',
   buttonLabel: 'Solicitar pela API (teste)',
