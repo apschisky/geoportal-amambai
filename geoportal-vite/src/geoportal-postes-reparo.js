@@ -22,6 +22,82 @@ const ILUMINACAO_TIPO_PROBLEMA_OPTIONS = [
   { value: 'outro', label: 'Outro' }
 ];
 
+const ILUMINACAO_PHONE_COUNTRIES = [
+  { value: 'BR', label: 'Brasil', dialCode: '+55' },
+  { value: 'PY', label: 'Paraguai', dialCode: '+595' },
+  { value: 'OUTRO', label: 'Outro', dialCode: '+1' }
+];
+
+function getIluminacaoPhoneCountry(countryValue) {
+  return ILUMINACAO_PHONE_COUNTRIES.find(country => country.value === countryValue) || ILUMINACAO_PHONE_COUNTRIES[0];
+}
+
+export function onlyDigits(value) {
+  return String(value || '').replace(/\D/g, '');
+}
+
+function cleanOtherPhone(value) {
+  return String(value || '').replace(/[^\d+\s()-]/g, '').replace(/\s{2,}/g, ' ').trim();
+}
+
+export function formatIluminacaoPhone(countryValue, rawValue) {
+  const country = getIluminacaoPhoneCountry(countryValue);
+  const digits = onlyDigits(rawValue);
+
+  if (country.value === 'BR') {
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6, 10)}`;
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
+  }
+
+  if (country.value === 'PY') {
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `${digits.slice(0, 3)} ${digits.slice(3)}`;
+    return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 9)}`;
+  }
+
+  return cleanOtherPhone(rawValue);
+}
+
+export function normalizeIluminacaoPhone(countryValue, rawValue) {
+  const country = getIluminacaoPhoneCountry(countryValue);
+
+  if (country.value === 'BR' || country.value === 'PY') {
+    const digits = onlyDigits(rawValue);
+    return digits ? `${country.dialCode}${digits}` : '';
+  }
+
+  const cleaned = cleanOtherPhone(rawValue);
+  if (!cleaned) return '';
+  if (cleaned.startsWith('+')) return cleaned;
+
+  const digits = onlyDigits(cleaned);
+  return digits ? `${country.dialCode}${digits}` : cleaned;
+}
+
+export function validateIluminacaoPhone(countryValue, rawValue) {
+  const country = getIluminacaoPhoneCountry(countryValue);
+  const digits = onlyDigits(rawValue);
+
+  if (country.value === 'BR') {
+    return digits.length === 10 || digits.length === 11;
+  }
+
+  if (country.value === 'PY') {
+    return digits.length === 9;
+  }
+
+  return digits.length >= 6;
+}
+
+function getIluminacaoPhonePlaceholder(countryValue) {
+  const country = getIluminacaoPhoneCountry(countryValue);
+  if (country.value === 'BR') return '(67) 99999-9999';
+  if (country.value === 'PY') return '981 123 456';
+  return '+1 555 123 4567';
+}
+
 function closeIluminacaoApiTestModal() {
   document.querySelector('.iluminacao-api-test-overlay')?.remove();
 }
@@ -119,9 +195,119 @@ function getIluminacaoModalStateFromDom() {
     descricao: modal.querySelector('#iluminacao-api-descricao')?.value || '',
     pontoReferencia: modal.querySelector('#iluminacao-api-ponto-referencia')?.value || '',
     nomeSolicitante: modal.querySelector('#iluminacao-api-nome')?.value || '',
+    contatoPais: modal.querySelector('#iluminacao-api-contato-pais')?.value || 'BR',
     contatoSolicitante: modal.querySelector('#iluminacao-api-contato')?.value || '',
     observacoesLocalizacao: modal.querySelector('#iluminacao-api-observacoes')?.value || ''
   };
+}
+
+export function parseIluminacaoCoordinates(coordenadasText) {
+  const match = String(coordenadasText || '').trim().match(/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/);
+  if (!match) return null;
+
+  const latitude = Number(match[1]);
+  const longitude = Number(match[2]);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return null;
+
+  return { latitude, longitude };
+}
+
+function normalizeOptionalText(value) {
+  const text = String(value || '').trim();
+  return text || null;
+}
+
+export function buildIluminacaoApiTestPayloadFromModal() {
+  const state = getIluminacaoModalStateFromDom();
+  const localizacaoTipo = state.localizacaoTipo === 'ponto_manual' ? 'ponto_manual' : 'poste_mapa';
+  const coordenada = parseIluminacaoCoordinates(state.coordenadas);
+
+  return {
+    localizacao_tipo: localizacaoTipo,
+    poste_id: localizacaoTipo === 'ponto_manual' ? null : String(state.posteId || '').trim(),
+    coordenada,
+    tipo_problema: String(state.tipoProblema || '').trim(),
+    descricao: String(state.descricao || '').trim(),
+    ponto_referencia: normalizeOptionalText(state.pontoReferencia),
+    observacoes_localizacao: normalizeOptionalText(state.observacoesLocalizacao),
+    nome_solicitante: String(state.nomeSolicitante || '').trim(),
+    contato_solicitante: normalizeIluminacaoPhone(state.contatoPais || 'BR', state.contatoSolicitante)
+  };
+}
+
+export function validateIluminacaoApiTestPayload(payload, state = getIluminacaoModalStateFromDom()) {
+  const errors = [];
+
+  if (payload.localizacao_tipo !== 'poste_mapa' && payload.localizacao_tipo !== 'ponto_manual') {
+    errors.push('Tipo de localização inválido.');
+  }
+
+  if (payload.localizacao_tipo === 'poste_mapa' && !payload.poste_id) {
+    errors.push('ID do poste é obrigatório.');
+  }
+
+  if (!payload.coordenada) {
+    errors.push('Coordenadas inválidas.');
+  }
+
+  if (!payload.tipo_problema) {
+    errors.push('Tipo de problema é obrigatório.');
+  }
+
+  if (!payload.descricao) {
+    errors.push('Descrição é obrigatória.');
+  }
+
+  if (!payload.nome_solicitante) {
+    errors.push('Nome do solicitante é obrigatório.');
+  }
+
+  if (!payload.contato_solicitante) {
+    errors.push('Contato / WhatsApp é obrigatório.');
+  }
+
+  if (payload.contato_solicitante && !validateIluminacaoPhone(state.contatoPais || 'BR', state.contatoSolicitante)) {
+    errors.push('Contato / WhatsApp inválido para o país selecionado.');
+  }
+
+  if (payload.localizacao_tipo === 'ponto_manual' && !payload.observacoes_localizacao) {
+    errors.push('Observações de localização são obrigatórias no modo manual.');
+  }
+
+  return errors;
+}
+
+function closeIluminacaoPayloadPreview() {
+  document.querySelector('.iluminacao-payload-preview-overlay')?.remove();
+}
+
+function showIluminacaoValidationErrors(errors) {
+  const message = `Corrija os campos antes de continuar:\n\n${errors.map(error => `- ${error}`).join('\n')}`;
+  alert(message);
+}
+
+function showIluminacaoPayloadPreview(payload) {
+  closeIluminacaoPayloadPreview();
+
+  const payloadJson = JSON.stringify(payload, null, 2);
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = `
+    <div class="iluminacao-payload-preview-overlay" style="position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.45);display:flex;align-items:flex-start;justify-content:center;padding:14px 12px;overflow-y:auto;overflow-x:hidden;">
+      <div class="iluminacao-payload-preview-modal" role="dialog" aria-modal="true" aria-labelledby="iluminacao-payload-preview-title" style="width:min(520px,calc(100vw - 32px));max-width:calc(100vw - 32px);background:#fff;border-radius:8px;box-shadow:0 20px 45px rgba(15,23,42,0.35);padding:14px;color:#111827;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;">
+          <h2 id="iluminacao-payload-preview-title" style="font-size:17px;line-height:1.2;margin:0;color:#123f73;">Prévia da solicitação</h2>
+          <button type="button" data-iluminacao-payload-preview-close="true" aria-label="Fechar" style="border:0;background:transparent;font-size:22px;line-height:1;cursor:pointer;color:#374151;">&times;</button>
+        </div>
+        <p style="margin:0 0 10px;color:#4b5563;font-size:13px;">Nenhum dado foi enviado. Esta é apenas uma validação local.</p>
+        <pre style="margin:0;max-height:55vh;overflow:auto;white-space:pre-wrap;word-break:break-word;background:#0f172a;color:#e2e8f0;border-radius:6px;padding:10px;font-size:12px;line-height:1.45;">${escapeHtml(payloadJson)}</pre>
+        <div style="display:flex;justify-content:flex-end;margin-top:10px;">
+          <button type="button" data-iluminacao-payload-preview-close="true" style="padding:7px 11px;border:0;border-radius:4px;background:#1976d2;color:#fff;font-weight:700;cursor:pointer;">Fechar</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(wrapper.firstElementChild);
 }
 
 function formatRequiredLabel(text, required) {
@@ -133,6 +319,10 @@ function createIluminacaoApiTestModalHtml(state) {
   const isManual = localizacaoTipo === 'ponto_manual';
   const posteId = isManual ? 'Não informado' : (state.posteId || '');
   const coordenadas = state.coordenadas || '';
+  const contatoPais = state.contatoPais || 'BR';
+  const contatoCountry = getIluminacaoPhoneCountry(contatoPais);
+  const contatoFormatado = formatIluminacaoPhone(contatoPais, state.contatoSolicitante || '');
+  const contatoPlaceholder = getIluminacaoPhonePlaceholder(contatoPais);
   const required = {
     posteId: !isManual,
     coordenadas: true,
@@ -148,6 +338,12 @@ function createIluminacaoApiTestModalHtml(state) {
   const fieldGroupStyle = 'min-width:0;margin:0;';
   const optionsHtml = ILUMINACAO_TIPO_PROBLEMA_OPTIONS
     .map(option => `<option value="${escapeHtml(option.value)}"${(state.tipoProblema || 'lampada_apagada') === option.value ? ' selected' : ''}>${escapeHtml(option.label)}</option>`)
+    .join('');
+  const phoneCountryOptionsHtml = ILUMINACAO_PHONE_COUNTRIES
+    .map(country => {
+      const label = country.value === 'OUTRO' ? 'Outro' : country.value;
+      return `<option value="${escapeHtml(country.value)}"${contatoCountry.value === country.value ? ' selected' : ''}>${escapeHtml(`${label} ${country.dialCode}`)}</option>`;
+    })
     .join('');
 
   return `
@@ -196,7 +392,12 @@ function createIluminacaoApiTestModalHtml(state) {
 
           <div style="${fieldGroupStyle}">
             <label style="${labelStyle}" for="iluminacao-api-contato">${formatRequiredLabel('Contato / WhatsApp', required.contatoSolicitante)}</label>
-            <input id="iluminacao-api-contato" type="text" required value="${escapeHtml(state.contatoSolicitante || '')}" style="${fieldStyle}">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <select id="iluminacao-api-contato-pais" data-iluminacao-phone-country="true" aria-label="País do contato" style="${fieldStyle}width:88px;flex:0 0 88px;padding-left:6px;padding-right:6px;">
+                ${phoneCountryOptionsHtml}
+              </select>
+              <input id="iluminacao-api-contato" data-iluminacao-phone-input="true" type="text" inputmode="tel" required value="${escapeHtml(contatoFormatado)}" placeholder="${escapeHtml(contatoPlaceholder)}" style="${fieldStyle}flex:1;min-width:0;">
+            </div>
           </div>
         </div>
 
@@ -230,6 +431,7 @@ function openIluminacaoApiTestModal(button) {
     descricao: '',
     pontoReferencia: '',
     nomeSolicitante: '',
+    contatoPais: 'BR',
     contatoSolicitante: '',
     observacoesLocalizacao: ''
   };
@@ -254,6 +456,31 @@ export function setupIluminacaoApiTestButtonHandler() {
     manualPointerStart = event.target.closest('#map')
       ? { x: event.clientX, y: event.clientY }
       : null;
+  });
+
+  document.addEventListener('input', event => {
+    if (!(event.target instanceof Element)) return;
+
+    const input = event.target.closest('[data-iluminacao-phone-input="true"]');
+    if (!input) return;
+
+    const modal = input.closest('.iluminacao-api-test-modal');
+    const country = modal?.querySelector('#iluminacao-api-contato-pais')?.value || 'BR';
+    input.value = formatIluminacaoPhone(country, input.value);
+  });
+
+  document.addEventListener('change', event => {
+    if (!(event.target instanceof Element)) return;
+
+    const countrySelect = event.target.closest('[data-iluminacao-phone-country="true"]');
+    if (!countrySelect) return;
+
+    const modal = countrySelect.closest('.iluminacao-api-test-modal');
+    const input = modal?.querySelector('#iluminacao-api-contato');
+    if (input) {
+      input.value = formatIluminacaoPhone(countrySelect.value, input.value);
+      input.placeholder = getIluminacaoPhonePlaceholder(countrySelect.value);
+    }
   });
 
   document.addEventListener('click', event => {
@@ -313,6 +540,17 @@ export function setupIluminacaoApiTestButtonHandler() {
       return;
     }
 
+    if (event.target.closest('[data-iluminacao-payload-preview-close="true"]')) {
+      event.preventDefault();
+      closeIluminacaoPayloadPreview();
+      return;
+    }
+
+    if (event.target.classList.contains('iluminacao-payload-preview-overlay')) {
+      closeIluminacaoPayloadPreview();
+      return;
+    }
+
     if (event.target.classList.contains('iluminacao-api-test-overlay')) {
       closeIluminacaoApiTestModal();
       return;
@@ -320,7 +558,14 @@ export function setupIluminacaoApiTestButtonHandler() {
 
     if (event.target.closest('[data-iluminacao-api-test-submit="true"]')) {
       event.preventDefault();
-      alert('Envio real ainda não está ativo nesta etapa.');
+      const payload = buildIluminacaoApiTestPayloadFromModal();
+      const errors = validateIluminacaoApiTestPayload(payload);
+      if (errors.length) {
+        showIluminacaoValidationErrors(errors);
+        return;
+      }
+
+      showIluminacaoPayloadPreview(payload);
       return;
     }
 

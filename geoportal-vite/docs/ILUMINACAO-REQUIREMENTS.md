@@ -374,9 +374,11 @@ Requisitos:
 - Um segundo botao de teste da API deve ser previsto para etapa futura.
 - O botao de teste da API deve ser controlado por feature flag ou configuracao do front-end, com ativacao e desativacao simples.
 - A configuracao inicial do botao de teste da API deve ficar desativada por padrao e nao deve enviar dados enquanto o fluxo estiver em preparacao.
+- Por contexto de fronteira, o campo de contato deve aceitar Brasil, Paraguai e outro pais, com mascara simples, validacao local e normalizacao do telefone na previa do payload.
 - O formulario local de teste deve permitir selecao manual local no mapa, evitar marcacao acidental por arrasto e exigir confirmacao antes de preencher as coordenadas.
 - Em `poste_mapa`, devem ser obrigatorios: ID do poste, coordenadas, tipo de problema, descricao, nome do solicitante e contato/WhatsApp; ponto de referencia e observacoes de localizacao ficam opcionais.
 - Em `ponto_manual`, devem ser obrigatorios: coordenadas, tipo de problema, descricao, nome do solicitante, contato/WhatsApp e observacoes de localizacao; ID do poste nao deve ser obrigatorio e ponto de referencia fica opcional.
+- Antes do envio real, o front-end deve validar localmente os campos obrigatorios e exibir uma previa segura do payload JSON, sem gravar ou transmitir dados.
 - Camada pública de postes continua sendo base visual.
 - Integração futura deve preservar popup, rota e busca de postes.
 - Qualquer alteração pública deve ser testada em homologação antes de produção.

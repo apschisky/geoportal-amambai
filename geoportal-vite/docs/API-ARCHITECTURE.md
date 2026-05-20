@@ -216,6 +216,8 @@ Auditoria deve ser obrigatoria para mudancas de status, observacoes, anexos, fin
 - O botao de teste da API foi preparado com feature flag desativada por padrao e abre um modal/formulario local de teste; nesta etapa ele nao envia dados e nao chama a API.
 - A selecao manual no formulario de teste usa marcador visual temporario e exige confirmacao do local antes de preencher o formulario.
 - O modal de teste aplica obrigatoriedade dinamica: `poste_id` obrigatorio apenas em `poste_mapa` e `observacoes_localizacao` obrigatoria em `ponto_manual`.
+- O front-end monta e valida localmente uma previa do payload em modo de teste antes de qualquer ativacao de envio real.
+- O campo de contato do formulario local possui suporte inicial a Brasil e Paraguai, com mascara, validacao local e normalizacao para `contato_solicitante` na previa do payload.
 - O Google Forms permanece como fallback enquanto a API estiver em validacao.
 - A substituicao definitiva do Forms so deve ocorrer apos testes em homologacao/producao, estabilidade de rede, logs, monitoramento e plano de rollback validados.
 
