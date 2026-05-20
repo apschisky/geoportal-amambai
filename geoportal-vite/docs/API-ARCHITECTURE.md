@@ -218,6 +218,7 @@ Auditoria deve ser obrigatoria para mudancas de status, observacoes, anexos, fin
 - O modal de teste aplica obrigatoriedade dinamica: `poste_id` obrigatorio apenas em `poste_mapa` e `observacoes_localizacao` obrigatoria em `ponto_manual`.
 - O front-end monta e valida localmente uma previa do payload em modo de teste antes de qualquer ativacao de envio real.
 - O campo de contato do formulario local possui suporte inicial a Brasil e Paraguai, com mascara, validacao local e normalizacao para `contato_solicitante` na previa do payload.
+- O envio real pelo front-end foi preparado atras da flag `submitEnabled`, desligada por padrao; com a flag desligada, o fluxo continua exibindo apenas a previa local do payload.
 - O Google Forms permanece como fallback enquanto a API estiver em validacao.
 - A substituicao definitiva do Forms so deve ocorrer apos testes em homologacao/producao, estabilidade de rede, logs, monitoramento e plano de rollback validados.
 

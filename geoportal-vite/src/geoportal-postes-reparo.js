@@ -244,47 +244,138 @@ export function validateIluminacaoApiTestPayload(payload, state = getIluminacaoM
   }
 
   if (payload.localizacao_tipo === 'poste_mapa' && !payload.poste_id) {
-    errors.push('ID do poste é obrigatório.');
+    errors.push('ID do poste \u00e9 obrigat\u00f3rio.');
   }
 
   if (!payload.coordenada) {
-    errors.push('Coordenadas inválidas.');
+    errors.push('Coordenadas inv\u00e1lidas.');
   }
 
   if (!payload.tipo_problema) {
-    errors.push('Tipo de problema é obrigatório.');
+    errors.push('Tipo de problema \u00e9 obrigat\u00f3rio.');
   }
 
   if (!payload.descricao) {
-    errors.push('Descrição é obrigatória.');
+    errors.push('Descri\u00e7\u00e3o \u00e9 obrigat\u00f3ria.');
   }
 
   if (!payload.nome_solicitante) {
-    errors.push('Nome do solicitante é obrigatório.');
+    errors.push('Nome do solicitante \u00e9 obrigat\u00f3rio.');
   }
 
   if (!payload.contato_solicitante) {
-    errors.push('Contato / WhatsApp é obrigatório.');
+    errors.push('Contato / WhatsApp \u00e9 obrigat\u00f3rio.');
   }
 
   if (payload.contato_solicitante && !validateIluminacaoPhone(state.contatoPais || 'BR', state.contatoSolicitante)) {
-    errors.push('Contato / WhatsApp inválido para o país selecionado.');
+    errors.push('Contato / WhatsApp inv\u00e1lido para o pa\u00eds selecionado.');
   }
 
   if (payload.localizacao_tipo === 'ponto_manual' && !payload.observacoes_localizacao) {
-    errors.push('Observações de localização são obrigatórias no modo manual.');
+    errors.push('Observa\u00e7\u00f5es de localiza\u00e7\u00e3o s\u00e3o obrigat\u00f3rias no modo manual.');
   }
 
   return errors;
+}
+
+function getIluminacaoInvalidFieldIds(payload, state = getIluminacaoModalStateFromDom()) {
+  const fieldIds = [];
+
+  if (payload.localizacao_tipo === 'poste_mapa' && !payload.poste_id) {
+    fieldIds.push('iluminacao-api-poste-id');
+  }
+
+  if (!payload.coordenada) {
+    fieldIds.push('iluminacao-api-coordenadas');
+  }
+
+  if (!payload.tipo_problema) {
+    fieldIds.push('iluminacao-api-tipo-problema');
+  }
+
+  if (!payload.descricao) {
+    fieldIds.push('iluminacao-api-descricao');
+  }
+
+  if (!payload.nome_solicitante) {
+    fieldIds.push('iluminacao-api-nome');
+  }
+
+  if (!payload.contato_solicitante || !validateIluminacaoPhone(state.contatoPais || 'BR', state.contatoSolicitante)) {
+    fieldIds.push('iluminacao-api-contato-pais', 'iluminacao-api-contato');
+  }
+
+  if (payload.localizacao_tipo === 'ponto_manual' && !payload.observacoes_localizacao) {
+    fieldIds.push('iluminacao-api-observacoes');
+  }
+
+  return [...new Set(fieldIds)];
 }
 
 function closeIluminacaoPayloadPreview() {
   document.querySelector('.iluminacao-payload-preview-overlay')?.remove();
 }
 
-function showIluminacaoValidationErrors(errors) {
-  const message = `Corrija os campos antes de continuar:\n\n${errors.map(error => `- ${error}`).join('\n')}`;
-  alert(message);
+function closeIluminacaoSubmitResult() {
+  document.querySelector('.iluminacao-submit-result-overlay')?.remove();
+}
+
+function clearIluminacaoFormValidationErrors() {
+  document.querySelector('.iluminacao-api-validation-errors')?.remove();
+
+  document.querySelectorAll('[data-iluminacao-field-highlighted="true"]').forEach(field => {
+    field.style.cssText = field.dataset.iluminacaoOriginalStyle || '';
+    delete field.dataset.iluminacaoOriginalStyle;
+    delete field.dataset.iluminacaoFieldHighlighted;
+    field.removeAttribute('aria-invalid');
+  });
+}
+
+function highlightIluminacaoInvalidFields(fieldIds) {
+  fieldIds.forEach(fieldId => {
+    const field = document.getElementById(fieldId);
+    if (!field) return;
+
+    if (!field.dataset.iluminacaoFieldHighlighted) {
+      field.dataset.iluminacaoOriginalStyle = field.style.cssText || '';
+    }
+
+    field.dataset.iluminacaoFieldHighlighted = 'true';
+    field.setAttribute('aria-invalid', 'true');
+    field.style.borderColor = '#dc2626';
+    field.style.boxShadow = '0 0 0 2px rgba(220,38,38,0.16)';
+    field.style.backgroundColor = '#fff7f7';
+  });
+}
+
+function showIluminacaoFormValidationErrors(errors, fieldIds = []) {
+  const modal = document.querySelector('.iluminacao-api-test-modal');
+  if (!modal) return;
+
+  clearIluminacaoFormValidationErrors();
+  highlightIluminacaoInvalidFields(fieldIds);
+
+  const errorsHtml = errors
+    .map(error => `<li style="margin:2px 0;">${escapeHtml(error)}</li>`)
+    .join('');
+  const wrapper = document.createElement('div');
+  wrapper.className = 'iluminacao-api-validation-errors';
+  wrapper.setAttribute('role', 'alert');
+  wrapper.style.cssText = 'margin:6px 0 5px;padding:8px 10px;border:1px solid #fecaca;border-left:4px solid #dc2626;border-radius:6px;background:#fff1f2;color:#7f1d1d;font-size:12px;line-height:1.4;';
+  wrapper.innerHTML = `
+    <strong style="display:block;margin-bottom:2px;color:#991b1b;">Revise as informa\u00e7\u00f5es</strong>
+    <div style="margin-bottom:4px;">Corrija os campos indicados antes de continuar.</div>
+    <ul style="margin:0;padding-left:18px;">${errorsHtml}</ul>
+  `;
+
+  const anchor = modal.querySelector('[data-iluminacao-required-note="true"]');
+  if (anchor) {
+    anchor.insertAdjacentElement('afterend', wrapper);
+  } else {
+    modal.insertBefore(wrapper, modal.firstElementChild?.nextSibling || modal.firstChild);
+  }
+
+  wrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function showIluminacaoPayloadPreview(payload) {
@@ -296,10 +387,10 @@ function showIluminacaoPayloadPreview(payload) {
     <div class="iluminacao-payload-preview-overlay" style="position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.45);display:flex;align-items:flex-start;justify-content:center;padding:14px 12px;overflow-y:auto;overflow-x:hidden;">
       <div class="iluminacao-payload-preview-modal" role="dialog" aria-modal="true" aria-labelledby="iluminacao-payload-preview-title" style="width:min(520px,calc(100vw - 32px));max-width:calc(100vw - 32px);background:#fff;border-radius:8px;box-shadow:0 20px 45px rgba(15,23,42,0.35);padding:14px;color:#111827;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;">
-          <h2 id="iluminacao-payload-preview-title" style="font-size:17px;line-height:1.2;margin:0;color:#123f73;">Prévia da solicitação</h2>
+          <h2 id="iluminacao-payload-preview-title" style="font-size:17px;line-height:1.2;margin:0;color:#123f73;">Pr\u00e9via da solicita\u00e7\u00e3o</h2>
           <button type="button" data-iluminacao-payload-preview-close="true" aria-label="Fechar" style="border:0;background:transparent;font-size:22px;line-height:1;cursor:pointer;color:#374151;">&times;</button>
         </div>
-        <p style="margin:0 0 10px;color:#4b5563;font-size:13px;">Nenhum dado foi enviado. Esta é apenas uma validação local.</p>
+        <p style="margin:0 0 10px;color:#4b5563;font-size:13px;">Nenhum dado foi enviado. Esta \u00e9 apenas uma valida\u00e7\u00e3o local.</p>
         <pre style="margin:0;max-height:55vh;overflow:auto;white-space:pre-wrap;word-break:break-word;background:#0f172a;color:#e2e8f0;border-radius:6px;padding:10px;font-size:12px;line-height:1.45;">${escapeHtml(payloadJson)}</pre>
         <div style="display:flex;justify-content:flex-end;margin-top:10px;">
           <button type="button" data-iluminacao-payload-preview-close="true" style="padding:7px 11px;border:0;border-radius:4px;background:#1976d2;color:#fff;font-weight:700;cursor:pointer;">Fechar</button>
@@ -310,6 +401,110 @@ function showIluminacaoPayloadPreview(payload) {
   document.body.appendChild(wrapper.firstElementChild);
 }
 
+function showIluminacaoSubmitResult({ title, message, protocolo = '', status = '', isSuccess = false }) {
+  closeIluminacaoSubmitResult();
+
+  const detailsHtml = isSuccess
+    ? `
+      <div style="margin-top:10px;padding:8px;border-radius:6px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#334155;">
+        ${protocolo ? `<div><strong>Protocolo:</strong> ${escapeHtml(protocolo)}</div>` : ''}
+        ${status ? `<div><strong>Status:</strong> ${escapeHtml(status)}</div>` : ''}
+      </div>
+      <p style="margin:10px 0 0;color:#64748b;font-size:12px;">O Google Forms permanece dispon\u00edvel como alternativa.</p>
+    `
+    : '';
+
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = `
+    <div class="iluminacao-submit-result-overlay" style="position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,0.45);display:flex;align-items:flex-start;justify-content:center;padding:16px 12px;overflow-y:auto;overflow-x:hidden;">
+      <div class="iluminacao-submit-result-modal" role="dialog" aria-modal="true" aria-labelledby="iluminacao-submit-result-title" style="width:min(420px,calc(100vw - 32px));max-width:calc(100vw - 32px);background:#fff;border-radius:8px;box-shadow:0 20px 45px rgba(15,23,42,0.35);padding:14px;color:#111827;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;">
+          <h2 id="iluminacao-submit-result-title" style="font-size:17px;line-height:1.2;margin:0;color:${isSuccess ? '#166534' : '#123f73'};">${escapeHtml(title)}</h2>
+          <button type="button" data-iluminacao-submit-result-close="true" aria-label="Fechar" style="border:0;background:transparent;font-size:22px;line-height:1;cursor:pointer;color:#374151;">&times;</button>
+        </div>
+        <p style="margin:0;color:#4b5563;font-size:13px;line-height:1.45;">${escapeHtml(message)}</p>
+        ${detailsHtml}
+        <div style="display:flex;justify-content:flex-end;margin-top:12px;">
+          <button type="button" data-iluminacao-submit-result-close="true" style="padding:7px 11px;border:0;border-radius:4px;background:#1976d2;color:#fff;font-weight:700;cursor:pointer;">Fechar</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(wrapper.firstElementChild);
+}
+
+async function fetchIluminacaoApiWithTimeout(payload, timeoutMs = 10000) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(ILUMINACAO_API_TEST_CONFIG.apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
+async function readIluminacaoApiResponseJson(response) {
+  try {
+    return await response.json();
+  } catch (error) {
+    return null;
+  }
+}
+
+function getIluminacaoApiErrorMessage(status) {
+  if (status === 422) {
+    return 'Há informações inválidas ou incompletas. Revise os campos e tente novamente.';
+  }
+
+  if (status === 429) {
+    return 'Muitas solicitações em pouco tempo. Tente novamente mais tarde.';
+  }
+
+  if (status === 503) {
+    return 'Serviço temporariamente indisponível. Tente novamente mais tarde.';
+  }
+
+  return ILUMINACAO_API_TEST_CONFIG.genericErrorMessage;
+}
+
+export async function submitIluminacaoApiTestPayload(payload) {
+  try {
+    const response = await fetchIluminacaoApiWithTimeout(payload);
+    const responseData = await readIluminacaoApiResponseJson(response);
+
+    if (response.status === 201) {
+      showIluminacaoSubmitResult({
+        title: 'Solicitação registrada',
+        message: ILUMINACAO_API_TEST_CONFIG.successMessage,
+        protocolo: responseData?.protocolo || '',
+        status: responseData?.status || '',
+        isSuccess: true
+      });
+      return true;
+    }
+
+    showIluminacaoSubmitResult({
+      title: 'Não foi possível registrar',
+      message: getIluminacaoApiErrorMessage(response.status)
+    });
+    return false;
+  } catch (error) {
+    showIluminacaoSubmitResult({
+      title: 'Não foi possível registrar',
+      message: ILUMINACAO_API_TEST_CONFIG.genericErrorMessage
+    });
+    return false;
+  }
+}
+
 function formatRequiredLabel(text, required) {
   return `${escapeHtml(text)}${required ? ' <span aria-hidden="true" style="color:#dc2626;">*</span>' : ''}`;
 }
@@ -317,7 +512,7 @@ function formatRequiredLabel(text, required) {
 function createIluminacaoApiTestModalHtml(state) {
   const localizacaoTipo = state.localizacaoTipo || 'poste_mapa';
   const isManual = localizacaoTipo === 'ponto_manual';
-  const posteId = isManual ? 'Não informado' : (state.posteId || '');
+  const posteId = isManual ? 'N\u00e3o informado' : (state.posteId || '');
   const coordenadas = state.coordenadas || '';
   const contatoPais = state.contatoPais || 'BR';
   const contatoCountry = getIluminacaoPhoneCountry(contatoPais);
@@ -350,15 +545,15 @@ function createIluminacaoApiTestModalHtml(state) {
     <div class="iluminacao-api-test-overlay" style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);display:flex;align-items:flex-start;justify-content:center;padding:10px 12px;overflow-y:auto;overflow-x:hidden;">
       <div class="iluminacao-api-test-modal" data-localizacao-tipo="${escapeHtml(localizacaoTipo)}" role="dialog" aria-modal="true" aria-labelledby="iluminacao-api-test-title" style="width:min(380px,calc(100vw - 32px));max-width:calc(100vw - 32px);max-height:none;overflow:visible;background:#fff;border-radius:8px;box-shadow:0 20px 45px rgba(15,23,42,0.35);padding:12px;color:#111827;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px;">
-          <h2 id="iluminacao-api-test-title" style="font-size:17px;line-height:1.2;margin:0;color:#123f73;">Solicitação pela API (teste)</h2>
+          <h2 id="iluminacao-api-test-title" style="font-size:17px;line-height:1.2;margin:0;color:#123f73;">Solicita\u00e7\u00e3o pela API (teste)</h2>
           <button type="button" data-iluminacao-api-test-close="true" aria-label="Fechar" style="border:0;background:transparent;font-size:22px;line-height:1;cursor:pointer;color:#374151;">&times;</button>
         </div>
-        <p style="margin:0 0 4px;color:#4b5563;font-size:12px;">Formulário local de preparação. O envio real ainda não está ativo.</p>
-        <p style="margin:0 0 4px;color:#64748b;font-size:12px;">* Campos obrigatórios.</p>
+        <p style="margin:0 0 4px;color:#4b5563;font-size:12px;">Formul\u00e1rio local de prepara\u00e7\u00e3o. O envio real ainda n\u00e3o est\u00e1 ativo.</p>
+        <p data-iluminacao-required-note="true" style="margin:0 0 4px;color:#64748b;font-size:12px;">* Campos obrigat\u00f3rios.</p>
 
         ${isManual ? `
           <div style="margin:5px 0 3px;padding:6px 8px;border-left:4px solid #1976d2;background:#eff6ff;border-radius:4px;color:#1e3a8a;font-size:12px;">
-            Modo manual ativo. O ID do poste não é obrigatório; confirme o local pelas coordenadas e descreva a referência em observações.
+            Modo manual ativo. O ID do poste n\u00e3o \u00e9 obrigat\u00f3rio; confirme o local pelas coordenadas e descreva a refer\u00eancia em observa\u00e7\u00f5es.
           </div>
         ` : ''}
 
@@ -381,7 +576,7 @@ function createIluminacaoApiTestModalHtml(state) {
           </div>
 
           <div style="${fieldGroupStyle}">
-            <label style="${labelStyle}" for="iluminacao-api-ponto-referencia">${formatRequiredLabel('Ponto de referência', required.pontoReferencia)}</label>
+            <label style="${labelStyle}" for="iluminacao-api-ponto-referencia">${formatRequiredLabel('Ponto de refer\u00eancia', required.pontoReferencia)}</label>
             <input id="iluminacao-api-ponto-referencia" type="text" value="${escapeHtml(state.pontoReferencia || '')}" style="${fieldStyle}">
           </div>
 
@@ -393,7 +588,7 @@ function createIluminacaoApiTestModalHtml(state) {
           <div style="${fieldGroupStyle}">
             <label style="${labelStyle}" for="iluminacao-api-contato">${formatRequiredLabel('Contato / WhatsApp', required.contatoSolicitante)}</label>
             <div style="display:flex;align-items:center;gap:6px;">
-              <select id="iluminacao-api-contato-pais" data-iluminacao-phone-country="true" aria-label="País do contato" style="${fieldStyle}width:88px;flex:0 0 88px;padding-left:6px;padding-right:6px;">
+              <select id="iluminacao-api-contato-pais" data-iluminacao-phone-country="true" aria-label="Pa\u00eds do contato" style="${fieldStyle}width:88px;flex:0 0 88px;padding-left:6px;padding-right:6px;">
                 ${phoneCountryOptionsHtml}
               </select>
               <input id="iluminacao-api-contato" data-iluminacao-phone-input="true" type="text" inputmode="tel" required value="${escapeHtml(contatoFormatado)}" placeholder="${escapeHtml(contatoPlaceholder)}" style="${fieldStyle}flex:1;min-width:0;">
@@ -401,14 +596,14 @@ function createIluminacaoApiTestModalHtml(state) {
           </div>
         </div>
 
-        <label style="${labelStyle}" for="iluminacao-api-descricao">${formatRequiredLabel('Descrição', required.descricao)}</label>
+        <label style="${labelStyle}" for="iluminacao-api-descricao">${formatRequiredLabel('Descri\u00e7\u00e3o', required.descricao)}</label>
         <textarea id="iluminacao-api-descricao" rows="1" required style="${fieldStyle}resize:vertical;min-height:34px;">${escapeHtml(state.descricao || '')}</textarea>
 
-        <label style="${labelStyle}" for="iluminacao-api-observacoes">${formatRequiredLabel('Observações de localização', required.observacoesLocalizacao)}</label>
+        <label style="${labelStyle}" for="iluminacao-api-observacoes">${formatRequiredLabel('Observa\u00e7\u00f5es de localiza\u00e7\u00e3o', required.observacoesLocalizacao)}</label>
         <textarea id="iluminacao-api-observacoes" rows="1" ${required.observacoesLocalizacao ? 'required' : ''} style="${fieldStyle}resize:vertical;min-height:34px;">${escapeHtml(state.observacoesLocalizacao || '')}</textarea>
 
         <button type="button" data-iluminacao-api-manual-location="true" style="width:100%;margin-top:6px;padding:6px 10px;border:1px solid #1976d2;border-radius:4px;background:#fff;color:#1976d2;font-weight:700;cursor:pointer;font-size:13px;">
-          O poste não está correto? Selecionar local manualmente
+          O poste n\u00e3o est\u00e1 correto? Selecionar local manualmente
         </button>
 
         <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;">
@@ -483,7 +678,7 @@ export function setupIluminacaoApiTestButtonHandler() {
     }
   });
 
-  document.addEventListener('click', event => {
+  document.addEventListener('click', async event => {
     if (!(event.target instanceof Element)) return;
 
     if (event.target.closest('[data-iluminacao-manual-cancel="true"]')) {
@@ -546,8 +741,19 @@ export function setupIluminacaoApiTestButtonHandler() {
       return;
     }
 
+    if (event.target.closest('[data-iluminacao-submit-result-close="true"]')) {
+      event.preventDefault();
+      closeIluminacaoSubmitResult();
+      return;
+    }
+
     if (event.target.classList.contains('iluminacao-payload-preview-overlay')) {
       closeIluminacaoPayloadPreview();
+      return;
+    }
+
+    if (event.target.classList.contains('iluminacao-submit-result-overlay')) {
+      closeIluminacaoSubmitResult();
       return;
     }
 
@@ -556,16 +762,36 @@ export function setupIluminacaoApiTestButtonHandler() {
       return;
     }
 
-    if (event.target.closest('[data-iluminacao-api-test-submit="true"]')) {
+    const submitButton = event.target.closest('[data-iluminacao-api-test-submit="true"]');
+    if (submitButton) {
       event.preventDefault();
       const payload = buildIluminacaoApiTestPayloadFromModal();
       const errors = validateIluminacaoApiTestPayload(payload);
       if (errors.length) {
-        showIluminacaoValidationErrors(errors);
+        showIluminacaoFormValidationErrors(errors, getIluminacaoInvalidFieldIds(payload));
         return;
       }
 
-      showIluminacaoPayloadPreview(payload);
+      if (!ILUMINACAO_API_TEST_CONFIG.submitEnabled) {
+        clearIluminacaoFormValidationErrors();
+        showIluminacaoPayloadPreview(payload);
+        return;
+      }
+
+      clearIluminacaoFormValidationErrors();
+      const originalText = submitButton.textContent;
+      submitButton.disabled = true;
+      submitButton.textContent = 'Enviando...';
+      submitButton.style.cursor = 'wait';
+
+      const success = await submitIluminacaoApiTestPayload(payload);
+      if (success) {
+        closeIluminacaoApiTestModal();
+      } else {
+        submitButton.disabled = false;
+        submitButton.textContent = originalText;
+        submitButton.style.cursor = 'pointer';
+      }
       return;
     }
 

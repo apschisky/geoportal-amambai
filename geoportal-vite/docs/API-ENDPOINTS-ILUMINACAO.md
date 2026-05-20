@@ -367,6 +367,7 @@ Transicoes devem ser validadas pela API, nao apenas pelo front-end.
 - A selecao manual do formulario de teste permanece local no front-end e ainda nao envia dados ao endpoint.
 - O front-end pode montar uma previa local do JSON esperado pelo endpoint, mas ainda nao realiza `POST` real nesta etapa.
 - Na previa local, `contato_solicitante` deve ser montado de forma normalizada a partir do pais selecionado e do numero informado, ainda sem envio real ao endpoint.
+- O envio real pelo front-end fica preparado por configuracao e desligado por padrao; quando ativado em ambiente controlado, deve tratar `201`, `422`, `429` e `503` com mensagens publicas seguras.
 - Camada publica de postes continua sendo base visual.
 - Status publico podera vir de endpoint publico ou view controlada.
 - Google Forms deve continuar como fallback ate o modulo proprio estar estavel; a troca definitiva deve ser validada pelo Prefeito.

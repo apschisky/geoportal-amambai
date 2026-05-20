@@ -78,6 +78,7 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [ ] Integracao inicial com API publica de Iluminacao feita em paralelo ao Google Forms.
 - [ ] Botao atual do Google Forms mantido ativo durante validacao.
 - [ ] Botao de teste da API controlado por feature flag ou configuracao do front-end.
+- [ ] Envio real do botao de teste mantido desligado por padrao com `submitEnabled=false` ate validacao em ambiente controlado.
 - [ ] Google Forms mantido como fallback ate estabilidade comprovada.
 - [ ] Links externos com `rel="noopener noreferrer"`.
 - [ ] Popups sem dados sensiveis.
