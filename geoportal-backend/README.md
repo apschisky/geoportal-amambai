@@ -56,7 +56,7 @@ O retorno `429` do rate limit foi validado manualmente em ambiente controlado. O
 
 O envio real controlado pelo front-end do Geoportal tambem foi validado em homologacao com ativacao temporaria por flags e `PERSIST_SOLICITACOES=true`. A API retornou `201 Created`, o front-end exibiu sucesso com protocolo/status e a gravacao foi confirmada em `mod_iluminacao.solicitacoes`, sem registrar dados reais na documentacao. Apos validacoes, mantenha `enabled=false`, `submitEnabled=false` e `PERSIST_SOLICITACOES=false` por padrao; limpe registros de teste e mantenha o Google Forms como fallback.
 
-Pendencia futura: implementar consulta publica por protocolo com resposta limitada a protocolo, status, datas publicas e mensagens seguras, sem expor dados pessoais, contato, observacoes internas ou detalhes administrativos.
+Pendencia futura: implementar consulta publica por protocolo como `POST /api/public/iluminacao/consulta`, com protocolo e dado complementar minimo de confirmacao. A resposta deve ser limitada a protocolo, status, datas publicas e mensagens seguras, sem expor dados pessoais, contato, observacoes internas, detalhes administrativos, id interno, geometria, logs, SQL ou dados tecnicos de banco.
 
 ## Endpoints disponiveis
 

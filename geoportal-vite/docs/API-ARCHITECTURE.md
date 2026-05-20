@@ -34,7 +34,7 @@ Endpoints publicos devem expor apenas o necessario. Endpoints internos devem exi
 Endpoints conceituais publicos:
 
 - `POST /api/public/iluminacao/solicitacoes`
-- `GET /api/public/iluminacao/protocolo/{protocolo}`
+- `POST /api/public/iluminacao/consulta`
 
 Endpoints conceituais internos:
 
@@ -226,7 +226,20 @@ Auditoria deve ser obrigatoria para mudancas de status, observacoes, anexos, fin
 
 ## 14.1 Consulta publica de protocolo pendente
 
-A consulta publica de protocolo deve permitir ao cidadao acompanhar o andamento sem expor dados sensiveis. A resposta futura deve limitar dados a protocolo, status, datas publicas e mensagens seguras. Dados pessoais, contato, observacoes internas e detalhes administrativos nao devem ser expostos.
+A consulta publica de protocolo sera etapa futura e deve permitir ao cidadao acompanhar o andamento sem expor dados sensiveis.
+
+Desenho recomendado:
+
+- Endpoint futuro: `POST /api/public/iluminacao/consulta`.
+- Preferir `POST` em vez de `GET` para permitir dado complementar de confirmacao, reduzir exposicao do protocolo em URL e reduzir risco de enumeracao.
+- Payload conceitual: `protocolo` e `contato_confirmacao`, com dado minimo como ultimos 4 digitos do contato informado ou outro fator simples.
+- A API nao deve retornar nem comparar publicamente telefone completo.
+- Resposta publica limitada a protocolo, status, data de abertura, ultima atualizacao e mensagem publica segura.
+- Dados pessoais, contato completo, observacoes internas, detalhes administrativos, id interno, geometria, logs, SQL e dados tecnicos do banco nao devem ser expostos.
+- Protocolos inexistentes e confirmacao invalida devem receber resposta generica, sem diferenciar claramente os casos.
+- A consulta deve validar formato `IP-YYYY-NNNNNN`, normalizar protocolo, aplicar rate limit e registrar logs seguros sem dados pessoais.
+- Captcha ou protecao adicional deve ser avaliado se houver risco de abuso.
+- Implementacao deve ser testada primeiro em homologacao, incluindo protocolo valido, protocolo inexistente, confirmacao invalida, rate limit e ausencia de dados sensiveis na resposta.
 
 ## 15. Integracao com ambiente interno
 

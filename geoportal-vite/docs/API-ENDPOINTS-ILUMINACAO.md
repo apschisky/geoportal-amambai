@@ -98,30 +98,83 @@ Auditoria/log:
 - registrar IP/origem quando possivel;
 - nao expor dados tecnicos ao cidadao.
 
-### `GET /api/public/iluminacao/protocolo/{protocolo}`
+### `POST /api/public/iluminacao/consulta`
 
 Finalidade: consultar andamento publico de uma solicitacao.
 
-Resposta conceitual:
+Justificativa para `POST`:
+
+- Permite enviar dado complementar minimo de confirmacao.
+- Reduz exposicao do protocolo em URL, historico do navegador, logs de proxy e compartilhamentos acidentais.
+- Ajuda a reduzir risco de enumeracao quando combinado com rate limit e resposta generica.
+
+Payload conceitual:
+
+```json
+{
+  "protocolo": "IP-YYYY-NNNNNN",
+  "contato_confirmacao": "ultimos_digitos_ou_codigo_de_confirmacao"
+}
+```
+
+O dado complementar deve ser minimo. A preferencia inicial e usar os ultimos 4 digitos do contato informado, ou outro fator simples de confirmacao. A API nao deve retornar nem comparar publicamente o telefone completo.
+
+Resposta publica conceitual:
+
+```json
+{
+  "protocolo": "IP-YYYY-NNNNNN",
+  "status": "aberta",
+  "data_abertura": "YYYY-MM-DD",
+  "ultima_atualizacao": "YYYY-MM-DD",
+  "mensagem": "Mensagem publica segura."
+}
+```
+
+Campos publicos permitidos:
 
 - `protocolo`;
-- `status_publico`;
+- `status`;
 - `data_abertura`;
-- `data_ultima_atualizacao`;
-- `mensagem_publica`.
+- `ultima_atualizacao`;
+- `mensagem`.
 
 Regras:
 
-- nunca retornar dados internos;
-- nunca retornar dados pessoais;
-- nao retornar previsao inicialmente;
-- evitar exposicao de historico interno.
+- nunca retornar nome do solicitante;
+- nunca retornar telefone completo, `contato_solicitante` ou dado de confirmacao;
+- nunca retornar observacoes internas, detalhes administrativos, id interno, geometria, logs, SQL ou dados tecnicos do banco;
+- status internos podem existir, mas devem ser traduzidos para status/mensagens publicas seguras;
+- nao diferenciar claramente protocolo inexistente de dado de confirmacao incorreto.
 
 Validacoes:
 
-- formato de protocolo;
+- normalizacao do protocolo;
+- formato `IP-YYYY-NNNNNN`;
+- dado complementar minimo;
 - protecao contra enumeracao;
-- rate limit.
+- rate limit;
+- logs seguros sem dados pessoais;
+- avaliacao futura de captcha ou protecao adicional se necessario.
+
+Status publicos iniciais:
+
+- `aberta`;
+- `em analise`;
+- `encaminhada`;
+- `em execucao`;
+- `concluida`;
+- `nao atendida` ou `cancelada`, se aplicavel.
+
+Testes automatizados antes da ativacao:
+
+- protocolo valido;
+- protocolo inexistente;
+- confirmacao invalida;
+- rate limit;
+- resposta sem dados sensiveis.
+
+A consulta deve ser testada primeiro em homologacao.
 
 ## 5. Endpoints internos
 
@@ -313,7 +366,7 @@ Transicoes devem ser validadas pela API, nao apenas pelo front-end.
 | Endpoint | Publico | Atendente | Campo | Gestor | Admin | Auditor |
 |---|---|---|---|---|---|---|
 | `POST /api/public/iluminacao/solicitacoes` | Sim | Sim | Nao | Sim | Sim | Nao |
-| `GET /api/public/iluminacao/protocolo/{protocolo}` | Sim | Sim | Sim | Sim | Sim | Sim |
+| `POST /api/public/iluminacao/consulta` | Sim | Sim | Sim | Sim | Sim | Sim |
 | `GET /api/internal/iluminacao/solicitacoes` | Nao | Sim se acumulado com campo | Sim | Sim | Sim | Sim |
 | `GET /api/internal/iluminacao/solicitacoes/{id}` | Nao | Sim se acumulado com campo | Sim | Sim | Sim | Sim |
 | `PATCH /api/internal/iluminacao/solicitacoes/{id}/status` | Nao | Sim se acumulado com campo | Sim | Sim | Sim | Nao |
@@ -327,7 +380,7 @@ Transicoes devem ser validadas pela API, nao apenas pelo front-end.
 | Endpoint | Auditar? | Evento |
 |---|---|---|
 | `POST /api/public/iluminacao/solicitacoes` | Sim | Criacao de solicitacao publica |
-| `GET /api/public/iluminacao/protocolo/{protocolo}` | Opcional | Consulta publica de protocolo, com cuidado para volume |
+| `POST /api/public/iluminacao/consulta` | Opcional | Consulta publica de protocolo, com confirmacao minima e cuidado para volume |
 | `GET /api/internal/iluminacao/solicitacoes` | Opcional | Consulta/listagem interna |
 | `GET /api/internal/iluminacao/solicitacoes/{id}` | Opcional | Visualizacao interna de detalhe |
 | `PATCH /api/internal/iluminacao/solicitacoes/{id}/status` | Sim | Alteracao de status |
@@ -378,7 +431,7 @@ Transicoes devem ser validadas pela API, nao apenas pelo front-end.
 
 ### Pendencia: consulta publica de protocolo
 
-- O endpoint futuro de consulta publica deve permitir acompanhamento pelo cidadao sem login.
+- O endpoint futuro recomendado e `POST /api/public/iluminacao/consulta`, com protocolo e dado complementar minimo de confirmacao.
 - A resposta publica deve limitar dados a protocolo, status, datas publicas e mensagens seguras.
 - Dados pessoais, contato, observacoes internas e detalhes administrativos nao devem ser expostos.
 - A consulta deve ser protegida contra enumeracao de protocolos.

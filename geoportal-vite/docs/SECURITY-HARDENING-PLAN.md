@@ -131,6 +131,9 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [ ] Evitar armazenar IP puro sem politica de retencao/LGPD.
 - [ ] Proteger consulta publica por protocolo contra enumeracao.
 - [ ] Limitar consulta publica por protocolo a protocolo, status, datas publicas e mensagens seguras, sem dados pessoais, contato, observacoes internas ou detalhes administrativos.
+- [ ] Planejar consulta publica como `POST /api/public/iluminacao/consulta`, com protocolo e confirmacao minima, evitando protocolo em URL.
+- [ ] Usar resposta generica para protocolo inexistente ou confirmacao invalida, sem diferenciar claramente os casos.
+- [ ] Validar formato `IP-YYYY-NNNNNN`, normalizar protocolo, aplicar rate limit e avaliar captcha/protecao adicional se necessario.
 
 ## 10. Usuarios, login e permissoes
 

@@ -162,31 +162,98 @@ Perguntas técnicas a resolver antes da implementação:
 - Como evitar colisão em requisições simultâneas?
 - Qual mensagem pública será exibida para protocolo inexistente sem facilitar enumeração?
 
-## 10. Consulta pública por protocolo
+## 10. Consulta publica por protocolo
 
-Retorno público permitido:
+Etapa futura, ainda sem implementacao.
+
+Endpoint recomendado:
+
+- `POST /api/public/iluminacao/consulta`
+
+Justificativa para `POST`:
+
+- Permitir envio de dado complementar de confirmacao.
+- Reduzir exposicao do protocolo em URL.
+- Reduzir risco de enumeracao.
+
+Payload conceitual:
+
+```json
+{
+  "protocolo": "IP-YYYY-NNNNNN",
+  "contato_confirmacao": "ultimos_digitos_ou_codigo_de_confirmacao"
+}
+```
+
+O dado complementar deve ser minimo. A preferencia inicial e usar os ultimos 4 digitos do contato informado, ou outro fator simples. Nao retornar nem comparar publicamente o telefone completo.
+
+Resposta publica conceitual:
+
+```json
+{
+  "protocolo": "IP-YYYY-NNNNNN",
+  "status": "aberta",
+  "data_abertura": "YYYY-MM-DD",
+  "ultima_atualizacao": "YYYY-MM-DD",
+  "mensagem": "Mensagem publica segura."
+}
+```
+
+Retorno publico permitido:
 
 - protocolo
-- status público
+- status publico
 - data de abertura
-- última atualização
+- ultima atualizacao
 - mensagem simples
 
-Não retornar:
+Nao retornar:
 
 - nome do solicitante;
-- contato;
-- histórico interno completo;
-- observações internas;
-- usuário responsável;
+- telefone completo;
+- `contato_solicitante`;
+- contato de confirmacao;
+- historico interno completo;
+- observacoes internas;
+- usuario responsavel;
 - anexos internos;
-- detalhes técnicos do banco/API.
+- detalhes administrativos;
+- id interno;
+- geometria;
+- logs;
+- SQL;
+- detalhes tecnicos do banco/API.
 
-Perguntas para validação:
+Protecoes:
 
-- A consulta pública deve mostrar previsão de atendimento no futuro?
-- Quais status internos devem ser agrupados em mensagens públicas mais simples?
+- rate limit;
+- resposta generica para protocolo inexistente ou confirmacao invalida;
+- nao diferenciar claramente protocolo inexistente de dado de confirmacao incorreto;
+- normalizacao do protocolo;
+- validacao do formato `IP-YYYY-NNNNNN`;
+- logs seguros sem dados pessoais;
+- futura avaliacao de captcha ou protecao adicional se necessario.
 
+Status publicos possiveis:
+
+- aberta;
+- em analise;
+- encaminhada;
+- em execucao;
+- concluida;
+- nao atendida/cancelada, se aplicavel.
+
+Status internos podem existir, mas devem ser traduzidos para mensagens publicas seguras.
+
+Testes automatizados antes da ativacao:
+
+- protocolo valido;
+- protocolo inexistente;
+- confirmacao invalida;
+- rate limit;
+- resposta sem dados sensiveis.
+
+A consulta deve ser testada primeiro em homologacao.
 ## 11. Dados pessoais e LGPD
 
 Requisitos:
