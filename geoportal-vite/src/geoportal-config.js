@@ -335,7 +335,7 @@ export const POSTE_FORM_CONFIG = {
 
 // Feature flag para botao experimental da API de Iluminacao Publica.
 export const ILUMINACAO_API_TEST_CONFIG = {
-  enabled: true,
+  enabled: false,
   buttonLabel: 'Solicitar pela API (teste)',
   disabledMessage: 'Fluxo de solicitação pela API ainda está em teste. Use o formulário atual por enquanto.'
 };
