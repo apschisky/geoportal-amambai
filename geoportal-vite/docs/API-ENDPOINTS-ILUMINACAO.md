@@ -102,6 +102,8 @@ Auditoria/log:
 
 Finalidade: consultar andamento publico de uma solicitacao.
 
+Status de implementacao: endpoint criado no backend, com testes automatizados, ainda pendente de validacao em homologacao antes de uso publico.
+
 Justificativa para `POST`:
 
 - Permite enviar dado complementar minimo de confirmacao.
@@ -117,7 +119,7 @@ Payload conceitual:
 }
 ```
 
-O dado complementar deve ser minimo. A preferencia inicial e usar os ultimos 4 digitos do contato informado, ou outro fator simples de confirmacao. A API nao deve retornar nem comparar publicamente o telefone completo.
+O dado complementar deve ser minimo. A implementacao inicial usa os ultimos 4 digitos do contato informado. A API nao deve retornar nem comparar publicamente o telefone completo.
 
 Resposta publica conceitual:
 
@@ -429,12 +431,14 @@ Transicoes devem ser validadas pela API, nao apenas pelo front-end.
 - A substituicao definitiva do Forms so deve ocorrer apos testes em homologacao/producao, estabilidade de rede, logs, monitoramento e plano de rollback validados.
 - O front-end publico nao deve acessar endpoints internos.
 
-### Pendencia: consulta publica de protocolo
+### Consulta publica de protocolo
 
-- O endpoint futuro recomendado e `POST /api/public/iluminacao/consulta`, com protocolo e dado complementar minimo de confirmacao.
+- O endpoint `POST /api/public/iluminacao/consulta` foi criado no backend, com protocolo e confirmacao inicial pelos ultimos 4 digitos do contato informado.
 - A resposta publica deve limitar dados a protocolo, status, datas publicas e mensagens seguras.
 - Dados pessoais, contato, observacoes internas e detalhes administrativos nao devem ser expostos.
 - A consulta deve ser protegida contra enumeracao de protocolos.
+- Testes automatizados cobrem protocolo valido, protocolo inexistente, confirmacao invalida, rate limit, erro seguro e ausencia de dados sensiveis.
+- Ainda deve ser validado em homologacao antes de uso publico.
 
 ## 13. Integracao com painel interno
 

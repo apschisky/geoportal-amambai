@@ -3,6 +3,7 @@ from sqlalchemy.engine import Engine
 
 from app.core.database import get_engine
 from app.schemas.iluminacao import (
+    IluminacaoConsultaRepositoryRecord,
     IluminacaoSolicitacaoCreate,
     IluminacaoSolicitacaoResponse,
 )
@@ -90,5 +91,35 @@ def create_solicitacao(
     return IluminacaoSolicitacaoResponse(
         protocolo=row["protocolo"],
         status=row["status"],
-        message="Solicitação registrada em ambiente de teste.",
+        message="Solicitacao registrada em ambiente de teste.",
     )
+
+
+def get_solicitacao_publica_por_protocolo(
+    protocolo: str,
+    engine: Engine | None = None,
+) -> IluminacaoConsultaRepositoryRecord | None:
+    db_engine = engine or get_engine()
+
+    statement = text(
+        """
+        SELECT
+            protocolo,
+            status,
+            contato_solicitante,
+            criado_em,
+            COALESCE(atualizado_em, criado_em) AS atualizado_em
+        FROM mod_iluminacao.solicitacoes
+        WHERE protocolo = :protocolo
+          AND deleted_at IS NULL
+        LIMIT 1
+        """
+    )
+
+    with db_engine.begin() as connection:
+        row = connection.execute(statement, {"protocolo": protocolo}).mappings().first()
+
+    if row is None:
+        return None
+
+    return IluminacaoConsultaRepositoryRecord.model_validate(dict(row))

@@ -224,15 +224,15 @@ Auditoria deve ser obrigatoria para mudancas de status, observacoes, anexos, fin
 - O Google Forms permanece como fallback enquanto a API estiver em validacao.
 - A substituicao definitiva do Forms so deve ocorrer apos testes em homologacao/producao, estabilidade de rede, logs, monitoramento e plano de rollback validados.
 
-## 14.1 Consulta publica de protocolo pendente
+## 14.1 Consulta publica de protocolo
 
-A consulta publica de protocolo sera etapa futura e deve permitir ao cidadao acompanhar o andamento sem expor dados sensiveis.
+A consulta publica de protocolo foi criada no backend e deve permitir ao cidadao acompanhar o andamento sem expor dados sensiveis. Ainda deve ser validada em homologacao antes de uso publico.
 
 Desenho recomendado:
 
-- Endpoint futuro: `POST /api/public/iluminacao/consulta`.
+- Endpoint: `POST /api/public/iluminacao/consulta`.
 - Preferir `POST` em vez de `GET` para permitir dado complementar de confirmacao, reduzir exposicao do protocolo em URL e reduzir risco de enumeracao.
-- Payload conceitual: `protocolo` e `contato_confirmacao`, com dado minimo como ultimos 4 digitos do contato informado ou outro fator simples.
+- Payload: `protocolo` e `contato_confirmacao`, com confirmacao inicial pelos ultimos 4 digitos do contato informado.
 - A API nao deve retornar nem comparar publicamente telefone completo.
 - Resposta publica limitada a protocolo, status, data de abertura, ultima atualizacao e mensagem publica segura.
 - Dados pessoais, contato completo, observacoes internas, detalhes administrativos, id interno, geometria, logs, SQL e dados tecnicos do banco nao devem ser expostos.

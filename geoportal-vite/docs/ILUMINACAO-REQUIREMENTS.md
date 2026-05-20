@@ -164,7 +164,7 @@ Perguntas técnicas a resolver antes da implementação:
 
 ## 10. Consulta publica por protocolo
 
-Etapa futura, ainda sem implementacao.
+Endpoint criado no backend, ainda pendente de validacao em homologacao antes de uso publico.
 
 Endpoint recomendado:
 
@@ -185,7 +185,7 @@ Payload conceitual:
 }
 ```
 
-O dado complementar deve ser minimo. A preferencia inicial e usar os ultimos 4 digitos do contato informado, ou outro fator simples. Nao retornar nem comparar publicamente o telefone completo.
+O dado complementar deve ser minimo. A implementacao inicial usa os ultimos 4 digitos do contato informado. Nao retornar nem comparar publicamente o telefone completo.
 
 Resposta publica conceitual:
 
@@ -454,6 +454,7 @@ Requisitos:
 - Qualquer alteração pública deve ser testada em homologação antes de produção.
 - A substituicao definitiva do Forms so deve ocorrer apos testes em homologacao/producao, estabilidade de rede, logs, monitoramento e plano de rollback validados.
 - A consulta publica de protocolo permanece pendente e deve expor somente protocolo, status, datas publicas e mensagens seguras, sem dados pessoais, contato, observacoes internas ou detalhes administrativos.
+- O backend da consulta publica por protocolo foi criado com `POST /api/public/iluminacao/consulta`, confirmacao pelos ultimos 4 digitos do contato e testes automatizados; ainda deve ser validado em homologacao antes de uso publico.
 
 ## 19. Integração com API futura
 

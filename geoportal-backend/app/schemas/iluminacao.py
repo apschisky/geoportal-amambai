@@ -1,4 +1,6 @@
 from enum import Enum
+import re
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -85,3 +87,55 @@ class IluminacaoSolicitacaoResponse(BaseModel):
     protocolo: str
     status: StatusSolicitacaoIluminacao
     message: str
+
+
+class IluminacaoConsultaRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    protocolo: str = Field(min_length=1, max_length=20)
+    contato_confirmacao: str = Field(min_length=4, max_length=32)
+
+    @field_validator("protocolo", mode="before")
+    @classmethod
+    def normalize_protocolo(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip().upper()
+        return value
+
+    @field_validator("protocolo")
+    @classmethod
+    def validate_protocolo(cls, value: str) -> str:
+        if not re.fullmatch(r"IP-\d{4}-\d{6}", value):
+            raise ValueError("protocolo deve estar no formato IP-YYYY-NNNNNN")
+        return value
+
+    @field_validator("contato_confirmacao", mode="before")
+    @classmethod
+    def normalize_contato_confirmacao(cls, value: object) -> object:
+        if isinstance(value, str):
+            return re.sub(r"\D", "", value)
+        return value
+
+    @field_validator("contato_confirmacao")
+    @classmethod
+    def validate_contato_confirmacao(cls, value: str) -> str:
+        if not re.fullmatch(r"\d{4}", value):
+            raise ValueError("contato_confirmacao deve conter exatamente 4 digitos")
+        return value
+
+
+class IluminacaoConsultaPublicResponse(BaseModel):
+    protocolo: str
+    status: str
+    status_publico: str
+    data_abertura: date
+    ultima_atualizacao: date
+    mensagem: str
+
+
+class IluminacaoConsultaRepositoryRecord(BaseModel):
+    protocolo: str
+    status: str
+    contato_solicitante: str | None = None
+    criado_em: datetime | date
+    atualizado_em: datetime | date | None = None

@@ -7,8 +7,9 @@ from fastapi.testclient import TestClient
 from app.api.routes import iluminacao_public
 from app.core.rate_limit import reset_rate_limit_state
 from app.main import app
+from app.schemas.iluminacao import IluminacaoConsultaPublicResponse
 from app.services import iluminacao_service
-from app.services.exceptions import DatabaseUnavailableError
+from app.services.exceptions import DatabaseUnavailableError, PublicConsultaNotFoundError
 
 
 client = TestClient(app)
@@ -306,3 +307,197 @@ def test_create_solicitacao_rejects_too_long_text_fields(
     response = client.post("/api/public/iluminacao/solicitacoes", json=payload)
 
     assert response.status_code == 422
+
+
+def valid_consulta_payload() -> dict[str, str]:
+    return {
+        "protocolo": " ip-2026-000017 ",
+        "contato_confirmacao": "9999",
+    }
+
+
+def public_consulta_response() -> IluminacaoConsultaPublicResponse:
+    return IluminacaoConsultaPublicResponse.model_validate(
+        {
+            "protocolo": "IP-2026-000017",
+            "status": "aberta",
+            "status_publico": "Aberta",
+            "data_abertura": "2026-05-20",
+            "ultima_atualizacao": "2026-05-20",
+            "mensagem": "Sua solicitacao foi registrada e esta aguardando analise.",
+        }
+    )
+
+
+def test_consulta_publica_valid_request_returns_filtered_response(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: dict[str, object] = {}
+
+    def fake_consultar(consulta: object) -> IluminacaoConsultaPublicResponse:
+        calls["protocolo"] = getattr(consulta, "protocolo")
+        calls["contato_confirmacao"] = getattr(consulta, "contato_confirmacao")
+        return public_consulta_response()
+
+    monkeypatch.setattr(
+        iluminacao_public,
+        "consultar_solicitacao_publica",
+        fake_consultar,
+    )
+
+    response = client.post(
+        "/api/public/iluminacao/consulta",
+        json=valid_consulta_payload(),
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert calls == {
+        "protocolo": "IP-2026-000017",
+        "contato_confirmacao": "9999",
+    }
+    assert body == {
+        "protocolo": "IP-2026-000017",
+        "status": "aberta",
+        "status_publico": "Aberta",
+        "data_abertura": "2026-05-20",
+        "ultima_atualizacao": "2026-05-20",
+        "mensagem": "Sua solicitacao foi registrada e esta aguardando analise.",
+    }
+    forbidden_fields = {
+        "id",
+        "nome_solicitante",
+        "contato_solicitante",
+        "descricao",
+        "ponto_referencia",
+        "observacoes",
+        "geom",
+        "latitude",
+        "longitude",
+        "origem",
+        "prioridade",
+        "duplicidade_suspeita",
+    }
+    assert forbidden_fields.isdisjoint(body)
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        PublicConsultaNotFoundError(
+            "Solicitacao nao encontrada ou dados de confirmacao invalidos."
+        ),
+        PublicConsultaNotFoundError(
+            "Solicitacao nao encontrada ou dados de confirmacao invalidos."
+        ),
+    ],
+)
+def test_consulta_publica_returns_same_404_for_not_found_or_wrong_confirmation(
+    monkeypatch: pytest.MonkeyPatch,
+    error: PublicConsultaNotFoundError,
+) -> None:
+    def fail_consulta(*args: object, **kwargs: object) -> None:
+        raise error
+
+    monkeypatch.setattr(
+        iluminacao_public,
+        "consultar_solicitacao_publica",
+        fail_consulta,
+    )
+
+    response = client.post(
+        "/api/public/iluminacao/consulta",
+        json=valid_consulta_payload(),
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "detail": "Solicitacao nao encontrada ou dados de confirmacao invalidos."
+    }
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"protocolo": "2026-000017", "contato_confirmacao": "9999"},
+        {"protocolo": "IP-2026-000017", "contato_confirmacao": "999"},
+        {"protocolo": "IP-2026-000017", "contato_confirmacao": "abcd"},
+        {
+            "protocolo": "IP-2026-000017",
+            "contato_confirmacao": "9999",
+            "campo_extra": "nao permitido",
+        },
+    ],
+)
+def test_consulta_publica_rejects_invalid_payload(
+    payload: dict[str, str],
+) -> None:
+    response = client.post("/api/public/iluminacao/consulta", json=payload)
+
+    assert response.status_code == 422
+
+
+def test_consulta_publica_returns_429_when_rate_limit_is_exceeded(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = {"service": 0}
+
+    def fake_consultar(*args: object, **kwargs: object) -> IluminacaoConsultaPublicResponse:
+        calls["service"] += 1
+        return public_consulta_response()
+
+    monkeypatch.setattr(iluminacao_public.settings, "rate_limit_enabled", True)
+    monkeypatch.setattr(iluminacao_public.settings, "rate_limit_max_requests", 1)
+    monkeypatch.setattr(iluminacao_public.settings, "rate_limit_window_seconds", 600)
+    monkeypatch.setattr(
+        iluminacao_public,
+        "consultar_solicitacao_publica",
+        fake_consultar,
+    )
+
+    first_response = client.post(
+        "/api/public/iluminacao/consulta",
+        json=valid_consulta_payload(),
+    )
+    second_response = client.post(
+        "/api/public/iluminacao/consulta",
+        json=valid_consulta_payload(),
+    )
+
+    assert first_response.status_code == 200
+    assert second_response.status_code == 429
+    assert second_response.json() == {
+        "detail": "Muitas solicitacoes em pouco tempo. Tente novamente mais tarde."
+    }
+    assert calls["service"] == 1
+
+
+def test_consulta_publica_returns_safe_503_when_database_is_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_with_safe_error(*args: object, **kwargs: object) -> None:
+        raise DatabaseUnavailableError(
+            "Servico temporariamente indisponivel. Tente novamente mais tarde."
+        )
+
+    monkeypatch.setattr(
+        iluminacao_public,
+        "consultar_solicitacao_publica",
+        fail_with_safe_error,
+    )
+
+    response = client.post(
+        "/api/public/iluminacao/consulta",
+        json=valid_consulta_payload(),
+    )
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": "Servico temporariamente indisponivel. Tente novamente mais tarde."
+    }
+    body = response.text
+    assert "traceback" not in body.lower()
+    assert "DATABASE_URL" not in body
+    assert "host" not in body.lower()
+    assert "senha" not in body.lower()
+    assert "SELECT" not in body

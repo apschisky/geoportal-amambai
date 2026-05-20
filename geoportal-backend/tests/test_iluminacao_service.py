@@ -1,13 +1,17 @@
+from datetime import datetime
+
 import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.schemas.iluminacao import (
+    IluminacaoConsultaRepositoryRecord,
+    IluminacaoConsultaRequest,
     IluminacaoSolicitacaoCreate,
     IluminacaoSolicitacaoResponse,
     StatusSolicitacaoIluminacao,
 )
 from app.services import iluminacao_service
-from app.services.exceptions import DatabaseUnavailableError
+from app.services.exceptions import DatabaseUnavailableError, PublicConsultaNotFoundError
 
 
 def valid_solicitacao() -> IluminacaoSolicitacaoCreate:
@@ -124,6 +128,168 @@ def test_create_solicitacao_converts_database_error_to_safe_error(
 
     with pytest.raises(DatabaseUnavailableError) as exc_info:
         iluminacao_service.create_solicitacao_simulada(valid_solicitacao())
+
+    message = str(exc_info.value)
+    assert message == "Servico temporariamente indisponivel. Tente novamente mais tarde."
+    assert "DATABASE_URL" not in message
+    assert "db.internal" not in message
+    assert "senha" not in message.lower()
+    assert "SELECT" not in message
+
+
+def consulta_request(
+    protocolo: str = "IP-2026-000017",
+    contato_confirmacao: str = "9999",
+) -> IluminacaoConsultaRequest:
+    return IluminacaoConsultaRequest.model_validate(
+        {
+            "protocolo": protocolo,
+            "contato_confirmacao": contato_confirmacao,
+        }
+    )
+
+
+def repository_record(
+    status: str = "aberta",
+    contato_solicitante: str = "+5567999999999",
+) -> IluminacaoConsultaRepositoryRecord:
+    return IluminacaoConsultaRepositoryRecord.model_validate(
+        {
+            "protocolo": "IP-2026-000017",
+            "status": status,
+            "contato_solicitante": contato_solicitante,
+            "criado_em": datetime(2026, 5, 20, 10, 30),
+            "atualizado_em": None,
+        }
+    )
+
+
+def test_consultar_solicitacao_publica_returns_filtered_response(monkeypatch) -> None:
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "get_solicitacao_publica_por_protocolo",
+        lambda protocolo: repository_record(),
+    )
+
+    response = iluminacao_service.consultar_solicitacao_publica(consulta_request())
+
+    assert response.model_dump(mode="json") == {
+        "protocolo": "IP-2026-000017",
+        "status": "aberta",
+        "status_publico": "Aberta",
+        "data_abertura": "2026-05-20",
+        "ultima_atualizacao": "2026-05-20",
+        "mensagem": "Sua solicitacao foi registrada e esta aguardando analise.",
+    }
+    assert not hasattr(response, "contato_solicitante")
+    assert not hasattr(response, "nome_solicitante")
+    assert not hasattr(response, "id")
+
+
+def test_consultar_solicitacao_publica_returns_generic_error_when_not_found(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "get_solicitacao_publica_por_protocolo",
+        lambda protocolo: None,
+    )
+
+    with pytest.raises(PublicConsultaNotFoundError) as exc_info:
+        iluminacao_service.consultar_solicitacao_publica(consulta_request())
+
+    assert str(exc_info.value) == (
+        "Solicitacao nao encontrada ou dados de confirmacao invalidos."
+    )
+
+
+def test_consultar_solicitacao_publica_returns_same_error_for_wrong_confirmation(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "get_solicitacao_publica_por_protocolo",
+        lambda protocolo: repository_record(),
+    )
+
+    with pytest.raises(PublicConsultaNotFoundError) as exc_info:
+        iluminacao_service.consultar_solicitacao_publica(
+            consulta_request(contato_confirmacao="0000")
+        )
+
+    assert str(exc_info.value) == (
+        "Solicitacao nao encontrada ou dados de confirmacao invalidos."
+    )
+
+
+@pytest.mark.parametrize(
+    ("status", "status_publico", "mensagem"),
+    [
+        ("aberta", "Aberta", "Sua solicitacao foi registrada e esta aguardando analise."),
+        (
+            "em_triagem",
+            "Em analise",
+            "Sua solicitacao esta em analise pela equipe responsavel.",
+        ),
+        (
+            "encaminhada",
+            "Encaminhada",
+            "Sua solicitacao foi encaminhada para atendimento.",
+        ),
+        (
+            "em_execucao",
+            "Em execucao",
+            "O atendimento da solicitacao esta em execucao.",
+        ),
+        (
+            "aguardando_material",
+            "Aguardando material",
+            "A solicitacao aguarda disponibilidade de material ou recurso necessario.",
+        ),
+        ("concluida", "Concluida", "A solicitacao foi concluida."),
+        ("cancelada", "Encerrada", "A solicitacao foi encerrada."),
+        (
+            "status_desconhecido",
+            "Em acompanhamento",
+            "Sua solicitacao esta em acompanhamento.",
+        ),
+    ],
+)
+def test_consultar_solicitacao_publica_maps_internal_status_to_public_message(
+    monkeypatch,
+    status: str,
+    status_publico: str,
+    mensagem: str,
+) -> None:
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "get_solicitacao_publica_por_protocolo",
+        lambda protocolo: repository_record(status=status),
+    )
+
+    response = iluminacao_service.consultar_solicitacao_publica(consulta_request())
+
+    assert response.status == status
+    assert response.status_publico == status_publico
+    assert response.mensagem == mensagem
+
+
+def test_consultar_solicitacao_publica_converts_database_error_to_safe_503(
+    monkeypatch,
+) -> None:
+    def fail_with_database_error(*args: object, **kwargs: object) -> None:
+        raise SQLAlchemyError(
+            "could not connect using DATABASE_URL on host db.internal:5432 SELECT"
+        )
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "get_solicitacao_publica_por_protocolo",
+        fail_with_database_error,
+    )
+
+    with pytest.raises(DatabaseUnavailableError) as exc_info:
+        iluminacao_service.consultar_solicitacao_publica(consulta_request())
 
     message = str(exc_info.value)
     assert message == "Servico temporariamente indisponivel. Tente novamente mais tarde."

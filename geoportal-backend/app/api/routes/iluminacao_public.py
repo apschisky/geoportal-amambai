@@ -4,11 +4,17 @@ from app.core.config import settings
 from app.core.rate_limit import check_rate_limit
 from app.schemas.common import IluminacaoHealthResponse
 from app.schemas.iluminacao import (
+    IluminacaoConsultaPublicResponse,
+    IluminacaoConsultaRequest,
     IluminacaoSolicitacaoCreate,
     IluminacaoSolicitacaoResponse,
 )
-from app.services.exceptions import DatabaseUnavailableError
-from app.services.iluminacao_service import create_solicitacao_simulada
+from app.services.exceptions import DatabaseUnavailableError, PublicConsultaNotFoundError
+from app.services.iluminacao_service import (
+    PUBLIC_CONSULTA_NOT_FOUND_MESSAGE,
+    consultar_solicitacao_publica,
+    create_solicitacao_simulada,
+)
 
 RATE_LIMIT_MESSAGE = "Muitas solicitacoes em pouco tempo. Tente novamente mais tarde."
 
@@ -36,5 +42,30 @@ def create_iluminacao_solicitacao(
 
     try:
         return create_solicitacao_simulada(solicitacao)
+    except DatabaseUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.post("/consulta", response_model=IluminacaoConsultaPublicResponse)
+def consulta_iluminacao_solicitacao(
+    request: Request,
+    consulta: IluminacaoConsultaRequest,
+) -> IluminacaoConsultaPublicResponse:
+    client_ip = request.client.host if request.client else "unknown"
+
+    if settings.rate_limit_enabled and not check_rate_limit(
+        client_ip,
+        settings.rate_limit_max_requests,
+        settings.rate_limit_window_seconds,
+    ):
+        raise HTTPException(status_code=429, detail=RATE_LIMIT_MESSAGE)
+
+    try:
+        return consultar_solicitacao_publica(consulta)
+    except PublicConsultaNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=PUBLIC_CONSULTA_NOT_FOUND_MESSAGE,
+        ) from exc
     except DatabaseUnavailableError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
