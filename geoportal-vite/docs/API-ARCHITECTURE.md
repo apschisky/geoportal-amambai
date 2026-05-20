@@ -219,8 +219,14 @@ Auditoria deve ser obrigatoria para mudancas de status, observacoes, anexos, fin
 - O front-end monta e valida localmente uma previa do payload em modo de teste antes de qualquer ativacao de envio real.
 - O campo de contato do formulario local possui suporte inicial a Brasil e Paraguai, com mascara, validacao local e normalizacao para `contato_solicitante` na previa do payload.
 - O envio real pelo front-end foi preparado atras da flag `submitEnabled`, desligada por padrao; com a flag desligada, o fluxo continua exibindo apenas a previa local do payload.
+- O envio real controlado pelo front-end foi validado em homologacao com ativacao temporaria por flags e persistencia ativa; a API retornou `201 Created`, o front-end exibiu sucesso com protocolo/status e a gravacao foi confirmada sem registrar dados reais nesta documentacao.
+- Apos validacoes, `enabled=false`, `submitEnabled=false` e `PERSIST_SOLICITACOES=false` devem permanecer como padrao seguro; registros de teste devem ser limpos.
 - O Google Forms permanece como fallback enquanto a API estiver em validacao.
 - A substituicao definitiva do Forms so deve ocorrer apos testes em homologacao/producao, estabilidade de rede, logs, monitoramento e plano de rollback validados.
+
+## 14.1 Consulta publica de protocolo pendente
+
+A consulta publica de protocolo deve permitir ao cidadao acompanhar o andamento sem expor dados sensiveis. A resposta futura deve limitar dados a protocolo, status, datas publicas e mensagens seguras. Dados pessoais, contato, observacoes internas e detalhes administrativos nao devem ser expostos.
 
 ## 15. Integracao com ambiente interno
 

@@ -54,6 +54,10 @@ O endpoint publico possui rate limit inicial em memoria. O padrao e 5 solicitaco
 
 O retorno `429` do rate limit foi validado manualmente em ambiente controlado. O padrao planejado e 5 solicitacoes por IP em 10 minutos.
 
+O envio real controlado pelo front-end do Geoportal tambem foi validado em homologacao com ativacao temporaria por flags e `PERSIST_SOLICITACOES=true`. A API retornou `201 Created`, o front-end exibiu sucesso com protocolo/status e a gravacao foi confirmada em `mod_iluminacao.solicitacoes`, sem registrar dados reais na documentacao. Apos validacoes, mantenha `enabled=false`, `submitEnabled=false` e `PERSIST_SOLICITACOES=false` por padrao; limpe registros de teste e mantenha o Google Forms como fallback.
+
+Pendencia futura: implementar consulta publica por protocolo com resposta limitada a protocolo, status, datas publicas e mensagens seguras, sem expor dados pessoais, contato, observacoes internas ou detalhes administrativos.
+
 ## Endpoints disponiveis
 
 - `GET /api/health`

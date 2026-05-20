@@ -381,3 +381,34 @@ Registro seguro, sem dados sensiveis:
 - O banco nao foi acionado quando a requisicao foi bloqueada.
 - A configuracao local deve voltar aos valores padrao apos esse tipo de teste.
 - `PERSIST_SOLICITACOES` deve permanecer `false` por padrao.
+
+## Registro de validacao do envio real controlado pelo front-end
+
+O envio real controlado pelo front-end do Geoportal para `POST /api/public/iluminacao/solicitacoes` foi validado em homologacao.
+
+Registro seguro, sem dados sensiveis:
+
+- O botao experimental da API foi ativado temporariamente por configuracao do front-end.
+- O envio real foi ativado temporariamente por `submitEnabled`.
+- A persistencia foi ativada temporariamente por `PERSIST_SOLICITACOES=true`.
+- A API retornou `201 Created`.
+- O front-end exibiu modal de sucesso com protocolo e status.
+- O protocolo real sequencial foi gerado por sequence.
+- A gravacao foi confirmada em `mod_iluminacao.solicitacoes`.
+- Foram confirmados `localizacao_tipo`, `poste_id`, `tipo_problema`, `status = aberta`, `prioridade = normal`, `origem = geoportal_publico`, `duplicidade_suspeita`, contato normalizado e geometria com SRID `32721`.
+- O Google Forms permaneceu disponivel como fallback.
+- Registros de teste devem ser limpos apos a validacao.
+- As flags `enabled` e `submitEnabled` devem voltar para `false` apos o teste.
+- `PERSIST_SOLICITACOES` deve permanecer `false` por padrao.
+- Nenhum protocolo real, contato, credencial, host, porta, IP interno, caminho local, log completo ou `DATABASE_URL` real deve ser registrado no Git.
+
+## Pendencia futura: consulta publica por protocolo
+
+A consulta publica por protocolo ainda deve ser implementada em etapa futura.
+
+Requisitos de seguranca esperados:
+
+- Permitir que o cidadao consulte o andamento sem login.
+- Nao expor dados pessoais, contato, observacoes internas ou detalhes administrativos.
+- Limitar a resposta publica a protocolo, status, datas publicas e mensagens seguras.
+- Proteger contra enumeracao de protocolos.

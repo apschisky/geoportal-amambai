@@ -79,6 +79,8 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [ ] Botao atual do Google Forms mantido ativo durante validacao.
 - [ ] Botao de teste da API controlado por feature flag ou configuracao do front-end.
 - [ ] Envio real do botao de teste mantido desligado por padrao com `submitEnabled=false` ate validacao em ambiente controlado.
+- [x] Envio real controlado pelo front-end validado em homologacao com flags ativadas temporariamente, persistencia ativa, retorno `201 Created` e modal publico de sucesso.
+- [ ] Restaurar `enabled=false`, `submitEnabled=false` e `PERSIST_SOLICITACOES=false` como padrao seguro apos testes e limpar registros de validacao.
 - [ ] Google Forms mantido como fallback ate estabilidade comprovada.
 - [ ] Links externos com `rel="noopener noreferrer"`.
 - [ ] Popups sem dados sensiveis.
@@ -128,6 +130,7 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [ ] Nao logar dados pessoais desnecessariamente.
 - [ ] Evitar armazenar IP puro sem politica de retencao/LGPD.
 - [ ] Proteger consulta publica por protocolo contra enumeracao.
+- [ ] Limitar consulta publica por protocolo a protocolo, status, datas publicas e mensagens seguras, sem dados pessoais, contato, observacoes internas ou detalhes administrativos.
 
 ## 10. Usuarios, login e permissoes
 

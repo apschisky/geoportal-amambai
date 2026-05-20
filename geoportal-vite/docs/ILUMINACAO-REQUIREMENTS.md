@@ -376,6 +376,8 @@ Requisitos:
 - A configuracao inicial do botao de teste da API deve ficar desativada por padrao e nao deve enviar dados enquanto o fluxo estiver em preparacao.
 - Por contexto de fronteira, o campo de contato deve aceitar Brasil, Paraguai e outro pais, com mascara simples, validacao local e normalizacao do telefone na previa do payload.
 - O envio real para a API deve permanecer desligado por padrao e so deve ser ativado apos teste local/homologacao, validacao de rede, monitoramento e rollback.
+- O envio real controlado pelo front-end foi validado em homologacao com ativacao temporaria por flags, persistencia ativa, retorno `201 Created`, protocolo/status no modal de sucesso e gravacao confirmada.
+- Apos validacoes, `enabled=false`, `submitEnabled=false` e `PERSIST_SOLICITACOES=false` devem permanecer como padrao seguro; registros de teste devem ser limpos.
 - O formulario local de teste deve permitir selecao manual local no mapa, evitar marcacao acidental por arrasto e exigir confirmacao antes de preencher as coordenadas.
 - Em `poste_mapa`, devem ser obrigatorios: ID do poste, coordenadas, tipo de problema, descricao, nome do solicitante e contato/WhatsApp; ponto de referencia e observacoes de localizacao ficam opcionais.
 - Em `ponto_manual`, devem ser obrigatorios: coordenadas, tipo de problema, descricao, nome do solicitante, contato/WhatsApp e observacoes de localizacao; ID do poste nao deve ser obrigatorio e ponto de referencia fica opcional.
@@ -384,6 +386,7 @@ Requisitos:
 - Integração futura deve preservar popup, rota e busca de postes.
 - Qualquer alteração pública deve ser testada em homologação antes de produção.
 - A substituicao definitiva do Forms so deve ocorrer apos testes em homologacao/producao, estabilidade de rede, logs, monitoramento e plano de rollback validados.
+- A consulta publica de protocolo permanece pendente e deve expor somente protocolo, status, datas publicas e mensagens seguras, sem dados pessoais, contato, observacoes internas ou detalhes administrativos.
 
 ## 19. Integração com API futura
 

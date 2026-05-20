@@ -368,11 +368,20 @@ Transicoes devem ser validadas pela API, nao apenas pelo front-end.
 - O front-end pode montar uma previa local do JSON esperado pelo endpoint, mas ainda nao realiza `POST` real nesta etapa.
 - Na previa local, `contato_solicitante` deve ser montado de forma normalizada a partir do pais selecionado e do numero informado, ainda sem envio real ao endpoint.
 - O envio real pelo front-end fica preparado por configuracao e desligado por padrao; quando ativado em ambiente controlado, deve tratar `201`, `422`, `429` e `503` com mensagens publicas seguras.
+- O envio real controlado pelo front-end foi validado em homologacao com flags ativadas temporariamente e persistencia ativa; `201 Created`, protocolo/status no modal de sucesso e gravacao em `mod_iluminacao.solicitacoes` foram confirmados sem registrar dados reais.
+- Apos a validacao, `enabled=false`, `submitEnabled=false` e `PERSIST_SOLICITACOES=false` devem ser restaurados como padrao seguro, e registros de teste devem ser limpos.
 - Camada publica de postes continua sendo base visual.
 - Status publico podera vir de endpoint publico ou view controlada.
 - Google Forms deve continuar como fallback ate o modulo proprio estar estavel; a troca definitiva deve ser validada pelo Prefeito.
 - A substituicao definitiva do Forms so deve ocorrer apos testes em homologacao/producao, estabilidade de rede, logs, monitoramento e plano de rollback validados.
 - O front-end publico nao deve acessar endpoints internos.
+
+### Pendencia: consulta publica de protocolo
+
+- O endpoint futuro de consulta publica deve permitir acompanhamento pelo cidadao sem login.
+- A resposta publica deve limitar dados a protocolo, status, datas publicas e mensagens seguras.
+- Dados pessoais, contato, observacoes internas e detalhes administrativos nao devem ser expostos.
+- A consulta deve ser protegida contra enumeracao de protocolos.
 
 ## 13. Integracao com painel interno
 
