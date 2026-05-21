@@ -95,6 +95,8 @@ A API usa `DATABASE_URL` por variavel de ambiente ou arquivo local nao versionad
 
 A implantacao planejada da API de Iluminacao e no mesmo servidor do PostgreSQL/PostGIS, como servico controlado, nunca no computador de desenvolvimento. O plano tecnico esta em `docs/API-SERVER-DEPLOYMENT-PLAN.md`.
 
+A primeira implantacao de homologacao no servidor foi registrada: API como servico Windows controlado, escutando apenas em `127.0.0.1:8000`, sem exposicao externa, com `PERSIST_SOLICITACOES=false`. Proxy reverso e HTTPS permanecem etapa posterior.
+
 Separacao de schemas: `plano` concentra dados tecnicos/editaveis do SIG, `web_map` concentra dados publicados para GeoServer/Geoportal, e `mod_iluminacao` concentra dados operacionais da API e do futuro modulo interno. A API de Iluminacao nao deve gravar em `plano` nem em `web_map`.
 
 A API deve conectar ao banco usando usuario restrito por modulo e ambiente. O endpoint publico de solicitacoes deve ter apenas permissao minima para inserir e retornar os dados necessarios.

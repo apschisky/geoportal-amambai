@@ -448,3 +448,30 @@ Pontos obrigatorios:
 - manter Google Forms como fallback;
 - validar backup, rollback, CORS restrito, rate limit e logs seguros;
 - nao registrar credenciais, host real, porta real, IP interno, caminho local ou `DATABASE_URL` real.
+
+## Registro de implantacao da API como servico Windows de homologacao
+
+A API de Iluminacao Publica foi implantada no servidor PostgreSQL/PostGIS em ambiente de homologacao, ainda sem exposicao externa.
+
+Registro seguro, sem dados sensiveis:
+
+- Repositorio clonado no servidor.
+- Ambiente virtual Python criado.
+- Dependencias instaladas.
+- Testes automatizados passaram no servidor.
+- Arquivo de ambiente real de homologacao criado fora do Git.
+- API conectou ao banco de homologacao com usuario restrito.
+- Servico Windows de homologacao criado com NSSM.
+- Servico iniciado com sucesso.
+- API escutando apenas em `127.0.0.1:8000`.
+- `APP_ENV=homologacao`.
+- `PERSIST_SOLICITACOES=false`.
+- `/api/health` retornou `200 OK`.
+- `/api/public/iluminacao/health` retornou `200 OK`.
+- `/api/version` retornou ambiente de homologacao.
+- Script de solicitacao simulada passou.
+- Script de consulta inexistente retornou `404` seguro.
+- API ainda nao esta exposta externamente.
+- Proxy reverso e HTTPS serao etapa posterior.
+- Proxima fase: configurar Apache/proxy reverso de forma controlada.
+- Nenhum usuario real, senha, host real, IP interno, caminho local real, log completo ou `DATABASE_URL` real deve ser registrado no Git.

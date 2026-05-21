@@ -32,6 +32,19 @@ A API nao deve gravar em:
 - Validar deploy da API no servidor.
 - Validar persistencia, consulta publica por protocolo, bloqueio `409 Conflict`, rate limit e rollback.
 
+Registro de implantacao: a API foi implantada no servidor PostgreSQL/PostGIS em homologacao como servico Windows controlado, ainda sem exposicao externa. O servico de homologacao foi iniciado com sucesso e escuta apenas em `127.0.0.1:8000`. A configuracao permanece com `APP_ENV=homologacao` e `PERSIST_SOLICITACOES=false`.
+
+Validacoes realizadas no servidor de homologacao:
+
+- testes automatizados executados com sucesso;
+- `/api/health` retornou `200 OK`;
+- `/api/public/iluminacao/health` retornou `200 OK`;
+- `/api/version` retornou ambiente de homologacao;
+- script de solicitacao simulada passou;
+- script de consulta inexistente retornou `404` seguro;
+- API conectou ao banco de homologacao com usuario restrito;
+- proxy reverso e HTTPS permanecem etapa posterior.
+
 ### Producao
 
 - Usar banco ativo somente apos validacao controlada.
@@ -63,10 +76,10 @@ A API deve usar usuario restrito, com permissoes minimas:
 4. Configurar `.env` real fora do Git.
 5. Testar a API localmente no servidor.
 6. Transformar a API em servico Windows controlado.
-7. Configurar proxy reverso e HTTPS.
-8. Testar healthcheck.
-9. Testar endpoints com persistencia desligada.
-10. Testar homologacao com persistencia ligada.
+7. Testar healthcheck.
+8. Testar endpoints com persistencia desligada.
+9. Testar homologacao com persistencia ligada.
+10. Configurar proxy reverso e HTTPS de forma controlada.
 11. Somente depois ativar front-end experimental.
 
 ## 6. Relacao com login e painel interno

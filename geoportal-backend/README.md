@@ -62,6 +62,8 @@ Antes de qualquer ativacao publica da API de Iluminacao, siga o checklist `geopo
 
 O plano de implantacao em servidor esta em `geoportal-vite/docs/API-SERVER-DEPLOYMENT-PLAN.md`. A decisao arquitetural e implantar a API no servidor PostgreSQL/PostGIS como servico controlado, com variaveis reais fora do Git, usuario restrito de banco e uso operacional do schema `mod_iluminacao`, sem gravar em `plano` ou `web_map`.
 
+Registro de homologacao: a API foi implantada no servidor PostgreSQL/PostGIS como servico Windows controlado, sem exposicao externa, escutando apenas em `127.0.0.1:8000`. Os testes automatizados, healthchecks, solicitacao simulada e consulta inexistente com `404` seguro foram validados no servidor. `PERSIST_SOLICITACOES=false` permanece como padrao seguro; proxy reverso e HTTPS serao etapa posterior.
+
 ## Endpoints disponiveis
 
 - `GET /api/health`
