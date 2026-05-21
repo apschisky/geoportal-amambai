@@ -127,7 +127,8 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [ ] Aplicar rate limit por IP no futuro, com limite de chamadas por periodo.
 - [x] Proteger contra multiplos chamados para o mesmo poste: bloquear nova solicitacao quando o mesmo `poste_id` ja tiver status ativo (`aberta`, `em_triagem`, `encaminhada`, `em_execucao` ou `aguardando_material`).
 - [ ] Permitir nova solicitacao para o mesmo poste apenas quando o chamado anterior estiver em status final (`concluida`, `cancelada`, `nao_atendida` ou `encerrada`, se existir futuramente).
-- [ ] Garantir que o bloqueio por duplicidade ativa retorne mensagem publica segura, sem protocolo de outra pessoa, dados pessoais, contato, descricao ou detalhes administrativos.
+- [x] Garantir que o bloqueio por duplicidade ativa retorne mensagem publica segura, sem protocolo de outra pessoa, dados pessoais, contato, descricao ou detalhes administrativos.
+- [x] Validar manualmente o `409 Conflict` para nova solicitacao em poste com solicitacao ativa, mantendo Google Forms como fallback.
 - [ ] Proteger chamados manuais proximos usando PostGIS no futuro.
 - [ ] Avaliar CAPTCHA, Turnstile ou reCAPTCHA se houver abuso automatizado.
 - [ ] Nao logar dados pessoais desnecessariamente.
@@ -136,7 +137,8 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [ ] Limitar consulta publica por protocolo a protocolo, status, datas publicas e mensagens seguras, sem dados pessoais, contato, observacoes internas ou detalhes administrativos.
 - [x] Criar backend da consulta publica como `POST /api/public/iluminacao/consulta`, com protocolo e confirmacao minima, evitando protocolo em URL.
 - [x] Validar manualmente consulta publica por protocolo em ambiente controlado, com resposta publica filtrada e `404` generico para protocolo inexistente ou confirmacao invalida.
-- [ ] Integrar consulta publica por protocolo ao front-end em etapa futura.
+- [x] Preparar consulta publica por protocolo no front-end atras de `consultaEnabled=false`, com link discreto no modal experimental e sem menu global de consultas.
+- [ ] Ativar consulta publica por protocolo no front-end somente apos validacao controlada.
 - [ ] Usar resposta generica para protocolo inexistente ou confirmacao invalida, sem diferenciar claramente os casos.
 - [ ] Validar formato `IP-YYYY-NNNNNN`, normalizar protocolo, aplicar rate limit e avaliar captcha/protecao adicional se necessario.
 

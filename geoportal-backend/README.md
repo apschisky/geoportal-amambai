@@ -118,6 +118,8 @@ Regra implementada: para `localizacao_tipo = poste_mapa`, se ja existir solicita
 
 A resposta desse caso usa mensagem publica segura: "Ja existe uma solicitacao aberta para este poste. A equipe responsavel ja foi notificada." A resposta nao retorna protocolo de outra pessoa, dados pessoais, contato, descricao ou detalhes administrativos. Essa regra substitui a abordagem inicial de apenas marcar `duplicidade_suspeita` para casos de mesmo poste ativo.
 
+O bloqueio `409 Conflict` por solicitacao ativa no mesmo poste foi validado manualmente em ambiente controlado: a primeira solicitacao criou registro e a nova solicitacao para o mesmo poste ativo foi bloqueada com mensagem publica segura, sem expor protocolo de terceiro, nome, contato, descricao ou detalhes administrativos. O Google Forms permanece como fallback.
+
 ## Teste manual do repository
 
 ```powershell

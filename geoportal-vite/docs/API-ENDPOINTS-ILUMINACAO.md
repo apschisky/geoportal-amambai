@@ -55,6 +55,8 @@ O escopo inicial do bloqueio e somente `poste_mapa` com `poste_id`. Solicitacoes
 
 Resposta para duplicidade ativa por poste: `409 Conflict`, com mensagem publica segura: "Ja existe uma solicitacao aberta para este poste. A equipe responsavel ja foi notificada." A resposta nao retorna protocolo de outra pessoa, dados pessoais, contato, descricao ou detalhes administrativos.
 
+Validacao manual registrada: a primeira solicitacao para um poste ativo retornou `201 Created`; nova solicitacao para o mesmo poste ativo retornou `409 Conflict`; o front-end exibiu mensagem amigavel e a resposta nao expos protocolo de terceiro, nome, contato, descricao ou detalhes administrativos.
+
 Payload conceitual:
 
 - `localizacao_tipo`, com valores `poste_mapa` ou `ponto_manual`;
@@ -184,7 +186,7 @@ Testes automatizados antes da ativacao:
 - rate limit;
 - resposta sem dados sensiveis.
 
-A consulta foi validada manualmente em ambiente controlado. A integracao ao front-end permanece etapa futura.
+A consulta foi validada manualmente em ambiente controlado. O front-end foi preparado com link discreto no modal de solicitacao pela API, controlado por `consultaEnabled=false` por padrao.
 
 Validacao manual registrada:
 
@@ -194,6 +196,8 @@ Validacao manual registrada:
 - Formato invalido de protocolo retornou `422`.
 - A resposta publica nao expos dados sensiveis.
 - Registro de teste foi limpo apos a validacao.
+- Link discreto "Ja possui protocolo? Consultar andamento" fica disponivel somente quando `enabled=true` e `consultaEnabled=true`; nao ha menu global de consultas nesta etapa.
+- O modal de consulta formata automaticamente o protocolo para `IP-YYYY-NNNNNN`, reduzindo erro de digitacao antes do envio.
 
 ## 5. Endpoints internos
 
@@ -443,7 +447,8 @@ Transicoes devem ser validadas pela API, nao apenas pelo front-end.
 - Na previa local, `contato_solicitante` deve ser montado de forma normalizada a partir do pais selecionado e do numero informado, ainda sem envio real ao endpoint.
 - O envio real pelo front-end fica preparado por configuracao e desligado por padrao; quando ativado em ambiente controlado, deve tratar `201`, `422`, `429` e `503` com mensagens publicas seguras.
 - O envio real controlado pelo front-end foi validado em homologacao com flags ativadas temporariamente e persistencia ativa; `201 Created`, protocolo/status no modal de sucesso e gravacao em `mod_iluminacao.solicitacoes` foram confirmados sem registrar dados reais.
-- Em etapa futura, o front-end deve tratar `409 Conflict` com modal amigavel quando houver solicitacao ativa no mesmo poste, mantendo o Google Forms como fallback durante validacao.
+- O modal de sucesso permite copiar somente o protocolo para facilitar consulta e compartilhamento pelo cidadao, sem copiar dados pessoais.
+- O front-end trata `409 Conflict` com modal amigavel quando houver solicitacao ativa no mesmo poste, mantendo o Google Forms como fallback durante validacao.
 - Apos a validacao, `enabled=false`, `submitEnabled=false` e `PERSIST_SOLICITACOES=false` devem ser restaurados como padrao seguro, e registros de teste devem ser limpos.
 - Camada publica de postes continua sendo base visual.
 - Status publico podera vir de endpoint publico ou view controlada.
@@ -459,7 +464,7 @@ Transicoes devem ser validadas pela API, nao apenas pelo front-end.
 - A consulta deve ser protegida contra enumeracao de protocolos.
 - Testes automatizados cobrem protocolo valido, protocolo inexistente, confirmacao invalida, rate limit, erro seguro e ausencia de dados sensiveis.
 - A validacao manual confirmou retorno publico filtrado, `404` generico para inexistente/confirmacao invalida e `422` para formato invalido.
-- A integracao ao front-end permanece etapa futura.
+- A integracao ao front-end foi preparada por feature flag e permanece desligada por padrao com `consultaEnabled=false`.
 
 ## 13. Integracao com painel interno
 

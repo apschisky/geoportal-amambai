@@ -416,5 +416,19 @@ Registro seguro, sem dados sensiveis:
 - A resposta publica retornou apenas `protocolo`, `status`, `status_publico`, `data_abertura`, `ultima_atualizacao` e `mensagem`.
 - A resposta nao expos id interno, nome, telefone completo, `contato_solicitante`, descricao, observacoes, ponto de referencia, geometria, origem, prioridade, `duplicidade_suspeita` ou dados tecnicos.
 - O registro de teste foi limpo apos a validacao.
-- A consulta ainda deve ser integrada ao front-end em etapa futura.
+- A consulta foi preparada no front-end por feature flag e permanece desligada por padrao com `consultaEnabled=false`.
 - Nenhum protocolo real, contato, nome, credencial, host, porta, IP interno, caminho local, log completo ou `DATABASE_URL` real deve ser registrado no Git.
+
+## Registro de validacao do bloqueio 409 por poste ativo
+
+O bloqueio de nova solicitacao para poste com solicitacao ativa foi validado manualmente em ambiente controlado.
+
+Registro seguro, sem dados sensiveis:
+
+- A primeira solicitacao para um poste em teste retornou `201 Created` e criou registro.
+- Nova solicitacao para o mesmo `poste_id` com solicitacao ativa retornou `409 Conflict`.
+- O front-end exibiu a mensagem amigavel: "Ja existe uma solicitacao aberta para este poste. A equipe responsavel ja foi notificada."
+- A resposta nao expos protocolo de outra pessoa, nome, contato, descricao ou detalhes administrativos.
+- O Google Forms permaneceu disponivel como fallback.
+- Registros de teste devem ser limpos apos a validacao.
+- Nenhum protocolo real, telefone, nome, credencial, host, porta, IP interno, caminho local, log completo ou `DATABASE_URL` real deve ser registrado no Git.

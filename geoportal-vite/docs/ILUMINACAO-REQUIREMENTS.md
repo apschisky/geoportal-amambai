@@ -164,7 +164,7 @@ Perguntas técnicas a resolver antes da implementação:
 
 ## 10. Consulta publica por protocolo
 
-Endpoint criado no backend e validado manualmente em ambiente controlado. A integracao ao front-end permanece etapa futura.
+Endpoint criado no backend e validado manualmente em ambiente controlado. O front-end foi preparado por feature flag, desligado por padrao com `consultaEnabled=false`.
 
 Endpoint recomendado:
 
@@ -254,6 +254,10 @@ Testes automatizados antes da ativacao:
 - resposta sem dados sensiveis.
 
 A consulta foi validada manualmente em ambiente controlado, com retorno publico filtrado, `404` generico para protocolo inexistente ou confirmacao invalida e `422` para formato invalido.
+
+O front-end foi preparado para consulta publica por protocolo atras de `consultaEnabled=false`. Quando ativado junto do fluxo experimental, exibe link discreto no modal de solicitacao pela API e consulta somente protocolo, status publico, datas publicas e mensagem segura. Nao ha menu global "Consultas" nesta etapa.
+
+O modal de sucesso deve permitir copiar somente o protocolo, e o modal de consulta deve formatar automaticamente o protocolo no padrao `IP-YYYY-NNNNNN` para reduzir erros de digitacao.
 ## 11. Dados pessoais e LGPD
 
 Requisitos:
@@ -453,8 +457,9 @@ Requisitos:
 - Integração futura deve preservar popup, rota e busca de postes.
 - Qualquer alteração pública deve ser testada em homologação antes de produção.
 - A substituicao definitiva do Forms so deve ocorrer apos testes em homologacao/producao, estabilidade de rede, logs, monitoramento e plano de rollback validados.
-- A consulta publica de protocolo permanece pendente e deve expor somente protocolo, status, datas publicas e mensagens seguras, sem dados pessoais, contato, observacoes internas ou detalhes administrativos.
-- O backend da consulta publica por protocolo foi criado com `POST /api/public/iluminacao/consulta`, confirmacao pelos ultimos 4 digitos do contato, testes automatizados e validacao manual em ambiente controlado; a integracao ao front-end permanece etapa futura.
+- A consulta publica de protocolo deve expor somente protocolo, status, datas publicas e mensagens seguras, sem dados pessoais, contato, observacoes internas ou detalhes administrativos.
+- O backend da consulta publica por protocolo foi criado com `POST /api/public/iluminacao/consulta`, confirmacao pelos ultimos 4 digitos do contato, testes automatizados e validacao manual em ambiente controlado.
+- A integracao inicial da consulta ao front-end fica controlada por `consultaEnabled=false` por padrao, com link discreto no modal experimental de solicitacao.
 
 ## 19. Integração com API futura
 
@@ -506,6 +511,7 @@ Referência: `docs/POSTGIS-SCHEMA-PLAN.md`.
 - O bloqueio por duplicidade ativa substitui a abordagem inicial de apenas marcar `duplicidade_suspeita` para casos de mesmo poste ativo.
 - `ponto_manual` continua permitido nesta etapa; bloqueio espacial por proximidade deve ser etapa futura.
 - A resposta publica sugerida para duplicidade ativa e `409 Conflict` com mensagem segura, sem retornar protocolo de outra pessoa, dados pessoais, contato, descricao ou detalhes administrativos.
+- O bloqueio `409 Conflict` foi validado manualmente: primeira solicitacao criou registro, nova solicitacao para o mesmo poste ativo foi bloqueada e o front-end exibiu mensagem amigavel sem expor dados de terceiros.
 - Protecao contra abuso por criacao em massa.
 - Logs e auditoria.
 - Tratamento genérico de erro público.

@@ -320,6 +320,45 @@ function closeIluminacaoSubmitResult() {
   document.querySelector('.iluminacao-submit-result-overlay')?.remove();
 }
 
+function closeIluminacaoConsultaModal() {
+  document.querySelector('.iluminacao-consulta-overlay')?.remove();
+}
+
+async function copyTextToClipboard(text) {
+  const value = String(text || '').trim();
+  if (!value) return false;
+
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value);
+    return true;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = value;
+  textarea.setAttribute('readonly', 'true');
+  textarea.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0;';
+  document.body.appendChild(textarea);
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+
+  try {
+    return document.execCommand('copy');
+  } finally {
+    textarea.remove();
+  }
+}
+
+function showCopyProtocolFeedback(button) {
+  const originalText = button.dataset.originalText || button.textContent || 'Copiar protocolo';
+  button.dataset.originalText = originalText;
+  button.textContent = 'Copiado!';
+  window.setTimeout(() => {
+    if (document.body.contains(button)) {
+      button.textContent = button.dataset.originalText || 'Copiar protocolo';
+    }
+  }, 2200);
+}
+
 function clearIluminacaoFormValidationErrors() {
   document.querySelector('.iluminacao-api-validation-errors')?.remove();
 
@@ -407,7 +446,12 @@ function showIluminacaoSubmitResult({ title, message, protocolo = '', status = '
   const detailsHtml = isSuccess
     ? `
       <div style="margin-top:10px;padding:8px;border-radius:6px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#334155;">
-        ${protocolo ? `<div><strong>Protocolo:</strong> ${escapeHtml(protocolo)}</div>` : ''}
+        ${protocolo ? `
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+            <span><strong>Protocolo:</strong> ${escapeHtml(protocolo)}</span>
+            <button type="button" data-iluminacao-copy-protocolo="${escapeHtml(protocolo)}" style="padding:4px 7px;border:1px solid #1976d2;border-radius:4px;background:#fff;color:#1976d2;font-size:12px;font-weight:700;cursor:pointer;">Copiar protocolo</button>
+          </div>
+        ` : ''}
         ${status ? `<div><strong>Status:</strong> ${escapeHtml(status)}</div>` : ''}
       </div>
       <p style="margin:10px 0 0;color:#64748b;font-size:12px;">O Google Forms permanece dispon\u00edvel como alternativa.</p>
@@ -509,6 +553,210 @@ export async function submitIluminacaoApiTestPayload(payload) {
   }
 }
 
+function formatIluminacaoProtocoloInput(value) {
+  const cleaned = String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+  if (!cleaned) return '';
+
+  if (cleaned.startsWith('IP')) {
+    const digits = onlyDigits(cleaned.slice(2)).slice(0, 10);
+    if (!digits) return 'IP';
+    if (digits.length <= 4) return `IP-${digits}`;
+    return `IP-${digits.slice(0, 4)}-${digits.slice(4, 10)}`;
+  }
+
+  if (/^\d/.test(cleaned)) {
+    const digits = onlyDigits(cleaned).slice(0, 10);
+    if (digits.length <= 4) return `IP-${digits}`;
+    return `IP-${digits.slice(0, 4)}-${digits.slice(4, 10)}`;
+  }
+
+  return cleaned.slice(0, 14);
+}
+
+function normalizeIluminacaoProtocolo(value) {
+  return formatIluminacaoProtocoloInput(value).trim().toUpperCase();
+}
+
+function normalizeIluminacaoConsultaConfirmacao(value) {
+  return onlyDigits(value).slice(0, 4);
+}
+
+function buildIluminacaoConsultaPayloadFromModal() {
+  const modal = document.querySelector('.iluminacao-consulta-modal');
+  return {
+    protocolo: normalizeIluminacaoProtocolo(
+      modal?.querySelector('#iluminacao-consulta-protocolo')?.value || ''
+    ),
+    contato_confirmacao: normalizeIluminacaoConsultaConfirmacao(
+      modal?.querySelector('#iluminacao-consulta-confirmacao')?.value || ''
+    )
+  };
+}
+
+function validateIluminacaoConsultaPayload(payload) {
+  const errors = [];
+
+  if (!payload.protocolo) {
+    errors.push('Protocolo é obrigatório.');
+  } else if (!/^IP-\d{4}-\d{6}$/.test(payload.protocolo)) {
+    errors.push('Protocolo deve estar no formato IP-YYYY-NNNNNN.');
+  }
+
+  if (!payload.contato_confirmacao) {
+    errors.push('Últimos 4 dígitos do contato são obrigatórios.');
+  } else if (!/^\d{4}$/.test(payload.contato_confirmacao)) {
+    errors.push('Informe exatamente 4 dígitos do contato.');
+  }
+
+  return errors;
+}
+
+function clearIluminacaoConsultaErrors() {
+  document.querySelector('.iluminacao-consulta-errors')?.remove();
+}
+
+function clearIluminacaoConsultaResult() {
+  document.querySelector('.iluminacao-consulta-result')?.remove();
+}
+
+function showIluminacaoConsultaErrors(errors) {
+  const modal = document.querySelector('.iluminacao-consulta-modal');
+  if (!modal) return;
+
+  clearIluminacaoConsultaErrors();
+  clearIluminacaoConsultaResult();
+
+  const errorsHtml = errors
+    .map(error => `<li style="margin:2px 0;">${escapeHtml(error)}</li>`)
+    .join('');
+  const wrapper = document.createElement('div');
+  wrapper.className = 'iluminacao-consulta-errors';
+  wrapper.setAttribute('role', 'alert');
+  wrapper.style.cssText = 'margin:8px 0 6px;padding:8px 10px;border:1px solid #fecaca;border-left:4px solid #dc2626;border-radius:6px;background:#fff1f2;color:#7f1d1d;font-size:12px;line-height:1.4;';
+  wrapper.innerHTML = `
+    <strong style="display:block;margin-bottom:2px;color:#991b1b;">Revise as informações</strong>
+    <div style="margin-bottom:4px;">Corrija os campos indicados antes de continuar.</div>
+    <ul style="margin:0;padding-left:18px;">${errorsHtml}</ul>
+  `;
+
+  const anchor = modal.querySelector('[data-iluminacao-consulta-help="true"]');
+  anchor?.insertAdjacentElement('afterend', wrapper);
+}
+
+function showIluminacaoConsultaResult(data) {
+  const modal = document.querySelector('.iluminacao-consulta-modal');
+  if (!modal) return;
+
+  clearIluminacaoConsultaErrors();
+  clearIluminacaoConsultaResult();
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'iluminacao-consulta-result';
+  wrapper.setAttribute('role', 'status');
+  wrapper.style.cssText = 'margin:10px 0 0;padding:9px 10px;border:1px solid #bfdbfe;border-left:4px solid #1976d2;border-radius:6px;background:#eff6ff;color:#1e3a8a;font-size:12px;line-height:1.45;';
+  wrapper.innerHTML = `
+    <strong style="display:block;margin-bottom:5px;color:#123f73;">Andamento da solicitação</strong>
+    <div><strong>Protocolo:</strong> ${escapeHtml(data?.protocolo || '')}</div>
+    <div><strong>Status:</strong> ${escapeHtml(data?.status_publico || '')}</div>
+    <div><strong>Data de abertura:</strong> ${escapeHtml(data?.data_abertura || '')}</div>
+    <div><strong>Última atualização:</strong> ${escapeHtml(data?.ultima_atualizacao || '')}</div>
+    <p style="margin:6px 0 0;color:#334155;">${escapeHtml(data?.mensagem || '')}</p>
+  `;
+
+  const actions = modal.querySelector('[data-iluminacao-consulta-actions="true"]');
+  actions?.insertAdjacentElement('beforebegin', wrapper);
+}
+
+function getIluminacaoConsultaErrorMessage(status) {
+  if (status === 404) {
+    return 'Solicitação não encontrada ou dados de confirmação inválidos.';
+  }
+
+  if (status === 422) {
+    return 'Revise o protocolo e os dados de confirmação.';
+  }
+
+  if (status === 429) {
+    return 'Muitas consultas em pouco tempo. Tente novamente mais tarde.';
+  }
+
+  if (status === 503) {
+    return 'Serviço temporariamente indisponível. Tente novamente mais tarde.';
+  }
+
+  return 'Não foi possível consultar o protocolo no momento. Tente novamente mais tarde.';
+}
+
+async function fetchIluminacaoConsultaWithTimeout(payload, timeoutMs = 10000) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(ILUMINACAO_API_TEST_CONFIG.consultaApiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
+async function submitIluminacaoConsultaPayload(payload) {
+  try {
+    const response = await fetchIluminacaoConsultaWithTimeout(payload);
+    const responseData = await readIluminacaoApiResponseJson(response);
+
+    if (response.status === 200) {
+      showIluminacaoConsultaResult(responseData || {});
+      return true;
+    }
+
+    showIluminacaoConsultaErrors([getIluminacaoConsultaErrorMessage(response.status)]);
+    return false;
+  } catch (error) {
+    showIluminacaoConsultaErrors([
+      'Não foi possível consultar o protocolo no momento. Tente novamente mais tarde.'
+    ]);
+    return false;
+  }
+}
+
+function openIluminacaoConsultaModal() {
+  if (!ILUMINACAO_API_TEST_CONFIG.consultaEnabled) return;
+
+  closeIluminacaoConsultaModal();
+
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = `
+    <div class="iluminacao-consulta-overlay" style="position:fixed;inset:0;z-index:10002;background:rgba(0,0,0,0.45);display:flex;align-items:flex-start;justify-content:center;padding:14px 12px;overflow-y:auto;overflow-x:hidden;">
+      <div class="iluminacao-consulta-modal" role="dialog" aria-modal="true" aria-labelledby="iluminacao-consulta-title" style="width:min(380px,calc(100vw - 32px));max-width:calc(100vw - 32px);background:#fff;border-radius:8px;box-shadow:0 20px 45px rgba(15,23,42,0.35);padding:13px;color:#111827;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px;">
+          <h2 id="iluminacao-consulta-title" style="font-size:17px;line-height:1.2;margin:0;color:#123f73;">Consultar andamento</h2>
+          <button type="button" data-iluminacao-consulta-close="true" aria-label="Fechar" style="border:0;background:transparent;font-size:22px;line-height:1;cursor:pointer;color:#374151;">&times;</button>
+        </div>
+        <p data-iluminacao-consulta-help="true" style="margin:0 0 8px;color:#4b5563;font-size:12px;line-height:1.4;">Informe o protocolo recebido e os últimos 4 dígitos do contato usado na solicitação.</p>
+
+        <label style="display:block;margin:6px 0 2px;font-weight:700;color:#1f2937;font-size:12px;" for="iluminacao-consulta-protocolo">Protocolo</label>
+        <input id="iluminacao-consulta-protocolo" type="text" autocomplete="off" maxlength="14" placeholder="IP-YYYY-NNNNNN" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #cbd5e1;border-radius:4px;font:inherit;font-size:13px;min-height:32px;text-transform:uppercase;">
+
+        <label style="display:block;margin:6px 0 2px;font-weight:700;color:#1f2937;font-size:12px;" for="iluminacao-consulta-confirmacao">Últimos 4 dígitos do contato</label>
+        <input id="iluminacao-consulta-confirmacao" type="text" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="9999" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #cbd5e1;border-radius:4px;font:inherit;font-size:13px;min-height:32px;">
+
+        <div data-iluminacao-consulta-actions="true" style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px;">
+          <button type="button" data-iluminacao-consulta-close="true" style="padding:6px 10px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;color:#111827;font-weight:700;cursor:pointer;">Cancelar</button>
+          <button type="button" data-iluminacao-consulta-submit="true" style="padding:6px 10px;border:0;border-radius:4px;background:#1976d2;color:#fff;font-weight:700;cursor:pointer;">Consultar</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(wrapper.firstElementChild);
+}
+
 function formatRequiredLabel(text, required) {
   return `${escapeHtml(text)}${required ? ' <span aria-hidden="true" style="color:#dc2626;">*</span>' : ''}`;
 }
@@ -544,6 +792,15 @@ function createIluminacaoApiTestModalHtml(state) {
       return `<option value="${escapeHtml(country.value)}"${contatoCountry.value === country.value ? ' selected' : ''}>${escapeHtml(`${label} ${country.dialCode}`)}</option>`;
     })
     .join('');
+  const consultaLinkHtml = ILUMINACAO_API_TEST_CONFIG.consultaEnabled
+    ? `
+        <div style="margin-top:8px;text-align:center;">
+          <button type="button" data-iluminacao-consulta-open="true" style="border:0;background:transparent;color:#1976d2;font-size:12px;font-weight:700;text-decoration:underline;cursor:pointer;padding:2px 4px;">
+            Já possui protocolo? Consultar andamento
+          </button>
+        </div>
+      `
+    : '';
 
   return `
     <div class="iluminacao-api-test-overlay" style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);display:flex;align-items:flex-start;justify-content:center;padding:10px 12px;overflow-y:auto;overflow-x:hidden;">
@@ -614,6 +871,7 @@ function createIluminacaoApiTestModalHtml(state) {
           <button type="button" data-iluminacao-api-test-close="true" style="padding:6px 10px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;color:#111827;font-weight:700;cursor:pointer;">Cancelar</button>
           <button type="button" data-iluminacao-api-test-submit="true" style="padding:6px 10px;border:0;border-radius:4px;background:#94a3b8;color:#fff;font-weight:700;cursor:pointer;">Enviar teste</button>
         </div>
+        ${consultaLinkHtml}
       </div>
     </div>
   `;
@@ -659,6 +917,18 @@ export function setupIluminacaoApiTestButtonHandler() {
 
   document.addEventListener('input', event => {
     if (!(event.target instanceof Element)) return;
+
+    const consultaProtocolo = event.target.closest('#iluminacao-consulta-protocolo');
+    if (consultaProtocolo) {
+      consultaProtocolo.value = formatIluminacaoProtocoloInput(consultaProtocolo.value);
+      return;
+    }
+
+    const consultaConfirmacao = event.target.closest('#iluminacao-consulta-confirmacao');
+    if (consultaConfirmacao) {
+      consultaConfirmacao.value = normalizeIluminacaoConsultaConfirmacao(consultaConfirmacao.value);
+      return;
+    }
 
     const input = event.target.closest('[data-iluminacao-phone-input="true"]');
     if (!input) return;
@@ -751,6 +1021,22 @@ export function setupIluminacaoApiTestButtonHandler() {
       return;
     }
 
+    const copyProtocolButton = event.target.closest('[data-iluminacao-copy-protocolo]');
+    if (copyProtocolButton) {
+      event.preventDefault();
+      const copied = await copyTextToClipboard(copyProtocolButton.dataset.iluminacaoCopyProtocolo || '');
+      if (copied) {
+        showCopyProtocolFeedback(copyProtocolButton);
+      }
+      return;
+    }
+
+    if (event.target.closest('[data-iluminacao-consulta-close="true"]')) {
+      event.preventDefault();
+      closeIluminacaoConsultaModal();
+      return;
+    }
+
     if (event.target.classList.contains('iluminacao-payload-preview-overlay')) {
       closeIluminacaoPayloadPreview();
       return;
@@ -761,8 +1047,46 @@ export function setupIluminacaoApiTestButtonHandler() {
       return;
     }
 
+    if (event.target.classList.contains('iluminacao-consulta-overlay')) {
+      closeIluminacaoConsultaModal();
+      return;
+    }
+
     if (event.target.classList.contains('iluminacao-api-test-overlay')) {
       closeIluminacaoApiTestModal();
+      return;
+    }
+
+    if (event.target.closest('[data-iluminacao-consulta-open="true"]')) {
+      event.preventDefault();
+      openIluminacaoConsultaModal();
+      return;
+    }
+
+    const consultaSubmitButton = event.target.closest('[data-iluminacao-consulta-submit="true"]');
+    if (consultaSubmitButton) {
+      event.preventDefault();
+      if (!ILUMINACAO_API_TEST_CONFIG.consultaEnabled) return;
+
+      const payload = buildIluminacaoConsultaPayloadFromModal();
+      const errors = validateIluminacaoConsultaPayload(payload);
+      if (errors.length) {
+        showIluminacaoConsultaErrors(errors);
+        return;
+      }
+
+      clearIluminacaoConsultaErrors();
+      clearIluminacaoConsultaResult();
+      const originalText = consultaSubmitButton.textContent;
+      consultaSubmitButton.disabled = true;
+      consultaSubmitButton.textContent = 'Consultando...';
+      consultaSubmitButton.style.cursor = 'wait';
+
+      await submitIluminacaoConsultaPayload(payload);
+
+      consultaSubmitButton.disabled = false;
+      consultaSubmitButton.textContent = originalText;
+      consultaSubmitButton.style.cursor = 'pointer';
       return;
     }
 

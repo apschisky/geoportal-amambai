@@ -117,6 +117,8 @@ Regra implementada: para `localizacao_tipo = poste_mapa`, se ja existir solicita
 
 O bloqueio inicial vale apenas para solicitacoes com `poste_id`. Solicitacoes `ponto_manual` continuam permitidas nesta etapa; bloqueio espacial por proximidade para pontos manuais deve ser desenhado em fase futura. A resposta publica do bloqueio usa mensagem segura: "Ja existe uma solicitacao aberta para este poste. A equipe responsavel ja foi notificada." A resposta nao retorna protocolo de outra pessoa, dados pessoais, contato, descricao ou detalhes administrativos.
 
+O bloqueio `409 Conflict` por poste ativo foi validado manualmente em ambiente controlado: uma primeira solicitacao criou registro e nova solicitacao para o mesmo poste ativo foi bloqueada, sem expor protocolo de terceiro, contato, nome, descricao ou detalhes administrativos.
+
 O rate limit inicial fica na API e usa memoria local para desenvolvimento/homologacao. Em producao, a estrategia deve ser revista para proxy reverso, Redis, WAF ou API gateway.
 
 O rate limit atua antes da chamada ao service; requisicoes bloqueadas nao acionam a camada de persistencia.
@@ -224,14 +226,16 @@ Auditoria deve ser obrigatoria para mudancas de status, observacoes, anexos, fin
 - O campo de contato do formulario local possui suporte inicial a Brasil e Paraguai, com mascara, validacao local e normalizacao para `contato_solicitante` na previa do payload.
 - O envio real pelo front-end foi preparado atras da flag `submitEnabled`, desligada por padrao; com a flag desligada, o fluxo continua exibindo apenas a previa local do payload.
 - O envio real controlado pelo front-end foi validado em homologacao com ativacao temporaria por flags e persistencia ativa; a API retornou `201 Created`, o front-end exibiu sucesso com protocolo/status e a gravacao foi confirmada sem registrar dados reais nesta documentacao.
-- Em etapa futura, o front-end deve tratar `409 Conflict` por solicitacao ativa no mesmo poste com modal amigavel, mantendo o Google Forms como fallback durante validacao.
+- O front-end trata `409 Conflict` por solicitacao ativa no mesmo poste com modal amigavel, mantendo o Google Forms como fallback durante validacao.
+- A consulta publica por protocolo foi preparada no front-end por `consultaEnabled=false`, com link discreto no modal de solicitacao pela API; nao ha menu global de consultas nesta etapa.
+- O modal de sucesso permite copiar somente o protocolo, e o modal de consulta formata o protocolo no padrao `IP-YYYY-NNNNNN` para reduzir erro de digitacao.
 - Apos validacoes, `enabled=false`, `submitEnabled=false` e `PERSIST_SOLICITACOES=false` devem permanecer como padrao seguro; registros de teste devem ser limpos.
 - O Google Forms permanece como fallback enquanto a API estiver em validacao.
 - A substituicao definitiva do Forms so deve ocorrer apos testes em homologacao/producao, estabilidade de rede, logs, monitoramento e plano de rollback validados.
 
 ## 14.1 Consulta publica de protocolo
 
-A consulta publica de protocolo foi criada no backend e deve permitir ao cidadao acompanhar o andamento sem expor dados sensiveis. A consulta foi validada manualmente em ambiente controlado; a integracao ao front-end permanece etapa futura.
+A consulta publica de protocolo foi criada no backend e deve permitir ao cidadao acompanhar o andamento sem expor dados sensiveis. A consulta foi validada manualmente em ambiente controlado; o front-end foi preparado por feature flag, desligado por padrao.
 
 Desenho recomendado:
 
@@ -245,6 +249,8 @@ Desenho recomendado:
 - A consulta deve validar formato `IP-YYYY-NNNNNN`, normalizar protocolo, aplicar rate limit e registrar logs seguros sem dados pessoais.
 - Captcha ou protecao adicional deve ser avaliado se houver risco de abuso.
 - Validacao manual confirmou protocolo correto com confirmacao correta, `404` generico para protocolo inexistente ou confirmacao invalida, `422` para formato invalido e ausencia de dados sensiveis na resposta.
+- No front-end, o link "Ja possui protocolo? Consultar andamento" aparece apenas quando o fluxo experimental esta ativo e `consultaEnabled=true`.
+- O campo de protocolo no modal de consulta aceita digitacao com ou sem hifens e normaliza para `IP-YYYY-NNNNNN` antes do envio.
 
 ## 15. Integracao com ambiente interno
 

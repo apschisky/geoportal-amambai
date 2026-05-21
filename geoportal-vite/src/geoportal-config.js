@@ -337,7 +337,9 @@ export const POSTE_FORM_CONFIG = {
 export const ILUMINACAO_API_TEST_CONFIG = {
   enabled: false, // habilita o fluxo de solicitação pela API (em teste)
   submitEnabled: false, // desabilita envio para API mesmo se a feature estiver habilitada
+  consultaEnabled: false,
   apiUrl: 'http://127.0.0.1:8000/api/public/iluminacao/solicitacoes',
+  consultaApiUrl: 'http://127.0.0.1:8000/api/public/iluminacao/consulta',
   buttonLabel: 'Solicitar pela API (teste)',
   disabledMessage: 'Fluxo de solicitação pela API ainda está em teste. Use o formulário atual por enquanto.',
   successMessage: 'Solicitação registrada com sucesso.',
