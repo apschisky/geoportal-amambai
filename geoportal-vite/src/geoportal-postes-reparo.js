@@ -468,6 +468,10 @@ function getIluminacaoApiErrorMessage(status) {
     return 'Muitas solicitações em pouco tempo. Tente novamente mais tarde.';
   }
 
+  if (status === 409) {
+    return 'Já existe uma solicitação aberta para este poste. A equipe responsável já foi notificada.';
+  }
+
   if (status === 503) {
     return 'Serviço temporariamente indisponível. Tente novamente mais tarde.';
   }
