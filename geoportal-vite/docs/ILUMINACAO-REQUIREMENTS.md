@@ -500,8 +500,12 @@ Referência: `docs/POSTGIS-SCHEMA-PLAN.md`.
 - Limitar volume de solicitacoes por origem/IP para reduzir abuso automatizado.
 - Abuso por volume ja possui protecao inicial em memoria, sem substituir protecao definitiva de producao.
 - Marcacao de duplicidade suspeita.
-- Duplicidades provaveis nao bloqueiam o cidadao inicialmente; devem ser marcadas para triagem interna.
-- Duplicidades provaveis devem seguir para triagem interna, sem bloqueio automatico nesta fase.
+- Regra futura: se existir solicitacao ativa para o mesmo `poste_id`, a API nao deve criar nova solicitacao para `localizacao_tipo = poste_mapa`.
+- Status ativos para bloqueio por poste: `aberta`, `em_triagem`, `encaminhada`, `em_execucao` e `aguardando_material`.
+- Status que permitem nova solicitacao para o mesmo poste: `concluida`, `cancelada`, `nao_atendida` e `encerrada`, se existir futuramente.
+- O bloqueio por duplicidade ativa substitui a abordagem inicial de apenas marcar `duplicidade_suspeita` para casos de mesmo poste ativo.
+- `ponto_manual` continua permitido nesta etapa; bloqueio espacial por proximidade deve ser etapa futura.
+- A resposta publica sugerida para duplicidade ativa e `409 Conflict` com mensagem segura, sem retornar protocolo de outra pessoa, dados pessoais, contato, descricao ou detalhes administrativos.
 - Protecao contra abuso por criacao em massa.
 - Logs e auditoria.
 - Tratamento genérico de erro público.

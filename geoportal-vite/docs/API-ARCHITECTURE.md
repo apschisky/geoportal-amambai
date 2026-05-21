@@ -113,6 +113,10 @@ A deteccao leve de duplicidade suspeita e avaliada na camada repository/banco. A
 
 A camada repository/banco validou em homologacao a marcacao de `duplicidade_suspeita` para solicitacoes semelhantes, mantendo a gravacao normal.
 
+Regra futura aprovada: para `localizacao_tipo = poste_mapa`, se ja existir solicitacao ativa para o mesmo `poste_id`, a API nao deve criar nova solicitacao. Esta regra substitui a abordagem inicial de apenas marcar `duplicidade_suspeita` nos casos de mesmo poste ativo. Devem ser considerados ativos os status `aberta`, `em_triagem`, `encaminhada`, `em_execucao` e `aguardando_material`; status `concluida`, `cancelada`, `nao_atendida` e `encerrada`, se existir futuramente, permitem nova solicitacao.
+
+O bloqueio inicial deve valer apenas para solicitacoes com `poste_id`. Solicitacoes `ponto_manual` continuam permitidas nesta etapa; bloqueio espacial por proximidade para pontos manuais deve ser desenhado em fase futura. A resposta publica sugerida para o bloqueio e `409 Conflict`, com mensagem segura: "Ja existe uma solicitacao aberta para este poste. A equipe responsavel ja foi notificada." A resposta nao deve retornar protocolo de outra pessoa, dados pessoais, contato, descricao ou detalhes administrativos.
+
 O rate limit inicial fica na API e usa memoria local para desenvolvimento/homologacao. Em producao, a estrategia deve ser revista para proxy reverso, Redis, WAF ou API gateway.
 
 O rate limit atua antes da chamada ao service; requisicoes bloqueadas nao acionam a camada de persistencia.
@@ -220,6 +224,7 @@ Auditoria deve ser obrigatoria para mudancas de status, observacoes, anexos, fin
 - O campo de contato do formulario local possui suporte inicial a Brasil e Paraguai, com mascara, validacao local e normalizacao para `contato_solicitante` na previa do payload.
 - O envio real pelo front-end foi preparado atras da flag `submitEnabled`, desligada por padrao; com a flag desligada, o fluxo continua exibindo apenas a previa local do payload.
 - O envio real controlado pelo front-end foi validado em homologacao com ativacao temporaria por flags e persistencia ativa; a API retornou `201 Created`, o front-end exibiu sucesso com protocolo/status e a gravacao foi confirmada sem registrar dados reais nesta documentacao.
+- Em etapa futura, o front-end deve tratar `409 Conflict` por solicitacao ativa no mesmo poste com modal amigavel, mantendo o Google Forms como fallback durante validacao.
 - Apos validacoes, `enabled=false`, `submitEnabled=false` e `PERSIST_SOLICITACOES=false` devem permanecer como padrao seguro; registros de teste devem ser limpos.
 - O Google Forms permanece como fallback enquanto a API estiver em validacao.
 - A substituicao definitiva do Forms so deve ocorrer apos testes em homologacao/producao, estabilidade de rede, logs, monitoramento e plano de rollback validados.

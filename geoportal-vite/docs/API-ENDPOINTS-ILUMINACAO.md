@@ -47,6 +47,14 @@ Solicitacoes repetidas podem ser marcadas internamente como `duplicidade_suspeit
 
 A marcacao interna de `duplicidade_suspeita` foi validada em homologacao; mesmo quando marcada, a resposta publica continua simples.
 
+Regra futura de duplicidade ativa por poste: para `localizacao_tipo = poste_mapa`, se existir solicitacao ativa para o mesmo `poste_id`, a API nao deve criar nova solicitacao. Esta regra substitui a abordagem inicial de apenas marcar `duplicidade_suspeita` nos casos de mesmo poste ativo.
+
+Status considerados ativos para o bloqueio: `aberta`, `em_triagem`, `encaminhada`, `em_execucao` e `aguardando_material`. Status que permitem nova solicitacao: `concluida`, `cancelada`, `nao_atendida` e `encerrada`, se existir futuramente.
+
+O escopo inicial do bloqueio e somente `poste_mapa` com `poste_id`. Solicitacoes `ponto_manual` continuam permitidas nesta etapa; bloqueio espacial por proximidade para pontos manuais deve ser etapa futura.
+
+Resposta sugerida para duplicidade ativa por poste: `409 Conflict`, com mensagem publica segura: "Ja existe uma solicitacao aberta para este poste. A equipe responsavel ja foi notificada." A resposta nao deve retornar protocolo de outra pessoa, dados pessoais, contato, descricao ou detalhes administrativos.
+
 Payload conceitual:
 
 - `localizacao_tipo`, com valores `poste_mapa` ou `ponto_manual`;
@@ -348,6 +356,8 @@ Padrao conceitual:
 
 Para criacao publica de solicitacoes, `429` indica muitas solicitacoes em pouco tempo.
 
+Para criacao publica de solicitacoes, `409` deve indicar que ja existe solicitacao ativa para o mesmo poste no escopo `poste_mapa`. A resposta deve ser generica e segura, sem expor protocolo, dados pessoais, contato, descricao ou detalhes administrativos de outra solicitacao.
+
 O retorno `429` foi validado manualmente para excesso de solicitacoes em ambiente controlado.
 
 Erros tecnicos nao devem ser expostos ao cidadao. Stack trace, SQL, caminho de arquivo e credenciais nunca devem aparecer em resposta HTTP.
@@ -433,6 +443,7 @@ Transicoes devem ser validadas pela API, nao apenas pelo front-end.
 - Na previa local, `contato_solicitante` deve ser montado de forma normalizada a partir do pais selecionado e do numero informado, ainda sem envio real ao endpoint.
 - O envio real pelo front-end fica preparado por configuracao e desligado por padrao; quando ativado em ambiente controlado, deve tratar `201`, `422`, `429` e `503` com mensagens publicas seguras.
 - O envio real controlado pelo front-end foi validado em homologacao com flags ativadas temporariamente e persistencia ativa; `201 Created`, protocolo/status no modal de sucesso e gravacao em `mod_iluminacao.solicitacoes` foram confirmados sem registrar dados reais.
+- Em etapa futura, o front-end deve tratar `409 Conflict` com modal amigavel quando houver solicitacao ativa no mesmo poste, mantendo o Google Forms como fallback durante validacao.
 - Apos a validacao, `enabled=false`, `submitEnabled=false` e `PERSIST_SOLICITACOES=false` devem ser restaurados como padrao seguro, e registros de teste devem ser limpos.
 - Camada publica de postes continua sendo base visual.
 - Status publico podera vir de endpoint publico ou view controlada.
