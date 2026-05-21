@@ -27,6 +27,7 @@ Antes e depois de testes pontuais, os defaults seguros devem permanecer:
 ## 3. Pre-requisitos antes de ativar em ambiente real
 
 - [ ] API implantada no servidor correto, nao em computador de desenvolvimento.
+- [ ] Plano `docs/API-SERVER-DEPLOYMENT-PLAN.md` revisado.
 - [ ] Servico da API configurado como servico controlado.
 - [ ] HTTPS e proxy reverso configurados.
 - [ ] CORS restrito ao dominio oficial do Geoportal.
@@ -41,6 +42,8 @@ Antes e depois de testes pontuais, os defaults seguros devem permanecer:
 - [ ] Google Forms funcionando como fallback.
 
 ## 4. Plano conceitual de deploy no servidor
+
+O deploy tecnico deve seguir `docs/API-SERVER-DEPLOYMENT-PLAN.md`.
 
 1. Copiar o backend para o servidor de aplicacao.
 2. Configurar ambiente Python e ambiente virtual.
@@ -80,6 +83,7 @@ Em caso de falha, abuso, instabilidade ou comportamento inesperado:
 Nao ativar publicamente se houver qualquer uma das condicoes abaixo:
 
 - API fora do servidor correto;
+- plano de deploy no servidor nao revisado;
 - CORS aberto demais;
 - banco usando usuario privilegiado indevido;
 - ausencia de backup;

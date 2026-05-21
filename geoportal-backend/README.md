@@ -60,6 +60,8 @@ O endpoint publico `POST /api/public/iluminacao/consulta` foi criado para consul
 
 Antes de qualquer ativacao publica da API de Iluminacao, siga o checklist `geoportal-vite/docs/ILUMINACAO-CONTROLLED-ACTIVATION-CHECKLIST.md`. O padrao seguro deve manter `enabled=false`, `submitEnabled=false`, `consultaEnabled=false` e `PERSIST_SOLICITACOES=false`, com Google Forms como fallback.
 
+O plano de implantacao em servidor esta em `geoportal-vite/docs/API-SERVER-DEPLOYMENT-PLAN.md`. A decisao arquitetural e implantar a API no servidor PostgreSQL/PostGIS como servico controlado, com variaveis reais fora do Git, usuario restrito de banco e uso operacional do schema `mod_iluminacao`, sem gravar em `plano` ou `web_map`.
+
 ## Endpoints disponiveis
 
 - `GET /api/health`

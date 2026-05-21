@@ -437,9 +437,13 @@ Registro seguro, sem dados sensiveis:
 
 Antes de qualquer ativacao publica, seguir `geoportal-vite/docs/ILUMINACAO-CONTROLLED-ACTIVATION-CHECKLIST.md`.
 
+O deploy da API no servidor PostgreSQL/PostGIS deve seguir `geoportal-vite/docs/API-SERVER-DEPLOYMENT-PLAN.md`.
+
 Pontos obrigatorios:
 
 - manter `enabled=false`, `submitEnabled=false`, `consultaEnabled=false` e `PERSIST_SOLICITACOES=false` como padrao seguro;
+- implantar a API como servico controlado no servidor, nao no computador de desenvolvimento;
+- usar `mod_iluminacao` para dados operacionais, sem gravar em `plano` ou `web_map`;
 - ativar fases apenas em ambiente controlado;
 - manter Google Forms como fallback;
 - validar backup, rollback, CORS restrito, rate limit e logs seguros;

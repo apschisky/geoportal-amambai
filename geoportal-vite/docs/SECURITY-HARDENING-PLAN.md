@@ -111,6 +111,8 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [ ] API com usuario restrito por modulo/ambiente.
 - [ ] Permissoes minimas por modulo.
 - [ ] Sem acesso direto a schemas `plano`/`web_map`, salvo necessidade futura muito bem justificada.
+- [ ] Implantar API de Iluminacao no servidor PostgreSQL/PostGIS como servico controlado, seguindo `docs/API-SERVER-DEPLOYMENT-PLAN.md`.
+- [ ] Garantir que a API grave dados operacionais apenas em `mod_iluminacao`, sem gravar em `plano` ou `web_map`.
 - [ ] Manter persistencia desativada por padrao.
 - [ ] Ativar persistencia apenas em ambiente controlado com usuario restrito e `DATABASE_URL` segura.
 - [x] Padrao de usuario restrito da API validado em homologacao, sem superuser e sem acesso direto a schemas nao necessarios.
