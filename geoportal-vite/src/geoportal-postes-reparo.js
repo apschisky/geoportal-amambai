@@ -780,8 +780,8 @@ function createIluminacaoApiTestModalHtml(state) {
     contatoSolicitante: true,
     observacoesLocalizacao: isManual
   };
-  const fieldStyle = 'width:100%;box-sizing:border-box;padding:5px 8px;border:1px solid #cbd5e1;border-radius:4px;font:inherit;font-size:13px;min-height:30px;';
-  const labelStyle = 'display:block;margin:5px 0 2px;font-weight:700;color:#1f2937;font-size:12px;';
+  const fieldStyle = 'width:100%;box-sizing:border-box;padding:4px 7px;border:1px solid #cbd5e1;border-radius:4px;font:inherit;font-size:12px;min-height:28px;';
+  const labelStyle = 'display:block;margin:3px 0 1px;font-weight:700;color:#1f2937;font-size:11.5px;';
   const fieldGroupStyle = 'min-width:0;margin:0;';
   const optionsHtml = ILUMINACAO_TIPO_PROBLEMA_OPTIONS
     .map(option => `<option value="${escapeHtml(option.value)}"${(state.tipoProblema || 'lampada_apagada') === option.value ? ' selected' : ''}>${escapeHtml(option.label)}</option>`)
@@ -794,26 +794,27 @@ function createIluminacaoApiTestModalHtml(state) {
     .join('');
   const consultaLinkHtml = ILUMINACAO_API_TEST_CONFIG.consultaEnabled
     ? `
-        <div style="margin-top:8px;text-align:center;">
-          <button type="button" data-iluminacao-consulta-open="true" style="border:0;background:transparent;color:#1976d2;font-size:12px;font-weight:700;text-decoration:underline;cursor:pointer;padding:2px 4px;">
-            Já possui protocolo? Consultar andamento
+        <div style="margin-top:5px;padding:5px 7px;border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;">
+          <div style="margin-bottom:2px;color:#64748b;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.02em;">J\u00e1 possui uma solicita\u00e7\u00e3o?</div>
+          <button type="button" data-iluminacao-consulta-open="true" style="border:0;background:transparent;color:#1976d2;font-size:12px;font-weight:700;text-decoration:underline;cursor:pointer;padding:0;text-align:left;">
+            Consultar andamento pelo protocolo
           </button>
         </div>
       `
     : '';
 
   return `
-    <div class="iluminacao-api-test-overlay" style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);display:flex;align-items:flex-start;justify-content:center;padding:10px 12px;overflow-y:auto;overflow-x:hidden;">
-      <div class="iluminacao-api-test-modal" data-localizacao-tipo="${escapeHtml(localizacaoTipo)}" role="dialog" aria-modal="true" aria-labelledby="iluminacao-api-test-title" style="width:min(380px,calc(100vw - 32px));max-width:calc(100vw - 32px);max-height:none;overflow:visible;background:#fff;border-radius:8px;box-shadow:0 20px 45px rgba(15,23,42,0.35);padding:12px;color:#111827;">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px;">
-          <h2 id="iluminacao-api-test-title" style="font-size:17px;line-height:1.2;margin:0;color:#123f73;">Solicita\u00e7\u00e3o pela API (teste)</h2>
-          <button type="button" data-iluminacao-api-test-close="true" aria-label="Fechar" style="border:0;background:transparent;font-size:22px;line-height:1;cursor:pointer;color:#374151;">&times;</button>
+    <div class="iluminacao-api-test-overlay" style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);display:flex;align-items:flex-start;justify-content:center;padding:6px 10px;overflow-y:auto;overflow-x:hidden;">
+      <div class="iluminacao-api-test-modal" data-localizacao-tipo="${escapeHtml(localizacaoTipo)}" role="dialog" aria-modal="true" aria-labelledby="iluminacao-api-test-title" style="width:min(370px,calc(100vw - 28px));max-width:calc(100vw - 28px);max-height:none;overflow:visible;background:#fff;border-radius:8px;box-shadow:0 20px 45px rgba(15,23,42,0.35);padding:10px;color:#111827;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;">
+          <h2 id="iluminacao-api-test-title" style="font-size:16px;line-height:1.15;margin:0;color:#123f73;">Solicita\u00e7\u00e3o pela API (teste)</h2>
+          <button type="button" data-iluminacao-api-test-close="true" aria-label="Fechar" style="border:0;background:transparent;font-size:20px;line-height:1;cursor:pointer;color:#374151;">&times;</button>
         </div>
-        <p style="margin:0 0 4px;color:#4b5563;font-size:12px;">Formul\u00e1rio local de prepara\u00e7\u00e3o. O envio real ainda n\u00e3o est\u00e1 ativo.</p>
-        <p data-iluminacao-required-note="true" style="margin:0 0 4px;color:#64748b;font-size:12px;">* Campos obrigat\u00f3rios.</p>
+        <p style="margin:0 0 2px;color:#4b5563;font-size:11.5px;">Formul\u00e1rio local de prepara\u00e7\u00e3o. O envio real ainda n\u00e3o est\u00e1 ativo.</p>
+        <p data-iluminacao-required-note="true" style="margin:0 0 2px;color:#64748b;font-size:11.5px;">* Campos obrigat\u00f3rios.</p>
 
         ${isManual ? `
-          <div style="margin:5px 0 3px;padding:6px 8px;border-left:4px solid #1976d2;background:#eff6ff;border-radius:4px;color:#1e3a8a;font-size:12px;">
+          <div style="margin:4px 0 2px;padding:5px 7px;border-left:4px solid #1976d2;background:#eff6ff;border-radius:4px;color:#1e3a8a;font-size:11.5px;line-height:1.3;">
             Modo manual ativo. O ID do poste n\u00e3o \u00e9 obrigat\u00f3rio; confirme o local pelas coordenadas e descreva a refer\u00eancia em observa\u00e7\u00f5es.
           </div>
         ` : ''}
@@ -858,20 +859,24 @@ function createIluminacaoApiTestModalHtml(state) {
         </div>
 
         <label style="${labelStyle}" for="iluminacao-api-descricao">${formatRequiredLabel('Descri\u00e7\u00e3o', required.descricao)}</label>
-        <textarea id="iluminacao-api-descricao" rows="1" required style="${fieldStyle}resize:vertical;min-height:34px;">${escapeHtml(state.descricao || '')}</textarea>
+        <textarea id="iluminacao-api-descricao" rows="1" required style="${fieldStyle}resize:vertical;min-height:30px;">${escapeHtml(state.descricao || '')}</textarea>
 
         <label style="${labelStyle}" for="iluminacao-api-observacoes">${formatRequiredLabel('Observa\u00e7\u00f5es de localiza\u00e7\u00e3o', required.observacoesLocalizacao)}</label>
-        <textarea id="iluminacao-api-observacoes" rows="1" ${required.observacoesLocalizacao ? 'required' : ''} style="${fieldStyle}resize:vertical;min-height:34px;">${escapeHtml(state.observacoesLocalizacao || '')}</textarea>
+        <textarea id="iluminacao-api-observacoes" rows="1" ${required.observacoesLocalizacao ? 'required' : ''} style="${fieldStyle}resize:vertical;min-height:30px;">${escapeHtml(state.observacoesLocalizacao || '')}</textarea>
 
-        <button type="button" data-iluminacao-api-manual-location="true" style="width:100%;margin-top:6px;padding:6px 10px;border:1px solid #1976d2;border-radius:4px;background:#fff;color:#1976d2;font-weight:700;cursor:pointer;font-size:13px;">
-          O poste n\u00e3o est\u00e1 correto? Selecionar local manualmente
-        </button>
-
-        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;">
-          <button type="button" data-iluminacao-api-test-close="true" style="padding:6px 10px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;color:#111827;font-weight:700;cursor:pointer;">Cancelar</button>
-          <button type="button" data-iluminacao-api-test-submit="true" style="padding:6px 10px;border:0;border-radius:4px;background:#94a3b8;color:#fff;font-weight:700;cursor:pointer;">Enviar teste</button>
+        <div style="margin-top:6px;border-top:1px solid #e2e8f0;padding-top:6px;">
+          <div style="padding:5px 7px;border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;">
+            <div style="margin-bottom:2px;color:#64748b;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.02em;">Localiza\u00e7\u00e3o</div>
+            <button type="button" data-iluminacao-api-manual-location="true" style="width:100%;padding:5px 7px;border:1px solid #1976d2;border-radius:4px;background:#fff;color:#1976d2;font-weight:700;cursor:pointer;font-size:11.5px;text-align:center;">
+              O poste n\u00e3o est\u00e1 correto? Selecionar local manualmente
+            </button>
+          </div>
+          ${consultaLinkHtml}
+          <div style="display:flex;justify-content:flex-end;gap:7px;margin-top:7px;flex-wrap:wrap;">
+            <button type="button" data-iluminacao-api-test-close="true" style="padding:5px 9px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;color:#111827;font-weight:700;cursor:pointer;">Cancelar</button>
+            <button type="button" data-iluminacao-api-test-submit="true" style="padding:5px 9px;border:0;border-radius:4px;background:#1976d2;color:#fff;font-weight:700;cursor:pointer;">Enviar teste</button>
+          </div>
         </div>
-        ${consultaLinkHtml}
       </div>
     </div>
   `;
