@@ -292,6 +292,8 @@ Cada fase deve ter teste, revisao de permissao e possibilidade de rollback.
 
 A primeira abordagem recomendada para homologacao e publicar API e painel interno por rotas, como `/api` e `/interno`, reduzindo complexidade inicial de DNS/certificado e risco de CORS. A separacao por subdominios pode ser adotada futuramente, caso haja necessidade operacional.
 
+Antes de qualquer ativacao publica da API de Iluminacao, seguir `docs/ILUMINACAO-CONTROLLED-ACTIVATION-CHECKLIST.md`, mantendo flags e persistencia desligadas por padrao, Google Forms como fallback e rollback documentado.
+
 ## 18. Prova de conceito local
 
 Foi iniciada uma prova de conceito local em `geoportal-backend/`, com FastAPI e endpoints de health check para validar a estrutura inicial da futura API.
@@ -323,6 +325,7 @@ Este documento complementa:
 - `docs/SECURITY-HARDENING-PLAN.md`;
 - `docs/DATABASE-INVENTORY.md`;
 - `docs/LAYER-INVENTORY.md`.
+- `docs/ILUMINACAO-CONTROLLED-ACTIVATION-CHECKLIST.md`.
 
 ## 21. Proximos documentos recomendados
 

@@ -456,6 +456,7 @@ Requisitos:
 - Camada pública de postes continua sendo base visual.
 - Integração futura deve preservar popup, rota e busca de postes.
 - Qualquer alteração pública deve ser testada em homologação antes de produção.
+- A ativacao publica da API deve seguir `docs/ILUMINACAO-CONTROLLED-ACTIVATION-CHECKLIST.md`.
 - A substituicao definitiva do Forms so deve ocorrer apos testes em homologacao/producao, estabilidade de rede, logs, monitoramento e plano de rollback validados.
 - A consulta publica de protocolo deve expor somente protocolo, status, datas publicas e mensagens seguras, sem dados pessoais, contato, observacoes internas ou detalhes administrativos.
 - O backend da consulta publica por protocolo foi criado com `POST /api/public/iluminacao/consulta`, confirmacao pelos ultimos 4 digitos do contato, testes automatizados e validacao manual em ambiente controlado.

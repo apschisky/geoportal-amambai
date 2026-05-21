@@ -141,6 +141,7 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [ ] Ativar consulta publica por protocolo no front-end somente apos validacao controlada.
 - [ ] Usar resposta generica para protocolo inexistente ou confirmacao invalida, sem diferenciar claramente os casos.
 - [ ] Validar formato `IP-YYYY-NNNNNN`, normalizar protocolo, aplicar rate limit e avaliar captcha/protecao adicional se necessario.
+- [ ] Seguir `docs/ILUMINACAO-CONTROLLED-ACTIVATION-CHECKLIST.md` antes de qualquer ativacao publica da API de Iluminacao.
 
 ## 10. Usuarios, login e permissoes
 

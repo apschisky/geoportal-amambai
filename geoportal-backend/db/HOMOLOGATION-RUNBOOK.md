@@ -432,3 +432,15 @@ Registro seguro, sem dados sensiveis:
 - O Google Forms permaneceu disponivel como fallback.
 - Registros de teste devem ser limpos apos a validacao.
 - Nenhum protocolo real, telefone, nome, credencial, host, porta, IP interno, caminho local, log completo ou `DATABASE_URL` real deve ser registrado no Git.
+
+## Checklist de ativacao controlada
+
+Antes de qualquer ativacao publica, seguir `geoportal-vite/docs/ILUMINACAO-CONTROLLED-ACTIVATION-CHECKLIST.md`.
+
+Pontos obrigatorios:
+
+- manter `enabled=false`, `submitEnabled=false`, `consultaEnabled=false` e `PERSIST_SOLICITACOES=false` como padrao seguro;
+- ativar fases apenas em ambiente controlado;
+- manter Google Forms como fallback;
+- validar backup, rollback, CORS restrito, rate limit e logs seguros;
+- nao registrar credenciais, host real, porta real, IP interno, caminho local ou `DATABASE_URL` real.

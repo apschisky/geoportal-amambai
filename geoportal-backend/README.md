@@ -58,6 +58,8 @@ O envio real controlado pelo front-end do Geoportal tambem foi validado em homol
 
 O endpoint publico `POST /api/public/iluminacao/consulta` foi criado para consulta por protocolo, com protocolo e dado complementar minimo de confirmacao. Nesta etapa, a confirmacao usa os ultimos 4 digitos do contato informado. A resposta e limitada a protocolo, status, status publico, datas publicas e mensagem segura, sem expor dados pessoais, contato, observacoes internas, detalhes administrativos, id interno, geometria, logs, SQL ou dados tecnicos de banco. O endpoint possui testes automatizados e foi validado manualmente em ambiente controlado, mantendo resposta generica para protocolo inexistente ou confirmacao invalida.
 
+Antes de qualquer ativacao publica da API de Iluminacao, siga o checklist `geoportal-vite/docs/ILUMINACAO-CONTROLLED-ACTIVATION-CHECKLIST.md`. O padrao seguro deve manter `enabled=false`, `submitEnabled=false`, `consultaEnabled=false` e `PERSIST_SOLICITACOES=false`, com Google Forms como fallback.
+
 ## Endpoints disponiveis
 
 - `GET /api/health`

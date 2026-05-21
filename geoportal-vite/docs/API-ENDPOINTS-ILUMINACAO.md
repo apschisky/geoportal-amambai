@@ -497,9 +497,11 @@ Este documento complementa:
 - `docs/POSTGIS-SCHEMA-PLAN.md`;
 - `docs/MODULE-ILUMINACAO-PUBLICA.md`;
 - `docs/SECURITY-HARDENING-PLAN.md`.
+- `docs/ILUMINACAO-CONTROLLED-ACTIVATION-CHECKLIST.md`.
 
 ## 16. Proximos passos
 
+- seguir `docs/ILUMINACAO-CONTROLLED-ACTIVATION-CHECKLIST.md` antes de qualquer ativacao publica;
 - `docs/SQL-MIGRATION-PLAN.md`;
 - prova de conceito FastAPI em homologacao;
 - validacao com setor responsavel;
