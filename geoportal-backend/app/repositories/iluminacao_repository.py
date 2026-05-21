@@ -8,6 +8,44 @@ from app.schemas.iluminacao import (
     IluminacaoSolicitacaoResponse,
 )
 
+ACTIVE_SOLICITACAO_STATUSES = (
+    "aberta",
+    "em_triagem",
+    "encaminhada",
+    "em_execucao",
+    "aguardando_material",
+)
+
+
+def existe_solicitacao_ativa_para_poste(
+    poste_id: str,
+    engine: Engine | None = None,
+) -> bool:
+    db_engine = engine or get_engine()
+
+    statement = text(
+        """
+        SELECT EXISTS (
+            SELECT 1
+            FROM mod_iluminacao.solicitacoes
+            WHERE deleted_at IS NULL
+              AND poste_id = :poste_id
+              AND status IN (
+                  'aberta',
+                  'em_triagem',
+                  'encaminhada',
+                  'em_execucao',
+                  'aguardando_material'
+              )
+        ) AS existe
+        """
+    )
+
+    with db_engine.begin() as connection:
+        row = connection.execute(statement, {"poste_id": poste_id}).mappings().one()
+
+    return bool(row["existe"])
+
 
 def create_solicitacao(
     solicitacao: IluminacaoSolicitacaoCreate,

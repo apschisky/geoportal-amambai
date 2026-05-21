@@ -13,6 +13,7 @@ from app.schemas.iluminacao import (
     StatusSolicitacaoIluminacao,
 )
 from app.services.exceptions import DatabaseUnavailableError, PublicConsultaNotFoundError
+from app.services.exceptions import SolicitacaoDuplicadaAtivaError
 from app.services.protocol_service import generate_protocol, generate_protocol_from_database
 
 DATABASE_UNAVAILABLE_MESSAGE = (
@@ -20,6 +21,10 @@ DATABASE_UNAVAILABLE_MESSAGE = (
 )
 PUBLIC_CONSULTA_NOT_FOUND_MESSAGE = (
     "Solicitacao nao encontrada ou dados de confirmacao invalidos."
+)
+SOLICITACAO_DUPLICADA_ATIVA_MESSAGE = (
+    "Já existe uma solicitação aberta para este poste. "
+    "A equipe responsável já foi notificada."
 )
 
 STATUS_PUBLICO_MAP = {
@@ -75,9 +80,22 @@ def create_solicitacao_simulada(
 ) -> IluminacaoSolicitacaoResponse:
     if settings.persist_solicitacoes:
         try:
+            if (
+                solicitacao.localizacao_tipo.value == "poste_mapa"
+                and solicitacao.poste_id
+                and iluminacao_repository.existe_solicitacao_ativa_para_poste(
+                    solicitacao.poste_id
+                )
+            ):
+                raise SolicitacaoDuplicadaAtivaError(
+                    SOLICITACAO_DUPLICADA_ATIVA_MESSAGE
+                )
+
             protocolo = generate_protocol_from_database()
             return iluminacao_repository.create_solicitacao(solicitacao, protocolo)
         except (SQLAlchemyError, RuntimeError) as exc:
+            if isinstance(exc, SolicitacaoDuplicadaAtivaError):
+                raise
             raise DatabaseUnavailableError(DATABASE_UNAVAILABLE_MESSAGE) from exc
 
     protocolo = generate_protocol(prefix="IP", year=2026, sequence=1)

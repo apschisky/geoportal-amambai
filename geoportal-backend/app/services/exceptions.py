@@ -4,3 +4,7 @@ class DatabaseUnavailableError(RuntimeError):
 
 class PublicConsultaNotFoundError(RuntimeError):
     pass
+
+
+class SolicitacaoDuplicadaAtivaError(RuntimeError):
+    pass

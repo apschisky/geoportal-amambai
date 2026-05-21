@@ -9,9 +9,14 @@ from app.schemas.iluminacao import (
     IluminacaoSolicitacaoCreate,
     IluminacaoSolicitacaoResponse,
 )
-from app.services.exceptions import DatabaseUnavailableError, PublicConsultaNotFoundError
+from app.services.exceptions import (
+    DatabaseUnavailableError,
+    PublicConsultaNotFoundError,
+    SolicitacaoDuplicadaAtivaError,
+)
 from app.services.iluminacao_service import (
     PUBLIC_CONSULTA_NOT_FOUND_MESSAGE,
+    SOLICITACAO_DUPLICADA_ATIVA_MESSAGE,
     consultar_solicitacao_publica,
     create_solicitacao_simulada,
 )
@@ -42,6 +47,11 @@ def create_iluminacao_solicitacao(
 
     try:
         return create_solicitacao_simulada(solicitacao)
+    except SolicitacaoDuplicadaAtivaError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=SOLICITACAO_DUPLICADA_ATIVA_MESSAGE,
+        ) from exc
     except DatabaseUnavailableError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 

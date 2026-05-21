@@ -10,6 +10,7 @@ from app.main import app
 from app.schemas.iluminacao import IluminacaoConsultaPublicResponse
 from app.services import iluminacao_service
 from app.services.exceptions import DatabaseUnavailableError, PublicConsultaNotFoundError
+from app.services.exceptions import SolicitacaoDuplicadaAtivaError
 
 
 client = TestClient(app)
@@ -85,6 +86,37 @@ def test_create_solicitacao_returns_safe_503_when_database_is_unavailable(
     assert "host" not in body.lower()
     assert "senha" not in body.lower()
     assert "SELECT" not in body
+
+
+def test_create_solicitacao_returns_409_for_active_duplicate_poste(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_with_duplicate(*args: object, **kwargs: object) -> None:
+        raise SolicitacaoDuplicadaAtivaError(
+            "Já existe uma solicitação aberta para este poste. "
+            "A equipe responsável já foi notificada."
+        )
+
+    monkeypatch.setattr(
+        iluminacao_public,
+        "create_solicitacao_simulada",
+        fail_with_duplicate,
+    )
+
+    response = client.post("/api/public/iluminacao/solicitacoes", json=valid_payload())
+
+    assert response.status_code == 409
+    assert response.json() == {
+        "detail": (
+            "Já existe uma solicitação aberta para este poste. "
+            "A equipe responsável já foi notificada."
+        )
+    }
+    body = response.text
+    assert "IP-2026" not in body
+    assert "nome" not in body.lower()
+    assert "contato" not in body.lower()
+    assert "descricao" not in body.lower()
 
 
 def test_create_solicitacao_returns_429_when_rate_limit_is_exceeded(

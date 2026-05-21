@@ -120,12 +120,12 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [ ] Rate limit definitivo para producao ainda pendente, com avaliacao de proxy, Redis, WAF ou API gateway.
 - [ ] Documentacao controlada da API.
 - [ ] Inventario de endpoints.
-- [ ] Implementar bloqueio futuro de nova solicitacao `poste_mapa` quando ja houver solicitacao ativa para o mesmo `poste_id`, retornando `409 Conflict` seguro e sem expor dados de outra pessoa.
+- [x] Implementar bloqueio de nova solicitacao `poste_mapa` quando ja houver solicitacao ativa para o mesmo `poste_id`, retornando `409 Conflict` seguro e sem expor dados de outra pessoa.
 
 ## 9. Protecao contra abuso em endpoints publicos
 
 - [ ] Aplicar rate limit por IP no futuro, com limite de chamadas por periodo.
-- [ ] Proteger contra multiplos chamados para o mesmo poste: bloquear nova solicitacao quando o mesmo `poste_id` ja tiver status ativo (`aberta`, `em_triagem`, `encaminhada`, `em_execucao` ou `aguardando_material`).
+- [x] Proteger contra multiplos chamados para o mesmo poste: bloquear nova solicitacao quando o mesmo `poste_id` ja tiver status ativo (`aberta`, `em_triagem`, `encaminhada`, `em_execucao` ou `aguardando_material`).
 - [ ] Permitir nova solicitacao para o mesmo poste apenas quando o chamado anterior estiver em status final (`concluida`, `cancelada`, `nao_atendida` ou `encerrada`, se existir futuramente).
 - [ ] Garantir que o bloqueio por duplicidade ativa retorne mensagem publica segura, sem protocolo de outra pessoa, dados pessoais, contato, descricao ou detalhes administrativos.
 - [ ] Proteger chamados manuais proximos usando PostGIS no futuro.

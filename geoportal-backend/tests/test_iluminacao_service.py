@@ -11,7 +11,11 @@ from app.schemas.iluminacao import (
     StatusSolicitacaoIluminacao,
 )
 from app.services import iluminacao_service
-from app.services.exceptions import DatabaseUnavailableError, PublicConsultaNotFoundError
+from app.services.exceptions import (
+    DatabaseUnavailableError,
+    PublicConsultaNotFoundError,
+    SolicitacaoDuplicadaAtivaError,
+)
 
 
 def valid_solicitacao() -> IluminacaoSolicitacaoCreate:
@@ -83,6 +87,11 @@ def test_create_solicitacao_simulada_calls_repository_when_enabled(
     )
     monkeypatch.setattr(
         iluminacao_service.iluminacao_repository,
+        "existe_solicitacao_ativa_para_poste",
+        lambda poste_id: False,
+    )
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
         "create_solicitacao",
         fake_create_solicitacao,
     )
@@ -101,6 +110,113 @@ def test_create_solicitacao_simulada_calls_repository_when_enabled(
     assert response.status == "aberta"
 
 
+def test_create_solicitacao_blocks_active_duplicate_before_protocol_generation(
+    monkeypatch,
+) -> None:
+    calls = {"protocol": 0, "create": 0}
+
+    def fail_protocol() -> str:
+        calls["protocol"] += 1
+        raise AssertionError("protocol should not be generated for duplicate request")
+
+    def fail_create(*args: object, **kwargs: object) -> None:
+        calls["create"] += 1
+        raise AssertionError("repository insert should not be called")
+
+    monkeypatch.setattr(
+        iluminacao_service.settings,
+        "persist_solicitacoes",
+        True,
+    )
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "existe_solicitacao_ativa_para_poste",
+        lambda poste_id: True,
+    )
+    monkeypatch.setattr(
+        iluminacao_service,
+        "generate_protocol_from_database",
+        fail_protocol,
+    )
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "create_solicitacao",
+        fail_create,
+    )
+
+    with pytest.raises(SolicitacaoDuplicadaAtivaError) as exc_info:
+        iluminacao_service.create_solicitacao_simulada(valid_solicitacao())
+
+    assert str(exc_info.value) == (
+        "Já existe uma solicitação aberta para este poste. "
+        "A equipe responsável já foi notificada."
+    )
+    assert calls == {"protocol": 0, "create": 0}
+
+
+def test_create_solicitacao_allows_ponto_manual_without_active_poste_check(
+    monkeypatch,
+) -> None:
+    calls: dict[str, object] = {}
+
+    def fail_if_called(*args: object, **kwargs: object) -> None:
+        raise AssertionError("active poste check should not run for ponto_manual")
+
+    def fake_create_solicitacao(
+        solicitacao: IluminacaoSolicitacaoCreate,
+        protocolo: str,
+    ) -> IluminacaoSolicitacaoResponse:
+        calls["solicitacao"] = solicitacao
+        calls["protocolo"] = protocolo
+        return IluminacaoSolicitacaoResponse(
+            protocolo=protocolo,
+            status=StatusSolicitacaoIluminacao.aberta,
+            message="Solicitacao registrada em ambiente de teste.",
+        )
+
+    monkeypatch.setattr(
+        iluminacao_service.settings,
+        "persist_solicitacoes",
+        True,
+    )
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "existe_solicitacao_ativa_para_poste",
+        fail_if_called,
+    )
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "create_solicitacao",
+        fake_create_solicitacao,
+    )
+    monkeypatch.setattr(
+        iluminacao_service,
+        "generate_protocol_from_database",
+        lambda: "IP-2026-000124",
+    )
+
+    solicitacao = IluminacaoSolicitacaoCreate.model_validate(
+        {
+            "localizacao_tipo": "ponto_manual",
+            "poste_id": None,
+            "coordenada": {
+                "latitude": -23.105,
+                "longitude": -55.225,
+            },
+            "tipo_problema": "lampada_apagada",
+            "descricao": "Lampada apagada durante a noite.",
+            "observacoes_localizacao": "Pin marcado manualmente no local do poste.",
+            "nome_solicitante": "Solicitante de teste",
+            "contato_solicitante": "contato de teste",
+        }
+    )
+
+    response = iluminacao_service.create_solicitacao_simulada(solicitacao)
+
+    assert calls["solicitacao"] is solicitacao
+    assert response.protocolo == "IP-2026-000124"
+
+
 def test_create_solicitacao_converts_database_error_to_safe_error(
     monkeypatch,
 ) -> None:
@@ -113,6 +229,11 @@ def test_create_solicitacao_converts_database_error_to_safe_error(
         iluminacao_service,
         "generate_protocol_from_database",
         lambda: "IP-2026-000123",
+    )
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "existe_solicitacao_ativa_para_poste",
+        lambda poste_id: False,
     )
 
     def fail_with_database_error(*args: object, **kwargs: object) -> None:

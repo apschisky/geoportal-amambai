@@ -5,6 +5,7 @@ from sqlalchemy.sql.elements import TextClause
 
 from app.repositories.iluminacao_repository import (
     create_solicitacao,
+    existe_solicitacao_ativa_para_poste,
     get_solicitacao_publica_por_protocolo,
 )
 from app.schemas.iluminacao import IluminacaoSolicitacaoCreate
@@ -127,6 +128,46 @@ def test_create_solicitacao_uses_postgis_transform_and_bind_params() -> None:
     assert "contato de teste" not in sql
     assert response.protocolo == "IP-2026-000001"
     assert response.status == "aberta"
+
+
+def test_existe_solicitacao_ativa_para_poste_returns_boolean_without_sensitive_data() -> None:
+    engine = FakeEngine({"existe": True})
+
+    response = existe_solicitacao_ativa_para_poste(
+        poste_id="POSTE-001",
+        engine=engine,
+    )
+
+    assert response is True
+    assert engine.connection.statement is not None
+    assert engine.connection.params == {"poste_id": "POSTE-001"}
+
+    sql = str(engine.connection.statement)
+    assert "SELECT EXISTS" in sql
+    assert "mod_iluminacao.solicitacoes" in sql
+    assert "deleted_at IS NULL" in sql
+    assert "poste_id = :poste_id" in sql
+    assert "'aberta'" in sql
+    assert "'em_triagem'" in sql
+    assert "'encaminhada'" in sql
+    assert "'em_execucao'" in sql
+    assert "'aguardando_material'" in sql
+    assert "protocolo" not in sql
+    assert "nome_solicitante" not in sql
+    assert "contato_solicitante" not in sql
+    assert "descricao" not in sql
+    assert "POSTE-001" not in sql
+
+
+def test_existe_solicitacao_ativa_para_poste_returns_false_when_not_found() -> None:
+    engine = FakeEngine({"existe": False})
+
+    response = existe_solicitacao_ativa_para_poste(
+        poste_id="POSTE-001",
+        engine=engine,
+    )
+
+    assert response is False
 
 
 def test_get_solicitacao_publica_por_protocolo_uses_filtered_columns_and_bind_params() -> None:

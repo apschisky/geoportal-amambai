@@ -114,9 +114,9 @@ Em modo persistente, o repository marca `duplicidade_suspeita` quando houver sol
 
 A marcacao `duplicidade_suspeita` foi validada em homologacao: a regra inicial apenas encaminha a situacao para triagem interna e nao bloqueia o cidadao.
 
-Regra futura aprovada: para `localizacao_tipo = poste_mapa`, se ja existir solicitacao ativa para o mesmo `poste_id`, o endpoint nao deve criar nova solicitacao. Status ativos: `aberta`, `em_triagem`, `encaminhada`, `em_execucao` e `aguardando_material`. Status que permitem nova solicitacao: `concluida`, `cancelada`, `nao_atendida` e `encerrada`, se existir futuramente. O escopo inicial nao bloqueia `ponto_manual`; bloqueio espacial por proximidade deve ser etapa futura.
+Regra implementada: para `localizacao_tipo = poste_mapa`, se ja existir solicitacao ativa para o mesmo `poste_id`, o endpoint nao cria nova solicitacao e retorna `409 Conflict`. Status ativos: `aberta`, `em_triagem`, `encaminhada`, `em_execucao` e `aguardando_material`. Status que permitem nova solicitacao: `concluida`, `cancelada`, `nao_atendida` e `encerrada`, se existir futuramente. O escopo inicial nao bloqueia `ponto_manual`; bloqueio espacial por proximidade deve ser etapa futura.
 
-A resposta sugerida para esse caso e `409 Conflict` com mensagem publica segura: "Ja existe uma solicitacao aberta para este poste. A equipe responsavel ja foi notificada." A resposta nao deve retornar protocolo de outra pessoa, dados pessoais, contato, descricao ou detalhes administrativos. Essa regra substitui a abordagem inicial de apenas marcar `duplicidade_suspeita` para casos de mesmo poste ativo.
+A resposta desse caso usa mensagem publica segura: "Ja existe uma solicitacao aberta para este poste. A equipe responsavel ja foi notificada." A resposta nao retorna protocolo de outra pessoa, dados pessoais, contato, descricao ou detalhes administrativos. Essa regra substitui a abordagem inicial de apenas marcar `duplicidade_suspeita` para casos de mesmo poste ativo.
 
 ## Teste manual do repository
 
