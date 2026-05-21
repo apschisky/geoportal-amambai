@@ -32,7 +32,7 @@ A API nao deve gravar em:
 - Validar deploy da API no servidor.
 - Validar persistencia, consulta publica por protocolo, bloqueio `409 Conflict`, rate limit e rollback.
 
-Registro de implantacao: a API foi implantada no servidor PostgreSQL/PostGIS em homologacao como servico Windows controlado, ainda sem exposicao externa. O servico de homologacao foi iniciado com sucesso e escuta apenas em `127.0.0.1:8000`. A configuracao permanece com `APP_ENV=homologacao` e `PERSIST_SOLICITACOES=false`.
+Registro de implantacao: a API foi implantada no servidor PostgreSQL/PostGIS em homologacao como servico Windows controlado. O servico de homologacao foi iniciado com sucesso e escuta internamente em `127.0.0.1:8000`. A exposicao controlada de `/api/` ocorre via Apache HTTPS. A configuracao permanece com `APP_ENV=homologacao` e `PERSIST_SOLICITACOES=false`.
 
 Validacoes realizadas no servidor de homologacao:
 
@@ -43,7 +43,19 @@ Validacoes realizadas no servidor de homologacao:
 - script de solicitacao simulada passou;
 - script de consulta inexistente retornou `404` seguro;
 - API conectou ao banco de homologacao com usuario restrito;
-- proxy reverso e HTTPS permanecem etapa posterior.
+- backup do arquivo SSL ativo do Apache foi feito antes da alteracao;
+- Apache validou sintaxe com `Syntax OK`;
+- proxy reverso `/api/` foi configurado para encaminhar ao servico local da API;
+- Apache foi reiniciado com sucesso;
+- servicos Apache e API permaneceram em execucao;
+- `GET /api/health` via HTTPS retornou status ok;
+- `GET /api/public/iluminacao/health` via HTTPS retornou status ok;
+- `GET /api/version` via HTTPS retornou ambiente de homologacao;
+- `POST /api/public/iluminacao/solicitacoes` via HTTPS funcionou com `PERSIST_SOLICITACOES=false`;
+- `POST /api/public/iluminacao/consulta` via HTTPS retornou `404` seguro para protocolo inexistente;
+- GeoServer continuou acessivel;
+- Geoportal publico continuou abrindo e consumindo camadas do GeoServer;
+- antes de ativar o front-end publico, CORS deve ser validado para a origem oficial do Geoportal.
 
 ### Producao
 
@@ -79,7 +91,7 @@ A API deve usar usuario restrito, com permissoes minimas:
 7. Testar healthcheck.
 8. Testar endpoints com persistencia desligada.
 9. Testar homologacao com persistencia ligada.
-10. Configurar proxy reverso e HTTPS de forma controlada.
+10. Validar CORS para a origem oficial do Geoportal.
 11. Somente depois ativar front-end experimental.
 
 ## 6. Relacao com login e painel interno

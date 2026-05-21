@@ -64,6 +64,8 @@ O plano de implantacao em servidor esta em `geoportal-vite/docs/API-SERVER-DEPLO
 
 Registro de homologacao: a API foi implantada no servidor PostgreSQL/PostGIS como servico Windows controlado, sem exposicao externa, escutando apenas em `127.0.0.1:8000`. Os testes automatizados, healthchecks, solicitacao simulada e consulta inexistente com `404` seguro foram validados no servidor. `PERSIST_SOLICITACOES=false` permanece como padrao seguro; proxy reverso e HTTPS serao etapa posterior.
 
+Registro de proxy/HTTPS: o Apache HTTPS foi configurado para encaminhar `/api/` ao servico local da API em `127.0.0.1:8000`. Healthcheck, health de Iluminacao, versao, criacao simulada com `PERSIST_SOLICITACOES=false` e consulta inexistente com `404` seguro foram validados via HTTPS. GeoServer e Geoportal publico permaneceram funcionando. Antes de ativar o front-end publico, CORS deve ser validado para a origem oficial do Geoportal; Google Forms permanece fallback.
+
 ## Endpoints disponiveis
 
 - `GET /api/health`

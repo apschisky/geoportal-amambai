@@ -471,7 +471,21 @@ Registro seguro, sem dados sensiveis:
 - `/api/version` retornou ambiente de homologacao.
 - Script de solicitacao simulada passou.
 - Script de consulta inexistente retornou `404` seguro.
-- API ainda nao esta exposta externamente.
-- Proxy reverso e HTTPS serao etapa posterior.
-- Proxima fase: configurar Apache/proxy reverso de forma controlada.
+- Backup do arquivo SSL ativo do Apache foi feito antes da alteracao.
+- Apache validou sintaxe com `Syntax OK`.
+- Proxy reverso `/api/` foi configurado para encaminhar ao servico local da API.
+- Apache foi reiniciado com sucesso.
+- Servico Apache permaneceu em execucao.
+- Servico da API de homologacao permaneceu em execucao.
+- `GET /api/health` via HTTPS retornou status ok.
+- `GET /api/public/iluminacao/health` via HTTPS retornou status ok.
+- `GET /api/version` via HTTPS retornou ambiente de homologacao.
+- `POST /api/public/iluminacao/solicitacoes` via HTTPS funcionou com `PERSIST_SOLICITACOES=false`.
+- `POST /api/public/iluminacao/consulta` via HTTPS retornou `404` seguro para protocolo inexistente.
+- GeoServer continuou acessivel.
+- Geoportal publico continuou abrindo e consumindo camadas do GeoServer.
+- A API continua rodando internamente em `127.0.0.1:8000`; a exposicao publica ocorre via Apache HTTPS.
+- Antes de ativar o front-end publico, validar CORS para a origem oficial do Geoportal.
+- Google Forms permanece como fallback.
+- Proxima fase: validar CORS e ativacao controlada do front-end experimental.
 - Nenhum usuario real, senha, host real, IP interno, caminho local real, log completo ou `DATABASE_URL` real deve ser registrado no Git.

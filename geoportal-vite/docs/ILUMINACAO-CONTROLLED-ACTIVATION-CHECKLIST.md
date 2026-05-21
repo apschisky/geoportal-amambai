@@ -7,7 +7,8 @@ Este documento registra o roteiro seguro para implantacao controlada da API de I
 Ja foram validados em ambiente controlado:
 
 - API implantada no servidor PostgreSQL/PostGIS como servico Windows de homologacao;
-- servico de homologacao escutando apenas em `127.0.0.1:8000`, sem exposicao externa;
+- servico de homologacao escutando internamente em `127.0.0.1:8000`;
+- proxy reverso Apache HTTPS para `/api/` configurado e validado;
 - healthchecks e scripts de validacao executados no servidor;
 - criacao publica de solicitacao;
 - protocolo real por sequence;
@@ -32,7 +33,7 @@ Antes e depois de testes pontuais, os defaults seguros devem permanecer:
 - [ ] API implantada no servidor correto, nao em computador de desenvolvimento.
 - [ ] Plano `docs/API-SERVER-DEPLOYMENT-PLAN.md` revisado.
 - [x] Servico da API configurado como servico Windows controlado em homologacao.
-- [ ] HTTPS e proxy reverso configurados.
+- [x] HTTPS e proxy reverso `/api/` configurados e validados em homologacao.
 - [ ] CORS restrito ao dominio oficial do Geoportal.
 - [ ] Usuario restrito do banco validado.
 - [ ] Permissoes minimas no banco.
@@ -63,13 +64,13 @@ Nao registrar comandos com caminhos reais, credenciais, host real, IP interno ou
 ## 5. Plano de ativacao gradual
 
 - **Fase A:** API no servidor com persistencia desligada.
-- **Status:** fase iniciada em homologacao; API local em `127.0.0.1:8000`, sem exposicao externa, com `PERSIST_SOLICITACOES=false`.
+- **Status:** fase iniciada em homologacao; API local em `127.0.0.1:8000`, exposicao controlada via Apache HTTPS em `/api/`, com `PERSIST_SOLICITACOES=false`.
 - **Fase B:** API no servidor com persistencia ligada em homologacao.
 - **Fase C:** front-end com botao experimental visivel apenas para teste controlado.
 - **Fase D:** consulta de protocolo ativada apenas para teste controlado.
 - **Fase E:** avaliar substituicao do Google Forms somente apos estabilidade comprovada.
 
-Proxima fase tecnica: configurar Apache/proxy reverso e HTTPS de forma controlada, mantendo CORS restrito e sem ativacao publica automatica.
+Proxima fase tecnica: validar CORS para a origem oficial do Geoportal e manter a ativacao publica controlada por flags, sem substituicao imediata do Google Forms.
 
 ## 6. Plano de rollback
 
