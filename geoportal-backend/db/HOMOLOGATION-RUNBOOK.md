@@ -402,13 +402,19 @@ Registro seguro, sem dados sensiveis:
 - `PERSIST_SOLICITACOES` deve permanecer `false` por padrao.
 - Nenhum protocolo real, contato, credencial, host, porta, IP interno, caminho local, log completo ou `DATABASE_URL` real deve ser registrado no Git.
 
-## Pendencia futura: consulta publica por protocolo
+## Registro de validacao da consulta publica por protocolo
 
-A consulta publica por protocolo ainda deve ser implementada em etapa futura.
+O endpoint publico `POST /api/public/iluminacao/consulta` foi validado manualmente em ambiente controlado.
 
-Requisitos de seguranca esperados:
+Registro seguro, sem dados sensiveis:
 
-- Permitir que o cidadao consulte o andamento sem login.
-- Nao expor dados pessoais, contato, observacoes internas ou detalhes administrativos.
-- Limitar a resposta publica a protocolo, status, datas publicas e mensagens seguras.
-- Proteger contra enumeracao de protocolos.
+- Uma solicitacao temporaria foi criada apenas para teste.
+- Consulta com protocolo correto e confirmacao correta retornou dados publicos.
+- Consulta com protocolo correto e confirmacao incorreta retornou `404` generico.
+- Consulta com protocolo inexistente retornou o mesmo `404` generico.
+- Consulta com formato invalido de protocolo retornou `422`.
+- A resposta publica retornou apenas `protocolo`, `status`, `status_publico`, `data_abertura`, `ultima_atualizacao` e `mensagem`.
+- A resposta nao expos id interno, nome, telefone completo, `contato_solicitante`, descricao, observacoes, ponto de referencia, geometria, origem, prioridade, `duplicidade_suspeita` ou dados tecnicos.
+- O registro de teste foi limpo apos a validacao.
+- A consulta ainda deve ser integrada ao front-end em etapa futura.
+- Nenhum protocolo real, contato, nome, credencial, host, porta, IP interno, caminho local, log completo ou `DATABASE_URL` real deve ser registrado no Git.

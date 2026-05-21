@@ -226,7 +226,7 @@ Auditoria deve ser obrigatoria para mudancas de status, observacoes, anexos, fin
 
 ## 14.1 Consulta publica de protocolo
 
-A consulta publica de protocolo foi criada no backend e deve permitir ao cidadao acompanhar o andamento sem expor dados sensiveis. Ainda deve ser validada em homologacao antes de uso publico.
+A consulta publica de protocolo foi criada no backend e deve permitir ao cidadao acompanhar o andamento sem expor dados sensiveis. A consulta foi validada manualmente em ambiente controlado; a integracao ao front-end permanece etapa futura.
 
 Desenho recomendado:
 
@@ -239,7 +239,7 @@ Desenho recomendado:
 - Protocolos inexistentes e confirmacao invalida devem receber resposta generica, sem diferenciar claramente os casos.
 - A consulta deve validar formato `IP-YYYY-NNNNNN`, normalizar protocolo, aplicar rate limit e registrar logs seguros sem dados pessoais.
 - Captcha ou protecao adicional deve ser avaliado se houver risco de abuso.
-- Implementacao deve ser testada primeiro em homologacao, incluindo protocolo valido, protocolo inexistente, confirmacao invalida, rate limit e ausencia de dados sensiveis na resposta.
+- Validacao manual confirmou protocolo correto com confirmacao correta, `404` generico para protocolo inexistente ou confirmacao invalida, `422` para formato invalido e ausencia de dados sensiveis na resposta.
 
 ## 15. Integracao com ambiente interno
 

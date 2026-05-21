@@ -102,7 +102,7 @@ Auditoria/log:
 
 Finalidade: consultar andamento publico de uma solicitacao.
 
-Status de implementacao: endpoint criado no backend, com testes automatizados, ainda pendente de validacao em homologacao antes de uso publico.
+Status de implementacao: endpoint criado no backend, com testes automatizados e validacao manual em ambiente controlado.
 
 Justificativa para `POST`:
 
@@ -176,7 +176,16 @@ Testes automatizados antes da ativacao:
 - rate limit;
 - resposta sem dados sensiveis.
 
-A consulta deve ser testada primeiro em homologacao.
+A consulta foi validada manualmente em ambiente controlado. A integracao ao front-end permanece etapa futura.
+
+Validacao manual registrada:
+
+- Protocolo correto com confirmacao correta retornou dados publicos.
+- Protocolo correto com confirmacao incorreta retornou `404` generico.
+- Protocolo inexistente retornou o mesmo `404` generico.
+- Formato invalido de protocolo retornou `422`.
+- A resposta publica nao expos dados sensiveis.
+- Registro de teste foi limpo apos a validacao.
 
 ## 5. Endpoints internos
 
@@ -438,7 +447,8 @@ Transicoes devem ser validadas pela API, nao apenas pelo front-end.
 - Dados pessoais, contato, observacoes internas e detalhes administrativos nao devem ser expostos.
 - A consulta deve ser protegida contra enumeracao de protocolos.
 - Testes automatizados cobrem protocolo valido, protocolo inexistente, confirmacao invalida, rate limit, erro seguro e ausencia de dados sensiveis.
-- Ainda deve ser validado em homologacao antes de uso publico.
+- A validacao manual confirmou retorno publico filtrado, `404` generico para inexistente/confirmacao invalida e `422` para formato invalido.
+- A integracao ao front-end permanece etapa futura.
 
 ## 13. Integracao com painel interno
 

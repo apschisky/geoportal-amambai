@@ -164,7 +164,7 @@ Perguntas técnicas a resolver antes da implementação:
 
 ## 10. Consulta publica por protocolo
 
-Endpoint criado no backend, ainda pendente de validacao em homologacao antes de uso publico.
+Endpoint criado no backend e validado manualmente em ambiente controlado. A integracao ao front-end permanece etapa futura.
 
 Endpoint recomendado:
 
@@ -253,7 +253,7 @@ Testes automatizados antes da ativacao:
 - rate limit;
 - resposta sem dados sensiveis.
 
-A consulta deve ser testada primeiro em homologacao.
+A consulta foi validada manualmente em ambiente controlado, com retorno publico filtrado, `404` generico para protocolo inexistente ou confirmacao invalida e `422` para formato invalido.
 ## 11. Dados pessoais e LGPD
 
 Requisitos:
@@ -454,7 +454,7 @@ Requisitos:
 - Qualquer alteração pública deve ser testada em homologação antes de produção.
 - A substituicao definitiva do Forms so deve ocorrer apos testes em homologacao/producao, estabilidade de rede, logs, monitoramento e plano de rollback validados.
 - A consulta publica de protocolo permanece pendente e deve expor somente protocolo, status, datas publicas e mensagens seguras, sem dados pessoais, contato, observacoes internas ou detalhes administrativos.
-- O backend da consulta publica por protocolo foi criado com `POST /api/public/iluminacao/consulta`, confirmacao pelos ultimos 4 digitos do contato e testes automatizados; ainda deve ser validado em homologacao antes de uso publico.
+- O backend da consulta publica por protocolo foi criado com `POST /api/public/iluminacao/consulta`, confirmacao pelos ultimos 4 digitos do contato, testes automatizados e validacao manual em ambiente controlado; a integracao ao front-end permanece etapa futura.
 
 ## 19. Integração com API futura
 

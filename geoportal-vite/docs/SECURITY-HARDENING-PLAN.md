@@ -132,7 +132,8 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [ ] Proteger consulta publica por protocolo contra enumeracao.
 - [ ] Limitar consulta publica por protocolo a protocolo, status, datas publicas e mensagens seguras, sem dados pessoais, contato, observacoes internas ou detalhes administrativos.
 - [x] Criar backend da consulta publica como `POST /api/public/iluminacao/consulta`, com protocolo e confirmacao minima, evitando protocolo em URL.
-- [ ] Validar consulta publica por protocolo em homologacao antes de uso publico.
+- [x] Validar manualmente consulta publica por protocolo em ambiente controlado, com resposta publica filtrada e `404` generico para protocolo inexistente ou confirmacao invalida.
+- [ ] Integrar consulta publica por protocolo ao front-end em etapa futura.
 - [ ] Usar resposta generica para protocolo inexistente ou confirmacao invalida, sem diferenciar claramente os casos.
 - [ ] Validar formato `IP-YYYY-NNNNNN`, normalizar protocolo, aplicar rate limit e avaliar captcha/protecao adicional se necessario.
 
