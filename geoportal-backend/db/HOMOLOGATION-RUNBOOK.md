@@ -502,6 +502,17 @@ Registro seguro, sem dados sensiveis:
 - A conferencia posterior no banco confirmou ausencia de novo registro real.
 - As flags temporarias foram restauradas para `false` apos o teste e nao devem ser commitadas como `true`.
 - Atencao operacional: a chave correta de configuracao do endpoint e `apiUrl`; grafia incorreta pode gerar chamada para `/undefined`.
+- `PERSIST_SOLICITACOES` foi ativado temporariamente em homologacao fora do Git para validacao completa.
+- O servico de homologacao foi reiniciado e o healthcheck permaneceu ok.
+- O front-end publicado enviou solicitacao real para a API via HTTPS.
+- A API gravou registros no banco de homologacao.
+- A consulta publica por protocolo funcionou.
+- O bloqueio de duplicidade ativa por poste retornou mensagem amigavel `409`.
+- O rate limit foi acionado durante testes intensivos.
+- A conferencia no banco confirmou os registros criados em homologacao.
+- O usuario restrito da API nao conseguiu executar `DELETE`, confirmando permissao minima.
+- A limpeza dos registros de teste foi feita com usuario administrativo do banco.
+- `PERSIST_SOLICITACOES` foi restaurado para `false`.
 - Origens devem permanecer restritas, sem wildcard.
 - `PERSIST_SOLICITACOES=false` permanece como padrao seguro nesta fase.
 - A ativacao publica permanente do botao da API ainda depende de revisao operacional e aprovacao gradual.

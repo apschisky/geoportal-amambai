@@ -103,6 +103,8 @@ A alternativa `https://geoportal.amambai.ms.gov.br/api/` fica registrada como ev
 
 O front-end publicado em `https://geoportal.amambai.ms.gov.br` foi testado em build controlado com o botao experimental da API habilitado temporariamente. A chamada HTTPS para `https://geoserver.amambai.ms.gov.br/api/` funcionou com CORS restrito para a origem oficial, e o envio simulado retornou sucesso no modal do Geoportal. Como `PERSIST_SOLICITACOES=false` estava ativo, nao houve gravacao real; a conferencia posterior no banco confirmou ausencia de novo registro. As flags temporarias devem voltar para `false` apos testes e nao devem ser commitadas como `true`. A chave correta de configuracao do endpoint e `apiUrl`; grafia incorreta pode causar chamada para `/undefined`.
 
+A validacao completa de persistencia em homologacao tambem foi executada de ponta a ponta: `PERSIST_SOLICITACOES` foi ativado temporariamente fora do Git, o servico de homologacao foi reiniciado, o healthcheck permaneceu ok, o front-end publicado enviou solicitacao real via HTTPS, a API gravou registros no banco de homologacao e a consulta publica por protocolo funcionou. O bloqueio `409 Conflict` para duplicidade ativa por poste retornou mensagem amigavel, o rate limit foi acionado em testes intensivos e o usuario restrito da API nao conseguiu executar `DELETE`, confirmando permissao minima. A limpeza dos registros de teste exigiu usuario administrativo do banco. Ao final, `PERSIST_SOLICITACOES=false` foi restaurado, e as flags do front-end devem permanecer `false` no repositorio.
+
 Separacao de schemas: `plano` concentra dados tecnicos/editaveis do SIG, `web_map` concentra dados publicados para GeoServer/Geoportal, e `mod_iluminacao` concentra dados operacionais da API e do futuro modulo interno. A API de Iluminacao nao deve gravar em `plano` nem em `web_map`.
 
 A API deve conectar ao banco usando usuario restrito por modulo e ambiente. O endpoint publico de solicitacoes deve ter apenas permissao minima para inserir e retornar os dados necessarios.
@@ -246,6 +248,8 @@ Auditoria deve ser obrigatoria para mudancas de status, observacoes, anexos, fin
 - A consulta publica por protocolo foi preparada no front-end por `consultaEnabled=false`, com link discreto no modal de solicitacao pela API; nao ha menu global de consultas nesta etapa.
 - O modal de sucesso permite copiar somente o protocolo, e o modal de consulta formata o protocolo no padrao `IP-YYYY-NNNNNN` para reduzir erro de digitacao.
 - Apos validacoes, `enabled=false`, `submitEnabled=false` e `PERSIST_SOLICITACOES=false` devem permanecer como padrao seguro; registros de teste devem ser limpos.
+- A validacao completa com persistencia ligada em homologacao confirmou gravacao, consulta publica por protocolo, bloqueio `409`, rate limit e permissao minima sem `DELETE` para o usuario restrito da API.
+- Limpeza de registros de teste deve ser feita apenas com usuario administrativo apropriado.
 - Flags temporarias usadas em build de teste publicado devem ser restauradas para `false` antes de commit.
 - A configuracao do endpoint de envio deve usar a chave `apiUrl`; erro de grafia pode direcionar a chamada para `/undefined`.
 - O Google Forms permanece como fallback enquanto a API estiver em validacao.

@@ -81,6 +81,7 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [ ] Envio real do botao de teste mantido desligado por padrao com `submitEnabled=false` ate validacao em ambiente controlado.
 - [x] Envio real controlado pelo front-end validado em homologacao com flags ativadas temporariamente, persistencia ativa, retorno `201 Created` e modal publico de sucesso.
 - [x] Front-end publicado testado em build controlado chamando a API HTTPS no dominio tecnico do GeoServer, com CORS restrito funcionando e `PERSIST_SOLICITACOES=false` sem gravacao real.
+- [x] Fluxo completo com persistencia ligada validado em homologacao: gravacao, consulta publica por protocolo, bloqueio `409`, rate limit e limpeza controlada.
 - [ ] Restaurar `enabled=false`, `submitEnabled=false` e `PERSIST_SOLICITACOES=false` como padrao seguro apos testes e limpar registros de validacao.
 - [ ] Garantir que flags temporarias de teste nao sejam commitadas como `true`.
 - [ ] Conferir grafia da chave `apiUrl` antes de publicar build experimental, evitando chamadas para `/undefined`.
@@ -111,7 +112,7 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [ ] Credenciais de banco apenas em variavel de ambiente ou arquivo local nao versionado.
 - [ ] Nunca usar `DATABASE_URL` em variavel `VITE_`.
 - [ ] API sem usuario superuser do PostgreSQL.
-- [ ] API com usuario restrito por modulo/ambiente.
+- [x] API com usuario restrito por modulo/ambiente.
 - [ ] Permissoes minimas por modulo.
 - [ ] Sem acesso direto a schemas `plano`/`web_map`, salvo necessidade futura muito bem justificada.
 - [ ] Implantar API de Iluminacao no servidor PostgreSQL/PostGIS como servico controlado, seguindo `docs/API-SERVER-DEPLOYMENT-PLAN.md`.
@@ -124,12 +125,14 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [x] Testar ativacao publica controlada do botao da API no front-end publicado com envio simulado.
 - [ ] Avaliar ativacao publica permanente somente apos revisao operacional.
 - [ ] Garantir que a API grave dados operacionais apenas em `mod_iluminacao`, sem gravar em `plano` ou `web_map`.
-- [ ] Manter persistencia desativada por padrao.
-- [ ] Ativar persistencia apenas em ambiente controlado com usuario restrito e `DATABASE_URL` segura.
+- [x] Manter persistencia desativada por padrao.
+- [x] Ativar persistencia apenas em ambiente controlado com usuario restrito e `DATABASE_URL` segura.
 - [x] Padrao de usuario restrito da API validado em homologacao, sem superuser e sem acesso direto a schemas nao necessarios.
+- [x] Usuario restrito da API sem permissao de `DELETE`; limpeza de testes exige usuario administrativo.
 - [ ] Investigar estabilidade de rede, firewall e antivirus entre API e PostgreSQL antes de uso continuo.
 - [x] Deteccao leve de duplicidade suspeita implementada e validada antes de rate limit.
 - [x] Rate limit inicial em memoria implementado e validado em desenvolvimento/homologacao.
+- [x] Rate limit acionado durante testes intensivos do fluxo publicado em homologacao.
 - [ ] Rate limit definitivo para producao ainda pendente, com avaliacao de proxy, Redis, WAF ou API gateway.
 - [ ] Documentacao controlada da API.
 - [ ] Inventario de endpoints.

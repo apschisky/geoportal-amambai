@@ -13,6 +13,12 @@ Ja foram validados em ambiente controlado:
 - API publica experimental definida temporariamente em `https://geoserver.amambai.ms.gov.br/api/`;
 - front-end publicado testado em build controlado chamando a API via HTTPS com `PERSIST_SOLICITACOES=false`;
 - envio simulado exibiu sucesso no modal do Geoportal sem gravacao real no banco;
+- persistencia ligada temporariamente em homologacao e validada de ponta a ponta;
+- API gravou registros no banco de homologacao e a consulta publica por protocolo funcionou;
+- bloqueio `409 Conflict` por solicitacao ativa no mesmo poste validado em fluxo real;
+- rate limit acionado em testes intensivos;
+- usuario restrito da API validado sem permissao de `DELETE`;
+- limpeza de registros de teste realizada com usuario administrativo;
 - healthchecks e scripts de validacao executados no servidor;
 - criacao publica de solicitacao;
 - protocolo real por sequence;
@@ -41,16 +47,18 @@ Antes e depois de testes pontuais, os defaults seguros devem permanecer:
 - [x] CORS restrito a origem oficial do Geoportal, sem wildcard.
 - [x] Decisao temporaria de usar `https://geoserver.amambai.ms.gov.br/api/` para a API experimental.
 - [ ] Evolucao futura `https://geoportal.amambai.ms.gov.br/api/` avaliada por proxy no servidor do front-end ou revisao de DNS/VirtualHost.
-- [ ] Usuario restrito do banco validado.
-- [ ] Permissoes minimas no banco.
+- [x] Usuario restrito do banco validado.
+- [x] Permissoes minimas no banco validadas, incluindo negacao de `DELETE`.
 - [ ] Migrations aplicadas no banco correto.
 - [ ] Sequence de protocolo validada.
 - [ ] Backup do banco realizado antes da ativacao.
 - [ ] Logs sem dados sensiveis.
-- [ ] Rate limit ativo.
+- [x] Rate limit ativo e validado em testes intensivos.
 - [ ] Mensagens publicas sem stack trace, SQL, host ou porta.
 - [ ] Google Forms funcionando como fallback.
 - [x] Ativacao controlada do botao da API validada no front-end publicado com envio simulado.
+- [x] Persistencia em homologacao validada de ponta a ponta com `PERSIST_SOLICITACOES=true` temporario.
+- [x] Limpeza de registros de teste realizada com usuario administrativo.
 - [ ] Ativacao publica permanente do botao da API aprovada apos nova revisao operacional.
 - [ ] Conferir antes de cada build se `apiUrl` esta grafado corretamente e se as flags temporarias voltaram para `false`.
 
@@ -75,6 +83,7 @@ Nao registrar comandos com caminhos reais, credenciais, host real, IP interno ou
 - **Fase A:** API no servidor com persistencia desligada.
 - **Status:** fase iniciada em homologacao; API local em `127.0.0.1:8000`, exposicao controlada via Apache HTTPS em `https://geoserver.amambai.ms.gov.br/api/`, CORS validado para a origem oficial e `PERSIST_SOLICITACOES=false`.
 - **Fase B:** API no servidor com persistencia ligada em homologacao.
+- **Status:** validada de ponta a ponta com `PERSIST_SOLICITACOES=true` temporario, registros confirmados no banco de homologacao, consulta publica funcionando, bloqueio `409` e rate limit validados, limpeza feita por usuario administrativo e `PERSIST_SOLICITACOES=false` restaurado.
 - **Fase C:** front-end com botao experimental visivel apenas para teste controlado.
 - **Fase D:** consulta de protocolo ativada apenas para teste controlado.
 - **Fase E:** avaliar substituicao do Google Forms somente apos estabilidade comprovada.

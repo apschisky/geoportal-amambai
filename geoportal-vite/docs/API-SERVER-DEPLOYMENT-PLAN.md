@@ -70,6 +70,17 @@ Validacoes realizadas no servidor de homologacao:
 - o envio simulado retornou sucesso no modal do Geoportal;
 - com `PERSIST_SOLICITACOES=false`, a API nao gravou novo registro real;
 - a conferencia posterior no banco confirmou ausencia de novo registro real;
+- `PERSIST_SOLICITACOES` foi ativado temporariamente em homologacao fora do Git para validacao completa;
+- o servico de homologacao foi reiniciado e o healthcheck permaneceu ok;
+- o front-end publicado enviou solicitacao real via HTTPS para a API;
+- a API gravou registros no banco de homologacao;
+- a consulta publica por protocolo funcionou sobre os registros de homologacao;
+- o bloqueio `409 Conflict` para duplicidade ativa por poste foi validado com mensagem amigavel;
+- o rate limit foi acionado durante testes intensivos, validando protecao contra excesso de requisicoes;
+- a conferencia no banco confirmou os registros criados em homologacao;
+- o usuario restrito da API nao conseguiu executar `DELETE`, confirmando permissao minima;
+- a limpeza dos registros de teste exigiu usuario administrativo do banco;
+- `PERSIST_SOLICITACOES` foi restaurado para `false` apos a validacao;
 - as flags usadas no build de teste foram restauradas para `false` apos a validacao e nao devem ser commitadas como `true`;
 - atencao operacional: a chave correta de configuracao do endpoint e `apiUrl`; grafia incorreta pode gerar chamada para `/undefined`;
 - origens devem permanecer restritas, sem wildcard;

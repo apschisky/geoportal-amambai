@@ -68,6 +68,8 @@ Registro de proxy/HTTPS: o Apache HTTPS foi configurado para encaminhar `/api/` 
 
 Registro de teste do front-end publicado: o Geoportal publicado foi testado em build controlado com o botao experimental da API habilitado temporariamente. A chamada HTTPS para a API no dominio tecnico do GeoServer funcionou com CORS restrito para a origem oficial e o envio simulado retornou sucesso no modal. Como `PERSIST_SOLICITACOES=false` estava ativo, nao houve gravacao real; a conferencia posterior no banco confirmou ausencia de novo registro. As flags temporarias devem voltar para `false` apos testes e nao devem ser commitadas como `true`. A chave correta para o endpoint de envio e `apiUrl`; erro de grafia pode gerar chamada para `/undefined`.
 
+Registro de persistencia em homologacao: o fluxo completo foi validado com `PERSIST_SOLICITACOES=true` ativado temporariamente fora do Git. O servico de homologacao foi reiniciado, o healthcheck permaneceu ok, o front-end publicado enviou solicitacao real via HTTPS, a API gravou registros no banco de homologacao e a consulta publica por protocolo funcionou. O bloqueio `409 Conflict` por duplicidade ativa no mesmo poste retornou mensagem amigavel, o rate limit foi acionado em testes intensivos e o usuario restrito da API nao conseguiu executar `DELETE`. A limpeza dos registros de teste exigiu usuario administrativo. Ao final, `PERSIST_SOLICITACOES=false` foi restaurado; `enabled=false`, `submitEnabled=false` e `consultaEnabled=false` devem permanecer no repositorio. Google Forms permanece fallback.
+
 ## Endpoints disponiveis
 
 - `GET /api/health`
