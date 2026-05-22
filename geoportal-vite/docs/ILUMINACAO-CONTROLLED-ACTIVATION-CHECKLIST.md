@@ -11,6 +11,8 @@ Ja foram validados em ambiente controlado:
 - proxy reverso Apache HTTPS para `/api/` configurado e validado;
 - CORS validado para a origem oficial do Geoportal, com `ALLOWED_ORIGINS` real fora do Git;
 - API publica experimental definida temporariamente em `https://geoserver.amambai.ms.gov.br/api/`;
+- front-end publicado testado em build controlado chamando a API via HTTPS com `PERSIST_SOLICITACOES=false`;
+- envio simulado exibiu sucesso no modal do Geoportal sem gravacao real no banco;
 - healthchecks e scripts de validacao executados no servidor;
 - criacao publica de solicitacao;
 - protocolo real por sequence;
@@ -48,7 +50,9 @@ Antes e depois de testes pontuais, os defaults seguros devem permanecer:
 - [ ] Rate limit ativo.
 - [ ] Mensagens publicas sem stack trace, SQL, host ou porta.
 - [ ] Google Forms funcionando como fallback.
-- [ ] Ativacao publica do botao da API validada de forma controlada no front-end publicado.
+- [x] Ativacao controlada do botao da API validada no front-end publicado com envio simulado.
+- [ ] Ativacao publica permanente do botao da API aprovada apos nova revisao operacional.
+- [ ] Conferir antes de cada build se `apiUrl` esta grafado corretamente e se as flags temporarias voltaram para `false`.
 
 ## 4. Plano conceitual de deploy no servidor
 
@@ -75,7 +79,7 @@ Nao registrar comandos com caminhos reais, credenciais, host real, IP interno ou
 - **Fase D:** consulta de protocolo ativada apenas para teste controlado.
 - **Fase E:** avaliar substituicao do Google Forms somente apos estabilidade comprovada.
 
-Proxima fase tecnica: testar a ativacao publica controlada no front-end publicado, mantendo flags seguras por padrao e sem substituicao imediata do Google Forms.
+Proxima fase tecnica: avaliar ativacao publica gradual apos teste controlado do front-end publicado, mantendo flags seguras por padrao e sem substituicao imediata do Google Forms.
 
 ## 6. Plano de rollback
 
@@ -85,6 +89,7 @@ Em caso de falha, abuso, instabilidade ou comportamento inesperado:
 - desligar `submitEnabled`;
 - desligar `consultaEnabled`;
 - voltar `PERSIST_SOLICITACOES=false`;
+- restaurar flags temporarias do front-end para `false`;
 - manter Google Forms como canal principal;
 - preservar logs para diagnostico;
 - limpar registros de teste, se necessario;
@@ -99,6 +104,8 @@ Nao ativar publicamente se houver qualquer uma das condicoes abaixo:
 - CORS aberto demais;
 - uso de wildcard em CORS;
 - `ALLOWED_ORIGINS` real versionado no Git;
+- flags experimentais commitadas como `true`;
+- chave `apiUrl` ausente ou grafada incorretamente, gerando chamadas para `/undefined`;
 - tentativa de expor `https://geoportal.amambai.ms.gov.br/api/` sem proxy, DNS/VirtualHost e testes controlados;
 - banco usando usuario privilegiado indevido;
 - ausencia de backup;

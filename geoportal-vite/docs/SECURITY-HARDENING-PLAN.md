@@ -80,7 +80,10 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [ ] Botao de teste da API controlado por feature flag ou configuracao do front-end.
 - [ ] Envio real do botao de teste mantido desligado por padrao com `submitEnabled=false` ate validacao em ambiente controlado.
 - [x] Envio real controlado pelo front-end validado em homologacao com flags ativadas temporariamente, persistencia ativa, retorno `201 Created` e modal publico de sucesso.
+- [x] Front-end publicado testado em build controlado chamando a API HTTPS no dominio tecnico do GeoServer, com CORS restrito funcionando e `PERSIST_SOLICITACOES=false` sem gravacao real.
 - [ ] Restaurar `enabled=false`, `submitEnabled=false` e `PERSIST_SOLICITACOES=false` como padrao seguro apos testes e limpar registros de validacao.
+- [ ] Garantir que flags temporarias de teste nao sejam commitadas como `true`.
+- [ ] Conferir grafia da chave `apiUrl` antes de publicar build experimental, evitando chamadas para `/undefined`.
 - [ ] Google Forms mantido como fallback ate estabilidade comprovada.
 - [ ] Links externos com `rel="noopener noreferrer"`.
 - [ ] Popups sem dados sensiveis.
@@ -118,7 +121,8 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [x] Registrar uso temporario da API publica experimental em `https://geoserver.amambai.ms.gov.br/api/`.
 - [ ] Avaliar futuramente `https://geoportal.amambai.ms.gov.br/api/` com proxy no servidor do front-end ou revisao de DNS/VirtualHost.
 - [ ] Manter `ALLOWED_ORIGINS` real fora do Git e sem wildcard.
-- [ ] Testar ativacao publica controlada do botao da API no front-end publicado.
+- [x] Testar ativacao publica controlada do botao da API no front-end publicado com envio simulado.
+- [ ] Avaliar ativacao publica permanente somente apos revisao operacional.
 - [ ] Garantir que a API grave dados operacionais apenas em `mod_iluminacao`, sem gravar em `plano` ou `web_map`.
 - [ ] Manter persistencia desativada por padrao.
 - [ ] Ativar persistencia apenas em ambiente controlado com usuario restrito e `DATABASE_URL` segura.

@@ -494,9 +494,17 @@ Registro seguro, sem dados sensiveis:
 - A investigacao indicou infraestruturas distintas entre Geoportal e GeoServer, sem registrar IPs reais.
 - Decisao temporaria: manter a API experimental em `https://geoserver.amambai.ms.gov.br/api/`.
 - A rota `https://geoportal.amambai.ms.gov.br/api/` fica como evolucao futura, dependente de proxy no servidor do front-end ou revisao de DNS/VirtualHost.
+- O front-end publicado do Geoportal foi testado em build controlado com o botao experimental da API habilitado temporariamente.
+- A API foi chamada via HTTPS no dominio tecnico do GeoServer.
+- CORS funcionou para a origem oficial do Geoportal.
+- O envio simulado retornou sucesso no modal do Geoportal.
+- Com `PERSIST_SOLICITACOES=false`, nao houve gravacao real.
+- A conferencia posterior no banco confirmou ausencia de novo registro real.
+- As flags temporarias foram restauradas para `false` apos o teste e nao devem ser commitadas como `true`.
+- Atencao operacional: a chave correta de configuracao do endpoint e `apiUrl`; grafia incorreta pode gerar chamada para `/undefined`.
 - Origens devem permanecer restritas, sem wildcard.
 - `PERSIST_SOLICITACOES=false` permanece como padrao seguro nesta fase.
-- A ativacao publica do botao da API ainda depende de teste controlado no front-end publicado.
+- A ativacao publica permanente do botao da API ainda depende de revisao operacional e aprovacao gradual.
 - Google Forms permanece como fallback.
 - Proxima fase: ativacao controlada do front-end experimental publicado.
 - Nenhum usuario real, senha, host real, IP interno, caminho local real, log completo ou `DATABASE_URL` real deve ser registrado no Git.

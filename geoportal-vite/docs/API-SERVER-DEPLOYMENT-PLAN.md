@@ -65,9 +65,16 @@ Validacoes realizadas no servidor de homologacao:
 - a investigacao mostrou que os dominios do Geoportal e do GeoServer usam infraestruturas distintas, sem registrar IPs reais;
 - a API experimental seguira temporariamente em `https://geoserver.amambai.ms.gov.br/api/`;
 - `https://geoportal.amambai.ms.gov.br/api/` fica como opcao futura, dependente de proxy no servidor do front-end ou revisao de DNS/VirtualHost;
+- o front-end publicado do Geoportal foi testado com o botao experimental da API habilitado apenas em build controlado;
+- a chamada HTTPS para a API no dominio tecnico do GeoServer funcionou com CORS restrito para a origem oficial;
+- o envio simulado retornou sucesso no modal do Geoportal;
+- com `PERSIST_SOLICITACOES=false`, a API nao gravou novo registro real;
+- a conferencia posterior no banco confirmou ausencia de novo registro real;
+- as flags usadas no build de teste foram restauradas para `false` apos a validacao e nao devem ser commitadas como `true`;
+- atencao operacional: a chave correta de configuracao do endpoint e `apiUrl`; grafia incorreta pode gerar chamada para `/undefined`;
 - origens devem permanecer restritas, sem wildcard;
 - `PERSIST_SOLICITACOES=false` permanece como padrao seguro nesta fase;
-- a ativacao publica do botao da API ainda depende de teste controlado no front-end publicado.
+- a ativacao publica permanente do botao da API ainda depende de revisao operacional e aprovacao gradual.
 
 ### Producao
 
@@ -105,7 +112,8 @@ A API deve usar usuario restrito, com permissoes minimas:
 9. Testar homologacao com persistencia ligada.
 10. Manter CORS restrito a origem oficial do Geoportal, com `ALLOWED_ORIGINS` real fora do Git.
 11. Manter a API experimental em `https://geoserver.amambai.ms.gov.br/api/` ate decisao de infraestrutura.
-12. Somente depois ativar front-end experimental em teste controlado.
+12. Testar front-end experimental em build controlado, com flags temporarias e restauradas para `false` apos o teste.
+13. Somente depois avaliar ativacao publica gradual.
 
 ## 6. Evolucao futura de dominio
 

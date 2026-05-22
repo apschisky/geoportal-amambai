@@ -97,9 +97,11 @@ A implantacao planejada da API de Iluminacao e no mesmo servidor do PostgreSQL/P
 
 A primeira implantacao de homologacao no servidor foi registrada: API como servico Windows controlado, escutando apenas em `127.0.0.1:8000`, com `PERSIST_SOLICITACOES=false`. A exposicao controlada ocorre via Apache HTTPS em `/api/`.
 
-O proxy reverso Apache HTTPS para `/api/` foi configurado e validado em homologacao, encaminhando para a API local em `127.0.0.1:8000`. Healthchecks, versao, criacao simulada e consulta inexistente com `404` seguro foram validados via HTTPS. GeoServer e Geoportal publico nao foram afetados. CORS foi validado para a origem oficial do Geoportal; a configuracao real de `ALLOWED_ORIGINS` fica fora do Git, sem wildcard. Nesta fase, a API experimental seguira em `https://geoserver.amambai.ms.gov.br/api/`, enquanto o front-end oficial permanece em `https://geoportal.amambai.ms.gov.br`. A ativacao publica do botao da API ainda depende de teste controlado no front-end publicado.
+O proxy reverso Apache HTTPS para `/api/` foi configurado e validado em homologacao, encaminhando para a API local em `127.0.0.1:8000`. Healthchecks, versao, criacao simulada e consulta inexistente com `404` seguro foram validados via HTTPS. GeoServer e Geoportal publico nao foram afetados. CORS foi validado para a origem oficial do Geoportal; a configuracao real de `ALLOWED_ORIGINS` fica fora do Git, sem wildcard. Nesta fase, a API experimental seguira em `https://geoserver.amambai.ms.gov.br/api/`, enquanto o front-end oficial permanece em `https://geoportal.amambai.ms.gov.br`. A ativacao publica permanente do botao da API ainda depende de revisao operacional e aprovacao gradual.
 
 A alternativa `https://geoportal.amambai.ms.gov.br/api/` fica registrada como evolucao futura de infraestrutura. Ela depende de proxy no servidor do front-end ou revisao de DNS/VirtualHost, ja que a investigacao indicou dominios em infraestruturas distintas, sem registrar IPs reais nesta documentacao.
+
+O front-end publicado em `https://geoportal.amambai.ms.gov.br` foi testado em build controlado com o botao experimental da API habilitado temporariamente. A chamada HTTPS para `https://geoserver.amambai.ms.gov.br/api/` funcionou com CORS restrito para a origem oficial, e o envio simulado retornou sucesso no modal do Geoportal. Como `PERSIST_SOLICITACOES=false` estava ativo, nao houve gravacao real; a conferencia posterior no banco confirmou ausencia de novo registro. As flags temporarias devem voltar para `false` apos testes e nao devem ser commitadas como `true`. A chave correta de configuracao do endpoint e `apiUrl`; grafia incorreta pode causar chamada para `/undefined`.
 
 Separacao de schemas: `plano` concentra dados tecnicos/editaveis do SIG, `web_map` concentra dados publicados para GeoServer/Geoportal, e `mod_iluminacao` concentra dados operacionais da API e do futuro modulo interno. A API de Iluminacao nao deve gravar em `plano` nem em `web_map`.
 
@@ -244,6 +246,8 @@ Auditoria deve ser obrigatoria para mudancas de status, observacoes, anexos, fin
 - A consulta publica por protocolo foi preparada no front-end por `consultaEnabled=false`, com link discreto no modal de solicitacao pela API; nao ha menu global de consultas nesta etapa.
 - O modal de sucesso permite copiar somente o protocolo, e o modal de consulta formata o protocolo no padrao `IP-YYYY-NNNNNN` para reduzir erro de digitacao.
 - Apos validacoes, `enabled=false`, `submitEnabled=false` e `PERSIST_SOLICITACOES=false` devem permanecer como padrao seguro; registros de teste devem ser limpos.
+- Flags temporarias usadas em build de teste publicado devem ser restauradas para `false` antes de commit.
+- A configuracao do endpoint de envio deve usar a chave `apiUrl`; erro de grafia pode direcionar a chamada para `/undefined`.
 - O Google Forms permanece como fallback enquanto a API estiver em validacao.
 - A substituicao definitiva do Forms so deve ocorrer apos testes em homologacao/producao, estabilidade de rede, logs, monitoramento e plano de rollback validados.
 
