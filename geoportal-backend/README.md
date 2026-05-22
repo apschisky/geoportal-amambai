@@ -62,9 +62,9 @@ Antes de qualquer ativacao publica da API de Iluminacao, siga o checklist `geopo
 
 O plano de implantacao em servidor esta em `geoportal-vite/docs/API-SERVER-DEPLOYMENT-PLAN.md`. A decisao arquitetural e implantar a API no servidor PostgreSQL/PostGIS como servico controlado, com variaveis reais fora do Git, usuario restrito de banco e uso operacional do schema `mod_iluminacao`, sem gravar em `plano` ou `web_map`.
 
-Registro de homologacao: a API foi implantada no servidor PostgreSQL/PostGIS como servico Windows controlado, sem exposicao externa, escutando apenas em `127.0.0.1:8000`. Os testes automatizados, healthchecks, solicitacao simulada e consulta inexistente com `404` seguro foram validados no servidor. `PERSIST_SOLICITACOES=false` permanece como padrao seguro; proxy reverso e HTTPS serao etapa posterior.
+Registro de homologacao: a API foi implantada no servidor PostgreSQL/PostGIS como servico Windows controlado, escutando apenas em `127.0.0.1:8000`. Os testes automatizados, healthchecks, solicitacao simulada e consulta inexistente com `404` seguro foram validados no servidor. `PERSIST_SOLICITACOES=false` permanece como padrao seguro; a exposicao controlada ocorre via Apache HTTPS em `/api/`.
 
-Registro de proxy/HTTPS: o Apache HTTPS foi configurado para encaminhar `/api/` ao servico local da API em `127.0.0.1:8000`. Healthcheck, health de Iluminacao, versao, criacao simulada com `PERSIST_SOLICITACOES=false` e consulta inexistente com `404` seguro foram validados via HTTPS. GeoServer e Geoportal publico permaneceram funcionando. Antes de ativar o front-end publico, CORS deve ser validado para a origem oficial do Geoportal; Google Forms permanece fallback.
+Registro de proxy/HTTPS: o Apache HTTPS foi configurado para encaminhar `/api/` ao servico local da API em `127.0.0.1:8000`. Healthcheck, health de Iluminacao, versao, criacao simulada com `PERSIST_SOLICITACOES=false` e consulta inexistente com `404` seguro foram validados via HTTPS. GeoServer e Geoportal publico permaneceram funcionando. CORS foi validado para a origem oficial do Geoportal, com `ALLOWED_ORIGINS` real fora do Git e sem wildcard. A ativacao publica do botao da API ainda depende de teste controlado no front-end publicado; Google Forms permanece fallback.
 
 ## Endpoints disponiveis
 
@@ -153,6 +153,8 @@ Os status tecnicos usam valores padronizados em minusculo e sem acento. Rotulos 
 As origens permitidas sao lidas da configuracao `ALLOWED_ORIGINS`, em lista separada por virgulas. Para esta POC local, o padrao permite `http://localhost:5195` e `http://127.0.0.1:5195`.
 
 Nao usar `*` como origem permitida em producao.
+
+Em homologacao, CORS foi validado para a origem oficial do Geoportal apos ajuste do ambiente real fora do Git e reinicio do servico. `ALLOWED_ORIGINS` real nao deve ser versionado, e as origens devem permanecer restritas.
 
 ## Seguranca
 

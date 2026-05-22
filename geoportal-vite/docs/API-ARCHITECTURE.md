@@ -95,9 +95,9 @@ A API usa `DATABASE_URL` por variavel de ambiente ou arquivo local nao versionad
 
 A implantacao planejada da API de Iluminacao e no mesmo servidor do PostgreSQL/PostGIS, como servico controlado, nunca no computador de desenvolvimento. O plano tecnico esta em `docs/API-SERVER-DEPLOYMENT-PLAN.md`.
 
-A primeira implantacao de homologacao no servidor foi registrada: API como servico Windows controlado, escutando apenas em `127.0.0.1:8000`, sem exposicao externa, com `PERSIST_SOLICITACOES=false`. Proxy reverso e HTTPS permanecem etapa posterior.
+A primeira implantacao de homologacao no servidor foi registrada: API como servico Windows controlado, escutando apenas em `127.0.0.1:8000`, com `PERSIST_SOLICITACOES=false`. A exposicao controlada ocorre via Apache HTTPS em `/api/`.
 
-O proxy reverso Apache HTTPS para `/api/` foi configurado e validado em homologacao, encaminhando para a API local em `127.0.0.1:8000`. Healthchecks, versao, criacao simulada e consulta inexistente com `404` seguro foram validados via HTTPS. GeoServer e Geoportal publico nao foram afetados. Antes de ativar o front-end publico, CORS deve ser validado para a origem oficial do Geoportal.
+O proxy reverso Apache HTTPS para `/api/` foi configurado e validado em homologacao, encaminhando para a API local em `127.0.0.1:8000`. Healthchecks, versao, criacao simulada e consulta inexistente com `404` seguro foram validados via HTTPS. GeoServer e Geoportal publico nao foram afetados. CORS foi validado para a origem oficial do Geoportal; a configuracao real de `ALLOWED_ORIGINS` fica fora do Git, sem wildcard. A ativacao publica do botao da API ainda depende de teste controlado no front-end publicado.
 
 Separacao de schemas: `plano` concentra dados tecnicos/editaveis do SIG, `web_map` concentra dados publicados para GeoServer/Geoportal, e `mod_iluminacao` concentra dados operacionais da API e do futuro modulo interno. A API de Iluminacao nao deve gravar em `plano` nem em `web_map`.
 
@@ -201,6 +201,8 @@ Auditoria deve ser obrigatoria para mudancas de status, observacoes, anexos, fin
 
 - CORS restrito aos dominios oficiais.
 - Nao usar wildcard em producao.
+- `ALLOWED_ORIGINS` real deve ficar fora do Git.
+- A origem oficial do Geoportal foi validada em homologacao para acesso aos endpoints publicados via Apache HTTPS.
 - Separar configuracao de desenvolvimento e producao.
 - Permitir apenas metodos e headers necessarios.
 - Revisar CORS antes de publicar endpoints internos.

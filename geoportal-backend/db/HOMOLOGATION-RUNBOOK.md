@@ -451,7 +451,7 @@ Pontos obrigatorios:
 
 ## Registro de implantacao da API como servico Windows de homologacao
 
-A API de Iluminacao Publica foi implantada no servidor PostgreSQL/PostGIS em ambiente de homologacao, ainda sem exposicao externa.
+A API de Iluminacao Publica foi implantada no servidor PostgreSQL/PostGIS em ambiente de homologacao. Inicialmente ficou sem exposicao externa e, em etapa posterior, passou a ser exposta de forma controlada via Apache HTTPS em `/api/`.
 
 Registro seguro, sem dados sensiveis:
 
@@ -485,7 +485,14 @@ Registro seguro, sem dados sensiveis:
 - GeoServer continuou acessivel.
 - Geoportal publico continuou abrindo e consumindo camadas do GeoServer.
 - A API continua rodando internamente em `127.0.0.1:8000`; a exposicao publica ocorre via Apache HTTPS.
-- Antes de ativar o front-end publico, validar CORS para a origem oficial do Geoportal.
+- CORS foi validado para a origem oficial do Geoportal.
+- Antes do ajuste, origem nao permitida retornava `400 Disallowed CORS origin`.
+- O arquivo real de ambiente de homologacao foi ajustado fora do Git para incluir a origem oficial em `ALLOWED_ORIGINS`.
+- O servico de homologacao foi reiniciado.
+- Apos o ajuste, a origem oficial passou a ser permitida.
+- Origens devem permanecer restritas, sem wildcard.
+- `PERSIST_SOLICITACOES=false` permanece como padrao seguro nesta fase.
+- A ativacao publica do botao da API ainda depende de teste controlado no front-end publicado.
 - Google Forms permanece como fallback.
-- Proxima fase: validar CORS e ativacao controlada do front-end experimental.
+- Proxima fase: ativacao controlada do front-end experimental publicado.
 - Nenhum usuario real, senha, host real, IP interno, caminho local real, log completo ou `DATABASE_URL` real deve ser registrado no Git.

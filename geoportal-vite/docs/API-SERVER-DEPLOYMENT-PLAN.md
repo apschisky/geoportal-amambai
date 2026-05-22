@@ -7,8 +7,8 @@ Este documento registra o plano tecnico conceitual para implantar a API FastAPI 
 - A API nao deve rodar em computador de desenvolvimento.
 - A API deve ser implantada no servidor PostgreSQL/PostGIS como servico controlado.
 - A API deve usar variaveis reais fora do Git.
-- A API deve ser exposta de forma controlada, com Apache/proxy reverso/HTTPS em etapa posterior.
-- O CORS deve ser restrito ao dominio oficial do Geoportal.
+- A API deve ser exposta de forma controlada por Apache/proxy reverso/HTTPS.
+- O CORS deve ser restrito a origem oficial do Geoportal, sem wildcard.
 
 ## 2. Separacao de schemas
 
@@ -55,7 +55,13 @@ Validacoes realizadas no servidor de homologacao:
 - `POST /api/public/iluminacao/consulta` via HTTPS retornou `404` seguro para protocolo inexistente;
 - GeoServer continuou acessivel;
 - Geoportal publico continuou abrindo e consumindo camadas do GeoServer;
-- antes de ativar o front-end publico, CORS deve ser validado para a origem oficial do Geoportal.
+- CORS foi validado para a origem oficial do Geoportal;
+- antes do ajuste, origem nao permitida retornava `400 Disallowed CORS origin`;
+- `ALLOWED_ORIGINS` real foi ajustado fora do Git e o servico de homologacao foi reiniciado;
+- apos o ajuste, a origem oficial passou a ser permitida;
+- origens devem permanecer restritas, sem wildcard;
+- `PERSIST_SOLICITACOES=false` permanece como padrao seguro nesta fase;
+- a ativacao publica do botao da API ainda depende de teste controlado no front-end publicado.
 
 ### Producao
 
@@ -91,8 +97,8 @@ A API deve usar usuario restrito, com permissoes minimas:
 7. Testar healthcheck.
 8. Testar endpoints com persistencia desligada.
 9. Testar homologacao com persistencia ligada.
-10. Validar CORS para a origem oficial do Geoportal.
-11. Somente depois ativar front-end experimental.
+10. Manter CORS restrito a origem oficial do Geoportal, com `ALLOWED_ORIGINS` real fora do Git.
+11. Somente depois ativar front-end experimental em teste controlado.
 
 ## 6. Relacao com login e painel interno
 

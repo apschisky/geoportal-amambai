@@ -9,6 +9,7 @@ Ja foram validados em ambiente controlado:
 - API implantada no servidor PostgreSQL/PostGIS como servico Windows de homologacao;
 - servico de homologacao escutando internamente em `127.0.0.1:8000`;
 - proxy reverso Apache HTTPS para `/api/` configurado e validado;
+- CORS validado para a origem oficial do Geoportal, com `ALLOWED_ORIGINS` real fora do Git;
 - healthchecks e scripts de validacao executados no servidor;
 - criacao publica de solicitacao;
 - protocolo real por sequence;
@@ -34,7 +35,7 @@ Antes e depois de testes pontuais, os defaults seguros devem permanecer:
 - [ ] Plano `docs/API-SERVER-DEPLOYMENT-PLAN.md` revisado.
 - [x] Servico da API configurado como servico Windows controlado em homologacao.
 - [x] HTTPS e proxy reverso `/api/` configurados e validados em homologacao.
-- [ ] CORS restrito ao dominio oficial do Geoportal.
+- [x] CORS restrito a origem oficial do Geoportal, sem wildcard.
 - [ ] Usuario restrito do banco validado.
 - [ ] Permissoes minimas no banco.
 - [ ] Migrations aplicadas no banco correto.
@@ -44,6 +45,7 @@ Antes e depois de testes pontuais, os defaults seguros devem permanecer:
 - [ ] Rate limit ativo.
 - [ ] Mensagens publicas sem stack trace, SQL, host ou porta.
 - [ ] Google Forms funcionando como fallback.
+- [ ] Ativacao publica do botao da API validada de forma controlada no front-end publicado.
 
 ## 4. Plano conceitual de deploy no servidor
 
@@ -64,13 +66,13 @@ Nao registrar comandos com caminhos reais, credenciais, host real, IP interno ou
 ## 5. Plano de ativacao gradual
 
 - **Fase A:** API no servidor com persistencia desligada.
-- **Status:** fase iniciada em homologacao; API local em `127.0.0.1:8000`, exposicao controlada via Apache HTTPS em `/api/`, com `PERSIST_SOLICITACOES=false`.
+- **Status:** fase iniciada em homologacao; API local em `127.0.0.1:8000`, exposicao controlada via Apache HTTPS em `/api/`, CORS validado para a origem oficial e `PERSIST_SOLICITACOES=false`.
 - **Fase B:** API no servidor com persistencia ligada em homologacao.
 - **Fase C:** front-end com botao experimental visivel apenas para teste controlado.
 - **Fase D:** consulta de protocolo ativada apenas para teste controlado.
 - **Fase E:** avaliar substituicao do Google Forms somente apos estabilidade comprovada.
 
-Proxima fase tecnica: validar CORS para a origem oficial do Geoportal e manter a ativacao publica controlada por flags, sem substituicao imediata do Google Forms.
+Proxima fase tecnica: testar a ativacao publica controlada no front-end publicado, mantendo flags seguras por padrao e sem substituicao imediata do Google Forms.
 
 ## 6. Plano de rollback
 
@@ -92,6 +94,8 @@ Nao ativar publicamente se houver qualquer uma das condicoes abaixo:
 - API fora do servidor correto;
 - plano de deploy no servidor nao revisado;
 - CORS aberto demais;
+- uso de wildcard em CORS;
+- `ALLOWED_ORIGINS` real versionado no Git;
 - banco usando usuario privilegiado indevido;
 - ausencia de backup;
 - ausencia de plano de rollback;
