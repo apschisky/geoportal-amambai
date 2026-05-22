@@ -519,3 +519,32 @@ Registro seguro, sem dados sensiveis:
 - Google Forms permanece como fallback.
 - Proxima fase: ativacao controlada do front-end experimental publicado.
 - Nenhum usuario real, senha, host real, IP interno, caminho local real, log completo ou `DATABASE_URL` real deve ser registrado no Git.
+
+## Registro de preparacao da producao local da API
+
+A estrutura de producao da API de Iluminacao Publica foi preparada no banco ativo e no servidor, ainda sem ativacao publica de gravacao.
+
+Registro seguro, sem dados sensiveis:
+
+- Backup manual do banco ativo foi feito antes da criacao do schema `mod_iluminacao`.
+- Backup foi validado como legivel.
+- Banco ativo recebeu o schema `mod_iluminacao`.
+- Tabela `mod_iluminacao.solicitacoes` foi criada.
+- Sequences `mod_iluminacao.solicitacoes_id_seq` e `mod_iluminacao.solicitacoes_protocolo_seq` foram criadas.
+- Usuario restrito de producao foi criado sem registrar senha no Git.
+- Login real do usuario restrito foi validado.
+- Permissoes validadas: `CONNECT`, `USAGE` no schema, `SELECT`/`INSERT` na tabela e `USAGE`/`SELECT` nas sequences.
+- Permissoes de `UPDATE` e `DELETE` foram negadas ao usuario restrito.
+- Arquivo real de ambiente de producao foi criado fora do Git.
+- Producao permanece com `PERSIST_SOLICITACOES=false`.
+- Script de execucao de producao foi criado sem registrar caminhos sensiveis nesta documentacao.
+- Servico Windows `GeoportalAPIProducao` foi criado e iniciado.
+- Homologacao permanece em `127.0.0.1:8000`.
+- Producao local roda em `127.0.0.1:8001`.
+- Healthcheck de producao passou.
+- `POST` simulado em producao retornou sucesso, mas nao gravou no banco.
+- Banco ativo permaneceu sem solicitacoes reais criadas pela API.
+- API de producao ainda nao foi exposta no Apache.
+- Proxy publico `/api/` ainda nao deve ser apontado para producao ate validacao e autorizacao final.
+- Google Forms permanece como fallback.
+- Nenhum usuario real, senha, host real, IP interno, caminho local real, log completo ou `DATABASE_URL` real deve ser registrado no Git.

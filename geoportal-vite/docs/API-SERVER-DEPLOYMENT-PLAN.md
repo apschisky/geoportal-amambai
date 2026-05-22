@@ -94,6 +94,29 @@ Validacoes realizadas no servidor de homologacao:
 - Ativar somente apos backup, migrations, usuario restrito e validacao controlada.
 - Manter Google Forms como fallback ate estabilidade comprovada.
 
+Registro de preparacao da producao local:
+
+- backup manual do banco ativo foi feito antes da criacao do schema `mod_iluminacao`;
+- backup foi validado como legivel;
+- banco ativo recebeu o schema `mod_iluminacao`;
+- tabela `mod_iluminacao.solicitacoes` foi criada;
+- sequences `mod_iluminacao.solicitacoes_id_seq` e `mod_iluminacao.solicitacoes_protocolo_seq` foram criadas;
+- usuario restrito de producao foi criado e teve login validado, sem registrar senha ou string de conexao;
+- permissoes minimas foram validadas: `CONNECT`, `USAGE` no schema, `SELECT`/`INSERT` na tabela e `USAGE`/`SELECT` nas sequences;
+- permissoes de `UPDATE` e `DELETE` foram negadas ao usuario restrito;
+- arquivo real de ambiente de producao foi criado fora do Git;
+- producao permanece com `PERSIST_SOLICITACOES=false`;
+- script de execucao de producao foi criado sem registrar caminhos sensiveis;
+- servico Windows `GeoportalAPIProducao` foi criado e iniciado;
+- homologacao permanece em `127.0.0.1:8000`;
+- producao local roda em `127.0.0.1:8001`;
+- healthcheck de producao passou;
+- `POST` simulado em producao retornou sucesso e nao gravou no banco;
+- banco ativo permaneceu sem solicitacoes reais criadas pela API;
+- Apache ainda nao foi alterado para apontar `/api/` para producao;
+- o proxy publico `/api/` nao deve ser apontado para producao antes de validacao e autorizacao final;
+- Google Forms permanece como fallback.
+
 ## 4. Usuarios e permissoes de banco
 
 A API nunca deve usar superuser.
@@ -124,7 +147,8 @@ A API deve usar usuario restrito, com permissoes minimas:
 10. Manter CORS restrito a origem oficial do Geoportal, com `ALLOWED_ORIGINS` real fora do Git.
 11. Manter a API experimental em `https://geoserver.amambai.ms.gov.br/api/` ate decisao de infraestrutura.
 12. Testar front-end experimental em build controlado, com flags temporarias e restauradas para `false` apos o teste.
-13. Somente depois avaliar ativacao publica gradual.
+13. Preparar producao local com `PERSIST_SOLICITACOES=false`, servico separado e sem apontar o Apache publico para producao.
+14. Somente depois avaliar ativacao publica gradual.
 
 ## 6. Evolucao futura de dominio
 

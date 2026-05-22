@@ -82,6 +82,9 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [x] Envio real controlado pelo front-end validado em homologacao com flags ativadas temporariamente, persistencia ativa, retorno `201 Created` e modal publico de sucesso.
 - [x] Front-end publicado testado em build controlado chamando a API HTTPS no dominio tecnico do GeoServer, com CORS restrito funcionando e `PERSIST_SOLICITACOES=false` sem gravacao real.
 - [x] Fluxo completo com persistencia ligada validado em homologacao: gravacao, consulta publica por protocolo, bloqueio `409`, rate limit e limpeza controlada.
+- [x] Estrutura local de producao preparada com backup validado, schema/tabela/sequences, usuario restrito, servico `GeoportalAPIProducao` e `PERSIST_SOLICITACOES=false`.
+- [x] Producao local validada em `127.0.0.1:8001` com healthcheck e `POST` simulado sem gravacao real.
+- [ ] Apache publico `/api/` apontado para producao somente apos autorizacao final.
 - [ ] Restaurar `enabled=false`, `submitEnabled=false` e `PERSIST_SOLICITACOES=false` como padrao seguro apos testes e limpar registros de validacao.
 - [ ] Garantir que flags temporarias de teste nao sejam commitadas como `true`.
 - [ ] Conferir grafia da chave `apiUrl` antes de publicar build experimental, evitando chamadas para `/undefined`.
@@ -129,6 +132,7 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [x] Ativar persistencia apenas em ambiente controlado com usuario restrito e `DATABASE_URL` segura.
 - [x] Padrao de usuario restrito da API validado em homologacao, sem superuser e sem acesso direto a schemas nao necessarios.
 - [x] Usuario restrito da API sem permissao de `DELETE`; limpeza de testes exige usuario administrativo.
+- [x] Usuario restrito de producao validado sem `UPDATE` e sem `DELETE`.
 - [ ] Investigar estabilidade de rede, firewall e antivirus entre API e PostgreSQL antes de uso continuo.
 - [x] Deteccao leve de duplicidade suspeita implementada e validada antes de rate limit.
 - [x] Rate limit inicial em memoria implementado e validado em desenvolvimento/homologacao.

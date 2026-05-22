@@ -19,6 +19,9 @@ Ja foram validados em ambiente controlado:
 - rate limit acionado em testes intensivos;
 - usuario restrito da API validado sem permissao de `DELETE`;
 - limpeza de registros de teste realizada com usuario administrativo;
+- producao local preparada com backup validado, schema/tabela/sequences no banco ativo, usuario restrito, servico `GeoportalAPIProducao` e `PERSIST_SOLICITACOES=false`;
+- producao local validada em `127.0.0.1:8001` com `POST` simulado sem gravacao real;
+- Apache publico ainda nao aponta `/api/` para producao;
 - healthchecks e scripts de validacao executados no servidor;
 - criacao publica de solicitacao;
 - protocolo real por sequence;
@@ -52,6 +55,12 @@ Antes e depois de testes pontuais, os defaults seguros devem permanecer:
 - [ ] Migrations aplicadas no banco correto.
 - [ ] Sequence de protocolo validada.
 - [ ] Backup do banco realizado antes da ativacao.
+- [x] Backup manual do banco ativo realizado e validado antes da criacao do schema de producao.
+- [x] Schema, tabela e sequences do modulo criados no banco ativo.
+- [x] Servico Windows `GeoportalAPIProducao` criado e iniciado em producao local.
+- [x] Separacao local validada: homologacao em `127.0.0.1:8000` e producao em `127.0.0.1:8001`.
+- [x] `POST` simulado em producao validado sem gravacao no banco ativo.
+- [ ] Apache publico `/api/` apontado para producao somente apos validacao e autorizacao final.
 - [ ] Logs sem dados sensiveis.
 - [x] Rate limit ativo e validado em testes intensivos.
 - [ ] Mensagens publicas sem stack trace, SQL, host ou porta.
@@ -84,6 +93,8 @@ Nao registrar comandos com caminhos reais, credenciais, host real, IP interno ou
 - **Status:** fase iniciada em homologacao; API local em `127.0.0.1:8000`, exposicao controlada via Apache HTTPS em `https://geoserver.amambai.ms.gov.br/api/`, CORS validado para a origem oficial e `PERSIST_SOLICITACOES=false`.
 - **Fase B:** API no servidor com persistencia ligada em homologacao.
 - **Status:** validada de ponta a ponta com `PERSIST_SOLICITACOES=true` temporario, registros confirmados no banco de homologacao, consulta publica funcionando, bloqueio `409` e rate limit validados, limpeza feita por usuario administrativo e `PERSIST_SOLICITACOES=false` restaurado.
+- **Fase C0:** producao local preparada sem gravacao publica.
+- **Status:** banco ativo recebeu estrutura `mod_iluminacao`, usuario restrito foi validado sem `UPDATE`/`DELETE`, servico `GeoportalAPIProducao` roda em `127.0.0.1:8001`, `PERSIST_SOLICITACOES=false`, `POST` simulado nao gravou no banco e Apache publico ainda nao aponta `/api/` para producao.
 - **Fase C:** front-end com botao experimental visivel apenas para teste controlado.
 - **Fase D:** consulta de protocolo ativada apenas para teste controlado.
 - **Fase E:** avaliar substituicao do Google Forms somente apos estabilidade comprovada.
@@ -99,6 +110,7 @@ Em caso de falha, abuso, instabilidade ou comportamento inesperado:
 - desligar `consultaEnabled`;
 - voltar `PERSIST_SOLICITACOES=false`;
 - restaurar flags temporarias do front-end para `false`;
+- manter o Apache publico sem apontar `/api/` para producao, se a autorizacao final ainda nao ocorreu;
 - manter Google Forms como canal principal;
 - preservar logs para diagnostico;
 - limpar registros de teste, se necessario;
@@ -117,6 +129,8 @@ Nao ativar publicamente se houver qualquer uma das condicoes abaixo:
 - chave `apiUrl` ausente ou grafada incorretamente, gerando chamadas para `/undefined`;
 - tentativa de expor `https://geoportal.amambai.ms.gov.br/api/` sem proxy, DNS/VirtualHost e testes controlados;
 - banco usando usuario privilegiado indevido;
+- usuario restrito de producao com `UPDATE` ou `DELETE`;
+- Apache publico apontado para producao sem autorizacao final;
 - ausencia de backup;
 - ausencia de plano de rollback;
 - ausencia de logs;
