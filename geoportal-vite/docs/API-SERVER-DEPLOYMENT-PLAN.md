@@ -124,8 +124,16 @@ Registro de preparacao da producao local:
 - CORS restrito foi revalidado: origem oficial permitida e origem invalida bloqueada com `400`;
 - Geoportal publico abriu normalmente;
 - camadas do GeoServer continuaram funcionando;
-- a API de producao ainda nao esta com gravacao real ativa no banco;
-- a ativacao real com `PERSIST_SOLICITACOES=true` depende de autorizacao final;
+- ativacao real controlada em producao foi realizada com `PERSIST_SOLICITACOES=true` ativado fora do Git;
+- `GeoportalAPIProducao` foi reiniciado apos a alteracao;
+- front-end publicado enviou solicitacao real por poste;
+- front-end publicado enviou solicitacao real por ponto manual;
+- consulta publica dos protocolos gerados funcionou;
+- bloqueio de duplicidade ativa por poste funcionou com mensagem amigavel;
+- botao Tracar rota continuou funcionando;
+- botao de solicitacao via Google Forms continuou funcionando;
+- Geoportal publico, GeoServer e camadas continuaram funcionando apos a ativacao real;
+- proxima evolucao recomendada: modulo interno para triagem, acompanhamento e encerramento das solicitacoes;
 - Google Forms permanece como fallback.
 
 ## 4. Usuarios e permissoes de banco
@@ -160,7 +168,8 @@ A API deve usar usuario restrito, com permissoes minimas:
 12. Testar front-end experimental em build controlado, com flags temporarias e restauradas para `false` apos o teste.
 13. Preparar producao local com `PERSIST_SOLICITACOES=false` e servico separado.
 14. Validar pre-producao com Apache publico `/api/` apontando para `GeoportalAPIProducao`, ainda sem gravacao real.
-15. Somente depois avaliar ativacao real com `PERSIST_SOLICITACOES=true`, mediante autorizacao final.
+15. Registrar ativacao real controlada com `PERSIST_SOLICITACOES=true` fora do Git, mantendo Google Forms como fallback.
+16. Evoluir para modulo interno de triagem, acompanhamento e encerramento das solicitacoes.
 
 ## 6. Evolucao futura de dominio
 

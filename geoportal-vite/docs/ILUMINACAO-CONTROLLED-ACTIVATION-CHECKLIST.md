@@ -25,6 +25,12 @@ Ja foram validados em ambiente controlado:
 - `/api/version` via HTTPS retornou ambiente `producao`;
 - CORS restrito revalidado com origem oficial permitida e origem invalida bloqueada;
 - Geoportal publico, GeoServer e camadas permaneceram funcionando;
+- ativacao real controlada em producao realizada com `PERSIST_SOLICITACOES=true` fora do Git;
+- envio real por poste e por ponto manual funcionou no front-end publicado;
+- consulta publica dos protocolos gerados funcionou;
+- duplicidade ativa por poste retornou mensagem amigavel;
+- botao Tracar rota e botao do Google Forms continuaram funcionando;
+- proxima fase recomendada: modulo interno de gestao, triagem, acompanhamento e encerramento;
 - healthchecks e scripts de validacao executados no servidor;
 - criacao publica de solicitacao;
 - protocolo real por sequence;
@@ -67,7 +73,12 @@ Antes e depois de testes pontuais, os defaults seguros devem permanecer:
 - [x] `/api/version` via HTTPS retornando ambiente `producao`.
 - [x] CORS restrito revalidado em pre-producao.
 - [x] Geoportal publico, GeoServer e camadas validados sem impacto.
-- [ ] Gravacao real em producao com `PERSIST_SOLICITACOES=true` autorizada somente apos decisao final.
+- [x] Gravacao real em producao ativada de forma controlada com `PERSIST_SOLICITACOES=true` fora do Git.
+- [x] Envio real por poste validado no front-end publicado.
+- [x] Envio real por ponto manual validado no front-end publicado.
+- [x] Consulta publica dos protocolos gerados validada.
+- [x] Bloqueio de duplicidade ativa por poste validado com mensagem amigavel.
+- [x] Botao Tracar rota, Google Forms, Geoportal publico, GeoServer e camadas validados apos ativacao real.
 - [ ] Logs sem dados sensiveis.
 - [x] Rate limit ativo e validado em testes intensivos.
 - [ ] Mensagens publicas sem stack trace, SQL, host ou porta.
@@ -104,11 +115,14 @@ Nao registrar comandos com caminhos reais, credenciais, host real, IP interno ou
 - **Status:** banco ativo recebeu estrutura `mod_iluminacao`, usuario restrito foi validado sem `UPDATE`/`DELETE`, servico `GeoportalAPIProducao` roda em `127.0.0.1:8001`, `PERSIST_SOLICITACOES=false` e `POST` simulado nao gravou no banco.
 - **Fase C1:** pre-producao com Apache publico `/api/` apontando para `GeoportalAPIProducao`.
 - **Status:** validada via HTTPS com ambiente `producao`, health ok, protocolo simulado no front-end publicado, banco ativo sem solicitacoes, CORS restrito revalidado e Geoportal/GeoServer sem impacto.
+- **Fase C2:** ativacao real controlada em producao.
+- **Status:** `PERSIST_SOLICITACOES=true` ativado fora do Git, `GeoportalAPIProducao` reiniciado, envios reais por poste e ponto manual funcionando, consulta publica dos protocolos gerados funcionando, bloqueio de duplicidade ativa validado e Google Forms mantido como fallback.
 - **Fase C:** front-end com botao experimental visivel apenas para teste controlado.
 - **Fase D:** consulta de protocolo ativada apenas para teste controlado.
-- **Fase E:** avaliar substituicao do Google Forms somente apos estabilidade comprovada.
+- **Fase E:** estabilizar transicao e manter Google Forms como fallback ate decisao administrativa.
+- **Fase F:** modulo interno de gestao, triagem, acompanhamento e encerramento das solicitacoes.
 
-Proxima fase tecnica: avaliar ativacao publica gradual apos teste controlado do front-end publicado, mantendo flags seguras por padrao e sem substituicao imediata do Google Forms.
+Proxima fase tecnica: desenvolver modulo interno de gestao/triagem/acompanhamento/encerramento, mantendo Google Forms como fallback durante o periodo de transicao.
 
 ## 6. Plano de rollback
 
@@ -139,7 +153,7 @@ Nao ativar publicamente se houver qualquer uma das condicoes abaixo:
 - tentativa de expor `https://geoportal.amambai.ms.gov.br/api/` sem proxy, DNS/VirtualHost e testes controlados;
 - banco usando usuario privilegiado indevido;
 - usuario restrito de producao com `UPDATE` ou `DELETE`;
-- `PERSIST_SOLICITACOES=true` em producao sem autorizacao final;
+- `PERSIST_SOLICITACOES=true` em producao sem plano de monitoramento, rollback e autorizacao;
 - Apache publico apontado para producao sem backup, validacao de sintaxe e rollback;
 - ausencia de backup;
 - ausencia de plano de rollback;

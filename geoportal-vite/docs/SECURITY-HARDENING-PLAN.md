@@ -86,7 +86,11 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [x] Producao local validada em `127.0.0.1:8001` com healthcheck e `POST` simulado sem gravacao real.
 - [x] Pre-producao validada com Apache publico `/api/` apontando para `GeoportalAPIProducao` em `127.0.0.1:8001`, ainda com `PERSIST_SOLICITACOES=false`.
 - [x] `/api/version` via HTTPS retornando ambiente `producao`, CORS restrito revalidado e Geoportal/GeoServer sem impacto.
-- [ ] Gravacao real em producao com `PERSIST_SOLICITACOES=true` somente apos autorizacao final.
+- [x] Ativacao real controlada em producao realizada com `PERSIST_SOLICITACOES=true` fora do Git.
+- [x] Envios reais por poste e por ponto manual validados no front-end publicado.
+- [x] Consulta publica dos protocolos gerados e bloqueio de duplicidade ativa por poste validados.
+- [x] Botao Tracar rota, Google Forms, Geoportal publico, GeoServer e camadas permaneceram funcionando.
+- [ ] Desenvolver modulo interno de gestao, triagem, acompanhamento e encerramento das solicitacoes.
 - [ ] Restaurar `enabled=false`, `submitEnabled=false` e `PERSIST_SOLICITACOES=false` como padrao seguro apos testes e limpar registros de validacao.
 - [ ] Garantir que flags temporarias de teste nao sejam commitadas como `true`.
 - [ ] Conferir grafia da chave `apiUrl` antes de publicar build experimental, evitando chamadas para `/undefined`.

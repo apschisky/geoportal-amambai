@@ -558,7 +558,27 @@ Registro seguro, sem dados sensiveis:
 - CORS bloqueou origem invalida com `400`.
 - Geoportal publico abriu normalmente.
 - Camadas do GeoServer continuaram funcionando.
-- A API ainda nao esta com gravacao real ativa no banco de producao.
-- Ativacao real com `PERSIST_SOLICITACOES=true` ainda depende de autorizacao final.
+- Naquele momento, a API ainda nao estava com gravacao real ativa no banco de producao.
+- A ativacao real com `PERSIST_SOLICITACOES=true` ficou para etapa posterior autorizada.
 - Google Forms permanece como fallback.
 - Nenhum usuario real, senha, host real, IP interno, caminho local real, log completo ou `DATABASE_URL` real deve ser registrado no Git.
+
+## Registro de ativacao real controlada em producao
+
+A ativacao real controlada da API de Iluminacao Publica em producao foi realizada, mantendo o Google Forms como fallback durante o periodo de transicao.
+
+Registro seguro, sem dados sensiveis:
+
+- Apache publico `/api/` ja apontava para `GeoportalAPIProducao` em `127.0.0.1:8001`.
+- O ambiente real de producao foi alterado fora do Git para `PERSIST_SOLICITACOES=true`.
+- `GeoportalAPIProducao` foi reiniciado.
+- Front-end publicado enviou solicitacao real por poste.
+- Front-end publicado enviou solicitacao real por ponto manual.
+- Consulta publica dos protocolos gerados funcionou.
+- Bloqueio de duplicidade ativa por poste funcionou com mensagem amigavel.
+- Botao Tracar rota continuou funcionando.
+- Botao de solicitacao via Google Forms continuou funcionando.
+- Geoportal publico e camadas do GeoServer continuaram funcionando.
+- Google Forms permanece como fallback durante o periodo de transicao.
+- Proxima evolucao recomendada: modulo interno para triagem, acompanhamento e encerramento das solicitacoes.
+- Nenhum protocolo real, telefone, nome, dado pessoal, usuario real, senha, host real, IP interno, caminho local real, log completo ou `DATABASE_URL` real deve ser registrado no Git.
