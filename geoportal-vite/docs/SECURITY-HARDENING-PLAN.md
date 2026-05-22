@@ -84,7 +84,9 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [x] Fluxo completo com persistencia ligada validado em homologacao: gravacao, consulta publica por protocolo, bloqueio `409`, rate limit e limpeza controlada.
 - [x] Estrutura local de producao preparada com backup validado, schema/tabela/sequences, usuario restrito, servico `GeoportalAPIProducao` e `PERSIST_SOLICITACOES=false`.
 - [x] Producao local validada em `127.0.0.1:8001` com healthcheck e `POST` simulado sem gravacao real.
-- [ ] Apache publico `/api/` apontado para producao somente apos autorizacao final.
+- [x] Pre-producao validada com Apache publico `/api/` apontando para `GeoportalAPIProducao` em `127.0.0.1:8001`, ainda com `PERSIST_SOLICITACOES=false`.
+- [x] `/api/version` via HTTPS retornando ambiente `producao`, CORS restrito revalidado e Geoportal/GeoServer sem impacto.
+- [ ] Gravacao real em producao com `PERSIST_SOLICITACOES=true` somente apos autorizacao final.
 - [ ] Restaurar `enabled=false`, `submitEnabled=false` e `PERSIST_SOLICITACOES=false` como padrao seguro apos testes e limpar registros de validacao.
 - [ ] Garantir que flags temporarias de teste nao sejam commitadas como `true`.
 - [ ] Conferir grafia da chave `apiUrl` antes de publicar build experimental, evitando chamadas para `/undefined`.

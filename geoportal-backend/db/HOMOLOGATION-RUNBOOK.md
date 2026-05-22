@@ -544,7 +544,21 @@ Registro seguro, sem dados sensiveis:
 - Healthcheck de producao passou.
 - `POST` simulado em producao retornou sucesso, mas nao gravou no banco.
 - Banco ativo permaneceu sem solicitacoes reais criadas pela API.
-- API de producao ainda nao foi exposta no Apache.
-- Proxy publico `/api/` ainda nao deve ser apontado para producao ate validacao e autorizacao final.
+- Backup do arquivo ativo do Apache foi feito antes da alteracao de pre-producao.
+- Apache validou sintaxe com `Syntax OK`.
+- Apache foi reiniciado com sucesso.
+- Apache publico `/api/` passou a apontar para `GeoportalAPIProducao` em `127.0.0.1:8001`.
+- `GeoportalAPIProducao` permaneceu em execucao.
+- `/api/version` via HTTPS retornou ambiente `producao`.
+- `/api/public/iluminacao/health` via HTTPS retornou ok.
+- `POST` via HTTPS retornou protocolo simulado com sucesso.
+- Front-end publicado retornou protocolo simulado.
+- Banco ativo continuou sem solicitacoes reais criadas pela API, confirmando `PERSIST_SOLICITACOES=false`.
+- CORS restrito permitiu a origem oficial do Geoportal.
+- CORS bloqueou origem invalida com `400`.
+- Geoportal publico abriu normalmente.
+- Camadas do GeoServer continuaram funcionando.
+- A API ainda nao esta com gravacao real ativa no banco de producao.
+- Ativacao real com `PERSIST_SOLICITACOES=true` ainda depende de autorizacao final.
 - Google Forms permanece como fallback.
 - Nenhum usuario real, senha, host real, IP interno, caminho local real, log completo ou `DATABASE_URL` real deve ser registrado no Git.

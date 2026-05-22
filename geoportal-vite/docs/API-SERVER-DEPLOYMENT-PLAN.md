@@ -113,8 +113,19 @@ Registro de preparacao da producao local:
 - healthcheck de producao passou;
 - `POST` simulado em producao retornou sucesso e nao gravou no banco;
 - banco ativo permaneceu sem solicitacoes reais criadas pela API;
-- Apache ainda nao foi alterado para apontar `/api/` para producao;
-- o proxy publico `/api/` nao deve ser apontado para producao antes de validacao e autorizacao final;
+- em validacao de pre-producao, backup do arquivo ativo do Apache foi feito antes da alteracao;
+- Apache validou sintaxe com `Syntax OK` e foi reiniciado com sucesso;
+- Apache publico `/api/` passou a apontar para o servico de producao local `GeoportalAPIProducao` em `127.0.0.1:8001`;
+- `GeoportalAPIProducao` permaneceu em execucao;
+- `/api/version` via HTTPS retornou ambiente `producao`;
+- `/api/public/iluminacao/health` via HTTPS retornou ok;
+- `POST` via HTTPS e pelo front-end publicado retornou protocolo simulado com sucesso;
+- com `PERSIST_SOLICITACOES=false`, o banco ativo continuou sem solicitacoes reais criadas pela API;
+- CORS restrito foi revalidado: origem oficial permitida e origem invalida bloqueada com `400`;
+- Geoportal publico abriu normalmente;
+- camadas do GeoServer continuaram funcionando;
+- a API de producao ainda nao esta com gravacao real ativa no banco;
+- a ativacao real com `PERSIST_SOLICITACOES=true` depende de autorizacao final;
 - Google Forms permanece como fallback.
 
 ## 4. Usuarios e permissoes de banco
@@ -147,8 +158,9 @@ A API deve usar usuario restrito, com permissoes minimas:
 10. Manter CORS restrito a origem oficial do Geoportal, com `ALLOWED_ORIGINS` real fora do Git.
 11. Manter a API experimental em `https://geoserver.amambai.ms.gov.br/api/` ate decisao de infraestrutura.
 12. Testar front-end experimental em build controlado, com flags temporarias e restauradas para `false` apos o teste.
-13. Preparar producao local com `PERSIST_SOLICITACOES=false`, servico separado e sem apontar o Apache publico para producao.
-14. Somente depois avaliar ativacao publica gradual.
+13. Preparar producao local com `PERSIST_SOLICITACOES=false` e servico separado.
+14. Validar pre-producao com Apache publico `/api/` apontando para `GeoportalAPIProducao`, ainda sem gravacao real.
+15. Somente depois avaliar ativacao real com `PERSIST_SOLICITACOES=true`, mediante autorizacao final.
 
 ## 6. Evolucao futura de dominio
 
