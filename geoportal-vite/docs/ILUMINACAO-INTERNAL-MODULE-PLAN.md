@@ -1,0 +1,163 @@
+# Plano do Modulo Interno de Iluminacao Publica
+
+Este documento registra o desenho inicial da proxima fase do modulo de Iluminacao Publica. Ele e apenas planejamento: nao altera codigo, banco, rotas existentes, migrations, rollbacks ou configuracoes de ambiente.
+
+## 1. Objetivo
+
+O modulo interno deve permitir a gestao das solicitacoes de iluminacao publica registradas pelo Geoportal.
+
+Objetivos principais:
+
+- apoiar triagem, acompanhamento, execucao e encerramento das solicitacoes;
+- permitir que a equipe administrativa/operacional acompanhe chamados em uma interface propria;
+- substituir gradualmente controles manuais e o fluxo baseado apenas em Google Forms;
+- manter a API publica de criacao e consulta funcionando de forma estavel e segura durante a transicao.
+
+## 2. Escopo da primeira versao
+
+A primeira versao deve ser minima, operacional e segura.
+
+Escopo inicial:
+
+- listar solicitacoes;
+- filtrar por status, tipo de problema, data e poste;
+- visualizar detalhe da solicitacao;
+- alterar status;
+- registrar observacao interna;
+- preservar historico e auditoria;
+- manter a consulta publica limitada e segura.
+
+## 3. Fora do escopo da primeira versao
+
+Nao fazem parte da primeira entrega:
+
+- aplicativo mobile nativo;
+- integracao automatica com equipes terceirizadas;
+- notificacoes automaticas ao cidadao;
+- anexos ou fotos;
+- SLA avancado;
+- dashboard executivo completo.
+
+Esses itens podem ser avaliados depois que a operacao basica estiver estavel.
+
+## 4. Status operacionais
+
+Status previstos para gestao interna:
+
+- `aberta`;
+- `em_triagem`;
+- `encaminhada`;
+- `em_execucao`;
+- `aguardando_material`;
+- `nao_localizado`;
+- `resolvida`;
+- `indeferida`;
+- `cancelada`.
+
+## 5. Regras de transicao
+
+- Toda solicitacao nova entra como `aberta`.
+- A equipe interna pode avancar o status conforme a triagem e execucao.
+- Status finalizadores: `resolvida`, `indeferida`, `cancelada` e `nao_localizado`.
+- Uma vez finalizada, nova solicitacao para o mesmo poste pode ser aceita.
+- Status ativos continuam bloqueando duplicidade por poste.
+
+Status ativos para bloqueio de nova solicitacao por `poste_id`:
+
+- `aberta`;
+- `em_triagem`;
+- `encaminhada`;
+- `em_execucao`;
+- `aguardando_material`.
+
+## 6. Endpoints internos futuros
+
+Endpoints conceituais para a fase interna:
+
+- `GET /api/internal/iluminacao/solicitacoes`;
+- `GET /api/internal/iluminacao/solicitacoes/{id}`;
+- `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`;
+- `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes`;
+- `GET /api/internal/iluminacao/estatisticas`.
+
+Esses endpoints devem ser separados dos endpoints publicos. Eles nao devem ser ativados sem autenticacao, autorizacao, auditoria e testes automatizados.
+
+## 7. Seguranca
+
+Regras de seguranca para o modulo interno:
+
+- endpoints internos nao devem ser publicos;
+- exigir autenticacao;
+- exigir autorizacao por perfil ou permissao;
+- nao reutilizar endpoints publicos para gestao interna;
+- registrar usuario, data/hora e acao em auditoria;
+- evitar exposicao de dados pessoais quando nao houver necessidade operacional;
+- aplicar menor privilegio no banco;
+- manter logs sem senha, token, telefone completo ou dados sensiveis;
+- nao expor detalhes administrativos na consulta publica do cidadao;
+- separar operacoes internas de listagem, status e observacoes da API publica.
+
+## 8. Modelo de dados futuro
+
+Modelo conceitual para proximas migrations:
+
+- manter `mod_iluminacao.solicitacoes` como tabela principal;
+- criar tabela de historico/auditoria de alteracoes;
+- criar tabela de observacoes internas;
+- avaliar tabela de usuarios internos;
+- avaliar tabela de equipes ou setores;
+- registrar status anterior, status novo, usuario responsavel e data/hora para mudancas relevantes.
+
+As tabelas futuras devem manter segregacao no schema `mod_iluminacao` e evitar gravacao operacional em `plano` ou `web_map`.
+
+## 9. Interface interna
+
+Componentes previstos para a interface interna:
+
+- painel de listagem;
+- filtros por status, tipo, data e poste;
+- detalhe da solicitacao;
+- mapa com pontos;
+- alteracao de status;
+- historico da solicitacao;
+- visao de chamados ativos.
+
+A interface deve priorizar uso operacional repetido: informacao densa, clara, filtravel e sem elementos decorativos excessivos.
+
+## 10. Roadmap
+
+Fases sugeridas:
+
+1. Fase 1: documentacao e desenho de endpoints internos.
+2. Fase 2: migrations de historico e observacoes.
+3. Fase 3: endpoints internos protegidos.
+4. Fase 4: tela interna minima.
+5. Fase 5: mapa interno.
+6. Fase 6: autenticacao e perfis.
+7. Fase 7: relatorios e indicadores.
+
+## 11. Criterios de aceite
+
+Antes de ativar qualquer parte do modulo interno:
+
+- nao quebrar a API publica;
+- nao quebrar o Geoportal publico;
+- nao quebrar o GeoServer;
+- manter Google Forms como fallback durante a transicao;
+- preservar registros existentes;
+- criar testes automatizados para services, repositories e endpoints internos;
+- validar permissoes de banco com menor privilegio;
+- registrar auditoria para alteracoes internas;
+- manter a consulta publica limitada a dados seguros;
+- atualizar documentacao antes de ativacao.
+
+## 12. Relacao com a fase publica
+
+A API publica ja permite criacao de solicitacoes, consulta por protocolo e bloqueio de duplicidade ativa por poste. O modulo interno deve consumir e evoluir essa base sem enfraquecer as protecoes publicas.
+
+Durante a transicao:
+
+- Google Forms permanece como fallback;
+- a consulta publica continua exibindo apenas dados minimos;
+- dados pessoais e observacoes internas nao devem aparecer para o cidadao;
+- status internos devem ser traduzidos para mensagens publicas seguras quando consultados externamente.

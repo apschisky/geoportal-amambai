@@ -120,9 +120,9 @@ Nao registrar comandos com caminhos reais, credenciais, host real, IP interno ou
 - **Fase C:** front-end com botao experimental visivel apenas para teste controlado.
 - **Fase D:** consulta de protocolo ativada apenas para teste controlado.
 - **Fase E:** estabilizar transicao e manter Google Forms como fallback ate decisao administrativa.
-- **Fase F:** modulo interno de gestao, triagem, acompanhamento e encerramento das solicitacoes.
+- **Fase F:** modulo interno de gestao, triagem, acompanhamento e encerramento das solicitacoes, conforme `docs/ILUMINACAO-INTERNAL-MODULE-PLAN.md`.
 
-Proxima fase tecnica: desenvolver modulo interno de gestao/triagem/acompanhamento/encerramento, mantendo Google Forms como fallback durante o periodo de transicao.
+Proxima fase tecnica: desenvolver modulo interno de gestao/triagem/acompanhamento/encerramento, mantendo Google Forms como fallback durante o periodo de transicao e seguindo o plano inicial documentado em `docs/ILUMINACAO-INTERNAL-MODULE-PLAN.md`.
 
 ## 6. Plano de rollback
 
@@ -166,6 +166,7 @@ Nao ativar publicamente se houver qualquer uma das condicoes abaixo:
 
 O painel interno e o login devem ser etapa posterior, apos estabilizar a API publica. Essa etapa deve exigir:
 
+- plano inicial do modulo interno em `docs/ILUMINACAO-INTERNAL-MODULE-PLAN.md`;
 - autenticacao;
 - autorizacao por perfil;
 - endpoints internos separados;

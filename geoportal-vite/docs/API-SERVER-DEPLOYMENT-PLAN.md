@@ -169,7 +169,7 @@ A API deve usar usuario restrito, com permissoes minimas:
 13. Preparar producao local com `PERSIST_SOLICITACOES=false` e servico separado.
 14. Validar pre-producao com Apache publico `/api/` apontando para `GeoportalAPIProducao`, ainda sem gravacao real.
 15. Registrar ativacao real controlada com `PERSIST_SOLICITACOES=true` fora do Git, mantendo Google Forms como fallback.
-16. Evoluir para modulo interno de triagem, acompanhamento e encerramento das solicitacoes.
+16. Evoluir para modulo interno de triagem, acompanhamento e encerramento das solicitacoes, seguindo `docs/ILUMINACAO-INTERNAL-MODULE-PLAN.md`.
 
 ## 6. Evolucao futura de dominio
 
@@ -186,6 +186,8 @@ Enquanto essa evolucao nao for planejada e validada, o arranjo aceito e:
 ## 7. Relacao com login e painel interno
 
 Login e painel interno devem vir depois da estabilizacao da API publica no servidor.
+
+O desenho inicial do modulo interno de Iluminacao Publica esta registrado em `docs/ILUMINACAO-INTERNAL-MODULE-PLAN.md`.
 
 Essa etapa posterior exigira:
 

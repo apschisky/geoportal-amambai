@@ -258,7 +258,7 @@ Auditoria deve ser obrigatoria para mudancas de status, observacoes, anexos, fin
 - A producao local foi preparada com schema, tabela, sequences, usuario restrito, servico `GeoportalAPIProducao`, `PERSIST_SOLICITACOES=false` e `POST` simulado sem gravacao no banco ativo.
 - A pre-producao foi validada com Apache publico `/api/` apontando para `GeoportalAPIProducao`, ainda sem gravacao real porque `PERSIST_SOLICITACOES=false` permanece ativo.
 - A ativacao real controlada em producao foi realizada com `PERSIST_SOLICITACOES=true` fora do Git, validando envio por poste, envio por ponto manual, consulta publica e bloqueio de duplicidade ativa.
-- Proxima fase recomendada: modulo interno de gestao, triagem, acompanhamento e encerramento.
+- Proxima fase recomendada: modulo interno de gestao, triagem, acompanhamento e encerramento, conforme plano inicial em `docs/ILUMINACAO-INTERNAL-MODULE-PLAN.md`.
 - Limpeza de registros de teste deve ser feita apenas com usuario administrativo apropriado.
 - Flags temporarias usadas em build de teste publicado devem ser restauradas para `false` antes de commit.
 - A configuracao do endpoint de envio deve usar a chave `apiUrl`; erro de grafia pode direcionar a chamada para `/undefined`.

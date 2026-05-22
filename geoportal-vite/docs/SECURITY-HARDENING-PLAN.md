@@ -90,7 +90,7 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [x] Envios reais por poste e por ponto manual validados no front-end publicado.
 - [x] Consulta publica dos protocolos gerados e bloqueio de duplicidade ativa por poste validados.
 - [x] Botao Tracar rota, Google Forms, Geoportal publico, GeoServer e camadas permaneceram funcionando.
-- [ ] Desenvolver modulo interno de gestao, triagem, acompanhamento e encerramento das solicitacoes.
+- [ ] Desenvolver modulo interno de gestao, triagem, acompanhamento e encerramento das solicitacoes, seguindo `docs/ILUMINACAO-INTERNAL-MODULE-PLAN.md`.
 - [ ] Restaurar `enabled=false`, `submitEnabled=false` e `PERSIST_SOLICITACOES=false` como padrao seguro apos testes e limpar registros de validacao.
 - [ ] Garantir que flags temporarias de teste nao sejam commitadas como `true`.
 - [ ] Conferir grafia da chave `apiUrl` antes de publicar build experimental, evitando chamadas para `/undefined`.
