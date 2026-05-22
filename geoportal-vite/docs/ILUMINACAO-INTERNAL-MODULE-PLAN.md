@@ -110,6 +110,8 @@ Modelo conceitual para proximas migrations:
 
 As tabelas futuras devem manter segregacao no schema `mod_iluminacao` e evitar gravacao operacional em `plano` ou `web_map`.
 
+O desenho conceitual detalhado das futuras tabelas `mod_iluminacao.solicitacoes_historico` e `mod_iluminacao.solicitacoes_observacoes` esta em `docs/ILUMINACAO-INTERNAL-DATA-MODEL.md`.
+
 ## 9. Interface interna
 
 Componentes previstos para a interface interna:

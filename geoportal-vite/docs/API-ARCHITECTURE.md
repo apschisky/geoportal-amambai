@@ -187,6 +187,8 @@ Toda operacao interna relevante deve registrar:
 
 Auditoria deve ser obrigatoria para mudancas de status, observacoes, anexos, finalizacao, cancelamento e alteracoes administrativas.
 
+Para o modulo interno de Iluminacao Publica, o modelo conceitual das futuras tabelas de historico/auditoria e observacoes internas esta em `docs/ILUMINACAO-INTERNAL-DATA-MODEL.md`. A consulta publica nao deve retornar historico administrativo completo nem observacoes internas.
+
 ## 10. Tratamento de erros
 
 - Erros tecnicos nao devem aparecer para o cidadao.
