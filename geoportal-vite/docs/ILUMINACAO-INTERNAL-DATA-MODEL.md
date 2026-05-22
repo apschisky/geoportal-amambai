@@ -1,6 +1,6 @@
 # Modelo de Dados Interno de Iluminacao Publica
 
-Este documento detalha o modelo conceitual futuro para historico/auditoria e observacoes internas do modulo interno de Iluminacao Publica. Ele nao cria migrations, nao altera codigo e nao altera banco nesta etapa.
+Este documento detalha o modelo conceitual futuro para historico/auditoria e observacoes internas do modulo interno de Iluminacao Publica. Ele nao aplica migrations, nao altera codigo e nao altera banco nesta etapa.
 
 ## 1. Objetivo
 
@@ -118,6 +118,8 @@ As futuras migrations devem ser pequenas, revisaveis e reversiveis:
 
 As migrations devem manter o schema `mod_iluminacao` como area operacional da API e do modulo interno. Nao devem gravar em `plano` nem em `web_map`.
 
+Registro documental: a migration `0004_create_iluminacao_solicitacoes_historico.sql` e o rollback correspondente foram criados para a tabela `mod_iluminacao.solicitacoes_historico`. A migration ainda precisa ser aplicada somente com backup, validacao em homologacao e autorizacao operacional. A tabela de observacoes internas permanece para migration futura.
+
 ## 8. Uso pelos endpoints internos
 
 Endpoints internos futuros devem usar essas tabelas da seguinte forma:
@@ -141,7 +143,7 @@ Este desenho reduz os seguintes riscos:
 ## 10. Criterios de aceite desta etapa documental
 
 - Nenhum codigo funcional alterado.
-- Nenhuma migration criada ainda.
+- Nenhuma migration aplicada no banco ainda.
 - Modelo conceitual claro.
 - Regras de auditoria explicitas.
 - Separacao publico/interno preservada.

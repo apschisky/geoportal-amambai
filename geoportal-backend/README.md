@@ -74,7 +74,9 @@ Registro de preparacao e pre-producao: o banco ativo recebeu a estrutura `mod_il
 
 Registro de ativacao real controlada em producao: `PERSIST_SOLICITACOES=true` foi ativado no ambiente real fora do Git e `GeoportalAPIProducao` foi reiniciado. O front-end publicado enviou solicitacao real por poste e por ponto manual. A consulta publica dos protocolos gerados funcionou, e o bloqueio de duplicidade ativa por poste retornou mensagem amigavel. O botao Tracar rota, o botao de solicitacao via Google Forms, o Geoportal publico, o GeoServer e as camadas permaneceram funcionando. Google Forms permanece como fallback durante o periodo de transicao. A proxima evolucao recomendada e o modulo interno para triagem, acompanhamento e encerramento das solicitacoes, com plano inicial em `geoportal-vite/docs/ILUMINACAO-INTERNAL-MODULE-PLAN.md`.
 
-O desenho conceitual das futuras tabelas internas de historico/auditoria e observacoes esta em `geoportal-vite/docs/ILUMINACAO-INTERNAL-DATA-MODEL.md`. Nenhuma migration foi criada nesta etapa documental.
+O desenho conceitual das futuras tabelas internas de historico/auditoria e observacoes esta em `geoportal-vite/docs/ILUMINACAO-INTERNAL-DATA-MODEL.md`.
+
+A migration `0004_create_iluminacao_solicitacoes_historico.sql` foi criada para a futura tabela interna de historico/auditoria, com rollback correspondente. Ela nao deve ser aplicada sem backup, validacao em homologacao e autorizacao operacional.
 
 ## Endpoints disponiveis
 
