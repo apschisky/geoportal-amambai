@@ -97,7 +97,9 @@ A implantacao planejada da API de Iluminacao e no mesmo servidor do PostgreSQL/P
 
 A primeira implantacao de homologacao no servidor foi registrada: API como servico Windows controlado, escutando apenas em `127.0.0.1:8000`, com `PERSIST_SOLICITACOES=false`. A exposicao controlada ocorre via Apache HTTPS em `/api/`.
 
-O proxy reverso Apache HTTPS para `/api/` foi configurado e validado em homologacao, encaminhando para a API local em `127.0.0.1:8000`. Healthchecks, versao, criacao simulada e consulta inexistente com `404` seguro foram validados via HTTPS. GeoServer e Geoportal publico nao foram afetados. CORS foi validado para a origem oficial do Geoportal; a configuracao real de `ALLOWED_ORIGINS` fica fora do Git, sem wildcard. A ativacao publica do botao da API ainda depende de teste controlado no front-end publicado.
+O proxy reverso Apache HTTPS para `/api/` foi configurado e validado em homologacao, encaminhando para a API local em `127.0.0.1:8000`. Healthchecks, versao, criacao simulada e consulta inexistente com `404` seguro foram validados via HTTPS. GeoServer e Geoportal publico nao foram afetados. CORS foi validado para a origem oficial do Geoportal; a configuracao real de `ALLOWED_ORIGINS` fica fora do Git, sem wildcard. Nesta fase, a API experimental seguira em `https://geoserver.amambai.ms.gov.br/api/`, enquanto o front-end oficial permanece em `https://geoportal.amambai.ms.gov.br`. A ativacao publica do botao da API ainda depende de teste controlado no front-end publicado.
+
+A alternativa `https://geoportal.amambai.ms.gov.br/api/` fica registrada como evolucao futura de infraestrutura. Ela depende de proxy no servidor do front-end ou revisao de DNS/VirtualHost, ja que a investigacao indicou dominios em infraestruturas distintas, sem registrar IPs reais nesta documentacao.
 
 Separacao de schemas: `plano` concentra dados tecnicos/editaveis do SIG, `web_map` concentra dados publicados para GeoServer/Geoportal, e `mod_iluminacao` concentra dados operacionais da API e do futuro modulo interno. A API de Iluminacao nao deve gravar em `plano` nem em `web_map`.
 
@@ -203,6 +205,8 @@ Auditoria deve ser obrigatoria para mudancas de status, observacoes, anexos, fin
 - Nao usar wildcard em producao.
 - `ALLOWED_ORIGINS` real deve ficar fora do Git.
 - A origem oficial do Geoportal foi validada em homologacao para acesso aos endpoints publicados via Apache HTTPS.
+- O arranjo temporario usa API em `https://geoserver.amambai.ms.gov.br/api/` e front-end em `https://geoportal.amambai.ms.gov.br`, com CORS restrito.
+- A rota `https://geoportal.amambai.ms.gov.br/api/` deve ser avaliada futuramente para reduzir dependencia de CORS.
 - Separar configuracao de desenvolvimento e producao.
 - Permitir apenas metodos e headers necessarios.
 - Revisar CORS antes de publicar endpoints internos.

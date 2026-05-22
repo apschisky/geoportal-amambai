@@ -10,6 +10,7 @@ Ja foram validados em ambiente controlado:
 - servico de homologacao escutando internamente em `127.0.0.1:8000`;
 - proxy reverso Apache HTTPS para `/api/` configurado e validado;
 - CORS validado para a origem oficial do Geoportal, com `ALLOWED_ORIGINS` real fora do Git;
+- API publica experimental definida temporariamente em `https://geoserver.amambai.ms.gov.br/api/`;
 - healthchecks e scripts de validacao executados no servidor;
 - criacao publica de solicitacao;
 - protocolo real por sequence;
@@ -36,6 +37,8 @@ Antes e depois de testes pontuais, os defaults seguros devem permanecer:
 - [x] Servico da API configurado como servico Windows controlado em homologacao.
 - [x] HTTPS e proxy reverso `/api/` configurados e validados em homologacao.
 - [x] CORS restrito a origem oficial do Geoportal, sem wildcard.
+- [x] Decisao temporaria de usar `https://geoserver.amambai.ms.gov.br/api/` para a API experimental.
+- [ ] Evolucao futura `https://geoportal.amambai.ms.gov.br/api/` avaliada por proxy no servidor do front-end ou revisao de DNS/VirtualHost.
 - [ ] Usuario restrito do banco validado.
 - [ ] Permissoes minimas no banco.
 - [ ] Migrations aplicadas no banco correto.
@@ -66,7 +69,7 @@ Nao registrar comandos com caminhos reais, credenciais, host real, IP interno ou
 ## 5. Plano de ativacao gradual
 
 - **Fase A:** API no servidor com persistencia desligada.
-- **Status:** fase iniciada em homologacao; API local em `127.0.0.1:8000`, exposicao controlada via Apache HTTPS em `/api/`, CORS validado para a origem oficial e `PERSIST_SOLICITACOES=false`.
+- **Status:** fase iniciada em homologacao; API local em `127.0.0.1:8000`, exposicao controlada via Apache HTTPS em `https://geoserver.amambai.ms.gov.br/api/`, CORS validado para a origem oficial e `PERSIST_SOLICITACOES=false`.
 - **Fase B:** API no servidor com persistencia ligada em homologacao.
 - **Fase C:** front-end com botao experimental visivel apenas para teste controlado.
 - **Fase D:** consulta de protocolo ativada apenas para teste controlado.
@@ -96,6 +99,7 @@ Nao ativar publicamente se houver qualquer uma das condicoes abaixo:
 - CORS aberto demais;
 - uso de wildcard em CORS;
 - `ALLOWED_ORIGINS` real versionado no Git;
+- tentativa de expor `https://geoportal.amambai.ms.gov.br/api/` sem proxy, DNS/VirtualHost e testes controlados;
 - banco usando usuario privilegiado indevido;
 - ausencia de backup;
 - ausencia de plano de rollback;

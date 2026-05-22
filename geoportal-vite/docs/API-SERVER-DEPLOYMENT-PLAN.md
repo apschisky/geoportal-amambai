@@ -9,6 +9,9 @@ Este documento registra o plano tecnico conceitual para implantar a API FastAPI 
 - A API deve usar variaveis reais fora do Git.
 - A API deve ser exposta de forma controlada por Apache/proxy reverso/HTTPS.
 - O CORS deve ser restrito a origem oficial do Geoportal, sem wildcard.
+- Nesta fase experimental, a API publica fica exposta pelo dominio tecnico do GeoServer em `https://geoserver.amambai.ms.gov.br/api/`.
+- O front-end oficial em `https://geoportal.amambai.ms.gov.br` acessa a API por CORS restrito e validado.
+- Expor a API tambem em `https://geoportal.amambai.ms.gov.br/api/` fica como evolucao futura de infraestrutura.
 
 ## 2. Separacao de schemas
 
@@ -59,6 +62,9 @@ Validacoes realizadas no servidor de homologacao:
 - antes do ajuste, origem nao permitida retornava `400 Disallowed CORS origin`;
 - `ALLOWED_ORIGINS` real foi ajustado fora do Git e o servico de homologacao foi reiniciado;
 - apos o ajuste, a origem oficial passou a ser permitida;
+- a investigacao mostrou que os dominios do Geoportal e do GeoServer usam infraestruturas distintas, sem registrar IPs reais;
+- a API experimental seguira temporariamente em `https://geoserver.amambai.ms.gov.br/api/`;
+- `https://geoportal.amambai.ms.gov.br/api/` fica como opcao futura, dependente de proxy no servidor do front-end ou revisao de DNS/VirtualHost;
 - origens devem permanecer restritas, sem wildcard;
 - `PERSIST_SOLICITACOES=false` permanece como padrao seguro nesta fase;
 - a ativacao publica do botao da API ainda depende de teste controlado no front-end publicado.
@@ -98,9 +104,22 @@ A API deve usar usuario restrito, com permissoes minimas:
 8. Testar endpoints com persistencia desligada.
 9. Testar homologacao com persistencia ligada.
 10. Manter CORS restrito a origem oficial do Geoportal, com `ALLOWED_ORIGINS` real fora do Git.
-11. Somente depois ativar front-end experimental em teste controlado.
+11. Manter a API experimental em `https://geoserver.amambai.ms.gov.br/api/` ate decisao de infraestrutura.
+12. Somente depois ativar front-end experimental em teste controlado.
 
-## 6. Relacao com login e painel interno
+## 6. Evolucao futura de dominio
+
+A opcao `https://geoportal.amambai.ms.gov.br/api/` reduziria a dependencia de CORS por manter front-end e API sob o mesmo dominio publico. Essa opcao nao sera adotada nesta fase porque depende de ajuste de infraestrutura fora da API, como proxy no servidor do front-end ou revisao de DNS/VirtualHost.
+
+Enquanto essa evolucao nao for planejada e validada, o arranjo aceito e:
+
+- front-end oficial: `https://geoportal.amambai.ms.gov.br`;
+- API publica experimental: `https://geoserver.amambai.ms.gov.br/api/`;
+- CORS restrito permitindo apenas origens oficiais necessarias;
+- sem wildcard;
+- Google Forms mantido como fallback.
+
+## 7. Relacao com login e painel interno
 
 Login e painel interno devem vir depois da estabilizacao da API publica no servidor.
 
@@ -115,7 +134,7 @@ Essa etapa posterior exigira:
 - logs administrativos;
 - controle por equipe ou secretaria.
 
-## 7. Seguranca operacional
+## 8. Seguranca operacional
 
 - Segredos e variaveis reais devem ficar fora do Git.
 - Mensagens publicas nao devem expor stack trace, SQL, host, porta, caminho local ou credenciais.

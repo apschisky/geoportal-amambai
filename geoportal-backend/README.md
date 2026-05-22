@@ -64,7 +64,7 @@ O plano de implantacao em servidor esta em `geoportal-vite/docs/API-SERVER-DEPLO
 
 Registro de homologacao: a API foi implantada no servidor PostgreSQL/PostGIS como servico Windows controlado, escutando apenas em `127.0.0.1:8000`. Os testes automatizados, healthchecks, solicitacao simulada e consulta inexistente com `404` seguro foram validados no servidor. `PERSIST_SOLICITACOES=false` permanece como padrao seguro; a exposicao controlada ocorre via Apache HTTPS em `/api/`.
 
-Registro de proxy/HTTPS: o Apache HTTPS foi configurado para encaminhar `/api/` ao servico local da API em `127.0.0.1:8000`. Healthcheck, health de Iluminacao, versao, criacao simulada com `PERSIST_SOLICITACOES=false` e consulta inexistente com `404` seguro foram validados via HTTPS. GeoServer e Geoportal publico permaneceram funcionando. CORS foi validado para a origem oficial do Geoportal, com `ALLOWED_ORIGINS` real fora do Git e sem wildcard. A ativacao publica do botao da API ainda depende de teste controlado no front-end publicado; Google Forms permanece fallback.
+Registro de proxy/HTTPS: o Apache HTTPS foi configurado para encaminhar `/api/` ao servico local da API em `127.0.0.1:8000`. Healthcheck, health de Iluminacao, versao, criacao simulada com `PERSIST_SOLICITACOES=false` e consulta inexistente com `404` seguro foram validados via HTTPS. GeoServer e Geoportal publico permaneceram funcionando. CORS foi validado para a origem oficial do Geoportal, com `ALLOWED_ORIGINS` real fora do Git e sem wildcard. A API experimental seguira temporariamente em `https://geoserver.amambai.ms.gov.br/api/`, acessada pelo front-end oficial em `https://geoportal.amambai.ms.gov.br` por CORS restrito. A opcao `https://geoportal.amambai.ms.gov.br/api/` fica para evolucao futura de infraestrutura. A ativacao publica do botao da API ainda depende de teste controlado no front-end publicado; Google Forms permanece fallback.
 
 ## Endpoints disponiveis
 
@@ -155,6 +155,8 @@ As origens permitidas sao lidas da configuracao `ALLOWED_ORIGINS`, em lista sepa
 Nao usar `*` como origem permitida em producao.
 
 Em homologacao, CORS foi validado para a origem oficial do Geoportal apos ajuste do ambiente real fora do Git e reinicio do servico. `ALLOWED_ORIGINS` real nao deve ser versionado, e as origens devem permanecer restritas.
+
+Nesta fase, nao usar wildcard para compensar dominios diferentes. A solucao temporaria e manter a API em `https://geoserver.amambai.ms.gov.br/api/` e permitir somente a origem oficial necessaria. A rota `https://geoportal.amambai.ms.gov.br/api/` deve ser avaliada futuramente com proxy no servidor do front-end ou revisao de DNS/VirtualHost.
 
 ## Seguranca
 

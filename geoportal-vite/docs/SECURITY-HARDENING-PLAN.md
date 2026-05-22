@@ -115,6 +115,8 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [x] Registrar implantacao de homologacao da API como servico Windows controlado, com escuta local em `127.0.0.1:8000` e exposicao controlada via Apache HTTPS em `/api/`.
 - [x] Configurar e validar proxy reverso Apache HTTPS para `/api/`, encaminhando ao servico local em `127.0.0.1:8000`.
 - [x] Validar CORS para a origem oficial do Geoportal antes de ativar o front-end publico.
+- [x] Registrar uso temporario da API publica experimental em `https://geoserver.amambai.ms.gov.br/api/`.
+- [ ] Avaliar futuramente `https://geoportal.amambai.ms.gov.br/api/` com proxy no servidor do front-end ou revisao de DNS/VirtualHost.
 - [ ] Manter `ALLOWED_ORIGINS` real fora do Git e sem wildcard.
 - [ ] Testar ativacao publica controlada do botao da API no front-end publicado.
 - [ ] Garantir que a API grave dados operacionais apenas em `mod_iluminacao`, sem gravar em `plano` ou `web_map`.

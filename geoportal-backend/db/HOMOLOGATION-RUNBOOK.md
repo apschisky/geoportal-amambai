@@ -490,6 +490,10 @@ Registro seguro, sem dados sensiveis:
 - O arquivo real de ambiente de homologacao foi ajustado fora do Git para incluir a origem oficial em `ALLOWED_ORIGINS`.
 - O servico de homologacao foi reiniciado.
 - Apos o ajuste, a origem oficial passou a ser permitida.
+- Foi investigada a alternativa de expor a API tambem em `https://geoportal.amambai.ms.gov.br/api/`.
+- A investigacao indicou infraestruturas distintas entre Geoportal e GeoServer, sem registrar IPs reais.
+- Decisao temporaria: manter a API experimental em `https://geoserver.amambai.ms.gov.br/api/`.
+- A rota `https://geoportal.amambai.ms.gov.br/api/` fica como evolucao futura, dependente de proxy no servidor do front-end ou revisao de DNS/VirtualHost.
 - Origens devem permanecer restritas, sem wildcard.
 - `PERSIST_SOLICITACOES=false` permanece como padrao seguro nesta fase.
 - A ativacao publica do botao da API ainda depende de teste controlado no front-end publicado.
