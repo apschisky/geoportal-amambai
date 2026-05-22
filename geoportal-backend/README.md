@@ -78,6 +78,8 @@ O desenho conceitual das futuras tabelas internas de historico/auditoria e obser
 
 A migration `0004_create_iluminacao_solicitacoes_historico.sql` foi criada para a futura tabela interna de historico/auditoria, com rollback correspondente. Ela nao deve ser aplicada sem backup, validacao em homologacao e autorizacao operacional.
 
+A migration `0005_create_iluminacao_solicitacoes_observacoes.sql` foi criada para a futura tabela interna de observacoes operacionais, com rollback correspondente. Observacoes internas nao devem aparecer na consulta publica, e a visibilidade `publica_futura` e apenas reserva conceitual, sem exposicao automatica ao cidadao.
+
 ## Endpoints disponiveis
 
 - `GET /api/health`
