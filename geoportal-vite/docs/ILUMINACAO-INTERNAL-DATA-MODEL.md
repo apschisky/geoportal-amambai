@@ -122,6 +122,8 @@ Registro documental: a migration `0004_create_iluminacao_solicitacoes_historico.
 
 A visibilidade `publica_futura` em `solicitacoes_observacoes` e apenas reserva conceitual. Ela nao autoriza exposicao automatica ao cidadao; observacoes internas nao devem aparecer na consulta publica.
 
+Validacao em homologacao: as migrations `0004` e `0005` foram aplicadas em homologacao apos backup manual validado como legivel. As tabelas internas foram criadas, FKs restritivas foram testadas, inserts controlados funcionaram e a exclusao da solicitacao principal foi bloqueada quando havia historico vinculado. Os registros internos de teste foram removidos, as tabelas ficaram vazias apos a limpeza e producao ainda nao recebeu essas migrations.
+
 ## 8. Uso pelos endpoints internos
 
 Endpoints internos futuros devem usar essas tabelas da seguinte forma:

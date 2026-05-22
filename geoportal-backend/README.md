@@ -80,6 +80,8 @@ A migration `0004_create_iluminacao_solicitacoes_historico.sql` foi criada para 
 
 A migration `0005_create_iluminacao_solicitacoes_observacoes.sql` foi criada para a futura tabela interna de observacoes operacionais, com rollback correspondente. Observacoes internas nao devem aparecer na consulta publica, e a visibilidade `publica_futura` e apenas reserva conceitual, sem exposicao automatica ao cidadao.
 
+As migrations internas `0004` e `0005` foram aplicadas e validadas somente em homologacao, apos backup manual validado. As tabelas internas foram criadas, FKs restritivas foram testadas, inserts controlados funcionaram e os registros de teste foram removidos, deixando as tabelas internas vazias. O banco ativo de producao ainda nao recebeu essas migrations; a aplicacao futura depende de backup e autorizacao.
+
 ## Endpoints disponiveis
 
 - `GET /api/health`

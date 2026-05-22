@@ -246,6 +246,27 @@ Permissoes previstas para a etapa publica inicial:
 
 Usar o template `db/security/create_api_user_template.sql` apenas como modelo. Substituir placeholders localmente fora do repositorio. Dados reais devem ficar fora do Git.
 
+## Registro de validacao das migrations internas 0004 e 0005
+
+As migrations internas do modulo de Iluminacao Publica foram aplicadas e validadas somente em homologacao:
+
+- `0004_create_iluminacao_solicitacoes_historico.sql`;
+- `0005_create_iluminacao_solicitacoes_observacoes.sql`.
+
+Registro seguro da validacao:
+
+- backup manual do banco de homologacao foi criado antes da aplicacao;
+- backup foi validado como legivel;
+- as tabelas `mod_iluminacao.solicitacoes_historico` e `mod_iluminacao.solicitacoes_observacoes` foram criadas;
+- as FKs restritivas para `mod_iluminacao.solicitacoes(id)` foram validadas;
+- inserts controlados de teste em historico e observacoes funcionaram;
+- tentativa de excluir solicitacao principal com historico vinculado foi bloqueada pela FK;
+- os registros internos de teste foram removidos apos a validacao;
+- a contagem final confirmou tabelas internas vazias apos a limpeza;
+- nenhuma alteracao foi aplicada no banco ativo de producao nesta etapa.
+
+Proxima etapa: avaliar aplicacao no banco ativo somente com backup, validacao, janela controlada e autorizacao operacional.
+
 ## O que nao fazer
 
 - Nao executar em producao.

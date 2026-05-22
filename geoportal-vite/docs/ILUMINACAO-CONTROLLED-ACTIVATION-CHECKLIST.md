@@ -79,6 +79,8 @@ Antes e depois de testes pontuais, os defaults seguros devem permanecer:
 - [x] Consulta publica dos protocolos gerados validada.
 - [x] Bloqueio de duplicidade ativa por poste validado com mensagem amigavel.
 - [x] Botao Tracar rota, Google Forms, Geoportal publico, GeoServer e camadas validados apos ativacao real.
+- [x] Migrations internas `0004` e `0005` validadas em homologacao com backup previo, FKs restritivas e limpeza dos registros de teste.
+- [ ] Aplicacao das migrations internas `0004` e `0005` no banco ativo aprovada apos backup e autorizacao.
 - [ ] Logs sem dados sensiveis.
 - [x] Rate limit ativo e validado em testes intensivos.
 - [ ] Mensagens publicas sem stack trace, SQL, host ou porta.

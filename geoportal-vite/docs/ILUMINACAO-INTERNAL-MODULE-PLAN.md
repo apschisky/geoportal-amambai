@@ -112,7 +112,7 @@ As tabelas futuras devem manter segregacao no schema `mod_iluminacao` e evitar g
 
 O desenho conceitual detalhado das futuras tabelas `mod_iluminacao.solicitacoes_historico` e `mod_iluminacao.solicitacoes_observacoes` esta em `docs/ILUMINACAO-INTERNAL-DATA-MODEL.md`.
 
-As migrations internas planejadas para `mod_iluminacao.solicitacoes_historico` e `mod_iluminacao.solicitacoes_observacoes` foram criadas, mas ainda nao devem ser aplicadas sem backup, validacao em homologacao e autorizacao.
+As migrations internas planejadas para `mod_iluminacao.solicitacoes_historico` e `mod_iluminacao.solicitacoes_observacoes` foram criadas e validadas em homologacao com backup previo, FKs restritivas, inserts controlados e limpeza dos registros de teste. Producao ainda nao recebeu essas migrations; a aplicacao no banco ativo depende de backup e autorizacao.
 
 ## 9. Interface interna
 
