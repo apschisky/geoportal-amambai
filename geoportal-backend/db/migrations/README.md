@@ -35,9 +35,11 @@ A migration `0007` tambem foi aplicada no banco ativo de producao apos backup ma
 
 A migration `0008_create_mod_auth_perfis_permissoes.sql` cria apenas as tabelas `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes`. Ela nao cria seeds, perfis reais, permissoes reais, vinculos reais, usuarios, GRANTs, triggers, funcoes ou endpoints.
 
-A migration `0008` foi aplicada e validada em homologacao apos backup manual validado como legivel. As quatro tabelas estruturais foram criadas, indices e FKs restritivas foram validados, constraints e vinculos foram testados com dados ficticios, os dados ficticios foram removidos e todas as tabelas `mod_auth` ficaram vazias apos a limpeza. Producao ainda nao recebeu a migration `0008` nesta etapa.
+A migration `0008` foi aplicada e validada em homologacao apos backup manual validado como legivel. As quatro tabelas estruturais foram criadas, indices e FKs restritivas foram validados, constraints e vinculos foram testados com dados ficticios, os dados ficticios foram removidos e todas as tabelas `mod_auth` ficaram vazias apos a limpeza.
 
-Proxima etapa: avaliar aplicacao da migration `0008` em producao com backup e validacao.
+A migration `0008` tambem foi aplicada no banco ativo de producao apos backup manual validado como legivel. As tabelas `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes` foram criadas, indices e FKs restritivas foram validados, todas as tabelas `mod_auth` permaneceram vazias apos a criacao, a API publica continuou saudavel, `/api/health` e `/api/public/iluminacao/health` continuaram OK, e `/api/version` continuou retornando ambiente `producao`. Nenhum usuario, perfil, permissao, vinculo, seed, endpoint ou login funcional foi criado.
+
+Proxima etapa: criar a migration `0009_create_mod_auth_sessoes_login_auditoria.sql` para sessoes e auditoria de login.
 
 As migrations `0004` e `0005` foram aplicadas e validadas em homologacao com backup previo, inserts controlados, validacao de FKs restritivas e limpeza dos registros de teste.
 

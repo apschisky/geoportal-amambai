@@ -700,13 +700,13 @@ Registro seguro, sem dados sensiveis:
 - duplicidade de perfil/permissao foi bloqueada;
 - dados ficticios foram removidos;
 - todas as tabelas `mod_auth` ficaram vazias apos a limpeza;
-- producao ainda nao recebeu a migration `0008` nesta etapa;
+- a aplicacao posterior no banco ativo de producao foi registrada na secao especifica deste runbook;
 - nenhum perfil real foi criado;
 - nenhuma permissao real foi criada;
 - nenhum vinculo real foi criado;
 - nenhum endpoint interno foi criado.
 
-Proxima etapa: avaliar aplicacao da migration `0008` em producao com backup e validacao.
+Proxima etapa: avaliar a migration `0009` para sessoes e auditoria de login.
 
 Nao registrar usuario real, email real, senha, hash real, token, host real, IP interno, caminho local real, log completo ou `DATABASE_URL` real no Git.
 
@@ -729,6 +729,35 @@ Registro seguro, sem dados sensiveis:
 - nenhum endpoint foi criado;
 - nenhum login funcional foi implementado.
 
-Proxima etapa: criar a migration `0008_create_mod_auth_perfis_permissoes.sql` para perfis, permissoes e vinculos.
+Etapa posterior registrada abaixo: aplicacao e validacao da migration `0008_create_mod_auth_perfis_permissoes.sql` em producao com backup e validacao.
+
+Nao registrar usuario real, email real, senha, hash real, token, host real, IP interno, caminho local real, log completo ou `DATABASE_URL` real no Git.
+
+## Registro de aplicacao da migration 0008 no banco ativo
+
+A migration `0008_create_mod_auth_perfis_permissoes.sql` foi aplicada no banco ativo de producao apos validacao previa em homologacao.
+
+Registro seguro, sem dados sensiveis:
+
+- backup manual do banco ativo foi criado antes da aplicacao;
+- backup manual foi validado como legivel;
+- a migration `0008` foi aplicada no banco ativo;
+- as tabelas `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes` foram criadas;
+- indices foram validados;
+- FKs restritivas foram validadas com `ON UPDATE RESTRICT` e `ON DELETE RESTRICT`;
+- todas as tabelas `mod_auth` permaneceram vazias apos a criacao: `mod_auth.usuarios`, `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes`;
+- a API publica continuou saudavel;
+- `/api/health` continuou OK;
+- `/api/public/iluminacao/health` continuou OK;
+- `/api/version` continuou retornando ambiente `producao`;
+- nenhum usuario real foi criado;
+- nenhum perfil real foi criado;
+- nenhuma permissao real foi criada;
+- nenhum vinculo real foi criado;
+- nenhuma seed foi criada;
+- nenhum endpoint foi criado;
+- nenhum login funcional foi implementado.
+
+Proxima etapa: criar a migration `0009_create_mod_auth_sessoes_login_auditoria.sql` para sessoes e auditoria de login.
 
 Nao registrar usuario real, email real, senha, hash real, token, host real, IP interno, caminho local real, log completo ou `DATABASE_URL` real no Git.

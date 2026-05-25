@@ -88,13 +88,13 @@ O desenho conceitual dos endpoints internos protegidos esta em `geoportal-vite/d
 
 O modelo conceitual transversal de autenticacao/autorizacao para futuros modulos internos esta em `geoportal-vite/docs/INTERNAL-AUTH-DATA-MODEL.md`.
 
-O plano tecnico das futuras migrations do schema `mod_auth` esta em `geoportal-vite/docs/INTERNAL-AUTH-MIGRATIONS-PLAN.md`. As migrations de tabelas, sessoes, perfis e permissoes ainda nao foram criadas.
+O plano tecnico das migrations do schema `mod_auth` esta em `geoportal-vite/docs/INTERNAL-AUTH-MIGRATIONS-PLAN.md`. A proxima migration prevista e a `0009_create_mod_auth_sessoes_login_auditoria.sql`.
 
 Registro atual: a migration `0006_create_mod_auth_schema.sql` foi aplicada em homologacao e no banco ativo de producao apos backup manual validado. O schema `mod_auth` foi criado com comentario validado, e nenhuma tabela foi criada nesta etapa. O rollback `0006_drop_mod_auth_schema.sql` permanece disponivel para ambiente controlado.
 
 Registro atual: a migration `0007_create_mod_auth_usuarios.sql` foi aplicada e validada em homologacao e no banco ativo de producao apos backup manual validado. A tabela `mod_auth.usuarios` foi criada, indices foram validados e a tabela permaneceu vazia em producao apos a criacao. Nenhum usuario real, seed, GRANT, trigger, funcao, endpoint ou login funcional foi criado.
 
-Registro atual: a migration `0008_create_mod_auth_perfis_permissoes.sql` foi aplicada e validada em homologacao apos backup manual validado. As tabelas de perfis, permissoes e vinculos foram criadas, indices e FKs restritivas foram validados, dados ficticios foram removidos e todas as tabelas `mod_auth` ficaram vazias apos a limpeza. Producao ainda nao recebeu a migration `0008` nesta etapa. Nenhum perfil real, permissao real, vinculo real, usuario, seed, GRANT, trigger, funcao ou endpoint foi criado.
+Registro atual: a migration `0008_create_mod_auth_perfis_permissoes.sql` foi aplicada e validada em homologacao e no banco ativo de producao apos backup manual validado. As tabelas de perfis, permissoes e vinculos foram criadas, indices e FKs restritivas foram validados, dados ficticios foram removidos em homologacao e todas as tabelas `mod_auth` permaneceram vazias apos a criacao em producao. Nenhum usuario, perfil real, permissao real, vinculo real, seed, GRANT, trigger, funcao, endpoint ou login funcional foi criado.
 
 ## Endpoints disponiveis
 

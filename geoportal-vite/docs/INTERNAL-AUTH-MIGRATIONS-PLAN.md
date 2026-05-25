@@ -128,7 +128,7 @@ Rollback correspondente:
 
 ## 4. Migration `0008_create_mod_auth_perfis_permissoes.sql`
 
-Status: aplicada e validada em homologacao. Producao ainda nao recebeu esta migration.
+Status: aplicada e validada em homologacao e no banco ativo de producao.
 
 Registro seguro da validacao em homologacao:
 
@@ -148,7 +148,22 @@ Registro seguro da validacao em homologacao:
 - dados ficticios foram removidos;
 - todas as tabelas `mod_auth` ficaram vazias apos a limpeza.
 
-Tabelas futuras:
+Registro seguro da aplicacao em producao:
+
+- backup manual do banco ativo foi criado antes da aplicacao;
+- backup manual foi validado como legivel;
+- a migration `0008` foi aplicada no banco ativo;
+- as tabelas `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes` foram criadas;
+- indices foram validados;
+- FKs restritivas foram validadas com `ON UPDATE RESTRICT` e `ON DELETE RESTRICT`;
+- todas as tabelas `mod_auth` permaneceram vazias apos a criacao: `mod_auth.usuarios`, `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes`;
+- a API publica continuou saudavel;
+- `/api/health` continuou OK;
+- `/api/public/iluminacao/health` continuou OK;
+- `/api/version` continuou retornando ambiente `producao`;
+- nenhum usuario real, perfil real, permissao real, vinculo real, seed, endpoint ou login funcional foi criado.
+
+Tabelas criadas pela migration:
 
 - `mod_auth.perfis`
 - `mod_auth.permissoes`
