@@ -118,11 +118,15 @@ As futuras migrations devem ser pequenas, revisaveis e reversiveis:
 
 As migrations devem manter o schema `mod_iluminacao` como area operacional da API e do modulo interno. Nao devem gravar em `plano` nem em `web_map`.
 
-Registro documental: a migration `0004_create_iluminacao_solicitacoes_historico.sql` e o rollback correspondente foram criados para a tabela `mod_iluminacao.solicitacoes_historico`. A migration `0005_create_iluminacao_solicitacoes_observacoes.sql` e o rollback correspondente foram criados para a tabela `mod_iluminacao.solicitacoes_observacoes`. Essas migrations ainda precisam ser aplicadas somente com backup, validacao em homologacao e autorizacao operacional.
+Registro documental: a migration `0004_create_iluminacao_solicitacoes_historico.sql` e o rollback correspondente foram criados para a tabela `mod_iluminacao.solicitacoes_historico`. A migration `0005_create_iluminacao_solicitacoes_observacoes.sql` e o rollback correspondente foram criados para a tabela `mod_iluminacao.solicitacoes_observacoes`.
 
 A visibilidade `publica_futura` em `solicitacoes_observacoes` e apenas reserva conceitual. Ela nao autoriza exposicao automatica ao cidadao; observacoes internas nao devem aparecer na consulta publica.
 
-Validacao em homologacao: as migrations `0004` e `0005` foram aplicadas em homologacao apos backup manual validado como legivel. As tabelas internas foram criadas, FKs restritivas foram testadas, inserts controlados funcionaram e a exclusao da solicitacao principal foi bloqueada quando havia historico vinculado. Os registros internos de teste foram removidos, as tabelas ficaram vazias apos a limpeza e producao ainda nao recebeu essas migrations.
+Validacao em homologacao: as migrations `0004` e `0005` foram aplicadas em homologacao apos backup manual validado como legivel. As tabelas internas foram criadas, FKs restritivas foram testadas, inserts controlados funcionaram e a exclusao da solicitacao principal foi bloqueada quando havia historico vinculado. Os registros internos de teste foram removidos e as tabelas ficaram vazias apos a limpeza.
+
+Registro de aplicacao no banco ativo: as migrations `0004` e `0005` foram aplicadas em producao apos backup manual validado como legivel. Antes da aplicacao, o banco ativo possuia apenas `mod_iluminacao.solicitacoes` entre as tabelas internas. Apos a aplicacao, as tabelas `mod_iluminacao.solicitacoes_historico` e `mod_iluminacao.solicitacoes_observacoes` foram criadas, seus indices foram validados e as FKs restritivas para `mod_iluminacao.solicitacoes(id)` foram confirmadas com `ON UPDATE RESTRICT` e `ON DELETE RESTRICT`. A API publica continuou saudavel, `/api/version` continuou retornando ambiente `producao` e as tabelas internas permaneceram vazias apos a criacao.
+
+Ainda nao ha endpoints internos nem tela interna usando `solicitacoes_historico` ou `solicitacoes_observacoes`. A proxima etapa e desenhar endpoints internos protegidos para alteracao de status, consulta de historico e registro de observacoes.
 
 ## 8. Uso pelos endpoints internos
 
@@ -147,7 +151,7 @@ Este desenho reduz os seguintes riscos:
 ## 10. Criterios de aceite desta etapa documental
 
 - Nenhum codigo funcional alterado.
-- Nenhuma migration aplicada no banco ainda.
+- Migrations internas `0004` e `0005` aplicadas em homologacao e no banco ativo com backup e validacao.
 - Modelo conceitual claro.
 - Regras de auditoria explicitas.
 - Separacao publico/interno preservada.

@@ -112,7 +112,11 @@ As tabelas futuras devem manter segregacao no schema `mod_iluminacao` e evitar g
 
 O desenho conceitual detalhado das futuras tabelas `mod_iluminacao.solicitacoes_historico` e `mod_iluminacao.solicitacoes_observacoes` esta em `docs/ILUMINACAO-INTERNAL-DATA-MODEL.md`.
 
-As migrations internas planejadas para `mod_iluminacao.solicitacoes_historico` e `mod_iluminacao.solicitacoes_observacoes` foram criadas e validadas em homologacao com backup previo, FKs restritivas, inserts controlados e limpeza dos registros de teste. Producao ainda nao recebeu essas migrations; a aplicacao no banco ativo depende de backup e autorizacao.
+As migrations internas planejadas para `mod_iluminacao.solicitacoes_historico` e `mod_iluminacao.solicitacoes_observacoes` foram criadas e validadas em homologacao com backup previo, FKs restritivas, inserts controlados e limpeza dos registros de teste.
+
+As migrations internas `0004` e `0005` tambem foram aplicadas no banco ativo apos backup manual validado como legivel. As tabelas internas foram criadas, os indices foram validados, as FKs restritivas para `mod_iluminacao.solicitacoes(id)` foram confirmadas com `ON UPDATE RESTRICT` e `ON DELETE RESTRICT`, a API publica continuou saudavel e `/api/version` continuou retornando ambiente `producao`. As tabelas internas permaneceram vazias apos a criacao.
+
+Ainda nao ha endpoints internos nem tela interna consumindo essas tabelas. A proxima etapa tecnica e desenhar endpoints internos protegidos para status, historico e observacoes antes de qualquer interface administrativa.
 
 ## 9. Interface interna
 
@@ -133,8 +137,8 @@ A interface deve priorizar uso operacional repetido: informacao densa, clara, fi
 Fases sugeridas:
 
 1. Fase 1: documentacao e desenho de endpoints internos.
-2. Fase 2: migrations de historico e observacoes.
-3. Fase 3: endpoints internos protegidos.
+2. Fase 2: migrations de historico e observacoes. Status: aplicadas em homologacao e no banco ativo com backup e validacao.
+3. Fase 3: endpoints internos protegidos para status, historico e observacoes.
 4. Fase 4: tela interna minima.
 5. Fase 5: mapa interno.
 6. Fase 6: autenticacao e perfis.

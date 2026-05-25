@@ -133,6 +133,16 @@ Registro de preparacao da producao local:
 - botao Tracar rota continuou funcionando;
 - botao de solicitacao via Google Forms continuou funcionando;
 - Geoportal publico, GeoServer e camadas continuaram funcionando apos a ativacao real;
+- antes da aplicacao das migrations internas, o banco ativo possuia apenas `mod_iluminacao.solicitacoes` entre as tabelas internas;
+- backup manual do banco ativo foi criado e validado como legivel antes da aplicacao das migrations internas `0004` e `0005`;
+- migrations internas `0004` e `0005` foram aplicadas no banco ativo;
+- tabelas `mod_iluminacao.solicitacoes_historico` e `mod_iluminacao.solicitacoes_observacoes` foram criadas;
+- indices das duas tabelas internas foram validados;
+- FKs restritivas para `mod_iluminacao.solicitacoes(id)` foram validadas com `ON UPDATE RESTRICT` e `ON DELETE RESTRICT`;
+- API publica permaneceu saudavel apos a aplicacao das migrations internas;
+- `/api/version` continuou retornando ambiente `producao`;
+- tabelas internas permaneceram vazias apos a criacao;
+- nenhum endpoint interno e nenhuma tela interna foram criados nesta etapa;
 - proxima evolucao recomendada: modulo interno para triagem, acompanhamento e encerramento das solicitacoes;
 - Google Forms permanece como fallback.
 
@@ -169,7 +179,9 @@ A API deve usar usuario restrito, com permissoes minimas:
 13. Preparar producao local com `PERSIST_SOLICITACOES=false` e servico separado.
 14. Validar pre-producao com Apache publico `/api/` apontando para `GeoportalAPIProducao`, ainda sem gravacao real.
 15. Registrar ativacao real controlada com `PERSIST_SOLICITACOES=true` fora do Git, mantendo Google Forms como fallback.
-16. Evoluir para modulo interno de triagem, acompanhamento e encerramento das solicitacoes, seguindo `docs/ILUMINACAO-INTERNAL-MODULE-PLAN.md`.
+16. Aplicar e validar migrations internas de historico e observacoes no banco ativo apos backup. Status: concluido para `0004` e `0005`.
+17. Desenhar endpoints internos protegidos para status, historico e observacoes.
+18. Evoluir para modulo interno de triagem, acompanhamento e encerramento das solicitacoes, seguindo `docs/ILUMINACAO-INTERNAL-MODULE-PLAN.md`.
 
 ## 6. Evolucao futura de dominio
 

@@ -76,11 +76,13 @@ Registro de ativacao real controlada em producao: `PERSIST_SOLICITACOES=true` fo
 
 O desenho conceitual das futuras tabelas internas de historico/auditoria e observacoes esta em `geoportal-vite/docs/ILUMINACAO-INTERNAL-DATA-MODEL.md`.
 
-A migration `0004_create_iluminacao_solicitacoes_historico.sql` foi criada para a futura tabela interna de historico/auditoria, com rollback correspondente. Ela nao deve ser aplicada sem backup, validacao em homologacao e autorizacao operacional.
+A migration `0004_create_iluminacao_solicitacoes_historico.sql` foi criada para a tabela interna de historico/auditoria, com rollback correspondente. Sua aplicacao deve ocorrer somente com backup, validacao e autorizacao operacional.
 
-A migration `0005_create_iluminacao_solicitacoes_observacoes.sql` foi criada para a futura tabela interna de observacoes operacionais, com rollback correspondente. Observacoes internas nao devem aparecer na consulta publica, e a visibilidade `publica_futura` e apenas reserva conceitual, sem exposicao automatica ao cidadao.
+A migration `0005_create_iluminacao_solicitacoes_observacoes.sql` foi criada para a tabela interna de observacoes operacionais, com rollback correspondente. Observacoes internas nao devem aparecer na consulta publica, e a visibilidade `publica_futura` e apenas reserva conceitual, sem exposicao automatica ao cidadao.
 
-As migrations internas `0004` e `0005` foram aplicadas e validadas somente em homologacao, apos backup manual validado. As tabelas internas foram criadas, FKs restritivas foram testadas, inserts controlados funcionaram e os registros de teste foram removidos, deixando as tabelas internas vazias. O banco ativo de producao ainda nao recebeu essas migrations; a aplicacao futura depende de backup e autorizacao.
+As migrations internas `0004` e `0005` foram aplicadas e validadas em homologacao, apos backup manual validado. As tabelas internas foram criadas, FKs restritivas foram testadas, inserts controlados funcionaram e os registros de teste foram removidos, deixando as tabelas internas vazias.
+
+As migrations internas `0004` e `0005` tambem foram aplicadas no banco ativo de producao apos backup manual validado como legivel. Antes da aplicacao, o banco ativo possuia apenas `mod_iluminacao.solicitacoes` entre as tabelas internas. Apos a aplicacao, `mod_iluminacao.solicitacoes_historico` e `mod_iluminacao.solicitacoes_observacoes` foram criadas, os indices foram validados e as FKs restritivas para `mod_iluminacao.solicitacoes(id)` foram confirmadas com `ON UPDATE RESTRICT` e `ON DELETE RESTRICT`. A API publica continuou saudavel, `/api/version` continuou retornando ambiente `producao` e as tabelas internas permaneceram vazias apos a criacao. Ainda nao ha endpoints internos nem tela interna usando essas tabelas; a proxima etapa e desenhar endpoints internos protegidos para status, historico e observacoes.
 
 ## Endpoints disponiveis
 

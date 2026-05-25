@@ -263,9 +263,9 @@ Registro seguro da validacao:
 - tentativa de excluir solicitacao principal com historico vinculado foi bloqueada pela FK;
 - os registros internos de teste foram removidos apos a validacao;
 - a contagem final confirmou tabelas internas vazias apos a limpeza;
-- nenhuma alteracao foi aplicada no banco ativo de producao nesta etapa.
+- nenhuma alteracao foi aplicada no banco ativo de producao durante esta validacao de homologacao.
 
-Proxima etapa: avaliar aplicacao no banco ativo somente com backup, validacao, janela controlada e autorizacao operacional.
+Aplicacao posterior no banco ativo foi registrada na secao especifica de producao deste runbook.
 
 ## O que nao fazer
 
@@ -603,3 +603,28 @@ Registro seguro, sem dados sensiveis:
 - Google Forms permanece como fallback durante o periodo de transicao.
 - Proxima evolucao recomendada: modulo interno para triagem, acompanhamento e encerramento das solicitacoes.
 - Nenhum protocolo real, telefone, nome, dado pessoal, usuario real, senha, host real, IP interno, caminho local real, log completo ou `DATABASE_URL` real deve ser registrado no Git.
+
+## Registro de aplicacao das migrations internas 0004 e 0005 no banco ativo
+
+As migrations internas `0004_create_iluminacao_solicitacoes_historico.sql` e `0005_create_iluminacao_solicitacoes_observacoes.sql` foram aplicadas no banco ativo de producao apos validacao previa em homologacao.
+
+Registro seguro, sem dados sensiveis:
+
+- antes da aplicacao, o banco ativo possuia apenas `mod_iluminacao.solicitacoes` entre as tabelas internas;
+- backup manual do banco ativo foi criado antes da aplicacao;
+- backup foi validado como legivel antes da execucao;
+- a migration `0004` foi aplicada no banco ativo;
+- a migration `0005` foi aplicada no banco ativo;
+- as tabelas `mod_iluminacao.solicitacoes_historico` e `mod_iluminacao.solicitacoes_observacoes` foram criadas;
+- os indices das duas tabelas foram validados;
+- as FKs para `mod_iluminacao.solicitacoes(id)` foram validadas com `ON UPDATE RESTRICT` e `ON DELETE RESTRICT`;
+- a API publica continuou saudavel apos a aplicacao;
+- `/api/version` continuou retornando ambiente `producao`;
+- as tabelas internas permaneceram vazias apos a criacao;
+- nenhum endpoint interno foi criado nesta etapa;
+- nenhuma tela interna foi criada nesta etapa;
+- nenhuma alteracao foi feita na API publica.
+
+Proxima etapa: desenhar endpoints internos protegidos para alteracao de status, consulta de historico e registro de observacoes.
+
+Nao registrar protocolo real, telefone, nome, dado pessoal, usuario real, senha, host real, IP interno, caminho local real, log completo ou `DATABASE_URL` real no Git.

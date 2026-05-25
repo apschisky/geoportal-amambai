@@ -31,6 +31,11 @@ Ja foram validados em ambiente controlado:
 - duplicidade ativa por poste retornou mensagem amigavel;
 - botao Tracar rota e botao do Google Forms continuaram funcionando;
 - proxima fase recomendada: modulo interno de gestao, triagem, acompanhamento e encerramento;
+- migrations internas `0004` e `0005` aplicadas no banco ativo apos backup manual validado;
+- tabelas internas de historico e observacoes criadas, com indices e FKs restritivas validadas;
+- API publica permaneceu saudavel e `/api/version` continuou retornando ambiente `producao`;
+- tabelas internas permaneceram vazias apos a criacao;
+- nenhum endpoint interno e nenhuma tela interna foram criados nesta etapa;
 - healthchecks e scripts de validacao executados no servidor;
 - criacao publica de solicitacao;
 - protocolo real por sequence;
@@ -80,7 +85,10 @@ Antes e depois de testes pontuais, os defaults seguros devem permanecer:
 - [x] Bloqueio de duplicidade ativa por poste validado com mensagem amigavel.
 - [x] Botao Tracar rota, Google Forms, Geoportal publico, GeoServer e camadas validados apos ativacao real.
 - [x] Migrations internas `0004` e `0005` validadas em homologacao com backup previo, FKs restritivas e limpeza dos registros de teste.
-- [ ] Aplicacao das migrations internas `0004` e `0005` no banco ativo aprovada apos backup e autorizacao.
+- [x] Aplicacao das migrations internas `0004` e `0005` no banco ativo realizada apos backup manual validado.
+- [x] Indices e FKs restritivas das tabelas internas validados no banco ativo.
+- [x] API publica e `/api/version` validados apos a aplicacao das migrations internas no banco ativo.
+- [x] Tabelas internas confirmadas vazias apos a criacao no banco ativo.
 - [ ] Logs sem dados sensiveis.
 - [x] Rate limit ativo e validado em testes intensivos.
 - [ ] Mensagens publicas sem stack trace, SQL, host ou porta.
@@ -124,7 +132,7 @@ Nao registrar comandos com caminhos reais, credenciais, host real, IP interno ou
 - **Fase E:** estabilizar transicao e manter Google Forms como fallback ate decisao administrativa.
 - **Fase F:** modulo interno de gestao, triagem, acompanhamento e encerramento das solicitacoes, conforme `docs/ILUMINACAO-INTERNAL-MODULE-PLAN.md`.
 
-Proxima fase tecnica: desenvolver modulo interno de gestao/triagem/acompanhamento/encerramento, mantendo Google Forms como fallback durante o periodo de transicao e seguindo o plano inicial documentado em `docs/ILUMINACAO-INTERNAL-MODULE-PLAN.md`.
+Proxima fase tecnica: desenhar endpoints internos protegidos para status, historico e observacoes. Depois disso, desenvolver modulo interno de gestao/triagem/acompanhamento/encerramento, mantendo Google Forms como fallback durante o periodo de transicao e seguindo o plano inicial documentado em `docs/ILUMINACAO-INTERNAL-MODULE-PLAN.md`.
 
 ## 6. Plano de rollback
 
