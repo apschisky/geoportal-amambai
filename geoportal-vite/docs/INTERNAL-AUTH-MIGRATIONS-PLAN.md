@@ -254,7 +254,7 @@ Rollback correspondente:
 
 ## 5. Migration `0009_create_mod_auth_sessoes_login_auditoria.sql`
 
-Status: aplicada e validada em homologacao. Producao ainda nao recebeu esta migration.
+Status: aplicada e validada em homologacao e no banco ativo de producao.
 
 Esta migration cria apenas tabelas estruturais de sessoes e auditoria de login. Ela nao cria login funcional, endpoints, usuarios, senhas, tokens reais, sessoes reais, auditorias reais, seeds, GRANTs, triggers ou funcoes.
 
@@ -276,6 +276,23 @@ Registro seguro da validacao em homologacao:
 - dados ficticios foram removidos;
 - todas as tabelas `mod_auth` ficaram vazias apos a limpeza;
 - nenhum dado real, seed, endpoint ou login funcional foi criado.
+
+Registro seguro da aplicacao em producao:
+
+- backup manual do banco ativo foi criado antes da aplicacao;
+- backup manual foi validado como legivel;
+- a migration `0009` foi aplicada no banco ativo;
+- as tabelas `mod_auth.sessoes` e `mod_auth.login_auditoria` foram criadas;
+- indices foram validados;
+- FKs restritivas `fk_mod_auth_sessoes_usuario` e `fk_mod_auth_login_auditoria_usuario` foram validadas com `ON UPDATE RESTRICT` e `ON DELETE RESTRICT`;
+- todas as tabelas `mod_auth` permaneceram vazias apos a criacao: `mod_auth.usuarios`, `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis`, `mod_auth.perfil_permissoes`, `mod_auth.sessoes` e `mod_auth.login_auditoria`;
+- a API publica continuou saudavel;
+- `/api/health` continuou OK;
+- `/api/public/iluminacao/health` continuou OK;
+- `/api/version` continuou retornando ambiente `producao`;
+- nenhum usuario real, sessao real, token real, auditoria real, seed, endpoint ou login funcional foi criado.
+
+Com a aplicacao da `0009`, a base estrutural inicial do schema `mod_auth` esta concluida. A proxima etapa deve planejar e implementar autenticacao backend com testes, sem criar acesso interno publico sem autenticacao.
 
 Tabelas criadas pela migration:
 

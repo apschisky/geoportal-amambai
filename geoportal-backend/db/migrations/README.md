@@ -42,11 +42,13 @@ A migration `0008` tambem foi aplicada no banco ativo de producao apos backup ma
 
 A migration `0009_create_mod_auth_sessoes_login_auditoria.sql` cria apenas as tabelas `mod_auth.sessoes` e `mod_auth.login_auditoria`, com constraints, indices, FKs restritivas para `mod_auth.usuarios(id)` e comentarios. Ela nao cria login funcional, endpoints, usuarios, tokens reais, sessoes reais, auditorias reais, seeds, GRANTs, triggers ou funcoes.
 
-Status da `0009`: aplicada e validada em homologacao; producao ainda nao recebeu esta migration.
+Status da `0009`: aplicada e validada em homologacao e no banco ativo de producao.
 
 A migration `0009` foi aplicada e validada em homologacao apos backup manual validado como legivel. As tabelas `mod_auth.sessoes` e `mod_auth.login_auditoria` foram criadas, indices e FKs restritivas foram validados, constraints foram testadas com dados ficticios, os dados ficticios foram removidos e todas as tabelas `mod_auth` ficaram vazias apos a limpeza.
 
-Proxima etapa: avaliar aplicacao da migration `0009` em producao com backup e validacao.
+A migration `0009` tambem foi aplicada no banco ativo de producao apos backup manual validado como legivel. As tabelas `mod_auth.sessoes` e `mod_auth.login_auditoria` foram criadas, indices e FKs restritivas foram validados, todas as tabelas `mod_auth` permaneceram vazias apos a criacao, a API publica continuou saudavel, `/api/health` e `/api/public/iluminacao/health` continuaram OK, e `/api/version` continuou retornando ambiente `producao`. Nenhum usuario, sessao, token, auditoria, seed, endpoint ou login funcional foi criado.
+
+A base estrutural inicial do schema `mod_auth` esta concluida. Proxima etapa: planejar e implementar autenticacao backend com testes, sem criar acesso interno publico sem autenticacao.
 
 As migrations `0004` e `0005` foram aplicadas e validadas em homologacao com backup previo, inserts controlados, validacao de FKs restritivas e limpeza dos registros de teste.
 

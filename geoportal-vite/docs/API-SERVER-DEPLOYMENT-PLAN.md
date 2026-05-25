@@ -153,7 +153,12 @@ Registro de preparacao da producao local:
 - tabelas `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes` criadas com indices e FKs restritivas validadas;
 - todas as tabelas `mod_auth` permaneceram vazias apos a criacao em producao;
 - nenhum usuario, perfil, permissao, vinculo, seed, endpoint ou login funcional foi criado;
-- proxima migration prevista: `0009_create_mod_auth_sessoes_login_auditoria.sql`;
+- migration `0009_create_mod_auth_sessoes_login_auditoria.sql` aplicada em homologacao e producao apos backup manual validado;
+- tabelas `mod_auth.sessoes` e `mod_auth.login_auditoria` criadas com indices e FKs restritivas validadas;
+- todas as tabelas `mod_auth` permaneceram vazias apos a criacao em producao;
+- nenhum usuario, sessao, token, auditoria, seed, endpoint ou login funcional foi criado;
+- base estrutural inicial do schema `mod_auth` concluida;
+- proxima etapa: planejar e implementar autenticacao backend com testes, sem criar acesso interno publico sem autenticacao;
 - proxima evolucao recomendada: modulo interno para triagem, acompanhamento e encerramento das solicitacoes;
 - Google Forms permanece como fallback.
 
@@ -192,9 +197,10 @@ A API deve usar usuario restrito, com permissoes minimas:
 15. Registrar ativacao real controlada com `PERSIST_SOLICITACOES=true` fora do Git, mantendo Google Forms como fallback.
 16. Aplicar e validar migrations internas de historico e observacoes no banco ativo apos backup. Status: concluido para `0004` e `0005`.
 17. Desenhar autenticacao, autorizacao, perfis e auditoria interna.
-18. Criar a migration `0009_create_mod_auth_sessoes_login_auditoria.sql` apos revisao do modelo.
-19. Desenhar endpoints internos protegidos para status, historico e observacoes.
-20. Evoluir para modulo interno de triagem, acompanhamento e encerramento das solicitacoes, seguindo `docs/ILUMINACAO-INTERNAL-MODULE-PLAN.md`.
+18. Aplicar e validar a migration `0009_create_mod_auth_sessoes_login_auditoria.sql` em homologacao e producao apos backup. Status: concluido.
+19. Planejar e implementar autenticacao backend com testes, sem criar acesso interno publico sem autenticacao.
+20. Desenhar endpoints internos protegidos para status, historico e observacoes.
+21. Evoluir para modulo interno de triagem, acompanhamento e encerramento das solicitacoes, seguindo `docs/ILUMINACAO-INTERNAL-MODULE-PLAN.md`.
 
 ## 6. Evolucao futura de dominio
 

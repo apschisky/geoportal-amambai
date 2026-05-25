@@ -783,7 +783,7 @@ Registro seguro, sem dados sensiveis:
 - auditoria com login em branco foi bloqueada;
 - dados ficticios foram removidos;
 - todas as tabelas `mod_auth` ficaram vazias apos a limpeza;
-- producao ainda nao recebeu a migration `0009` nesta etapa;
+- a aplicacao posterior no banco ativo de producao foi registrada na secao especifica deste runbook;
 - nenhum usuario real foi criado;
 - nenhum token real foi criado;
 - nenhuma sessao real foi criada;
@@ -792,6 +792,36 @@ Registro seguro, sem dados sensiveis:
 - nenhum endpoint foi criado;
 - nenhum login funcional foi implementado.
 
-Proxima etapa: avaliar aplicacao da migration `0009` em producao com backup e validacao.
+Etapa posterior registrada abaixo: aplicacao e validacao da migration `0009_create_mod_auth_sessoes_login_auditoria.sql` em producao com backup e validacao.
+
+Nao registrar usuario real, email real, senha, hash real, token, host real, IP interno, caminho local real, log completo ou `DATABASE_URL` real no Git.
+
+## Registro de aplicacao da migration 0009 no banco ativo
+
+A migration `0009_create_mod_auth_sessoes_login_auditoria.sql` foi aplicada no banco ativo de producao apos validacao previa em homologacao.
+
+Registro seguro, sem dados sensiveis:
+
+- backup manual do banco ativo foi criado antes da aplicacao;
+- backup manual foi validado como legivel;
+- a migration `0009` foi aplicada no banco ativo;
+- as tabelas `mod_auth.sessoes` e `mod_auth.login_auditoria` foram criadas;
+- indices foram validados;
+- FKs restritivas `fk_mod_auth_sessoes_usuario` e `fk_mod_auth_login_auditoria_usuario` foram validadas com `ON UPDATE RESTRICT` e `ON DELETE RESTRICT`;
+- todas as tabelas `mod_auth` permaneceram vazias apos a criacao: `mod_auth.usuarios`, `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis`, `mod_auth.perfil_permissoes`, `mod_auth.sessoes` e `mod_auth.login_auditoria`;
+- a API publica continuou saudavel;
+- `/api/health` continuou OK;
+- `/api/public/iluminacao/health` continuou OK;
+- `/api/version` continuou retornando ambiente `producao`;
+- nenhum usuario real foi criado;
+- nenhuma sessao real foi criada;
+- nenhum token real foi criado;
+- nenhuma auditoria real foi criada;
+- nenhuma seed foi criada;
+- nenhum endpoint foi criado;
+- nenhum login funcional foi implementado;
+- a base estrutural inicial do schema `mod_auth` ficou concluida.
+
+Proxima etapa: planejar e implementar autenticacao backend com testes, sem criar acesso interno publico sem autenticacao.
 
 Nao registrar usuario real, email real, senha, hash real, token, host real, IP interno, caminho local real, log completo ou `DATABASE_URL` real no Git.
