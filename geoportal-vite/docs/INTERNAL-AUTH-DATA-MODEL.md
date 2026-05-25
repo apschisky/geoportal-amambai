@@ -4,6 +4,8 @@ Este documento define o modelo conceitual de autenticacao e autorizacao para o G
 
 O detalhamento tecnico das futuras migrations do schema `mod_auth` esta em `docs/INTERNAL-AUTH-MIGRATIONS-PLAN.md`.
 
+Registro documental: a migration `0006_create_mod_auth_schema.sql` e o rollback correspondente foram criados para o schema `mod_auth`, mas ainda nao foram aplicados no banco.
+
 ## 1. Objetivo
 
 - Definir um modelo transversal de autenticacao e autorizacao para o Geoportal Interno.

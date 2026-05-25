@@ -17,6 +17,8 @@ Essas migrations nao devem alterar `mod_iluminacao`, `plano` ou `web_map`.
 
 ## 2. Migration `0006_create_mod_auth_schema.sql`
 
+Status: criada no repositorio, ainda nao aplicada no banco.
+
 Responsabilidade:
 
 - Criar o schema `mod_auth`.

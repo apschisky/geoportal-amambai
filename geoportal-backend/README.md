@@ -88,7 +88,9 @@ O desenho conceitual dos endpoints internos protegidos esta em `geoportal-vite/d
 
 O modelo conceitual transversal de autenticacao/autorizacao para futuros modulos internos esta em `geoportal-vite/docs/INTERNAL-AUTH-DATA-MODEL.md`.
 
-O plano tecnico das futuras migrations do schema `mod_auth` esta em `geoportal-vite/docs/INTERNAL-AUTH-MIGRATIONS-PLAN.md`. Nenhuma migration de autenticacao foi criada nesta etapa.
+O plano tecnico das futuras migrations do schema `mod_auth` esta em `geoportal-vite/docs/INTERNAL-AUTH-MIGRATIONS-PLAN.md`. As migrations de tabelas, sessoes, perfis e permissoes ainda nao foram criadas.
+
+Registro atual: a migration `0006_create_mod_auth_schema.sql` e o rollback `0006_drop_mod_auth_schema.sql` foram criados para o schema `mod_auth`, mas ainda nao foram aplicados no banco.
 
 ## Endpoints disponiveis
 

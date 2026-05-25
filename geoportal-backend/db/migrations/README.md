@@ -9,6 +9,7 @@ Convencao sugerida:
 - `0003_create_iluminacao_protocolo_sequence.sql`
 - `0004_create_iluminacao_solicitacoes_historico.sql`
 - `0005_create_iluminacao_solicitacoes_observacoes.sql`
+- `0006_create_mod_auth_schema.sql`
 
 A migration `0001_create_mod_iluminacao_schema.sql` cria apenas o schema `mod_iluminacao`.
 
@@ -19,6 +20,8 @@ A migration `0003_create_iluminacao_protocolo_sequence.sql` cria sequence dedica
 A migration `0004_create_iluminacao_solicitacoes_historico.sql` cria a tabela interna de historico/auditoria `mod_iluminacao.solicitacoes_historico`. Ela nao altera a tabela principal.
 
 A migration `0005_create_iluminacao_solicitacoes_observacoes.sql` cria a tabela interna de observacoes operacionais `mod_iluminacao.solicitacoes_observacoes`. Ela nao altera a tabela principal nem o historico.
+
+A migration `0006_create_mod_auth_schema.sql` cria apenas o schema transversal `mod_auth` para autenticacao/autorizacao interna futura. Ela nao cria tabelas, usuarios, GRANTs ou dados iniciais e ainda nao foi aplicada no banco.
 
 As migrations `0004` e `0005` foram aplicadas e validadas em homologacao com backup previo, inserts controlados, validacao de FKs restritivas e limpeza dos registros de teste.
 
