@@ -335,12 +335,12 @@ export const POSTE_FORM_CONFIG = {
 
 // Feature flag para botao experimental da API de Iluminacao Publica.
 export const ILUMINACAO_API_TEST_CONFIG = {
-  enabled: false,
-  submitEnabled: false,
-  consultaEnabled: false,
+  enabled: true,
+  submitEnabled: true,
+  consultaEnabled: true,
   apiUrl: 'https://geoserver.amambai.ms.gov.br/api/public/iluminacao/solicitacoes',
   consultaApiUrl: 'https://geoserver.amambai.ms.gov.br/api/public/iluminacao/consulta',
-  buttonLabel: 'Solicitar pela API (teste)',
+  buttonLabel: 'Solicitar Reparo pela API',
   disabledMessage: 'Fluxo de solicitação pela API ainda está em teste. Use o formulário atual por enquanto.',
   successMessage: 'Solicitação registrada com sucesso.',
   genericErrorMessage: 'Não foi possível registrar a solicitação no momento. Tente novamente mais tarde.'

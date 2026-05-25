@@ -13,6 +13,95 @@ import {
 
 // Criação e gerenciamento de popups usando ES Modules do OpenLayers
 //
+function getPopupSafeArea() {
+  const margin = 12;
+  const isMobile = window.innerWidth <= 600;
+  const headerRect = document.querySelector('.header')?.getBoundingClientRect();
+  const publicNavRect = document.querySelector('.geoportal-public-nav')?.getBoundingClientRect();
+  const footerRect = document.querySelector('.footer')?.getBoundingClientRect();
+  const toolboxRect = isMobile
+    ? document.querySelector('.toolbox')?.getBoundingClientRect()
+    : null;
+  const topFromDom = Math.max(
+    headerRect?.bottom || 0,
+    publicNavRect?.bottom || 0
+  );
+  const bottomLimit = Math.min(
+    footerRect?.top || window.innerHeight,
+    toolboxRect?.top || window.innerHeight
+  );
+
+  return {
+    top: Math.max(topFromDom + margin, isMobile ? 96 : 120),
+    left: margin,
+    right: window.innerWidth - margin,
+    bottom: Math.min(bottomLimit - margin, window.innerHeight - (isMobile ? 86 : 52))
+  };
+}
+
+function calculatePopupOverflow(rect, safeArea) {
+  const isMobile = window.innerWidth <= 600;
+  const maxDelta = isMobile ? 200 : 280;
+  const overflowTop = Math.max(0, safeArea.top - rect.top);
+  const overflowBottom = Math.max(0, rect.bottom - safeArea.bottom);
+  const overflowLeft = Math.max(0, safeArea.left - rect.left);
+  const overflowRight = Math.max(0, rect.right - safeArea.right);
+  const rawShiftX = overflowLeft || -overflowRight;
+  const rawShiftY = overflowTop || -overflowBottom;
+
+  return {
+    shiftX: Math.max(-maxDelta, Math.min(maxDelta, rawShiftX)),
+    shiftY: Math.max(-maxDelta, Math.min(maxDelta, rawShiftY)),
+    hasOverflow: Boolean(overflowTop || overflowBottom || overflowLeft || overflowRight)
+  };
+}
+
+function panMapByPopupOverflow(map, shiftX, shiftY, duration = 160) {
+  const view = map.getView();
+  const currentCenter = view.getCenter();
+  if (!currentCenter) return false;
+
+  const centerPixel = map.getPixelFromCoordinate(currentCenter);
+  if (!centerPixel) return false;
+
+  const newCenter = map.getCoordinateFromPixel([
+    centerPixel[0] - shiftX,
+    centerPixel[1] - shiftY
+  ]);
+  if (!newCenter) return false;
+
+  view.animate({
+    center: newCenter,
+    duration
+  });
+  return true;
+}
+
+function afterPopupRender(callback) {
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(callback);
+  });
+}
+
+function ensurePointPopupFullyVisible(map, popupElement, options = {}) {
+  if (!map || !popupElement || typeof window === 'undefined') return;
+
+  const attempt = options.attempt || 0;
+  afterPopupRender(() => {
+    const rect = popupElement.getBoundingClientRect();
+    const overflow = calculatePopupOverflow(rect, getPopupSafeArea());
+    if (!overflow.hasOverflow) return;
+
+    const duration = attempt === 0 ? 160 : 0;
+    const didPan = panMapByPopupOverflow(map, overflow.shiftX, overflow.shiftY, duration);
+    if (!didPan || attempt >= 1) return;
+
+    setTimeout(() => {
+      ensurePointPopupFullyVisible(map, popupElement, { attempt: attempt + 1 });
+    }, duration + 40);
+  });
+}
+
 export function closeLotesPopup(map) {
   if (!map) return false;
 
@@ -127,4 +216,9 @@ export function showLotesPopup(map, coord, html, isPrint = false) {
   popupOverlayLotes.set('popupLotes', true);
   map.addOverlay(popupOverlayLotes);
   popupOverlayLotes.setPosition(coord);
+  if (shouldShowAbovePoint) {
+    setTimeout(() => {
+      ensurePointPopupFullyVisible(map, container);
+    }, 850);
+  }
 }
