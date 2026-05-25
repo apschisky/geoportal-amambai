@@ -146,7 +146,10 @@ Registro de preparacao da producao local:
 - migration `0006_create_mod_auth_schema.sql` aplicada em homologacao e producao apos backup manual validado;
 - schema transversal `mod_auth` criado com comentario validado;
 - nenhuma tabela foi criada em `mod_auth` nesta etapa;
-- proxima migration prevista: `0007_create_mod_auth_usuarios.sql`;
+- migration `0007_create_mod_auth_usuarios.sql` aplicada em homologacao e producao apos backup manual validado;
+- tabela `mod_auth.usuarios` criada com indices validados e vazia apos a criacao em producao;
+- nenhum usuario real, seed, endpoint ou login funcional foi criado;
+- proxima migration prevista: `0008_create_mod_auth_perfis_permissoes.sql`;
 - proxima evolucao recomendada: modulo interno para triagem, acompanhamento e encerramento das solicitacoes;
 - Google Forms permanece como fallback.
 
@@ -185,7 +188,7 @@ A API deve usar usuario restrito, com permissoes minimas:
 15. Registrar ativacao real controlada com `PERSIST_SOLICITACOES=true` fora do Git, mantendo Google Forms como fallback.
 16. Aplicar e validar migrations internas de historico e observacoes no banco ativo apos backup. Status: concluido para `0004` e `0005`.
 17. Desenhar autenticacao, autorizacao, perfis e auditoria interna.
-18. Criar a migration `0007_create_mod_auth_usuarios.sql` apos revisao do modelo.
+18. Criar a migration `0008_create_mod_auth_perfis_permissoes.sql` apos revisao do modelo.
 19. Desenhar endpoints internos protegidos para status, historico e observacoes.
 20. Evoluir para modulo interno de triagem, acompanhamento e encerramento das solicitacoes, seguindo `docs/ILUMINACAO-INTERNAL-MODULE-PLAN.md`.
 

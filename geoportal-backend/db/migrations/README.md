@@ -28,9 +28,11 @@ A migration `0006` foi aplicada e validada em homologacao e no banco ativo de pr
 
 A migration `0007_create_mod_auth_usuarios.sql` cria apenas a tabela `mod_auth.usuarios`, com constraints, indices e comentarios. Ela nao cria usuarios reais, seeds, GRANTs, triggers, funcoes ou endpoints.
 
-A migration `0007` foi aplicada e validada em homologacao apos backup manual validado como legivel. A tabela `mod_auth.usuarios` foi criada, os indices foram validados, constraints foram testadas com dados ficticios, o registro ficticio foi removido e a tabela ficou vazia apos a limpeza. Producao ainda nao recebeu a migration `0007` nesta etapa.
+A migration `0007` foi aplicada e validada em homologacao apos backup manual validado como legivel. A tabela `mod_auth.usuarios` foi criada, os indices foram validados, constraints foram testadas com dados ficticios, o registro ficticio foi removido e a tabela ficou vazia apos a limpeza.
 
-Proxima etapa: avaliar aplicacao da migration `0007` em producao com backup e validacao.
+A migration `0007` tambem foi aplicada no banco ativo de producao apos backup manual validado como legivel. A tabela `mod_auth.usuarios` foi criada, os indices foram validados, a tabela permaneceu vazia apos a criacao, a API publica continuou saudavel e `/api/public/iluminacao/health` continuou OK. Nenhum usuario real, seed, endpoint ou login funcional foi criado.
+
+Proxima etapa: criar a migration `0008_create_mod_auth_perfis_permissoes.sql` para perfis, permissoes e vinculos.
 
 As migrations `0004` e `0005` foram aplicadas e validadas em homologacao com backup previo, inserts controlados, validacao de FKs restritivas e limpeza dos registros de teste.
 

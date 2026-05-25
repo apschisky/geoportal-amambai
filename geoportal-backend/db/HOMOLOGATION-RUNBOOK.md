@@ -656,7 +656,7 @@ Nao registrar usuario real, email real, senha, token, host real, IP interno, cam
 
 ## Registro de validacao da migration 0007 em homologacao
 
-A migration `0007_create_mod_auth_usuarios.sql` foi aplicada e validada apenas em homologacao para criar a tabela `mod_auth.usuarios`.
+A migration `0007_create_mod_auth_usuarios.sql` foi aplicada e validada inicialmente em homologacao para criar a tabela `mod_auth.usuarios`.
 
 Registro seguro, sem dados sensiveis:
 
@@ -671,10 +671,33 @@ Registro seguro, sem dados sensiveis:
 - email invalido foi bloqueado pelo `CHECK`;
 - o usuario ficticio foi removido;
 - a tabela `mod_auth.usuarios` ficou vazia apos a limpeza;
-- producao ainda nao recebeu a migration `0007` nesta etapa;
+- producao ainda nao havia recebido a migration `0007` durante esta validacao de homologacao;
 - nenhum endpoint interno foi criado;
 - nenhum usuario real foi criado.
 
-Proxima etapa: avaliar aplicacao da migration `0007` em producao com backup e validacao.
+A aplicacao posterior no banco ativo foi registrada na secao especifica de producao deste runbook.
+
+Nao registrar usuario real, email real, senha, hash real, token, host real, IP interno, caminho local real, log completo ou `DATABASE_URL` real no Git.
+
+## Registro de aplicacao da migration 0007 no banco ativo
+
+A migration `0007_create_mod_auth_usuarios.sql` foi aplicada no banco ativo de producao apos validacao previa em homologacao.
+
+Registro seguro, sem dados sensiveis:
+
+- backup manual do banco ativo foi criado antes da aplicacao;
+- backup manual foi validado como legivel;
+- a migration `0007` foi aplicada no banco ativo;
+- a tabela `mod_auth.usuarios` foi criada;
+- os indices `usuarios_pkey`, `ux_mod_auth_usuarios_email_lower`, `ux_mod_auth_usuarios_login_lower`, `ix_mod_auth_usuarios_ativo` e `ix_mod_auth_usuarios_bloqueado_ate` foram validados;
+- a tabela `mod_auth.usuarios` permaneceu vazia apos a criacao;
+- a API publica continuou saudavel;
+- `/api/public/iluminacao/health` continuou OK;
+- nenhum usuario real foi criado;
+- nenhuma seed foi criada;
+- nenhum endpoint foi criado;
+- nenhum login funcional foi implementado.
+
+Proxima etapa: criar a migration `0008_create_mod_auth_perfis_permissoes.sql` para perfis, permissoes e vinculos.
 
 Nao registrar usuario real, email real, senha, hash real, token, host real, IP interno, caminho local real, log completo ou `DATABASE_URL` real no Git.

@@ -48,7 +48,7 @@ Rollback correspondente:
 
 ## 3. Migration `0007_create_mod_auth_usuarios.sql`
 
-Status: aplicada e validada em homologacao. Producao ainda nao recebeu esta migration.
+Status: aplicada e validada em homologacao e no banco ativo de producao.
 
 Registro seguro da validacao em homologacao:
 
@@ -63,6 +63,21 @@ Registro seguro da validacao em homologacao:
 - email invalido foi bloqueado por `CHECK`;
 - o usuario ficticio foi removido;
 - a tabela `mod_auth.usuarios` ficou vazia apos a limpeza.
+
+Registro seguro da aplicacao em producao:
+
+- backup manual do banco ativo foi criado antes da aplicacao;
+- backup manual foi validado como legivel;
+- a migration `0007` foi aplicada no banco ativo;
+- a tabela `mod_auth.usuarios` foi criada;
+- os indices `usuarios_pkey`, `ux_mod_auth_usuarios_email_lower`, `ux_mod_auth_usuarios_login_lower`, `ix_mod_auth_usuarios_ativo` e `ix_mod_auth_usuarios_bloqueado_ate` foram validados;
+- a tabela `mod_auth.usuarios` permaneceu vazia apos a criacao;
+- a API publica continuou saudavel;
+- `/api/public/iluminacao/health` continuou OK;
+- nenhum usuario real foi criado;
+- nenhuma seed foi criada;
+- nenhum endpoint foi criado;
+- nenhum login funcional foi implementado.
 
 Tabela futura: `mod_auth.usuarios`.
 
