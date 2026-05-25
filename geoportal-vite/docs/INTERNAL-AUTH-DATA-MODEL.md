@@ -6,6 +6,8 @@ O detalhamento tecnico das futuras migrations do schema `mod_auth` esta em `docs
 
 Registro documental: a migration `0006_create_mod_auth_schema.sql` foi criada e aplicada em homologacao e no banco ativo de producao apos backup manual validado. O schema `mod_auth` foi criado com comentario validado, e nenhuma tabela foi criada nesta etapa. O rollback correspondente permanece disponivel para ambiente controlado.
 
+Registro documental: a migration `0007_create_mod_auth_usuarios.sql` e o rollback correspondente foram criados para a tabela `mod_auth.usuarios`, mas ainda nao foram aplicados no banco. A migration nao cria usuarios reais, seeds, GRANTs, triggers, funcoes ou endpoints.
+
 ## 1. Objetivo
 
 - Definir um modelo transversal de autenticacao e autorizacao para o Geoportal Interno.

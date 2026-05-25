@@ -92,7 +92,7 @@ O plano tecnico das futuras migrations do schema `mod_auth` esta em `geoportal-v
 
 Registro atual: a migration `0006_create_mod_auth_schema.sql` foi aplicada em homologacao e no banco ativo de producao apos backup manual validado. O schema `mod_auth` foi criado com comentario validado, e nenhuma tabela foi criada nesta etapa. O rollback `0006_drop_mod_auth_schema.sql` permanece disponivel para ambiente controlado.
 
-Proxima etapa de banco planejada: migration `0007_create_mod_auth_usuarios.sql`.
+Registro atual: a migration `0007_create_mod_auth_usuarios.sql` e o rollback `0007_drop_mod_auth_usuarios.sql` foram criados para a tabela `mod_auth.usuarios`, mas ainda nao foram aplicados no banco. Nenhum usuario real, seed, GRANT, trigger, funcao ou endpoint foi criado.
 
 ## Endpoints disponiveis
 

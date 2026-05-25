@@ -48,6 +48,8 @@ Rollback correspondente:
 
 ## 3. Migration `0007_create_mod_auth_usuarios.sql`
 
+Status: criada no repositorio, ainda nao aplicada no banco.
+
 Tabela futura: `mod_auth.usuarios`.
 
 Campos conceituais/tecnicos:

@@ -10,6 +10,7 @@ Convencao sugerida:
 - `0004_create_iluminacao_solicitacoes_historico.sql`
 - `0005_create_iluminacao_solicitacoes_observacoes.sql`
 - `0006_create_mod_auth_schema.sql`
+- `0007_create_mod_auth_usuarios.sql`
 
 A migration `0001_create_mod_iluminacao_schema.sql` cria apenas o schema `mod_iluminacao`.
 
@@ -25,7 +26,9 @@ A migration `0006_create_mod_auth_schema.sql` cria apenas o schema transversal `
 
 A migration `0006` foi aplicada e validada em homologacao e no banco ativo de producao, sempre apos backup manual validado como legivel. O schema `mod_auth` foi criado, o comentario do schema foi validado e foi confirmado que nenhuma tabela foi criada nesta etapa.
 
-Proxima etapa: criar a migration `0007_create_mod_auth_usuarios.sql` para a tabela `mod_auth.usuarios`.
+A migration `0007_create_mod_auth_usuarios.sql` cria apenas a tabela `mod_auth.usuarios`, com constraints, indices e comentarios. Ela nao cria usuarios reais, seeds, GRANTs, triggers, funcoes ou endpoints e ainda nao foi aplicada no banco.
+
+Proxima etapa: revisar e aplicar a migration `0007` em homologacao com backup e validacao.
 
 As migrations `0004` e `0005` foram aplicadas e validadas em homologacao com backup previo, inserts controlados, validacao de FKs restritivas e limpeza dos registros de teste.
 
