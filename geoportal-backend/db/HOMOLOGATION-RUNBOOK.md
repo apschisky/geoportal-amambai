@@ -653,3 +653,28 @@ Registro seguro, sem dados sensiveis:
 Proxima etapa: criar a migration `0007_create_mod_auth_usuarios.sql` para a tabela `mod_auth.usuarios`.
 
 Nao registrar usuario real, email real, senha, token, host real, IP interno, caminho local real, log completo ou `DATABASE_URL` real no Git.
+
+## Registro de validacao da migration 0007 em homologacao
+
+A migration `0007_create_mod_auth_usuarios.sql` foi aplicada e validada apenas em homologacao para criar a tabela `mod_auth.usuarios`.
+
+Registro seguro, sem dados sensiveis:
+
+- backup manual de homologacao foi criado antes da aplicacao;
+- backup manual foi validado como legivel;
+- a migration `0007` foi aplicada em homologacao;
+- a tabela `mod_auth.usuarios` foi criada;
+- os indices `usuarios_pkey`, `ux_mod_auth_usuarios_email_lower`, `ux_mod_auth_usuarios_login_lower`, `ix_mod_auth_usuarios_ativo` e `ix_mod_auth_usuarios_bloqueado_ate` foram validados;
+- insert ficticio valido funcionou;
+- duplicidade de email normalizado foi bloqueada;
+- duplicidade de login normalizado foi bloqueada;
+- email invalido foi bloqueado pelo `CHECK`;
+- o usuario ficticio foi removido;
+- a tabela `mod_auth.usuarios` ficou vazia apos a limpeza;
+- producao ainda nao recebeu a migration `0007` nesta etapa;
+- nenhum endpoint interno foi criado;
+- nenhum usuario real foi criado.
+
+Proxima etapa: avaliar aplicacao da migration `0007` em producao com backup e validacao.
+
+Nao registrar usuario real, email real, senha, hash real, token, host real, IP interno, caminho local real, log completo ou `DATABASE_URL` real no Git.

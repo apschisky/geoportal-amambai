@@ -6,7 +6,7 @@ O detalhamento tecnico das futuras migrations do schema `mod_auth` esta em `docs
 
 Registro documental: a migration `0006_create_mod_auth_schema.sql` foi criada e aplicada em homologacao e no banco ativo de producao apos backup manual validado. O schema `mod_auth` foi criado com comentario validado, e nenhuma tabela foi criada nesta etapa. O rollback correspondente permanece disponivel para ambiente controlado.
 
-Registro documental: a migration `0007_create_mod_auth_usuarios.sql` e o rollback correspondente foram criados para a tabela `mod_auth.usuarios`, mas ainda nao foram aplicados no banco. A migration nao cria usuarios reais, seeds, GRANTs, triggers, funcoes ou endpoints.
+Registro documental: a migration `0007_create_mod_auth_usuarios.sql` foi aplicada e validada em homologacao apos backup manual validado. A tabela `mod_auth.usuarios` foi criada, indices e constraints foram validados com dados ficticios, os dados ficticios foram removidos e a tabela ficou vazia apos a limpeza. Producao ainda nao recebeu a migration `0007` nesta etapa.
 
 ## 1. Objetivo
 

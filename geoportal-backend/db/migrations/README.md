@@ -26,9 +26,11 @@ A migration `0006_create_mod_auth_schema.sql` cria apenas o schema transversal `
 
 A migration `0006` foi aplicada e validada em homologacao e no banco ativo de producao, sempre apos backup manual validado como legivel. O schema `mod_auth` foi criado, o comentario do schema foi validado e foi confirmado que nenhuma tabela foi criada nesta etapa.
 
-A migration `0007_create_mod_auth_usuarios.sql` cria apenas a tabela `mod_auth.usuarios`, com constraints, indices e comentarios. Ela nao cria usuarios reais, seeds, GRANTs, triggers, funcoes ou endpoints e ainda nao foi aplicada no banco.
+A migration `0007_create_mod_auth_usuarios.sql` cria apenas a tabela `mod_auth.usuarios`, com constraints, indices e comentarios. Ela nao cria usuarios reais, seeds, GRANTs, triggers, funcoes ou endpoints.
 
-Proxima etapa: revisar e aplicar a migration `0007` em homologacao com backup e validacao.
+A migration `0007` foi aplicada e validada em homologacao apos backup manual validado como legivel. A tabela `mod_auth.usuarios` foi criada, os indices foram validados, constraints foram testadas com dados ficticios, o registro ficticio foi removido e a tabela ficou vazia apos a limpeza. Producao ainda nao recebeu a migration `0007` nesta etapa.
+
+Proxima etapa: avaliar aplicacao da migration `0007` em producao com backup e validacao.
 
 As migrations `0004` e `0005` foram aplicadas e validadas em homologacao com backup previo, inserts controlados, validacao de FKs restritivas e limpeza dos registros de teste.
 
