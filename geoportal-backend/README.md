@@ -84,12 +84,17 @@ As migrations internas `0004` e `0005` foram aplicadas e validadas em homologaca
 
 As migrations internas `0004` e `0005` tambem foram aplicadas no banco ativo de producao apos backup manual validado como legivel. Antes da aplicacao, o banco ativo possuia apenas `mod_iluminacao.solicitacoes` entre as tabelas internas. Apos a aplicacao, `mod_iluminacao.solicitacoes_historico` e `mod_iluminacao.solicitacoes_observacoes` foram criadas, os indices foram validados e as FKs restritivas para `mod_iluminacao.solicitacoes(id)` foram confirmadas com `ON UPDATE RESTRICT` e `ON DELETE RESTRICT`. A API publica continuou saudavel, `/api/version` continuou retornando ambiente `producao` e as tabelas internas permaneceram vazias apos a criacao. Ainda nao ha endpoints internos nem tela interna usando essas tabelas; a proxima etapa e desenhar endpoints internos protegidos para status, historico e observacoes.
 
+O desenho conceitual dos endpoints internos protegidos esta em `geoportal-vite/docs/INTERNAL-AUTHORIZATION-PLAN.md`. Endpoints internos ainda nao foram implementados e devem exigir autenticacao, autorizacao no backend e auditoria antes de qualquer publicacao.
+
 ## Endpoints disponiveis
 
 - `GET /api/health`
 - `GET /api/version`
 - `GET /api/public/iluminacao/health`
 - `POST /api/public/iluminacao/solicitacoes`
+- `POST /api/public/iluminacao/consulta`
+
+Nao ha endpoints internos implementados nesta etapa.
 
 ### Exemplo de solicitacao publica simulada com poste no mapa
 

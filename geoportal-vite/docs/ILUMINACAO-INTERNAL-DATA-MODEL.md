@@ -1,10 +1,10 @@
 # Modelo de Dados Interno de Iluminacao Publica
 
-Este documento detalha o modelo conceitual futuro para historico/auditoria e observacoes internas do modulo interno de Iluminacao Publica. Ele nao aplica migrations, nao altera codigo e nao altera banco nesta etapa.
+Este documento detalha o modelo conceitual para historico/auditoria e observacoes internas do modulo interno de Iluminacao Publica. Ele nao aplica migrations, nao altera codigo e nao altera banco nesta etapa.
 
 ## 1. Objetivo
 
-Registrar o desenho das futuras tabelas internas:
+Registrar o desenho das tabelas internas:
 
 - `mod_iluminacao.solicitacoes_historico`;
 - `mod_iluminacao.solicitacoes_observacoes`.
@@ -81,12 +81,17 @@ Na primeira fase, somente `interna` deve ser usada. A visibilidade `publica_futu
 - Alteracao de status deve sempre gerar registro em `solicitacoes_historico`.
 - Alteracao de prioridade deve sempre gerar registro em `solicitacoes_historico`.
 - Criacao de observacao interna deve gerar registro em `solicitacoes_observacoes` e evento resumido em `solicitacoes_historico`.
+- Nao deve existir alteracao de status sem registro correspondente em `solicitacoes_historico`.
+- Acoes internas devem registrar `usuario_id`, `usuario_nome` e `origem_acao = 'usuario_interno'` quando aplicavel.
+- Acoes automaticas devem registrar `origem_acao = 'sistema'`.
+- Ajustes administrativos devem registrar `origem_acao = 'ajuste_administrativo'`.
 - Historico deve ser append-only.
 - Exclusao fisica deve ser evitada.
 - Soft delete, se usado em observacoes, deve ser auditado.
 - Dados pessoais devem ser minimizados.
+- Listagens internas devem minimizar dados pessoais e evitar contato/telefone quando nao houver necessidade operacional.
 - Usuario e data/hora devem ser registrados nas acoes internas.
-- Logs nao devem conter senha, token, telefone completo ou dados sensiveis desnecessarios.
+- Logs nao devem conter senha, token, `DATABASE_URL`, telefone completo ou dados sensiveis desnecessarios.
 
 ## 6. Referencia para outros modulos
 
@@ -100,9 +105,9 @@ Este desenho deve servir como referencia para modulos futuros do Geoportal, como
 
 Cada modulo pode adaptar nomes e campos, mas deve preservar os principios de estado atual, historico append-only, observacoes internas, auditoria e separacao entre dados publicos e internos.
 
-## 7. Migrations futuras
+## 7. Migrations internas 0004 e 0005
 
-As futuras migrations devem ser pequenas, revisaveis e reversiveis:
+As migrations internas foram mantidas pequenas, revisaveis e reversiveis:
 
 - uma migration para `solicitacoes_historico`;
 - uma migration para `solicitacoes_observacoes`;
@@ -118,6 +123,8 @@ As futuras migrations devem ser pequenas, revisaveis e reversiveis:
 
 As migrations devem manter o schema `mod_iluminacao` como area operacional da API e do modulo interno. Nao devem gravar em `plano` nem em `web_map`.
 
+Migrations futuras do modulo interno, como usuarios, perfis ou sessoes, tambem devem continuar pequenas, revisaveis e reversiveis.
+
 Registro documental: a migration `0004_create_iluminacao_solicitacoes_historico.sql` e o rollback correspondente foram criados para a tabela `mod_iluminacao.solicitacoes_historico`. A migration `0005_create_iluminacao_solicitacoes_observacoes.sql` e o rollback correspondente foram criados para a tabela `mod_iluminacao.solicitacoes_observacoes`.
 
 A visibilidade `publica_futura` em `solicitacoes_observacoes` e apenas reserva conceitual. Ela nao autoriza exposicao automatica ao cidadao; observacoes internas nao devem aparecer na consulta publica.
@@ -132,10 +139,15 @@ Ainda nao ha endpoints internos nem tela interna usando `solicitacoes_historico`
 
 Endpoints internos futuros devem usar essas tabelas da seguinte forma:
 
+- `GET /api/internal/iluminacao/solicitacoes` lista solicitacoes com dados pessoais minimizados e filtros operacionais.
 - `PATCH /api/internal/iluminacao/solicitacoes/{id}/status` altera o estado atual e grava historico.
 - `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes` grava observacao e evento resumido no historico.
 - `GET /api/internal/iluminacao/solicitacoes/{id}` pode retornar detalhe interno com historico e observacoes, respeitando permissao.
+- `GET /api/internal/iluminacao/solicitacoes/{id}/historico` retorna historico administrativo conforme perfil.
+- `GET /api/internal/iluminacao/estatisticas` retorna indicadores internos sem expor dados pessoais desnecessarios.
 - `GET /api/public/iluminacao/consulta` nao retorna historico interno nem observacoes internas.
+
+Todos os endpoints em `/api/internal/...` devem exigir autenticacao, autorizacao por perfil e validacao no backend. O desenho de perfis e permissoes esta em `docs/INTERNAL-AUTHORIZATION-PLAN.md`.
 
 ## 9. Riscos prevenidos
 
@@ -146,7 +158,10 @@ Este desenho reduz os seguintes riscos:
 - exposicao indevida de dados internos;
 - dificuldade de apurar quem alterou um chamado;
 - inconsistencia entre status atual e historico;
-- dificuldade de replicar o padrao para outros modulos.
+- dificuldade de replicar o padrao para outros modulos;
+- acesso interno sem autorizacao;
+- endpoint administrativo publicado por engano;
+- vazamento de senha, token ou dados pessoais em logs.
 
 ## 10. Criterios de aceite desta etapa documental
 
@@ -155,4 +170,4 @@ Este desenho reduz os seguintes riscos:
 - Modelo conceitual claro.
 - Regras de auditoria explicitas.
 - Separacao publico/interno preservada.
-- Documento pronto para orientar a proxima etapa de criacao das migrations.
+- Documento pronto para orientar endpoints internos protegidos e futuras migrations de autenticacao/autorizacao.

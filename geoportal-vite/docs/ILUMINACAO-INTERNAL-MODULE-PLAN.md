@@ -78,9 +78,12 @@ Endpoints conceituais para a fase interna:
 - `GET /api/internal/iluminacao/solicitacoes/{id}`;
 - `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`;
 - `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes`;
+- `GET /api/internal/iluminacao/solicitacoes/{id}/historico`;
 - `GET /api/internal/iluminacao/estatisticas`.
 
-Esses endpoints devem ser separados dos endpoints publicos. Eles nao devem ser ativados sem autenticacao, autorizacao, auditoria e testes automatizados.
+Esses endpoints devem ser separados dos endpoints publicos em `/api/public/...`. Eles nao devem reutilizar endpoints publicos e nao devem ser ativados sem autenticacao, autorizacao por perfil, auditoria e testes automatizados. A seguranca deve ser validada no backend; nao e aceitavel expor endpoint interno confiando apenas em esconder botoes ou telas no front-end.
+
+O desenho de autenticacao, autorizacao, perfis e matriz de permissoes esta em `docs/INTERNAL-AUTHORIZATION-PLAN.md`.
 
 ## 7. Seguranca
 
@@ -90,25 +93,28 @@ Regras de seguranca para o modulo interno:
 - exigir autenticacao;
 - exigir autorizacao por perfil ou permissao;
 - nao reutilizar endpoints publicos para gestao interna;
+- validar autenticacao e autorizacao no backend;
 - registrar usuario, data/hora e acao em auditoria;
 - evitar exposicao de dados pessoais quando nao houver necessidade operacional;
+- minimizar dados pessoais em listagens;
+- nao exibir telefone ou contato em listagens amplas quando nao for necessario;
 - aplicar menor privilegio no banco;
-- manter logs sem senha, token, telefone completo ou dados sensiveis;
+- manter logs sem senha, token, `DATABASE_URL`, telefone completo ou dados sensiveis;
 - nao expor detalhes administrativos na consulta publica do cidadao;
 - separar operacoes internas de listagem, status e observacoes da API publica.
 
-## 8. Modelo de dados futuro
+## 8. Modelo de dados interno
 
-Modelo conceitual para proximas migrations:
+Modelo conceitual do modulo interno:
 
 - manter `mod_iluminacao.solicitacoes` como tabela principal;
-- criar tabela de historico/auditoria de alteracoes;
-- criar tabela de observacoes internas;
+- usar `mod_iluminacao.solicitacoes_historico` para historico/auditoria de alteracoes;
+- usar `mod_iluminacao.solicitacoes_observacoes` para observacoes internas;
 - avaliar tabela de usuarios internos;
 - avaliar tabela de equipes ou setores;
 - registrar status anterior, status novo, usuario responsavel e data/hora para mudancas relevantes.
 
-As tabelas futuras devem manter segregacao no schema `mod_iluminacao` e evitar gravacao operacional em `plano` ou `web_map`.
+Tabelas internas futuras, como usuarios, perfis ou sessoes, devem manter segregacao no schema operacional adequado e evitar gravacao operacional em `plano` ou `web_map`.
 
 O desenho conceitual detalhado das futuras tabelas `mod_iluminacao.solicitacoes_historico` e `mod_iluminacao.solicitacoes_observacoes` esta em `docs/ILUMINACAO-INTERNAL-DATA-MODEL.md`.
 
@@ -136,13 +142,14 @@ A interface deve priorizar uso operacional repetido: informacao densa, clara, fi
 
 Fases sugeridas:
 
-1. Fase 1: documentacao e desenho de endpoints internos.
-2. Fase 2: migrations de historico e observacoes. Status: aplicadas em homologacao e no banco ativo com backup e validacao.
-3. Fase 3: endpoints internos protegidos para status, historico e observacoes.
-4. Fase 4: tela interna minima.
-5. Fase 5: mapa interno.
-6. Fase 6: autenticacao e perfis.
-7. Fase 7: relatorios e indicadores.
+1. Fase 1: documentacao de autenticacao, autorizacao e endpoints internos.
+2. Fase 2: modelo de dados de usuarios, perfis e sessoes, ou decisao tecnica equivalente.
+3. Fase 3: migrations de seguranca/autenticacao. Migrations de historico e observacoes ja aplicadas em homologacao e no banco ativo.
+4. Fase 4: implementacao de autenticacao no backend com testes.
+5. Fase 5: endpoints internos protegidos para status, historico e observacoes.
+6. Fase 6: tela interna minima consumindo endpoints protegidos.
+7. Fase 7: auditoria e revisao de seguranca antes de uso por equipe real.
+8. Fase 8: mapa interno, relatorios e indicadores.
 
 ## 11. Criterios de aceite
 
@@ -156,6 +163,9 @@ Antes de ativar qualquer parte do modulo interno:
 - criar testes automatizados para services, repositories e endpoints internos;
 - validar permissoes de banco com menor privilegio;
 - registrar auditoria para alteracoes internas;
+- impedir alteracao de status sem registro em historico;
+- exigir autenticacao obrigatoria e autorizacao por perfil;
+- testar acesso autorizado e negado;
 - manter a consulta publica limitada a dados seguros;
 - atualizar documentacao antes de ativacao.
 

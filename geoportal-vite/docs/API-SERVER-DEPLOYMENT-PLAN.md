@@ -180,8 +180,9 @@ A API deve usar usuario restrito, com permissoes minimas:
 14. Validar pre-producao com Apache publico `/api/` apontando para `GeoportalAPIProducao`, ainda sem gravacao real.
 15. Registrar ativacao real controlada com `PERSIST_SOLICITACOES=true` fora do Git, mantendo Google Forms como fallback.
 16. Aplicar e validar migrations internas de historico e observacoes no banco ativo apos backup. Status: concluido para `0004` e `0005`.
-17. Desenhar endpoints internos protegidos para status, historico e observacoes.
-18. Evoluir para modulo interno de triagem, acompanhamento e encerramento das solicitacoes, seguindo `docs/ILUMINACAO-INTERNAL-MODULE-PLAN.md`.
+17. Desenhar autenticacao, autorizacao, perfis e auditoria interna.
+18. Desenhar endpoints internos protegidos para status, historico e observacoes.
+19. Evoluir para modulo interno de triagem, acompanhamento e encerramento das solicitacoes, seguindo `docs/ILUMINACAO-INTERNAL-MODULE-PLAN.md`.
 
 ## 6. Evolucao futura de dominio
 
@@ -201,23 +202,18 @@ Login e painel interno devem vir depois da estabilizacao da API publica no servi
 
 O desenho inicial do modulo interno de Iluminacao Publica esta registrado em `docs/ILUMINACAO-INTERNAL-MODULE-PLAN.md`.
 
-Essa etapa posterior exigira:
+Essa etapa posterior exigira autenticacao, autorizacao por perfil, endpoints internos separados, auditoria, gestao de status, historico e logs administrativos. Nenhum endpoint interno deve ser publicado sem validacao de autenticacao e autorizacao no backend.
 
-- autenticacao;
-- autorizacao por perfil;
-- endpoints internos separados;
-- auditoria;
-- gestao de status;
-- historico;
-- logs administrativos;
-- controle por equipe ou secretaria.
+O desenho detalhado esta em `docs/INTERNAL-AUTHORIZATION-PLAN.md`.
 
 ## 8. Seguranca operacional
 
 - Segredos e variaveis reais devem ficar fora do Git.
 - Mensagens publicas nao devem expor stack trace, SQL, host, porta, caminho local ou credenciais.
 - Logs devem evitar dados pessoais desnecessarios.
+- Logs nunca devem conter senha, token ou `DATABASE_URL`.
 - Rate limit deve permanecer ativo nos endpoints publicos.
+- Endpoints internos tambem devem ter protecao contra abuso, especialmente login e operacoes de escrita.
 - A consulta publica deve continuar retornando somente dados publicos minimos.
 - A confirmacao da consulta deve usar dado complementar minimo, como os ultimos 4 digitos do contato.
 - Protecao contra enumeracao deve ser mantida.

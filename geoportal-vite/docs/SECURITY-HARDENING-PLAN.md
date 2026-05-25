@@ -90,8 +90,8 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [x] Envios reais por poste e por ponto manual validados no front-end publicado.
 - [x] Consulta publica dos protocolos gerados e bloqueio de duplicidade ativa por poste validados.
 - [x] Botao Tracar rota, Google Forms, Geoportal publico, GeoServer e camadas permaneceram funcionando.
-- [ ] Desenvolver modulo interno de gestao, triagem, acompanhamento e encerramento das solicitacoes, seguindo `docs/ILUMINACAO-INTERNAL-MODULE-PLAN.md`.
-- [ ] Criar migrations futuras de historico/auditoria e observacoes internas conforme `docs/ILUMINACAO-INTERNAL-DATA-MODEL.md`.
+- [ ] Desenvolver modulo interno de gestao, triagem, acompanhamento e encerramento das solicitacoes, seguindo `docs/ILUMINACAO-INTERNAL-MODULE-PLAN.md` e `docs/INTERNAL-AUTHORIZATION-PLAN.md`.
+- [x] Criar e aplicar migrations de historico/auditoria e observacoes internas conforme `docs/ILUMINACAO-INTERNAL-DATA-MODEL.md`.
 - [ ] Restaurar `enabled=false`, `submitEnabled=false` e `PERSIST_SOLICITACOES=false` como padrao seguro apos testes e limpar registros de validacao.
 - [ ] Garantir que flags temporarias de teste nao sejam commitadas como `true`.
 - [ ] Conferir grafia da chave `apiUrl` antes de publicar build experimental, evitando chamadas para `/undefined`.
@@ -108,6 +108,7 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 
 - [ ] Autenticacao definida.
 - [ ] Autorizacao por papel/permissao.
+- [ ] Endpoints internos protegidos por backend, nao apenas por front-end.
 - [ ] Validacao de entrada com schemas.
 - [ ] Rate limit para endpoints sensiveis.
 - [ ] Logs de auditoria.
@@ -148,6 +149,7 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [ ] Documentacao controlada da API.
 - [ ] Inventario de endpoints.
 - [x] Implementar bloqueio de nova solicitacao `poste_mapa` quando ja houver solicitacao ativa para o mesmo `poste_id`, retornando `409 Conflict` seguro e sem expor dados de outra pessoa.
+- [ ] Seguir `docs/INTERNAL-AUTHORIZATION-PLAN.md` antes de implementar `/api/internal/...`.
 
 ## 9. Protecao contra abuso em endpoints publicos
 
@@ -173,13 +175,18 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 ## 10. Usuarios, login e permissoes
 
 - [ ] Usuarios individuais, nunca compartilhados.
-- [ ] Perfis por secretaria e modulo.
-- [ ] Permissoes por acao: visualizar, criar, editar, finalizar e excluir.
+- [ ] Perfis por secretaria e modulo: `admin`, `gestor_modulo`, `atendente_triagem`, `equipe_execucao` e `leitura`, ou equivalentes validados.
+- [ ] Permissoes por acao: visualizar solicitacoes, visualizar detalhe, alterar status, registrar observacao, visualizar historico, visualizar estatisticas e administrar usuarios.
 - [ ] Auditoria de login.
 - [ ] Auditoria de alteracao de dados.
 - [ ] Bloqueio ou desativacao de usuarios desligados.
 - [ ] Politica de senha.
 - [ ] Avaliacao futura de 2FA para perfis sensiveis.
+- [ ] Sessoes ou tokens com expiracao.
+- [ ] Senhas armazenadas somente como hash adequado.
+- [ ] Senhas, tokens e `DATABASE_URL` ausentes de logs.
+- [ ] Bloqueio, atraso ou protecao equivalente contra tentativas excessivas de login.
+- [ ] Testes automatizados para acesso autorizado e negado.
 
 ## 11. Auditoria e rastreabilidade
 
@@ -194,6 +201,9 @@ Registrar, conforme o modulo:
 - [ ] Anexos enviados.
 - [ ] Fechamento ou finalizacao de atendimento.
 - [ ] Historico de encaminhamentos.
+- [ ] Alteracao de status sempre gravada em `mod_iluminacao.solicitacoes_historico`.
+- [ ] Criacao de observacao gravada em `mod_iluminacao.solicitacoes_observacoes` e resumida no historico.
+- [ ] Consulta publica sem observacoes internas e sem historico administrativo completo.
 
 ## 12. Backups, rollback e continuidade
 
@@ -226,6 +236,7 @@ Antes de iniciar modulos com login/API, deve existir:
 - [ ] Plano de schemas.
 - [ ] Plano de usuarios e permissoes.
 - [ ] Plano de auditoria.
+- [ ] Plano de autenticacao e autorizacao interna revisado.
 - [ ] Plano de backup.
 - [ ] Separacao clara entre publico e interno.
 - [ ] Modulo piloto definido.
@@ -245,6 +256,7 @@ Este plano deve ser lido junto com:
 - futuro `docs/INTERNAL-MODULES-ARCHITECTURE.md`
 - futuro `docs/MODULE-ILUMINACAO-PUBLICA.md`
 - futuro `docs/LAYER-INVENTORY.md`
+- `docs/INTERNAL-AUTHORIZATION-PLAN.md`
 
 ## 16. Nivel atual e caminho recomendado
 

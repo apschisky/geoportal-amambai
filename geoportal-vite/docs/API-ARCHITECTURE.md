@@ -27,7 +27,7 @@ A API deve atuar como:
 | Publica | Sem login ou com protecao leve | Criar solicitacao, consultar protocolo | Validacao, rate limit, dados minimos |
 | Interna | Login obrigatorio | Listar solicitacoes, alterar status, anexar arquivos | Autenticacao, permissao, auditoria |
 
-Endpoints publicos devem expor apenas o necessario. Endpoints internos devem exigir autenticacao, autorizacao e registro de auditoria.
+Endpoints publicos devem permanecer em `/api/public/...` e expor apenas o necessario. Endpoints internos devem ficar em `/api/internal/...`, exigir autenticacao, autorizacao no backend e registro de auditoria, sem reutilizar endpoints publicos. Endpoints publicos nunca devem retornar observacoes internas nem historico administrativo completo.
 
 ## 4. Modulo piloto: Iluminacao Publica
 
@@ -42,11 +42,10 @@ Endpoints conceituais internos:
 - `GET /api/internal/iluminacao/solicitacoes/{id}`
 - `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`
 - `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes`
-- `POST /api/internal/iluminacao/solicitacoes/{id}/anexos`
-- `PATCH /api/internal/iluminacao/solicitacoes/{id}/finalizar`
-- `PATCH /api/internal/iluminacao/solicitacoes/{id}/cancelar`
+- `GET /api/internal/iluminacao/solicitacoes/{id}/historico`
+- `GET /api/internal/iluminacao/estatisticas`
 
-Estes endpoints sao apenas desenho conceitual. Nenhum codigo deve ser criado antes da validacao de schema, autenticacao, permissoes, auditoria e anexos.
+Estes endpoints sao apenas desenho conceitual. Nenhum codigo deve ser criado antes da validacao de schema, autenticacao, permissoes, auditoria, testes automatizados e revisao de seguranca.
 
 ## 5. Estrutura sugerida do projeto FastAPI
 
@@ -164,13 +163,20 @@ Entradas invalidas devem ser rejeitadas com mensagens simples e seguras.
 
 - Login obrigatorio para ambiente interno.
 - Token ou sessao segura.
+- Expiracao de sessao ou token.
+- Senha armazenada somente como hash adequado.
+- Senha nunca armazenada em texto puro.
+- Senha e token nunca registrados em log.
 - Perfis por secretaria/modulo.
 - Permissoes por acao.
 - Endpoints internos sempre protegidos.
 - Bloqueio/desativacao de usuarios desligados.
+- Bloqueio, atraso ou protecao equivalente para tentativas excessivas de login.
 - Avaliacao futura de 2FA para perfis sensiveis.
 
-Permissoes devem considerar acoes como visualizar, criar, editar, encaminhar, finalizar, anexar e excluir/cancelar.
+Permissoes devem considerar acoes como visualizar solicitacoes, visualizar detalhe, alterar status, registrar observacao, visualizar historico, visualizar estatisticas e administrar usuarios.
+
+O desenho detalhado de perfis (`admin`, `gestor_modulo`, `atendente_triagem`, `equipe_execucao` e `leitura`) e matriz de permissoes esta em `docs/INTERNAL-AUTHORIZATION-PLAN.md`.
 
 ## 9. Auditoria
 
@@ -187,7 +193,7 @@ Toda operacao interna relevante deve registrar:
 
 Auditoria deve ser obrigatoria para mudancas de status, observacoes, anexos, finalizacao, cancelamento e alteracoes administrativas.
 
-Para o modulo interno de Iluminacao Publica, o modelo conceitual das futuras tabelas de historico/auditoria e observacoes internas esta em `docs/ILUMINACAO-INTERNAL-DATA-MODEL.md`. A consulta publica nao deve retornar historico administrativo completo nem observacoes internas.
+Para o modulo interno de Iluminacao Publica, o modelo conceitual das tabelas de historico/auditoria e observacoes internas esta em `docs/ILUMINACAO-INTERNAL-DATA-MODEL.md`. A consulta publica nao deve retornar historico administrativo completo nem observacoes internas. Alteracao de status deve gravar historico; criacao de observacao deve gravar observacao interna e evento resumido no historico.
 
 ## 10. Tratamento de erros
 
@@ -290,6 +296,7 @@ Desenho recomendado:
 
 - Painel interno consome endpoints internos.
 - Cada acao deve respeitar permissao.
+- Cada permissao deve ser validada no backend.
 - Filtros por status, data, bairro, tipo e prioridade.
 - Relatorios e indicadores via endpoints especificos.
 - Operacoes de escrita devem gerar auditoria.
@@ -315,12 +322,13 @@ Desenho recomendado:
 2. Conexao segura com PostGIS.
 3. Endpoint publico de criacao.
 4. Endpoint de consulta de protocolo.
-5. Login interno.
-6. Listagem interna.
-7. Atualizacao de status.
-8. Auditoria.
-9. Anexos.
-10. Publicacao controlada.
+5. Documentacao e desenho de autenticacao/autorizacao interna.
+6. Modelo de usuarios, perfis e sessoes, ou decisao tecnica equivalente.
+7. Migrations de seguranca/autenticacao.
+8. Autenticacao no backend com testes.
+9. Endpoints internos protegidos.
+10. Tela interna minima.
+11. Auditoria e revisao de seguranca antes de uso por equipe real.
 
 Cada fase deve ter teste, revisao de permissao e possibilidade de rollback.
 
@@ -342,6 +350,8 @@ A POC local tambem possui CORS controlado por configuracao e endpoint `GET /api/
 - [ ] Autenticacao definida.
 - [ ] Permissoes definidas.
 - [ ] Endpoints desenhados.
+- [ ] Autorizacao por perfil desenhada.
+- [ ] Testes de acesso autorizado e negado planejados.
 - [ ] Politica de anexos definida.
 - [ ] Estrategia de logs definida.
 - [ ] Ambiente de homologacao pronto.
