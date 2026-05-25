@@ -128,6 +128,8 @@ Rollback correspondente:
 
 ## 4. Migration `0008_create_mod_auth_perfis_permissoes.sql`
 
+Status: criada no repositorio, ainda nao aplicada no banco.
+
 Tabelas futuras:
 
 - `mod_auth.perfis`

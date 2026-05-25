@@ -11,6 +11,7 @@ Convencao sugerida:
 - `0005_create_iluminacao_solicitacoes_observacoes.sql`
 - `0006_create_mod_auth_schema.sql`
 - `0007_create_mod_auth_usuarios.sql`
+- `0008_create_mod_auth_perfis_permissoes.sql`
 
 A migration `0001_create_mod_iluminacao_schema.sql` cria apenas o schema `mod_iluminacao`.
 
@@ -32,7 +33,9 @@ A migration `0007` foi aplicada e validada em homologacao apos backup manual val
 
 A migration `0007` tambem foi aplicada no banco ativo de producao apos backup manual validado como legivel. A tabela `mod_auth.usuarios` foi criada, os indices foram validados, a tabela permaneceu vazia apos a criacao, a API publica continuou saudavel e `/api/public/iluminacao/health` continuou OK. Nenhum usuario real, seed, endpoint ou login funcional foi criado.
 
-Proxima etapa: criar a migration `0008_create_mod_auth_perfis_permissoes.sql` para perfis, permissoes e vinculos.
+A migration `0008_create_mod_auth_perfis_permissoes.sql` cria apenas as tabelas `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes`. Ela nao cria seeds, perfis reais, permissoes reais, vinculos reais, usuarios, GRANTs, triggers, funcoes ou endpoints e ainda nao foi aplicada no banco.
+
+Proxima etapa: revisar e aplicar a migration `0008` em homologacao com backup e validacao.
 
 As migrations `0004` e `0005` foram aplicadas e validadas em homologacao com backup previo, inserts controlados, validacao de FKs restritivas e limpeza dos registros de teste.
 

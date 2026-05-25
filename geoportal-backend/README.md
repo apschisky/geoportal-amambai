@@ -94,7 +94,7 @@ Registro atual: a migration `0006_create_mod_auth_schema.sql` foi aplicada em ho
 
 Registro atual: a migration `0007_create_mod_auth_usuarios.sql` foi aplicada e validada em homologacao e no banco ativo de producao apos backup manual validado. A tabela `mod_auth.usuarios` foi criada, indices foram validados e a tabela permaneceu vazia em producao apos a criacao. Nenhum usuario real, seed, GRANT, trigger, funcao, endpoint ou login funcional foi criado.
 
-Proxima etapa de banco planejada: migration `0008_create_mod_auth_perfis_permissoes.sql`.
+Registro atual: a migration `0008_create_mod_auth_perfis_permissoes.sql` e o rollback `0008_drop_mod_auth_perfis_permissoes.sql` foram criados para tabelas de perfis, permissoes e vinculos, mas ainda nao foram aplicados no banco. Nenhum perfil real, permissao real, vinculo real, usuario, seed, GRANT, trigger, funcao ou endpoint foi criado.
 
 ## Endpoints disponiveis
 
