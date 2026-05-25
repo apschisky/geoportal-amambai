@@ -17,7 +17,22 @@ Essas migrations nao devem alterar `mod_iluminacao`, `plano` ou `web_map`.
 
 ## 2. Migration `0006_create_mod_auth_schema.sql`
 
-Status: criada no repositorio, ainda nao aplicada no banco.
+Status: aplicada e validada em homologacao e no banco ativo de producao.
+
+Registro seguro da aplicacao:
+
+- backup manual foi criado antes da aplicacao em homologacao;
+- backup manual foi validado como legivel em homologacao;
+- a migration `0006` foi aplicada em homologacao;
+- o schema `mod_auth` foi criado em homologacao;
+- o comentario do schema foi validado em homologacao;
+- foi confirmado que nenhuma tabela foi criada em `mod_auth` em homologacao;
+- backup manual foi criado antes da aplicacao em producao;
+- backup manual foi validado como legivel em producao;
+- a migration `0006` foi aplicada no banco ativo de producao;
+- o schema `mod_auth` foi criado em producao;
+- o comentario do schema foi validado em producao;
+- foi confirmado que nenhuma tabela foi criada em `mod_auth` em producao.
 
 Responsabilidade:
 

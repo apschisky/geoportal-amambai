@@ -90,7 +90,9 @@ O modelo conceitual transversal de autenticacao/autorizacao para futuros modulos
 
 O plano tecnico das futuras migrations do schema `mod_auth` esta em `geoportal-vite/docs/INTERNAL-AUTH-MIGRATIONS-PLAN.md`. As migrations de tabelas, sessoes, perfis e permissoes ainda nao foram criadas.
 
-Registro atual: a migration `0006_create_mod_auth_schema.sql` e o rollback `0006_drop_mod_auth_schema.sql` foram criados para o schema `mod_auth`, mas ainda nao foram aplicados no banco.
+Registro atual: a migration `0006_create_mod_auth_schema.sql` foi aplicada em homologacao e no banco ativo de producao apos backup manual validado. O schema `mod_auth` foi criado com comentario validado, e nenhuma tabela foi criada nesta etapa. O rollback `0006_drop_mod_auth_schema.sql` permanece disponivel para ambiente controlado.
+
+Proxima etapa de banco planejada: migration `0007_create_mod_auth_usuarios.sql`.
 
 ## Endpoints disponiveis
 

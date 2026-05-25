@@ -21,7 +21,11 @@ A migration `0004_create_iluminacao_solicitacoes_historico.sql` cria a tabela in
 
 A migration `0005_create_iluminacao_solicitacoes_observacoes.sql` cria a tabela interna de observacoes operacionais `mod_iluminacao.solicitacoes_observacoes`. Ela nao altera a tabela principal nem o historico.
 
-A migration `0006_create_mod_auth_schema.sql` cria apenas o schema transversal `mod_auth` para autenticacao/autorizacao interna futura. Ela nao cria tabelas, usuarios, GRANTs ou dados iniciais e ainda nao foi aplicada no banco.
+A migration `0006_create_mod_auth_schema.sql` cria apenas o schema transversal `mod_auth` para autenticacao/autorizacao interna futura. Ela nao cria tabelas, usuarios, GRANTs ou dados iniciais.
+
+A migration `0006` foi aplicada e validada em homologacao e no banco ativo de producao, sempre apos backup manual validado como legivel. O schema `mod_auth` foi criado, o comentario do schema foi validado e foi confirmado que nenhuma tabela foi criada nesta etapa.
+
+Proxima etapa: criar a migration `0007_create_mod_auth_usuarios.sql` para a tabela `mod_auth.usuarios`.
 
 As migrations `0004` e `0005` foram aplicadas e validadas em homologacao com backup previo, inserts controlados, validacao de FKs restritivas e limpeza dos registros de teste.
 

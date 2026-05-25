@@ -628,3 +628,28 @@ Registro seguro, sem dados sensiveis:
 Proxima etapa: desenhar endpoints internos protegidos para alteracao de status, consulta de historico e registro de observacoes.
 
 Nao registrar protocolo real, telefone, nome, dado pessoal, usuario real, senha, host real, IP interno, caminho local real, log completo ou `DATABASE_URL` real no Git.
+
+## Registro de aplicacao da migration 0006 do schema mod_auth
+
+A migration `0006_create_mod_auth_schema.sql` foi aplicada em homologacao e no banco ativo de producao para preparar o schema transversal de autenticacao/autorizacao interna.
+
+Registro seguro, sem dados sensiveis:
+
+- backup manual foi criado antes da aplicacao em homologacao;
+- backup manual foi validado como legivel em homologacao;
+- a migration `0006` foi aplicada em homologacao;
+- o schema `mod_auth` foi criado em homologacao;
+- o comentario do schema foi validado em homologacao;
+- foi confirmado que nenhuma tabela foi criada em `mod_auth` em homologacao;
+- backup manual foi criado antes da aplicacao em producao;
+- backup manual foi validado como legivel em producao;
+- a migration `0006` foi aplicada no banco ativo de producao;
+- o schema `mod_auth` foi criado em producao;
+- o comentario do schema foi validado em producao;
+- foi confirmado que nenhuma tabela foi criada em `mod_auth` em producao;
+- nenhuma alteracao foi feita na API publica;
+- nenhum endpoint interno foi criado nesta etapa.
+
+Proxima etapa: criar a migration `0007_create_mod_auth_usuarios.sql` para a tabela `mod_auth.usuarios`.
+
+Nao registrar usuario real, email real, senha, token, host real, IP interno, caminho local real, log completo ou `DATABASE_URL` real no Git.
