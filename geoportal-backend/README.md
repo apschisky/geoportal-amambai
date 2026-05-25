@@ -88,13 +88,15 @@ O desenho conceitual dos endpoints internos protegidos esta em `geoportal-vite/d
 
 O modelo conceitual transversal de autenticacao/autorizacao para futuros modulos internos esta em `geoportal-vite/docs/INTERNAL-AUTH-DATA-MODEL.md`.
 
-O plano tecnico das migrations do schema `mod_auth` esta em `geoportal-vite/docs/INTERNAL-AUTH-MIGRATIONS-PLAN.md`. A proxima migration prevista e a `0009_create_mod_auth_sessoes_login_auditoria.sql`.
+O plano tecnico das migrations do schema `mod_auth` esta em `geoportal-vite/docs/INTERNAL-AUTH-MIGRATIONS-PLAN.md`.
 
 Registro atual: a migration `0006_create_mod_auth_schema.sql` foi aplicada em homologacao e no banco ativo de producao apos backup manual validado. O schema `mod_auth` foi criado com comentario validado, e nenhuma tabela foi criada nesta etapa. O rollback `0006_drop_mod_auth_schema.sql` permanece disponivel para ambiente controlado.
 
 Registro atual: a migration `0007_create_mod_auth_usuarios.sql` foi aplicada e validada em homologacao e no banco ativo de producao apos backup manual validado. A tabela `mod_auth.usuarios` foi criada, indices foram validados e a tabela permaneceu vazia em producao apos a criacao. Nenhum usuario real, seed, GRANT, trigger, funcao, endpoint ou login funcional foi criado.
 
 Registro atual: a migration `0008_create_mod_auth_perfis_permissoes.sql` foi aplicada e validada em homologacao e no banco ativo de producao apos backup manual validado. As tabelas de perfis, permissoes e vinculos foram criadas, indices e FKs restritivas foram validados, dados ficticios foram removidos em homologacao e todas as tabelas `mod_auth` permaneceram vazias apos a criacao em producao. Nenhum usuario, perfil real, permissao real, vinculo real, seed, GRANT, trigger, funcao, endpoint ou login funcional foi criado.
+
+Registro atual: a migration `0009_create_mod_auth_sessoes_login_auditoria.sql` foi criada no repositorio para criar apenas `mod_auth.sessoes` e `mod_auth.login_auditoria`. Ela ainda nao foi aplicada em banco e nao cria login funcional, endpoint, usuario, token real, sessao real, auditoria real, seed, GRANT, trigger ou funcao.
 
 ## Endpoints disponiveis
 

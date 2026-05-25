@@ -12,6 +12,7 @@ Convencao sugerida:
 - `0006_create_mod_auth_schema.sql`
 - `0007_create_mod_auth_usuarios.sql`
 - `0008_create_mod_auth_perfis_permissoes.sql`
+- `0009_create_mod_auth_sessoes_login_auditoria.sql`
 
 A migration `0001_create_mod_iluminacao_schema.sql` cria apenas o schema `mod_iluminacao`.
 
@@ -39,7 +40,11 @@ A migration `0008` foi aplicada e validada em homologacao apos backup manual val
 
 A migration `0008` tambem foi aplicada no banco ativo de producao apos backup manual validado como legivel. As tabelas `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes` foram criadas, indices e FKs restritivas foram validados, todas as tabelas `mod_auth` permaneceram vazias apos a criacao, a API publica continuou saudavel, `/api/health` e `/api/public/iluminacao/health` continuaram OK, e `/api/version` continuou retornando ambiente `producao`. Nenhum usuario, perfil, permissao, vinculo, seed, endpoint ou login funcional foi criado.
 
-Proxima etapa: criar a migration `0009_create_mod_auth_sessoes_login_auditoria.sql` para sessoes e auditoria de login.
+A migration `0009_create_mod_auth_sessoes_login_auditoria.sql` cria apenas as tabelas `mod_auth.sessoes` e `mod_auth.login_auditoria`, com constraints, indices, FKs restritivas para `mod_auth.usuarios(id)` e comentarios. Ela nao cria login funcional, endpoints, usuarios, tokens reais, sessoes reais, auditorias reais, seeds, GRANTs, triggers ou funcoes.
+
+Status da `0009`: criada no repositorio, ainda nao aplicada em banco.
+
+Proxima etapa: aplicar e validar a migration `0009` em homologacao com backup, dados ficticios controlados e limpeza posterior.
 
 As migrations `0004` e `0005` foram aplicadas e validadas em homologacao com backup previo, inserts controlados, validacao de FKs restritivas e limpeza dos registros de teste.
 

@@ -254,7 +254,11 @@ Rollback correspondente:
 
 ## 5. Migration `0009_create_mod_auth_sessoes_login_auditoria.sql`
 
-Tabelas futuras:
+Status: criada no repositorio, ainda nao aplicada em banco.
+
+Esta migration cria apenas tabelas estruturais de sessoes e auditoria de login. Ela nao cria login funcional, endpoints, usuarios, senhas, tokens reais, sessoes reais, auditorias reais, seeds, GRANTs, triggers ou funcoes.
+
+Tabelas criadas pela migration:
 
 - `mod_auth.sessoes`
 - `mod_auth.login_auditoria`
@@ -279,6 +283,8 @@ Constraints:
 - `expira_em > criado_em`.
 - `revogado_em >= criado_em` quando informado.
 - `token_hash` nao vazio.
+- `ip_hash` nao vazio quando informado.
+- `user_agent_hash` nao vazio quando informado.
 - Nao armazenar token puro.
 - `ip_hash` e `user_agent_hash` sao opcionais e nunca devem conter valores brutos se houver alternativa segura.
 
@@ -305,6 +311,8 @@ Constraints:
 
 - FK opcional de `usuario_id` para `mod_auth.usuarios(id)`.
 - `login_informado` nao vazio quando informado.
+- `motivo_falha` nao vazio quando informado.
+- `origem` nao vazia quando informada.
 - `motivo_falha` deve ser generico, sem detalhes sensiveis.
 - Nunca registrar senha, token, hash de senha ou `DATABASE_URL`.
 
@@ -320,6 +328,7 @@ Rollback correspondente:
 - Remover `mod_auth.sessoes`.
 - Remover `mod_auth.login_auditoria`.
 - Nao remover `mod_auth.usuarios`.
+- Nao remover perfis, permissoes, vinculos ou o schema `mod_auth`.
 
 ## 6. Rollbacks futuros
 

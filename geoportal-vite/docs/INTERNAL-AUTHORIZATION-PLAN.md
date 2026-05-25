@@ -8,6 +8,8 @@ O plano tecnico das futuras migrations de `mod_auth` esta em `docs/INTERNAL-AUTH
 
 Registro documental: a migration `0008_create_mod_auth_perfis_permissoes.sql` foi aplicada e validada em homologacao e no banco ativo de producao para estruturar perfis, permissoes e vinculos. Dados ficticios de validacao foram removidos em homologacao, todas as tabelas `mod_auth` permaneceram vazias apos a criacao em producao e nenhum usuario, perfil, permissao, vinculo, seed, endpoint ou login funcional foi criado.
 
+Registro documental: a migration `0009_create_mod_auth_sessoes_login_auditoria.sql` foi criada no repositorio para estruturar sessoes e auditoria de login, ainda sem aplicacao em banco e sem login funcional, endpoint, token real, sessao real, auditoria real ou seed.
+
 ## 1. Separacao publico/interno
 
 - Endpoints publicos continuam em `/api/public/...`.

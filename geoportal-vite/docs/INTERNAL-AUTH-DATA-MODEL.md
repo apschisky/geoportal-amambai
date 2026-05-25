@@ -10,6 +10,8 @@ Registro documental: a migration `0007_create_mod_auth_usuarios.sql` foi aplicad
 
 Registro documental: a migration `0008_create_mod_auth_perfis_permissoes.sql` foi aplicada e validada em homologacao e no banco ativo de producao apos backup manual validado. As tabelas de perfis, permissoes e vinculos foram criadas, indices e FKs restritivas foram validados, constraints e vinculos foram testados com dados ficticios em homologacao, os dados ficticios foram removidos e todas as tabelas `mod_auth` ficaram vazias apos a limpeza. Em producao, todas as tabelas `mod_auth` permaneceram vazias apos a criacao, a API publica continuou saudavel, `/api/health` e `/api/public/iluminacao/health` continuaram OK, `/api/version` continuou retornando ambiente `producao` e nenhum usuario, perfil, permissao, vinculo, seed, endpoint ou login funcional foi criado.
 
+Registro documental: a migration `0009_create_mod_auth_sessoes_login_auditoria.sql` foi criada no repositorio para estruturar `mod_auth.sessoes` e `mod_auth.login_auditoria`. Ela ainda nao foi aplicada em banco e nao cria login funcional, endpoint, usuario, token real, sessao real, auditoria real ou seed.
+
 ## 1. Objetivo
 
 - Definir um modelo transversal de autenticacao e autorizacao para o Geoportal Interno.

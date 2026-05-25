@@ -12,6 +12,7 @@ Convencao sugerida:
 - `0006_drop_mod_auth_schema.sql`
 - `0007_drop_mod_auth_usuarios.sql`
 - `0008_drop_mod_auth_perfis_permissoes.sql`
+- `0009_drop_mod_auth_sessoes_login_auditoria.sql`
 
 O rollback `0001_drop_mod_iluminacao_schema.sql` remove apenas o schema vazio `mod_iluminacao` e nao usa `CASCADE`.
 
@@ -28,6 +29,8 @@ O rollback `0006_drop_mod_auth_schema.sql` remove apenas o schema vazio `mod_aut
 O rollback `0007_drop_mod_auth_usuarios.sql` remove apenas a tabela `mod_auth.usuarios` e nao usa `CASCADE`. Se houver tabelas futuras dependentes de usuarios, a falha e desejavel para evitar remocao acidental.
 
 O rollback `0008_drop_mod_auth_perfis_permissoes.sql` remove apenas as tabelas `mod_auth.perfil_permissoes`, `mod_auth.usuario_perfis`, `mod_auth.permissoes` e `mod_auth.perfis`, nessa ordem, e nao usa `CASCADE`. Ele nao remove `mod_auth.usuarios` nem o schema `mod_auth`.
+
+O rollback `0009_drop_mod_auth_sessoes_login_auditoria.sql` remove apenas as tabelas `mod_auth.sessoes` e `mod_auth.login_auditoria`, nessa ordem, e nao usa `CASCADE`. Ele nao remove `mod_auth.usuarios`, perfis, permissoes, vinculos nem o schema `mod_auth`.
 
 Rollback deve ser testado em homologacao.
 
