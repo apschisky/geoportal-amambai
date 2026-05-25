@@ -2,6 +2,8 @@
 
 Este documento registra o desenho conceitual dos endpoints internos protegidos do modulo de Iluminacao Publica. Ele nao cria codigo, migrations, endpoints, usuarios reais, senhas, tokens ou configuracoes de ambiente.
 
+O modelo conceitual transversal de dados de autenticacao/autorizacao esta em `docs/INTERNAL-AUTH-DATA-MODEL.md`.
+
 ## 1. Separacao publico/interno
 
 - Endpoints publicos continuam em `/api/public/...`.

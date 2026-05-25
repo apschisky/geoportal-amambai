@@ -178,6 +178,8 @@ Permissoes devem considerar acoes como visualizar solicitacoes, visualizar detal
 
 O desenho detalhado de perfis (`admin`, `gestor_modulo`, `atendente_triagem`, `equipe_execucao` e `leitura`) e matriz de permissoes esta em `docs/INTERNAL-AUTHORIZATION-PLAN.md`.
 
+O modelo de dados transversal recomendado para usuarios, perfis, permissoes, sessoes e auditoria de login esta em `docs/INTERNAL-AUTH-DATA-MODEL.md`.
+
 ## 9. Auditoria
 
 Toda operacao interna relevante deve registrar:
@@ -323,7 +325,7 @@ Desenho recomendado:
 3. Endpoint publico de criacao.
 4. Endpoint de consulta de protocolo.
 5. Documentacao e desenho de autenticacao/autorizacao interna.
-6. Modelo de usuarios, perfis e sessoes, ou decisao tecnica equivalente.
+6. Modelo de dados de autenticacao/autorizacao em `mod_auth`, ou decisao tecnica equivalente.
 7. Migrations de seguranca/autenticacao.
 8. Autenticacao no backend com testes.
 9. Endpoints internos protegidos.
@@ -371,6 +373,7 @@ Este documento complementa:
 - `docs/LAYER-INVENTORY.md`.
 - `docs/ILUMINACAO-CONTROLLED-ACTIVATION-CHECKLIST.md`.
 - `docs/API-SERVER-DEPLOYMENT-PLAN.md`.
+- `docs/INTERNAL-AUTH-DATA-MODEL.md`.
 
 ## 21. Proximos documentos recomendados
 

@@ -86,6 +86,8 @@ As migrations internas `0004` e `0005` tambem foram aplicadas no banco ativo de 
 
 O desenho conceitual dos endpoints internos protegidos esta em `geoportal-vite/docs/INTERNAL-AUTHORIZATION-PLAN.md`. Endpoints internos ainda nao foram implementados e devem exigir autenticacao, autorizacao no backend e auditoria antes de qualquer publicacao.
 
+O modelo conceitual transversal de autenticacao/autorizacao para futuros modulos internos esta em `geoportal-vite/docs/INTERNAL-AUTH-DATA-MODEL.md`.
+
 ## Endpoints disponiveis
 
 - `GET /api/health`

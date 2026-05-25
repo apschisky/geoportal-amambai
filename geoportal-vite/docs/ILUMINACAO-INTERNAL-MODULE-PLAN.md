@@ -85,6 +85,8 @@ Esses endpoints devem ser separados dos endpoints publicos em `/api/public/...`.
 
 O desenho de autenticacao, autorizacao, perfis e matriz de permissoes esta em `docs/INTERNAL-AUTHORIZATION-PLAN.md`.
 
+O modelo de dados de autenticacao/autorizacao deve ser transversal aos modulos internos e esta descrito em `docs/INTERNAL-AUTH-DATA-MODEL.md`.
+
 ## 7. Seguranca
 
 Regras de seguranca para o modulo interno:
@@ -142,7 +144,7 @@ A interface deve priorizar uso operacional repetido: informacao densa, clara, fi
 
 Fases sugeridas:
 
-1. Fase 1: documentacao de autenticacao, autorizacao e endpoints internos.
+1. Fase 1: documentacao de autenticacao, autorizacao, modelo de dados auth e endpoints internos.
 2. Fase 2: modelo de dados de usuarios, perfis e sessoes, ou decisao tecnica equivalente.
 3. Fase 3: migrations de seguranca/autenticacao. Migrations de historico e observacoes ja aplicadas em homologacao e no banco ativo.
 4. Fase 4: implementacao de autenticacao no backend com testes.

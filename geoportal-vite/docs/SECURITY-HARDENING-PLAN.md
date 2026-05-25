@@ -175,6 +175,7 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 ## 10. Usuarios, login e permissoes
 
 - [ ] Usuarios individuais, nunca compartilhados.
+- [ ] Modelo transversal de autenticacao/autorizacao em `mod_auth`, seguindo `docs/INTERNAL-AUTH-DATA-MODEL.md`.
 - [ ] Perfis por secretaria e modulo: `admin`, `gestor_modulo`, `atendente_triagem`, `equipe_execucao` e `leitura`, ou equivalentes validados.
 - [ ] Permissoes por acao: visualizar solicitacoes, visualizar detalhe, alterar status, registrar observacao, visualizar historico, visualizar estatisticas e administrar usuarios.
 - [ ] Auditoria de login.
@@ -257,6 +258,7 @@ Este plano deve ser lido junto com:
 - futuro `docs/MODULE-ILUMINACAO-PUBLICA.md`
 - futuro `docs/LAYER-INVENTORY.md`
 - `docs/INTERNAL-AUTHORIZATION-PLAN.md`
+- `docs/INTERNAL-AUTH-DATA-MODEL.md`
 
 ## 16. Nivel atual e caminho recomendado
 
