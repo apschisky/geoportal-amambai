@@ -96,7 +96,7 @@ Registro atual: a migration `0007_create_mod_auth_usuarios.sql` foi aplicada e v
 
 Registro atual: a migration `0008_create_mod_auth_perfis_permissoes.sql` foi aplicada e validada em homologacao e no banco ativo de producao apos backup manual validado. As tabelas de perfis, permissoes e vinculos foram criadas, indices e FKs restritivas foram validados, dados ficticios foram removidos em homologacao e todas as tabelas `mod_auth` permaneceram vazias apos a criacao em producao. Nenhum usuario, perfil real, permissao real, vinculo real, seed, GRANT, trigger, funcao, endpoint ou login funcional foi criado.
 
-Registro atual: a migration `0009_create_mod_auth_sessoes_login_auditoria.sql` foi criada no repositorio para criar apenas `mod_auth.sessoes` e `mod_auth.login_auditoria`. Ela ainda nao foi aplicada em banco e nao cria login funcional, endpoint, usuario, token real, sessao real, auditoria real, seed, GRANT, trigger ou funcao.
+Registro atual: a migration `0009_create_mod_auth_sessoes_login_auditoria.sql` foi aplicada e validada em homologacao apos backup manual validado. As tabelas `mod_auth.sessoes` e `mod_auth.login_auditoria` foram criadas, indices e FKs restritivas foram validados, dados ficticios foram removidos e todas as tabelas `mod_auth` ficaram vazias apos a limpeza. Producao ainda nao recebeu a migration `0009` nesta etapa. Nenhum login funcional, endpoint, usuario real, token real, sessao real, auditoria real, seed, GRANT, trigger ou funcao foi criado.
 
 ## Endpoints disponiveis
 

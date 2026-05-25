@@ -254,9 +254,28 @@ Rollback correspondente:
 
 ## 5. Migration `0009_create_mod_auth_sessoes_login_auditoria.sql`
 
-Status: criada no repositorio, ainda nao aplicada em banco.
+Status: aplicada e validada em homologacao. Producao ainda nao recebeu esta migration.
 
 Esta migration cria apenas tabelas estruturais de sessoes e auditoria de login. Ela nao cria login funcional, endpoints, usuarios, senhas, tokens reais, sessoes reais, auditorias reais, seeds, GRANTs, triggers ou funcoes.
+
+Registro seguro da validacao em homologacao:
+
+- backup manual de homologacao foi criado antes da aplicacao;
+- backup manual foi validado como legivel;
+- a migration `0009` foi aplicada em homologacao;
+- as tabelas `mod_auth.sessoes` e `mod_auth.login_auditoria` foram criadas;
+- indices foram validados;
+- FKs restritivas foram validadas com `ON UPDATE RESTRICT` e `ON DELETE RESTRICT`;
+- insert ficticio de usuario temporario funcionou;
+- insert ficticio de sessao funcionou;
+- insert ficticio de auditoria de login funcionou;
+- consulta dos registros ficticios funcionou;
+- duplicidade de `token_hash` foi bloqueada;
+- sessao com expiracao invalida foi bloqueada;
+- auditoria com login em branco foi bloqueada;
+- dados ficticios foram removidos;
+- todas as tabelas `mod_auth` ficaram vazias apos a limpeza;
+- nenhum dado real, seed, endpoint ou login funcional foi criado.
 
 Tabelas criadas pela migration:
 

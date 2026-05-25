@@ -758,6 +758,40 @@ Registro seguro, sem dados sensiveis:
 - nenhum endpoint foi criado;
 - nenhum login funcional foi implementado.
 
-Proxima etapa: criar a migration `0009_create_mod_auth_sessoes_login_auditoria.sql` para sessoes e auditoria de login.
+Etapa posterior registrada abaixo: criacao, aplicacao e validacao da migration `0009_create_mod_auth_sessoes_login_auditoria.sql` em homologacao.
+
+Nao registrar usuario real, email real, senha, hash real, token, host real, IP interno, caminho local real, log completo ou `DATABASE_URL` real no Git.
+
+## Registro de validacao da migration 0009 em homologacao
+
+A migration `0009_create_mod_auth_sessoes_login_auditoria.sql` foi aplicada e validada apenas em homologacao para criar as tabelas estruturais de sessoes e auditoria de login do schema `mod_auth`.
+
+Registro seguro, sem dados sensiveis:
+
+- backup manual de homologacao foi criado antes da aplicacao;
+- backup manual foi validado como legivel;
+- a migration `0009` foi aplicada em homologacao;
+- as tabelas `mod_auth.sessoes` e `mod_auth.login_auditoria` foram criadas;
+- indices foram validados;
+- FKs restritivas foram validadas com `ON UPDATE RESTRICT` e `ON DELETE RESTRICT`;
+- insert ficticio de usuario temporario funcionou;
+- insert ficticio de sessao funcionou;
+- insert ficticio de auditoria de login funcionou;
+- consulta dos registros ficticios funcionou;
+- duplicidade de `token_hash` foi bloqueada;
+- sessao com expiracao invalida foi bloqueada;
+- auditoria com login em branco foi bloqueada;
+- dados ficticios foram removidos;
+- todas as tabelas `mod_auth` ficaram vazias apos a limpeza;
+- producao ainda nao recebeu a migration `0009` nesta etapa;
+- nenhum usuario real foi criado;
+- nenhum token real foi criado;
+- nenhuma sessao real foi criada;
+- nenhuma auditoria real foi criada;
+- nenhuma seed foi criada;
+- nenhum endpoint foi criado;
+- nenhum login funcional foi implementado.
+
+Proxima etapa: avaliar aplicacao da migration `0009` em producao com backup e validacao.
 
 Nao registrar usuario real, email real, senha, hash real, token, host real, IP interno, caminho local real, log completo ou `DATABASE_URL` real no Git.

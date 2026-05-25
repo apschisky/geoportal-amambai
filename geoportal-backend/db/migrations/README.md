@@ -42,9 +42,11 @@ A migration `0008` tambem foi aplicada no banco ativo de producao apos backup ma
 
 A migration `0009_create_mod_auth_sessoes_login_auditoria.sql` cria apenas as tabelas `mod_auth.sessoes` e `mod_auth.login_auditoria`, com constraints, indices, FKs restritivas para `mod_auth.usuarios(id)` e comentarios. Ela nao cria login funcional, endpoints, usuarios, tokens reais, sessoes reais, auditorias reais, seeds, GRANTs, triggers ou funcoes.
 
-Status da `0009`: criada no repositorio, ainda nao aplicada em banco.
+Status da `0009`: aplicada e validada em homologacao; producao ainda nao recebeu esta migration.
 
-Proxima etapa: aplicar e validar a migration `0009` em homologacao com backup, dados ficticios controlados e limpeza posterior.
+A migration `0009` foi aplicada e validada em homologacao apos backup manual validado como legivel. As tabelas `mod_auth.sessoes` e `mod_auth.login_auditoria` foram criadas, indices e FKs restritivas foram validados, constraints foram testadas com dados ficticios, os dados ficticios foram removidos e todas as tabelas `mod_auth` ficaram vazias apos a limpeza.
+
+Proxima etapa: avaliar aplicacao da migration `0009` em producao com backup e validacao.
 
 As migrations `0004` e `0005` foram aplicadas e validadas em homologacao com backup previo, inserts controlados, validacao de FKs restritivas e limpeza dos registros de teste.
 
