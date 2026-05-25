@@ -6,7 +6,7 @@ O modelo conceitual transversal de dados de autenticacao/autorizacao esta em `do
 
 O plano tecnico das futuras migrations de `mod_auth` esta em `docs/INTERNAL-AUTH-MIGRATIONS-PLAN.md`.
 
-Registro documental: a migration `0008_create_mod_auth_perfis_permissoes.sql` foi criada para estruturar perfis, permissoes e vinculos, ainda sem seed ou vinculos reais.
+Registro documental: a migration `0008_create_mod_auth_perfis_permissoes.sql` foi aplicada e validada em homologacao para estruturar perfis, permissoes e vinculos. Dados ficticios de validacao foram removidos, todas as tabelas `mod_auth` ficaram vazias apos a limpeza e producao ainda nao recebeu esta migration.
 
 ## 1. Separacao publico/interno
 

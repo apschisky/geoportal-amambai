@@ -128,7 +128,25 @@ Rollback correspondente:
 
 ## 4. Migration `0008_create_mod_auth_perfis_permissoes.sql`
 
-Status: criada no repositorio, ainda nao aplicada no banco.
+Status: aplicada e validada em homologacao. Producao ainda nao recebeu esta migration.
+
+Registro seguro da validacao em homologacao:
+
+- backup manual de homologacao foi criado antes da aplicacao;
+- backup manual foi validado como legivel;
+- a migration `0008` foi aplicada em homologacao;
+- as tabelas `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes` foram criadas;
+- indices foram validados;
+- FKs restritivas foram validadas com `ON UPDATE RESTRICT` e `ON DELETE RESTRICT`;
+- inserts ficticios funcionaram;
+- vinculo usuario/perfil/modulo funcionou;
+- vinculo perfil/permissao funcionou;
+- duplicidade de perfil foi bloqueada;
+- duplicidade de permissao por modulo/chave foi bloqueada;
+- duplicidade de usuario/perfil/modulo foi bloqueada;
+- duplicidade de perfil/permissao foi bloqueada;
+- dados ficticios foram removidos;
+- todas as tabelas `mod_auth` ficaram vazias apos a limpeza.
 
 Tabelas futuras:
 

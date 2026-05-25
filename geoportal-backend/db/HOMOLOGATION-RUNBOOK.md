@@ -679,6 +679,37 @@ A aplicacao posterior no banco ativo foi registrada na secao especifica de produ
 
 Nao registrar usuario real, email real, senha, hash real, token, host real, IP interno, caminho local real, log completo ou `DATABASE_URL` real no Git.
 
+## Registro de validacao da migration 0008 em homologacao
+
+A migration `0008_create_mod_auth_perfis_permissoes.sql` foi aplicada e validada apenas em homologacao para criar as tabelas estruturais de perfis, permissoes e vinculos do schema `mod_auth`.
+
+Registro seguro, sem dados sensiveis:
+
+- backup manual de homologacao foi criado antes da aplicacao;
+- backup manual foi validado como legivel;
+- a migration `0008` foi aplicada em homologacao;
+- as tabelas `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes` foram criadas;
+- indices foram validados;
+- FKs restritivas foram validadas com `ON UPDATE RESTRICT` e `ON DELETE RESTRICT`;
+- inserts ficticios funcionaram;
+- vinculo usuario/perfil/modulo funcionou;
+- vinculo perfil/permissao funcionou;
+- duplicidade de perfil foi bloqueada;
+- duplicidade de permissao por modulo/chave foi bloqueada;
+- duplicidade de usuario/perfil/modulo foi bloqueada;
+- duplicidade de perfil/permissao foi bloqueada;
+- dados ficticios foram removidos;
+- todas as tabelas `mod_auth` ficaram vazias apos a limpeza;
+- producao ainda nao recebeu a migration `0008` nesta etapa;
+- nenhum perfil real foi criado;
+- nenhuma permissao real foi criada;
+- nenhum vinculo real foi criado;
+- nenhum endpoint interno foi criado.
+
+Proxima etapa: avaliar aplicacao da migration `0008` em producao com backup e validacao.
+
+Nao registrar usuario real, email real, senha, hash real, token, host real, IP interno, caminho local real, log completo ou `DATABASE_URL` real no Git.
+
 ## Registro de aplicacao da migration 0007 no banco ativo
 
 A migration `0007_create_mod_auth_usuarios.sql` foi aplicada no banco ativo de producao apos validacao previa em homologacao.

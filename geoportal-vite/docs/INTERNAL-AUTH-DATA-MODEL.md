@@ -8,7 +8,7 @@ Registro documental: a migration `0006_create_mod_auth_schema.sql` foi criada e 
 
 Registro documental: a migration `0007_create_mod_auth_usuarios.sql` foi aplicada e validada em homologacao e no banco ativo de producao apos backup manual validado. A tabela `mod_auth.usuarios` foi criada, indices e constraints foram validados com dados ficticios em homologacao, os dados ficticios foram removidos e a tabela ficou vazia apos a limpeza. Em producao, os indices foram validados, a tabela permaneceu vazia apos a criacao e nenhum usuario real, seed, endpoint ou login funcional foi criado.
 
-Registro documental: a migration `0008_create_mod_auth_perfis_permissoes.sql` e o rollback correspondente foram criados para as tabelas de perfis, permissoes e vinculos, mas ainda nao foram aplicados no banco. A migration nao cria seeds, perfis reais, permissoes reais, vinculos reais, usuarios, GRANTs, triggers, funcoes ou endpoints.
+Registro documental: a migration `0008_create_mod_auth_perfis_permissoes.sql` foi aplicada e validada em homologacao apos backup manual validado. As tabelas de perfis, permissoes e vinculos foram criadas, indices e FKs restritivas foram validados, constraints e vinculos foram testados com dados ficticios, os dados ficticios foram removidos e todas as tabelas `mod_auth` ficaram vazias apos a limpeza. Producao ainda nao recebeu a migration `0008` nesta etapa.
 
 ## 1. Objetivo
 
