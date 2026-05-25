@@ -88,6 +88,8 @@ O desenho conceitual dos endpoints internos protegidos esta em `geoportal-vite/d
 
 O modelo conceitual transversal de autenticacao/autorizacao para futuros modulos internos esta em `geoportal-vite/docs/INTERNAL-AUTH-DATA-MODEL.md`.
 
+O plano tecnico das futuras migrations do schema `mod_auth` esta em `geoportal-vite/docs/INTERNAL-AUTH-MIGRATIONS-PLAN.md`. Nenhuma migration de autenticacao foi criada nesta etapa.
+
 ## Endpoints disponiveis
 
 - `GET /api/health`

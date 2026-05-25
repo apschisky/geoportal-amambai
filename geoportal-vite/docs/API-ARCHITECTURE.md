@@ -180,6 +180,8 @@ O desenho detalhado de perfis (`admin`, `gestor_modulo`, `atendente_triagem`, `e
 
 O modelo de dados transversal recomendado para usuarios, perfis, permissoes, sessoes e auditoria de login esta em `docs/INTERNAL-AUTH-DATA-MODEL.md`.
 
+O plano tecnico das futuras migrations `0006` a `0009` do schema `mod_auth` esta em `docs/INTERNAL-AUTH-MIGRATIONS-PLAN.md`.
+
 ## 9. Auditoria
 
 Toda operacao interna relevante deve registrar:
@@ -326,7 +328,7 @@ Desenho recomendado:
 4. Endpoint de consulta de protocolo.
 5. Documentacao e desenho de autenticacao/autorizacao interna.
 6. Modelo de dados de autenticacao/autorizacao em `mod_auth`, ou decisao tecnica equivalente.
-7. Migrations de seguranca/autenticacao.
+7. Migrations de seguranca/autenticacao, planejadas em `docs/INTERNAL-AUTH-MIGRATIONS-PLAN.md`.
 8. Autenticacao no backend com testes.
 9. Endpoints internos protegidos.
 10. Tela interna minima.
@@ -374,6 +376,7 @@ Este documento complementa:
 - `docs/ILUMINACAO-CONTROLLED-ACTIVATION-CHECKLIST.md`.
 - `docs/API-SERVER-DEPLOYMENT-PLAN.md`.
 - `docs/INTERNAL-AUTH-DATA-MODEL.md`.
+- `docs/INTERNAL-AUTH-MIGRATIONS-PLAN.md`.
 
 ## 21. Proximos documentos recomendados
 

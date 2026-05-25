@@ -2,6 +2,8 @@
 
 Este documento define o modelo conceitual de autenticacao e autorizacao para o Geoportal Interno. Ele nao cria codigo, migrations, endpoints, telas, usuarios reais, senhas, tokens ou configuracoes de ambiente.
 
+O detalhamento tecnico das futuras migrations do schema `mod_auth` esta em `docs/INTERNAL-AUTH-MIGRATIONS-PLAN.md`.
+
 ## 1. Objetivo
 
 - Definir um modelo transversal de autenticacao e autorizacao para o Geoportal Interno.
@@ -212,7 +214,7 @@ Essa separacao evita dar permissao ampla quando a necessidade operacional e limi
 ## 14. Roadmap
 
 1. Documentar o modelo conceitual.
-2. Criar migrations de `mod_auth`.
+2. Criar migrations de `mod_auth` conforme `docs/INTERNAL-AUTH-MIGRATIONS-PLAN.md`.
 3. Implementar autenticacao no backend.
 4. Implementar autorizacao por dependencia, middleware ou mecanismo equivalente.
 5. Testar acesso autorizado e negado.
