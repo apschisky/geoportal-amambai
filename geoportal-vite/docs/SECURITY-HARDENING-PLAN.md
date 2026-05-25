@@ -171,12 +171,15 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [ ] Usar resposta generica para protocolo inexistente ou confirmacao invalida, sem diferenciar claramente os casos.
 - [ ] Validar formato `IP-YYYY-NNNNNN`, normalizar protocolo, aplicar rate limit e avaliar captcha/protecao adicional se necessario.
 - [ ] Seguir `docs/ILUMINACAO-CONTROLLED-ACTIVATION-CHECKLIST.md` antes de qualquer ativacao publica da API de Iluminacao.
+- [ ] Revisar periodicamente a API publica conforme `docs/PUBLIC-API-SECURITY-REVIEW.md`.
 
 ## 10. Usuarios, login e permissoes
 
 - [ ] Usuarios individuais, nunca compartilhados.
 - [ ] Modelo transversal de autenticacao/autorizacao em `mod_auth`, seguindo `docs/INTERNAL-AUTH-DATA-MODEL.md`.
 - [ ] Migrations futuras de `mod_auth` planejadas conforme `docs/INTERNAL-AUTH-MIGRATIONS-PLAN.md`, sem usuarios, senhas, hashes ou tokens reais.
+- [ ] Revisao defensiva da API publica concluida conforme `docs/PUBLIC-API-SECURITY-REVIEW.md` antes dos endpoints internos.
+- [ ] Implementacao da autenticacao backend deve seguir `docs/INTERNAL-AUTH-SECURITY-IMPLEMENTATION-PLAN.md` antes de qualquer endpoint interno publicado.
 - [ ] Perfis por secretaria e modulo: `admin`, `gestor_modulo`, `atendente_triagem`, `equipe_execucao` e `leitura`, ou equivalentes validados.
 - [ ] Permissoes por acao: visualizar solicitacoes, visualizar detalhe, alterar status, registrar observacao, visualizar historico, visualizar estatisticas e administrar usuarios.
 - [ ] Auditoria de login.

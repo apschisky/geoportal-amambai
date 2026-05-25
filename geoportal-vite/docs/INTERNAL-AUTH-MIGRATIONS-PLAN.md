@@ -2,6 +2,8 @@
 
 Este documento detalha tecnicamente as futuras migrations de autenticacao/autorizacao interna do Geoportal. Ele nao cria SQL, nao cria migrations, nao altera codigo, nao cria endpoints e nao cadastra usuarios reais.
 
+O plano de threat model, controles e validacao para a implementacao segura da autenticacao backend esta em `docs/INTERNAL-AUTH-SECURITY-IMPLEMENTATION-PLAN.md`.
+
 ## 1. Objetivo
 
 Planejar migrations pequenas, revisaveis e reversiveis para o schema transversal `mod_auth`, usado pela autenticacao/autorizacao dos futuros modulos internos do Geoportal.

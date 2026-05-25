@@ -158,7 +158,8 @@ Registro de preparacao da producao local:
 - todas as tabelas `mod_auth` permaneceram vazias apos a criacao em producao;
 - nenhum usuario, sessao, token, auditoria, seed, endpoint ou login funcional foi criado;
 - base estrutural inicial do schema `mod_auth` concluida;
-- proxima etapa: planejar e implementar autenticacao backend com testes, sem criar acesso interno publico sem autenticacao;
+- revisao defensiva da API publica atual documentada em `docs/PUBLIC-API-SECURITY-REVIEW.md`;
+- proxima etapa: seguir `docs/INTERNAL-AUTH-SECURITY-IMPLEMENTATION-PLAN.md` para planejar e implementar autenticacao backend com testes, sem criar acesso interno publico sem autenticacao;
 - proxima evolucao recomendada: modulo interno para triagem, acompanhamento e encerramento das solicitacoes;
 - Google Forms permanece como fallback.
 
@@ -196,9 +197,9 @@ A API deve usar usuario restrito, com permissoes minimas:
 14. Validar pre-producao com Apache publico `/api/` apontando para `GeoportalAPIProducao`, ainda sem gravacao real.
 15. Registrar ativacao real controlada com `PERSIST_SOLICITACOES=true` fora do Git, mantendo Google Forms como fallback.
 16. Aplicar e validar migrations internas de historico e observacoes no banco ativo apos backup. Status: concluido para `0004` e `0005`.
-17. Desenhar autenticacao, autorizacao, perfis e auditoria interna.
-18. Aplicar e validar a migration `0009_create_mod_auth_sessoes_login_auditoria.sql` em homologacao e producao apos backup. Status: concluido.
-19. Planejar e implementar autenticacao backend com testes, sem criar acesso interno publico sem autenticacao.
+17. Aplicar e validar a migration `0009_create_mod_auth_sessoes_login_auditoria.sql` em homologacao e producao apos backup. Status: concluido.
+18. Revisar defensivamente a API publica atual antes dos endpoints internos, conforme `docs/PUBLIC-API-SECURITY-REVIEW.md`.
+19. Planejar e implementar autenticacao backend com testes seguindo `docs/INTERNAL-AUTH-SECURITY-IMPLEMENTATION-PLAN.md`, sem criar acesso interno publico sem autenticacao.
 20. Desenhar endpoints internos protegidos para status, historico e observacoes.
 21. Evoluir para modulo interno de triagem, acompanhamento e encerramento das solicitacoes, seguindo `docs/ILUMINACAO-INTERNAL-MODULE-PLAN.md`.
 

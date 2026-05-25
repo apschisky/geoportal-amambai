@@ -2,6 +2,8 @@
 
 Este documento registra o roteiro seguro para implantacao controlada da API de Iluminacao Publica em servidor, ativacao gradual do front-end e rollback. Ele nao contem host real, IP interno, usuario, senha, caminho local, `DATABASE_URL` real ou credenciais.
 
+A revisao defensiva da API publica atual esta em `docs/PUBLIC-API-SECURITY-REVIEW.md` e deve orientar validacoes periodicas de CORS, rate limit, logs, consulta publica e minimizacao de dados.
+
 ## 1. Estado atual validado
 
 Ja foram validados em ambiente controlado:

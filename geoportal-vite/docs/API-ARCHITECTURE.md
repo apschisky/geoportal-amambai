@@ -8,6 +8,8 @@ Planejar uma API segura, revisavel e gradual para os modulos internos do Geoport
 
 A API deve servir como camada controlada entre front-ends, paineis internos e banco PostGIS, evitando acesso direto a tabelas operacionais.
 
+A revisao defensiva da API publica atual esta em `docs/PUBLIC-API-SECURITY-REVIEW.md` e deve ser considerada antes da exposicao de endpoints internos.
+
 ## 2. Papel da API na arquitetura
 
 A API deve atuar como:
@@ -181,6 +183,8 @@ O desenho detalhado de perfis (`admin`, `gestor_modulo`, `atendente_triagem`, `e
 O modelo de dados transversal recomendado para usuarios, perfis, permissoes, sessoes e auditoria de login esta em `docs/INTERNAL-AUTH-DATA-MODEL.md`.
 
 O plano tecnico das futuras migrations `0006` a `0009` do schema `mod_auth` esta em `docs/INTERNAL-AUTH-MIGRATIONS-PLAN.md`.
+
+O plano de implementacao segura da autenticacao backend, incluindo threat model, controles e testes obrigatorios, esta em `docs/INTERNAL-AUTH-SECURITY-IMPLEMENTATION-PLAN.md`.
 
 ## 9. Auditoria
 
