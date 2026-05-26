@@ -99,7 +99,9 @@ Status:
 - Biblioteca escolhida para a implementacao inicial: `argon2-cffi` com Argon2id.
 - Servico interno criado em `geoportal-backend/app/security/passwords.py`, apenas para hash e verificacao de senha.
 - Repository interno de usuarios criado em `geoportal-backend/app/repositories/auth_user_repository.py`.
+- O repository de usuarios busca por login ou e-mail com bind param `:login_informado`, usando comparação case-insensitive via `lower(login)` e `lower(email)`. Login vazio ou só com espaços retorna `None` sem executar SQL.
 - O repository de usuarios pode ler `senha_hash` somente em record interno para verificacao futura no backend; `senha_hash` nunca deve ser retornado por endpoint.
+- O repository registra `ultimo_login_em` e `atualizado_em` em login bem-sucedido, sem alterar `senha_hash`, sem criar sessão e sem criar auditoria.
 - Servico interno de sessao opaca criado em `geoportal-backend/app/security/sessions.py`.
 - Repository interno de sessoes criado em `geoportal-backend/app/repositories/auth_session_repository.py`.
 - O repository opera com `mod_auth.sessoes` usando `token_hash` e nunca persiste o token bruto.
