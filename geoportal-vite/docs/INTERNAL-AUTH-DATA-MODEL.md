@@ -4,7 +4,7 @@ Este documento define o modelo conceitual de autenticacao e autorizacao para o G
 
 O detalhamento tecnico das futuras migrations do schema `mod_auth` esta em `docs/INTERNAL-AUTH-MIGRATIONS-PLAN.md`.
 As escolhas de hash, sessao, transporte de token e autorizacao devem seguir as decisoes iniciais documentadas em `docs/INTERNAL-AUTH-TECHNICAL-DECISIONS.md`.
-O serviço interno de hash/verificação de senha com Argon2id já foi implementado e validado, e o serviço interno de sessão opaca/token também foi implementado e validado. Ainda não há login funcional, endpoint interno exposto, usuário real, sessão real, token real, cookie, CSRF, JWT ou middleware.
+O serviço interno de hash/verificação de senha com Argon2id já foi implementado e validado, o serviço interno de sessão opaca/token também foi implementado e validado, e o repository interno de sessões foi criado para operar somente com `token_hash`. Ainda não há login funcional, endpoint interno exposto, usuário real, sessão real, token real, cookie, CSRF, JWT ou middleware.
 O plano de threat model, controles e validacao para a implementacao segura da autenticacao backend esta em `docs/INTERNAL-AUTH-SECURITY-IMPLEMENTATION-PLAN.md`.
 
 Registro documental: a migration `0006_create_mod_auth_schema.sql` foi criada e aplicada em homologacao e no banco ativo de producao apos backup manual validado. O schema `mod_auth` foi criado com comentario validado, e nenhuma tabela foi criada nesta etapa. O rollback correspondente permanece disponivel para ambiente controlado.
@@ -162,6 +162,10 @@ Regras:
 - Nao armazenar token puro se houver alternativa segura.
 - Expiracao de sessao ou token e obrigatoria.
 - Sessoes devem poder ser revogadas.
+- Repository interno criado em `geoportal-backend/app/repositories/auth_session_repository.py`, sem endpoint e sem login funcional.
+- O repository insere e consulta `token_hash`; ele nao cria token bruto, nao retorna token bruto e nao retorna `senha_hash`.
+- A consulta de sessao ativa filtra `revogado_em IS NULL`, `expira_em > now()` e usuario ativo, nao desativado e nao bloqueado no momento da consulta.
+- Revogacao usa preenchimento de `revogado_em` por `UPDATE`; nao usa `DELETE`.
 - Evitar IP bruto e user-agent bruto sem politica de retencao definida.
 - Logs nao devem conter token, cookie de sessao ou identificador sensivel.
 

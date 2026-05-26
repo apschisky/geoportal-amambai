@@ -201,8 +201,9 @@ Status:
 - Servico interno criado em `geoportal-backend/app/security/sessions.py`, apenas para gerar token opaco, calcular `token_hash`, verificar token, preparar expiracao UTC e avaliar revogacao.
 - Token opaco usa geracao criptograficamente segura; `token_hash` usa HMAC-SHA256 com segredo recebido por parametro.
 - Segredo real de HMAC ainda nao foi configurado e deve ser definido em etapa futura segura, antes de qualquer endpoint de login.
-- Ainda nao ha login funcional, endpoint, sessao real no banco, repository, middleware, cookie, CSRF, JWT ou transporte de token implementado.
-- A proxima etapa deve planejar persistencia de sessao ou middleware, sem criar endpoint publico sem autenticacao/autorizacao.
+- Repository interno de sessoes criado em `geoportal-backend/app/repositories/auth_session_repository.py`, operando apenas com `token_hash`, expiracao e revogacao por `revogado_em`.
+- Ainda nao ha login funcional, endpoint, sessao real no banco, middleware, cookie, CSRF, JWT ou transporte de token implementado.
+- A proxima etapa pode planejar service de autenticacao/sessao ou middleware, sem criar endpoint publico sem autenticacao/autorizacao.
 
 ## 6. Transporte do token no cliente
 
@@ -409,7 +410,7 @@ Testes mínimos:
 | Tema | Decisão recomendada | Status |
 |---|---|---|
 | Hash de senha | Argon2id com `argon2-cffi`; bcrypt apenas como alternativa operacional | Servico interno criado sem endpoint |
-| Sessão/token | Sessão opaca com token_hash HMAC-SHA256 no banco futuramente | Servico interno criado sem endpoint |
+| Sessão/token | Sessão opaca com token_hash HMAC-SHA256 no banco futuramente | Servico e repository internos criados sem endpoint |
 | Transporte do token | Decidir após desenho do frontend interno | Pendente |
 | JWT | Não recomendado para primeira versão salvo necessidade real | Adiado |
 | Usuário admin via migration | Não permitido | Decidido |
@@ -422,7 +423,7 @@ Testes mínimos:
 1. Revisar este documento.
 2. Manter testes do servico de hash/verificacao de senha.
 3. Planejar politica final de senha antes de criar usuario real.
-4. Planejar persistencia de sessao ou middleware sem endpoint publico.
+4. Planejar service de autenticacao/sessao ou middleware sem endpoint publico.
 5. Configurar segredo real de HMAC em etapa segura, sem registrar em log.
 6. Implementar protecao contra brute force antes do endpoint de login.
 7. Implementar dependency/middleware de autenticação.
