@@ -128,6 +128,8 @@ def test_create_solicitacao_uses_postgis_transform_and_bind_params() -> None:
     assert "contato de teste" not in sql
     assert response.protocolo == "IP-2026-000001"
     assert response.status == "aberta"
+    assert response.message == "Solicitacao registrada com sucesso."
+    assert "teste" not in response.message.lower()
 
 
 def test_existe_solicitacao_ativa_para_poste_returns_boolean_without_sensitive_data() -> None:

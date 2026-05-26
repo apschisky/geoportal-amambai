@@ -61,6 +61,7 @@ def test_create_solicitacao_simulada_returns_protocol_without_repository(
 
     assert response.protocolo == "IP-2026-000001"
     assert response.status == "aberta"
+    assert "ambiente de teste" in response.message
 
 
 def test_create_solicitacao_simulada_calls_repository_when_enabled(
@@ -77,7 +78,7 @@ def test_create_solicitacao_simulada_calls_repository_when_enabled(
         return IluminacaoSolicitacaoResponse(
             protocolo=protocolo,
             status=StatusSolicitacaoIluminacao.aberta,
-            message="Solicitação registrada em ambiente de teste.",
+            message="Solicitacao registrada com sucesso.",
         )
 
     monkeypatch.setattr(
@@ -108,6 +109,9 @@ def test_create_solicitacao_simulada_calls_repository_when_enabled(
     assert calls["protocolo"] == "IP-2026-000123"
     assert response.protocolo == "IP-2026-000123"
     assert response.status == "aberta"
+    assert response.message == "Solicitacao registrada com sucesso."
+    assert "ambiente de teste" not in response.message.lower()
+    assert "teste" not in response.message.lower()
 
 
 def test_create_solicitacao_blocks_active_duplicate_before_protocol_generation(

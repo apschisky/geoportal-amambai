@@ -8,6 +8,8 @@ from app.api.routes import iluminacao_public
 from app.core.rate_limit import reset_rate_limit_state
 from app.main import app
 from app.schemas.iluminacao import IluminacaoConsultaPublicResponse
+from app.schemas.iluminacao import IluminacaoSolicitacaoResponse
+from app.schemas.iluminacao import StatusSolicitacaoIluminacao
 from app.services import iluminacao_service
 from app.services.exceptions import DatabaseUnavailableError, PublicConsultaNotFoundError
 from app.services.exceptions import SolicitacaoDuplicadaAtivaError
@@ -75,6 +77,49 @@ def test_create_solicitacao_valid_payload_returns_simulated_protocol() -> None:
     assert response.status_code in (200, 201)
     assert response.json()["protocolo"] == "IP-2026-000001"
     assert response.json()["status"] == "aberta"
+    assert "ambiente de teste" in response.json()["message"]
+
+
+def test_create_solicitacao_with_persistence_enabled_returns_neutral_message(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: dict[str, object] = {}
+
+    def fake_create_solicitacao(*args: object, **kwargs: object) -> object:
+        calls["create"] = True
+        return IluminacaoSolicitacaoResponse(
+            protocolo="IP-2026-000123",
+            status=StatusSolicitacaoIluminacao.aberta,
+            message="Solicitacao registrada com sucesso.",
+        )
+
+    monkeypatch.setattr(iluminacao_service.settings, "persist_solicitacoes", True)
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "existe_solicitacao_ativa_para_poste",
+        lambda poste_id: False,
+    )
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "create_solicitacao",
+        fake_create_solicitacao,
+    )
+    monkeypatch.setattr(
+        iluminacao_service,
+        "generate_protocol_from_database",
+        lambda: "IP-2026-000123",
+    )
+
+    response = client.post("/api/public/iluminacao/solicitacoes", json=valid_payload())
+
+    assert response.status_code == 201
+    body = response.json()
+    assert calls["create"] is True
+    assert body["protocolo"] == "IP-2026-000123"
+    assert body["status"] == "aberta"
+    assert body["message"] == "Solicitacao registrada com sucesso."
+    assert "ambiente de teste" not in body["message"].lower()
+    assert "teste" not in body["message"].lower()
 
 
 def test_create_solicitacao_returns_safe_503_when_database_is_unavailable(

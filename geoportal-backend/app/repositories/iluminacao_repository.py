@@ -129,7 +129,7 @@ def create_solicitacao(
     return IluminacaoSolicitacaoResponse(
         protocolo=row["protocolo"],
         status=row["status"],
-        message="Solicitacao registrada em ambiente de teste.",
+        message="Solicitacao registrada com sucesso.",
     )
 
 
