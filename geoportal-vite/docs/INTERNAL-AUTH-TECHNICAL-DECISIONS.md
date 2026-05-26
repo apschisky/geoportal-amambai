@@ -98,7 +98,10 @@ Status:
 
 - Biblioteca escolhida para a implementacao inicial: `argon2-cffi` com Argon2id.
 - Servico interno criado em `geoportal-backend/app/security/passwords.py`, apenas para hash e verificacao de senha.
-- Ainda nao ha login funcional, endpoint, usuario real, seed, sessao, token ou middleware de autenticacao.
+- Validacao local: `tests/test_password_security.py` passou com 8 testes; a suite completa local passou com 85 testes.
+- Validacao no servidor: `tests/test_password_security.py` passou com 8 testes; a suite completa no servidor passou com 85 testes.
+- Homologacao e producao local foram reiniciadas e validadas. `/api/health`, `/api/public/iluminacao/health` e `/api/version` ficaram saudaveis.
+- Ainda nao ha login funcional, endpoint interno, usuario real, senha real, token, sessao ou middleware de autenticacao.
 - Protecao contra brute force, atraso progressivo e bloqueio temporario continuam obrigatorios antes de qualquer endpoint de login.
 
 ## 4. Política inicial de senha
@@ -419,6 +422,7 @@ Testes mínimos:
 9. Criar endpoint de login somente após testes.
 10. Criar endpoints internos mínimos protegidos.
 11. Criar tela interna mínima.
+12. Continuar a próxima etapa crítica com Codex High.
 
 Observação:
 
