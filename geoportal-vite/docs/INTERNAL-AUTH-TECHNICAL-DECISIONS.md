@@ -96,7 +96,10 @@ Explicação:
 
 Status:
 
-- Decisão recomendada, ainda pendente de validação operacional antes do código.
+- Biblioteca escolhida para a implementacao inicial: `argon2-cffi` com Argon2id.
+- Servico interno criado em `geoportal-backend/app/security/passwords.py`, apenas para hash e verificacao de senha.
+- Ainda nao ha login funcional, endpoint, usuario real, seed, sessao, token ou middleware de autenticacao.
+- Protecao contra brute force, atraso progressivo e bloqueio temporario continuam obrigatorios antes de qualquer endpoint de login.
 
 ## 4. Política inicial de senha
 
@@ -394,7 +397,7 @@ Testes mínimos:
 
 | Tema | Decisão recomendada | Status |
 |---|---|---|
-| Hash de senha | Argon2id preferencial; bcrypt como alternativa | Pendente de validação operacional |
+| Hash de senha | Argon2id com `argon2-cffi`; bcrypt apenas como alternativa operacional | Servico interno criado sem endpoint |
 | Sessão/token | Sessão opaca com token_hash no banco | Recomendado |
 | Transporte do token | Decidir após desenho do frontend interno | Pendente |
 | JWT | Não recomendado para primeira versão salvo necessidade real | Adiado |
@@ -406,11 +409,11 @@ Testes mínimos:
 ## 15. Próximos passos
 
 1. Revisar este documento.
-2. Escolher biblioteca de hash.
-3. Validar biblioteca no ambiente Windows/local.
-4. Implementar serviço de hash/verificação de senha sem endpoint.
-5. Implementar serviço de sessão opaca sem endpoint público.
-6. Criar testes automatizados.
+2. Manter testes do servico de hash/verificacao de senha.
+3. Planejar politica final de senha antes de criar usuario real.
+4. Implementar serviço de sessão opaca sem endpoint público.
+5. Implementar protecao contra brute force antes do endpoint de login.
+6. Criar testes automatizados para sessoes e autenticacao.
 7. Implementar dependency/middleware de autenticação.
 8. Implementar autorização por permissão.
 9. Criar endpoint de login somente após testes.
