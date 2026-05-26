@@ -98,10 +98,14 @@ Status:
 
 - Biblioteca escolhida para a implementacao inicial: `argon2-cffi` com Argon2id.
 - Servico interno criado em `geoportal-backend/app/security/passwords.py`, apenas para hash e verificacao de senha.
-- Validacao local: `tests/test_password_security.py` passou com 8 testes; a suite completa local passou com 85 testes.
-- Validacao no servidor: `tests/test_password_security.py` passou com 8 testes; a suite completa no servidor passou com 85 testes.
+- Servico interno de sessao opaca criado em `geoportal-backend/app/security/sessions.py`.
+- O servico de sessao usa token aleatorio forte (`secrets.token_urlsafe(32)`), HMAC-SHA256 e comparacao segura com `hmac.compare_digest`.
+- O token bruto nao e persistido nem logado. O hash de sessao e prefixado com `hmac-sha256:`.
+- A expiração usa `datetime` timezone-aware em UTC. A revogacao e tratada quando `revoked_at` esta preenchido.
+- Validacao local: `tests/test_password_security.py` passou com 8 testes; `tests/test_session_security.py` passou com 22 testes; a suite completa local passou com 107 testes.
+- Validacao no servidor: `tests/test_password_security.py` passou com 8 testes; `tests/test_session_security.py` passou com 22 testes; a suite completa no servidor passou com 107 testes.
 - Homologacao e producao local foram reiniciadas e validadas. `/api/health`, `/api/public/iluminacao/health` e `/api/version` ficaram saudaveis.
-- Ainda nao ha login funcional, endpoint interno, usuario real, senha real, token, sessao ou middleware de autenticacao.
+- Ainda nao ha login funcional, endpoint interno, usuario real, sessao real, token real, cookie, CSRF, JWT ou middleware de autenticacao.
 - Protecao contra brute force, atraso progressivo e bloqueio temporario continuam obrigatorios antes de qualquer endpoint de login.
 
 ## 4. Política inicial de senha
@@ -424,6 +428,7 @@ Testes mínimos:
 7. Implementar dependency/middleware de autenticação.
 8. Implementar autorização por permissão.
 9. Criar endpoint de login somente após testes.
+10. Trabalhar as próximas etapas críticas com Codex High.
 10. Criar endpoints internos mínimos protegidos.
 11. Criar tela interna mínima.
 12. Continuar a próxima etapa crítica com Codex High.
