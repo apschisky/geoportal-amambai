@@ -108,13 +108,13 @@ Status:
 - A busca de sessao ativa filtra `token_hash` parametrizado, `revogado_em IS NULL`, `expira_em > now()` e o estado do usuário (ativo, não desativado, não bloqueado).
 - Revogacao usa `UPDATE ... SET revogado_em = now()`, sem `DELETE`.
 - Service interno de autenticacao/sessao criado em `geoportal-backend/app/services/auth_service.py`, sem endpoint e sem login exposto.
-- O service orquestra busca de usuario, verificacao de senha, geracao de token opaco, persistencia de `token_hash`, expiracao e registro de ultimo login.
+- O service orquestra busca de usuario, verificacao de senha, geracao de token opaco, persistencia de `token_hash`, expiracao, revogacao e registro de `ultimo_login_em`.
 - Falhas de autenticacao retornam resultado generico interno (`None`), sem distinguir usuario inexistente, senha invalida, usuario inativo, desativado ou bloqueado.
 - O servico de sessao usa token aleatorio forte (`secrets.token_urlsafe(32)`), HMAC-SHA256 e comparacao segura com `hmac.compare_digest`.
 - O token bruto nao e persistido nem logado. O hash de sessao e prefixado com `hmac-sha256:`.
 - A expiração usa `datetime` timezone-aware em UTC. A revogacao e tratada quando `revoked_at` esta preenchido.
 - Validacao local desta etapa: `tests/test_auth_service.py` passou com 16 testes; a suite completa local passou apos a inclusao do service.
-- Homologacao, producao local e producao publica foram reiniciadas e validadas. `/api/health`, `/api/public/iluminacao/health` e `/api/version` ficaram saudaveis.
+- Validacao de servidor concluida em homologacao, producao local e producao publica. `/api/health`, `/api/public/iluminacao/health` e `/api/version` ficaram saudaveis apos reinicializacoes.
 - Ainda nao ha endpoint interno, usuario real, sessao real criada por endpoint, token real, cookie, CSRF, JWT ou middleware de autenticacao.
 - Protecao contra brute force, atraso progressivo e bloqueio temporario continuam obrigatorios antes de qualquer endpoint de login.
 
