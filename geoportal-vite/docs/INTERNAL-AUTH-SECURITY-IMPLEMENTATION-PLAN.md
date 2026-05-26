@@ -6,6 +6,8 @@ A base estrutural inicial do schema `mod_auth` ja foi criada, aplicada e documen
 
 Antes de expor endpoints internos, a API publica atual deve permanecer revisada e saudavel conforme `docs/PUBLIC-API-SECURITY-REVIEW.md`.
 
+Este documento complementa `docs/INTERNAL-AUTH-TECHNICAL-DECISIONS.md`, que registra as decisões técnicas iniciais de autenticação, sessão, transporte de token e autorização.
+
 ## 1. Objetivo
 
 - Orientar a implementacao futura da autenticacao interna do Geoportal.

@@ -4,6 +4,8 @@ Prova de conceito local e segura da futura API do Geoportal de Amambai, iniciand
 
 Esta etapa nao conecta banco de dados, nao implementa autenticacao real, nao usa dados de producao e nao integra com o Geoportal publico em producao.
 
+As decisoes tecnicas para autenticacao interna estao documentadas em `geoportal-vite/docs/INTERNAL-AUTH-TECHNICAL-DECISIONS.md`.
+
 ## Como preparar o ambiente
 
 ```powershell

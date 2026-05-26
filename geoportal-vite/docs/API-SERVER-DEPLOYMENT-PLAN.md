@@ -17,6 +17,7 @@ Este documento registra o plano tecnico conceitual para implantar a API FastAPI 
 	 - `Permissions-Policy: geolocation=(), microphone=(), camera=()`
 	 - Validação: `httpd.exe -t` -> `Syntax OK`, Apache reiniciado, `GET /api/health` e outros endpoints retornaram `200` com os headers presentes. CORS e serviços permaneceram funcionais.
 	 - Pendências de hardening (aplicar com cautela): `Content-Security-Policy`, `Strict-Transport-Security` e `X-Frame-Options`.
+	 - Alinhar qualquer implementacao de autenticação interna com `docs/INTERNAL-AUTH-TECHNICAL-DECISIONS.md` antes de criar endpoints protegidos.
 - Nesta fase experimental, a API publica fica exposta pelo dominio tecnico do GeoServer em `https://geoserver.amambai.ms.gov.br/api/`.
 - O front-end oficial em `https://geoportal.amambai.ms.gov.br` acessa a API por CORS restrito e validado.
 - Expor a API tambem em `https://geoportal.amambai.ms.gov.br/api/` fica como evolucao futura de infraestrutura.

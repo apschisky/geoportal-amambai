@@ -6,6 +6,8 @@ Este plano orienta a evolucao segura do Geoportal publico ate a implantacao de m
 
 Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar o Geoportal para servicos internos. O objetivo e manter o mapa publico estavel e separar claramente o que pode ser publico do que deve ser protegido por API, autenticacao, autorizacao, auditoria e regras operacionais.
 
+Antes de avançar em autenticação interna, consulte `docs/INTERNAL-AUTH-TECHNICAL-DECISIONS.md` para as decisões técnicas iniciais de hash, sessão, transporte e autorização.
+
 ## 2. Principios de seguranca
 
 - [ ] Seguranca em camadas: servidor, proxy, GeoServer, banco, API e front-end.
