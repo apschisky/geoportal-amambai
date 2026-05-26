@@ -148,9 +148,11 @@ As validações práticas realizadas na API pública de Iluminação Pública em
   - Não tem `DELETE`.
   - Não tem `USAGE` em `mod_auth`.
   - Não tem `SELECT` em `mod_auth.usuarios`.
-- **Mensagem de sucesso**: ATENÇÃO BAIXA-MÉDIA
-  - A solicitação pública em produção retornou mensagem com texto `ambiente de teste`.
-  - Correção planejada: ajustar mensagem pública de sucesso em produção para `Solicitação registrada com sucesso.` ou equivalente.
+- **Mensagem de sucesso**: CORRIGIDO E VALIDADO
+  - A criação persistida em produção agora retorna `Solicitação registrada com sucesso.`.
+  - Homologação/simulação sem persistência continua a retornar mensagem de ambiente de teste, comportamento esperado para validação controlada.
+  - Validação concluída em testes automatizados (77 passed), homologação com `environment=homologacao`, produção local em `127.0.0.1:8001` com `environment=producao`, e URL pública `https://geoserver.amambai.ms.gov.br`.
+  - Registros de teste criados para validação foram removidos do banco.
 
 ## 7. Recomendacoes Praticas
 
