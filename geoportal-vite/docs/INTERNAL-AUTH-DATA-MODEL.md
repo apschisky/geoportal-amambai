@@ -4,7 +4,7 @@ Este documento define o modelo conceitual de autenticacao e autorizacao para o G
 
 O detalhamento tecnico das futuras migrations do schema `mod_auth` esta em `docs/INTERNAL-AUTH-MIGRATIONS-PLAN.md`.
 As escolhas de hash, sessao, transporte de token e autorizacao devem seguir as decisoes iniciais documentadas em `docs/INTERNAL-AUTH-TECHNICAL-DECISIONS.md`.
-O serviço interno de hash/verificação de senha com Argon2id já foi implementado e validado, o serviço interno de sessão opaca/token também foi implementado e validado, e o repository interno de sessões foi criado para operar somente com `token_hash`. A busca de sessão ativa filtra revogação, expiração e estado do usuário, e a revogação usa `revogado_em`, sem `DELETE`. Ainda não há login funcional, endpoint interno exposto, usuário real, sessão real, token real, cookie, CSRF, JWT ou middleware.
+O serviço interno de hash/verificação de senha com Argon2id já foi implementado e validado, o serviço interno de sessão opaca/token também foi implementado e validado, o repository interno de sessões foi criado para operar somente com `token_hash`, e o repository interno de usuários foi criado para busca autenticável por login/e-mail. A busca de sessão ativa filtra revogação, expiração e estado do usuário, e a revogação usa `revogado_em`, sem `DELETE`. Ainda não há login funcional, endpoint interno exposto, usuário real, sessão real, token real, cookie, CSRF, JWT ou middleware.
 O plano de threat model, controles e validacao para a implementacao segura da autenticacao backend esta em `docs/INTERNAL-AUTH-SECURITY-IMPLEMENTATION-PLAN.md`.
 
 Registro documental: a migration `0006_create_mod_auth_schema.sql` foi criada e aplicada em homologacao e no banco ativo de producao apos backup manual validado. O schema `mod_auth` foi criado com comentario validado, e nenhuma tabela foi criada nesta etapa. O rollback correspondente permanece disponivel para ambiente controlado.
@@ -61,6 +61,10 @@ Regras:
 - Usuario desativado nao deve acessar endpoints internos.
 - Tentativas excessivas de login devem aplicar bloqueio temporario, atraso ou protecao equivalente.
 - Logs nunca devem registrar senha, hash de senha ou token.
+- Repository interno criado em `geoportal-backend/app/repositories/auth_user_repository.py`, sem endpoint e sem login funcional.
+- O repository pode ler `senha_hash` apenas em record interno para verificacao futura de senha no backend.
+- `senha_hash` nao deve ser retornado por endpoint e nao deve ser registrado em log.
+- A busca usa login ou e-mail normalizado de forma case-insensitive e nao cria sessao, auditoria ou usuario.
 
 ## 5. `mod_auth.perfis`
 

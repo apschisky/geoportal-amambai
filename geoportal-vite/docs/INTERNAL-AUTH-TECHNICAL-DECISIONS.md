@@ -98,6 +98,8 @@ Status:
 
 - Biblioteca escolhida para a implementacao inicial: `argon2-cffi` com Argon2id.
 - Servico interno criado em `geoportal-backend/app/security/passwords.py`, apenas para hash e verificacao de senha.
+- Repository interno de usuarios criado em `geoportal-backend/app/repositories/auth_user_repository.py`.
+- O repository de usuarios pode ler `senha_hash` somente em record interno para verificacao futura no backend; `senha_hash` nunca deve ser retornado por endpoint.
 - Servico interno de sessao opaca criado em `geoportal-backend/app/security/sessions.py`.
 - Repository interno de sessoes criado em `geoportal-backend/app/repositories/auth_session_repository.py`.
 - O repository opera com `mod_auth.sessoes` usando `token_hash` e nunca persiste o token bruto.
@@ -106,8 +108,7 @@ Status:
 - O servico de sessao usa token aleatorio forte (`secrets.token_urlsafe(32)`), HMAC-SHA256 e comparacao segura com `hmac.compare_digest`.
 - O token bruto nao e persistido nem logado. O hash de sessao e prefixado com `hmac-sha256:`.
 - A expiração usa `datetime` timezone-aware em UTC. A revogacao e tratada quando `revoked_at` esta preenchido.
-- Validacao local: `tests/test_password_security.py` passou com 8 testes; `tests/test_session_security.py` passou com 22 testes; `tests/test_auth_session_repository.py` passou com 12 testes; a suite completa local passou com 119 testes.
-- Validacao no servidor: `tests/test_password_security.py` passou com 8 testes; `tests/test_session_security.py` passou com 22 testes; `tests/test_auth_session_repository.py` passou com 12 testes; a suite completa no servidor passou com 119 testes.
+- Validacao local desta etapa: `tests/test_auth_user_repository.py` passou com 8 testes; a suite completa local passou com 127 testes.
 - Homologacao, producao local e producao publica foram reiniciadas e validadas. `/api/health`, `/api/public/iluminacao/health` e `/api/version` ficaram saudaveis.
 - Ainda nao ha login funcional, endpoint interno, usuario real, sessao real, token real, cookie, CSRF, JWT ou middleware de autenticacao.
 - Protecao contra brute force, atraso progressivo e bloqueio temporario continuam obrigatorios antes de qualquer endpoint de login.
@@ -413,7 +414,7 @@ Testes mínimos:
 
 | Tema | Decisão recomendada | Status |
 |---|---|---|
-| Hash de senha | Argon2id com `argon2-cffi`; bcrypt apenas como alternativa operacional | Servico interno criado sem endpoint |
+| Hash de senha | Argon2id com `argon2-cffi`; bcrypt apenas como alternativa operacional | Servico e repository de usuarios internos criados sem endpoint |
 | Sessão/token | Sessão opaca com token_hash HMAC-SHA256 no banco futuramente | Servico e repository internos criados sem endpoint |
 | Transporte do token | Decidir após desenho do frontend interno | Pendente |
 | JWT | Não recomendado para primeira versão salvo necessidade real | Adiado |
@@ -427,7 +428,7 @@ Testes mínimos:
 1. Revisar este documento.
 2. Manter testes do servico de hash/verificacao de senha.
 3. Planejar politica final de senha antes de criar usuario real.
-4. Planejar service de autenticacao/sessao ou middleware sem endpoint publico.
+4. Planejar service de autenticacao/sessao usando repositories internos, sem endpoint publico.
 5. Configurar segredo real de HMAC em etapa segura, sem registrar em log.
 6. Implementar protecao contra brute force antes do endpoint de login.
 7. Implementar dependency/middleware de autenticação.
