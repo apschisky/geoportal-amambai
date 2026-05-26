@@ -112,11 +112,16 @@ As validações práticas realizadas na API pública de Iluminação Pública em
 - **Coordenada inválida**: OK
   - Retornou `422`.
   - Latitude/longitude fora da faixa foram rejeitadas.
-- **Texto grande**: OK para limite
+- **Texto grande**: OK
   - Descrição com `10000` caracteres retornou `422`.
   - Limite de `1000` caracteres foi aplicado.
-  - Atenção: a resposta `422` ecoou o conteúdo bruto do campo inválido em `input`, o que pode expor dados pessoais em respostas de erro.
-  - Correção planejada: criar tratamento global de erro de validação para não retornar input bruto em produção.
+  - Sanitização de erros validada: a resposta `422` não ecoa campos sensíveis.
+    - Campo `input` não retornado.
+    - Campo `url` não retornado.
+    - Payload bruto inválido não é ecoado na resposta.
+  - Cada erro preserva apenas: `type`, `loc`, `msg` e `ctx` (quando existir).
+  - Correção implementada e validada em testes automatizados (76 passed), homologação, produção local e URL pública (https://geoserver.amambai.ms.gov.br).
+  - Payload com descrição de 10000 caracteres e payload com campo extra ambos retornam `422` sem expor dados pessoais.
 - **Rate limit**: OK
   - Testes repetidos em `/solicitacoes` retornaram `429`.
   - Testes repetidos em `/consulta` retornaram `429`.

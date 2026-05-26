@@ -199,6 +199,23 @@ Nesta fase, nao usar wildcard para compensar dominios diferentes. A solucao temp
 
 ## Seguranca
 
+### Validacao e tratamento de erros
+
+O backend implementa tratamento global de erros de validacao para evitar expor dados pessoais em respostas HTTP 422:
+
+- **Campos sanitizados na resposta de erro**: as respostas 422 de `RequestValidationError` removem campos sensveis:
+  - Campo `input` nao e retornado, evitando ecoar payload bruto inválido.
+  - Campo `url` nao e retornado.
+  - Apenas campos seguros sao inclusos na resposta: `type`, `loc`, `msg` e `ctx` (quando existir).
+- **Validacao corrigida**: correcao foi implementada no handler `RequestValidationError` em `app/main.py`.
+- **Ambientes validados**: sanitizacao testada em testes automatizados (76 passed), homologacao, producao local em `127.0.0.1:8001` e URL publica (https://geoserver.amambai.ms.gov.br).
+- **Exemplos validados**:
+  - Payload com descricao de 10000 caracteres retorna `422` com `type`, `loc`, `msg` sem ecoar o texto grande.
+  - Payload com campo extra retorna `422` com `type`, `loc`, `msg` sem ecoar o valor indevido.
+  - Nenhum dado pessoal e exposto em respostas de erro.
+
+### Geral
+
 - Nao criar `.env` com credenciais no Git.
 - Nao incluir senha, token, IP interno, usuario de banco ou dados reais.
 - Usar `.env.example` apenas como referencia segura.
