@@ -11,6 +11,12 @@ Este documento registra o plano tecnico conceitual para implantar a API FastAPI 
 - O CORS deve ser restrito a origem oficial do Geoportal, sem wildcard.
 - A exposição pública de documentação deve permanecer fechada; `/docs`, `/redoc` e `/openapi.json` devem retornar `404` quando não forem publicados.
 - O proxy Apache deve endurecer headers e avaliar ocultar `Server: uvicorn`.
+ - O proxy Apache recebeu primeira etapa de hardening de headers (parcialmente aplicada e validada):
+	 - `X-Content-Type-Options: nosniff`
+	 - `Referrer-Policy: strict-origin-when-cross-origin`
+	 - `Permissions-Policy: geolocation=(), microphone=(), camera=()`
+	 - Validação: `httpd.exe -t` -> `Syntax OK`, Apache reiniciado, `GET /api/health` e outros endpoints retornaram `200` com os headers presentes. CORS e serviços permaneceram funcionais.
+	 - Pendências de hardening (aplicar com cautela): `Content-Security-Policy`, `Strict-Transport-Security` e `X-Frame-Options`.
 - Nesta fase experimental, a API publica fica exposta pelo dominio tecnico do GeoServer em `https://geoserver.amambai.ms.gov.br/api/`.
 - O front-end oficial em `https://geoportal.amambai.ms.gov.br` acessa a API por CORS restrito e validado.
 - Expor a API tambem em `https://geoportal.amambai.ms.gov.br/api/` fica como evolucao futura de infraestrutura.

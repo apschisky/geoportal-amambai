@@ -131,13 +131,19 @@ As validações práticas realizadas na API pública de Iluminação Pública em
   - `/openapi.json` retornou `404`.
 - **Headers de segurança**: ATENÇÃO
   - `/api/health` retornou apenas headers básicos: `Vary`, `Content-Length`, `Content-Type`, `Date`, `Server: uvicorn`.
-  - Recomendação: adicionar hardening no Apache/proxy com os seguintes headers:
-    - `X-Content-Type-Options`
-    - `X-Frame-Options`
-    - `Referrer-Policy`
-    - `Permissions-Policy`
-    - `Strict-Transport-Security` quando HTTPS estiver consolidado.
-  - Observação: `Content-Security-Policy` deve ser tratado com cuidado em etapa separada para não quebrar o Geoportal, mapas, tiles, GeoServer ou front-end.
+  - Estado: PARCIALMENTE CORRIGIDO E VALIDADO
+  - A primeira etapa de hardening foi aplicada no proxy/Apache do host `geoserver.amambai.ms.gov.br` dentro do `VirtualHost *:443` e validada:
+    - `Header always set X-Content-Type-Options "nosniff"`
+    - `Header always set Referrer-Policy "strict-origin-when-cross-origin"`
+    - `Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"`
+  - Validação realizada:
+    - Backup manual do arquivo Apache (`httpd-ssl.conf`) antes da alteração.
+    - `httpd.exe -t` retornou `Syntax OK`.
+    - Serviço `Apache2.4` reiniciado e em `Running`.
+    - `GET https://geoserver.amambai.ms.gov.br/api/health` retornou `200` com os novos headers presentes.
+    - GeoServer, API, Geoportal e camadas permaneceram funcionais; CORS autorizado e bloqueios indevidos mantiveram comportamento esperado.
+  - Observação técnica: no endpoint `/geoserver` foi observado `X-Content-Type-Options: nosniff,nosniff`, indicando possível duplicidade entre GeoServer/Tomcat e Apache — registrar para ajuste fino futuro.
+  - Itens de hardening pendentes (aplicados com cautela posteriormente): `Content-Security-Policy`, `Strict-Transport-Security` (HSTS) e `X-Frame-Options`.
 - **Server header**: ATENÇÃO BAIXA
   - O header `Server` expôs `uvicorn`.
   - Recomendação: avaliar ocultação ou substituição no proxy.

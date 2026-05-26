@@ -34,9 +34,16 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 - [ ] HTTPS obrigatorio.
 - [ ] Headers de seguranca revisados.
 - [ ] Adicionar cabeçalhos de seguranca no Apache/proxy: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` e `Strict-Transport-Security` quando HTTPS estiver consolidado.
-- [ ] Avaliar ocultacao ou substituicao do header `Server` no proxy para evitar expor `uvicorn`.
-- [x] Ajustar mensagem publica de sucesso em producao para evitar texto de ambiente de teste. Status: implementado e validado em testes automatizados, homologação, produção local e URL pública.
-- [x] Criar tratamento global de erro de validacao para evitar ecoar input bruto em respostas `422`. Status: implementado e validado em testes automatizados, homologação, produção local e URL pública.
+ - [x] Adicionar cabeçalhos de seguranca no Apache/proxy (parcial): aplicados e validados no `VirtualHost *:443` de `geoserver.amambai.ms.gov.br`:
+	 - `Header always set X-Content-Type-Options "nosniff"`
+	 - `Header always set Referrer-Policy "strict-origin-when-cross-origin"`
+	 - `Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"`
+	 - Validação: backup do `httpd-ssl.conf`, `httpd.exe -t` -> `Syntax OK`, Apache reiniciado e endpoints validados. CORS e serviços permaneceram funcionais.
+	 - Observação: `X-Content-Type-Options` apareceu como `nosniff,nosniff` em `/geoserver` (possível duplicidade com GeoServer/Tomcat) — registrar para ajuste fino.
+	 - Itens pendentes por cautela: `X-Frame-Options`, `Strict-Transport-Security` (HSTS) e `Content-Security-Policy`.
+ - [ ] Avaliar ocultacao ou substituicao do header `Server` no proxy para evitar expor `uvicorn`.
+ - [x] Ajustar mensagem publica de sucesso em producao para evitar texto de ambiente de teste. Status: implementado e validado em testes automatizados, homologação, produção local e URL pública.
+ - [x] Criar tratamento global de erro de validacao para evitar ecoar input bruto em respostas `422`. Status: implementado e validado em testes automatizados, homologação, produção local e URL pública.
 - [ ] Proxy reverso revisado.
 - [ ] Versoes ocultadas quando possivel.
 - [ ] Metodos HTTP desnecessarios limitados.
