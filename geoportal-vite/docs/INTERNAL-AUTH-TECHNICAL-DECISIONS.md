@@ -99,12 +99,16 @@ Status:
 - Biblioteca escolhida para a implementacao inicial: `argon2-cffi` com Argon2id.
 - Servico interno criado em `geoportal-backend/app/security/passwords.py`, apenas para hash e verificacao de senha.
 - Servico interno de sessao opaca criado em `geoportal-backend/app/security/sessions.py`.
+- Repository interno de sessoes criado em `geoportal-backend/app/repositories/auth_session_repository.py`.
+- O repository opera com `mod_auth.sessoes` usando `token_hash` e nunca persiste o token bruto.
+- A busca de sessao ativa filtra `token_hash` parametrizado, `revogado_em IS NULL`, `expira_em > now()` e o estado do usuário (ativo, não desativado, não bloqueado).
+- Revogacao usa `UPDATE ... SET revogado_em = now()`, sem `DELETE`.
 - O servico de sessao usa token aleatorio forte (`secrets.token_urlsafe(32)`), HMAC-SHA256 e comparacao segura com `hmac.compare_digest`.
 - O token bruto nao e persistido nem logado. O hash de sessao e prefixado com `hmac-sha256:`.
 - A expiração usa `datetime` timezone-aware em UTC. A revogacao e tratada quando `revoked_at` esta preenchido.
-- Validacao local: `tests/test_password_security.py` passou com 8 testes; `tests/test_session_security.py` passou com 22 testes; a suite completa local passou com 107 testes.
-- Validacao no servidor: `tests/test_password_security.py` passou com 8 testes; `tests/test_session_security.py` passou com 22 testes; a suite completa no servidor passou com 107 testes.
-- Homologacao e producao local foram reiniciadas e validadas. `/api/health`, `/api/public/iluminacao/health` e `/api/version` ficaram saudaveis.
+- Validacao local: `tests/test_password_security.py` passou com 8 testes; `tests/test_session_security.py` passou com 22 testes; `tests/test_auth_session_repository.py` passou com 12 testes; a suite completa local passou com 119 testes.
+- Validacao no servidor: `tests/test_password_security.py` passou com 8 testes; `tests/test_session_security.py` passou com 22 testes; `tests/test_auth_session_repository.py` passou com 12 testes; a suite completa no servidor passou com 119 testes.
+- Homologacao, producao local e producao publica foram reiniciadas e validadas. `/api/health`, `/api/public/iluminacao/health` e `/api/version` ficaram saudaveis.
 - Ainda nao ha login funcional, endpoint interno, usuario real, sessao real, token real, cookie, CSRF, JWT ou middleware de autenticacao.
 - Protecao contra brute force, atraso progressivo e bloqueio temporario continuam obrigatorios antes de qualquer endpoint de login.
 

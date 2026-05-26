@@ -5,7 +5,7 @@ Prova de conceito local e segura da futura API do Geoportal de Amambai, iniciand
 Esta etapa nao conecta banco de dados, nao implementa autenticacao real, nao usa dados de producao e nao integra com o Geoportal publico em producao.
 
 As decisoes tecnicas para autenticacao interna estao documentadas em `geoportal-vite/docs/INTERNAL-AUTH-TECHNICAL-DECISIONS.md`.
-O serviço interno de hash/verificação de senha usando Argon2id foi implementado e validado localmente e no servidor. O serviço interno de sessão opaca/token também foi implementado e validado localmente e no servidor. Ainda não há login funcional, endpoint interno de autenticação ou middleware de autorização exposto.
+O serviço interno de hash/verificação de senha usando Argon2id foi implementado e validado localmente e no servidor. O serviço interno de sessão opaca/token também foi implementado e validado localmente e no servidor. O repository interno de sessões foi criado para operar com `mod_auth.sessoes`, `token_hash`, expiração e revogação por `revogado_em`, sem `DELETE`. Ainda não há login funcional, endpoint interno de autenticação ou middleware de autorização exposto.
 
 ## Como preparar o ambiente
 

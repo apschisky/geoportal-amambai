@@ -6,7 +6,8 @@ A base estrutural inicial do schema `mod_auth` ja foi criada, aplicada e documen
 
 Antes de expor endpoints internos, a API publica atual deve permanecer revisada e saudavel conforme `docs/PUBLIC-API-SECURITY-REVIEW.md`.
 
-Registro atual: o serviço interno de hash/verificação de senha usando Argon2id (`argon2-cffi`) foi implementado e validado localmente e no servidor. O serviço interno de sessão opaca/token também foi implementado e validado localmente e no servidor. Ainda não há login funcional, endpoint interno exposto, usuário real, sessão real, token real, cookie, CSRF, JWT ou middleware de autenticação.
+Registro atual: o serviço interno de hash/verificação de senha usando Argon2id (`argon2-cffi`) foi implementado e validado localmente e no servidor. O serviço interno de sessão opaca/token também foi implementado e validado localmente e no servidor. O repository interno de sessões foi criado para `mod_auth.sessoes`, usando `token_hash`, expiração e revogação por `revogado_em`, sem `DELETE`.
+Ainda não há login funcional, endpoint interno exposto, usuário real, sessão real, token real, cookie, CSRF, JWT ou middleware de autenticação.
 
 Este documento complementa `docs/INTERNAL-AUTH-TECHNICAL-DECISIONS.md`, que registra as decisões técnicas iniciais de autenticação, sessão, transporte de token e autorização.
 
