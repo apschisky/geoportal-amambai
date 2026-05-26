@@ -4,7 +4,7 @@ Este documento define o modelo conceitual de autenticacao e autorizacao para o G
 
 O detalhamento tecnico das futuras migrations do schema `mod_auth` esta em `docs/INTERNAL-AUTH-MIGRATIONS-PLAN.md`.
 As escolhas de hash, sessao, transporte de token e autorizacao devem seguir as decisoes iniciais documentadas em `docs/INTERNAL-AUTH-TECHNICAL-DECISIONS.md`.
-O serviço interno de hash/verificação de senha com Argon2id já foi implementado e validado, o serviço interno de sessão opaca/token também foi implementado e validado, o repository interno de sessões foi criado para operar somente com `token_hash`, o repository interno de usuários foi criado para busca autenticável por login/e-mail e o service interno de autenticação/sessão foi criado em `geoportal-backend/app/services/auth_service.py` sem endpoint. A busca de sessão ativa filtra revogação, expiração e estado do usuário, e a revogação usa `revogado_em`, sem `DELETE`. Ainda não há endpoint interno exposto, usuário real, sessão real criada por endpoint, token real, cookie, CSRF, JWT ou middleware.
+O serviço interno de hash/verificação de senha com Argon2id já foi implementado e validado, o serviço interno de sessão opaca/token também foi implementado e validado, o repository interno de sessões foi criado para operar somente com `token_hash`, o repository interno de usuários foi criado para busca autenticável por login/e-mail, o service interno de autenticação/sessão foi criado em `geoportal-backend/app/services/auth_service.py` sem endpoint, e o repository interno de auditoria/rate limit puro foram criados sem endpoint. A busca de sessão ativa filtra revogação, expiração e estado do usuário, e a revogação usa `revogado_em`, sem `DELETE`. Ainda não há endpoint interno exposto, usuário real, sessão real criada por endpoint, token real, cookie, CSRF, JWT ou middleware.
 O plano de threat model, controles e validacao para a implementacao segura da autenticacao backend esta em `docs/INTERNAL-AUTH-SECURITY-IMPLEMENTATION-PLAN.md`.
 
 Registro documental: a migration `0006_create_mod_auth_schema.sql` foi criada e aplicada em homologacao e no banco ativo de producao apos backup manual validado. O schema `mod_auth` foi criado com comentario validado, e nenhuma tabela foi criada nesta etapa. O rollback correspondente permanece disponivel para ambiente controlado.
@@ -197,6 +197,10 @@ Regras:
 - `motivo_falha` deve ser generico.
 - Evitar IP bruto se nao houver politica definida.
 - Registro de auditoria nao deve expor token, senha, hash de senha ou detalhes internos sensiveis.
+- Repository interno criado em `geoportal-backend/app/repositories/auth_login_audit_repository.py`, sem endpoint e sem integracao com login exposto.
+- O repository usa `usuario_id`, `login_informado`, `sucesso`, `motivo_falha`, `criado_em` e `origem`, conforme a migration `0009`.
+- Contagem de falhas recentes usa `SELECT count(*)`, janela temporal, falhas (`sucesso IS false`) e filtros opcionais por `login_informado` e `origem`.
+- Service puro de rate limit criado em `geoportal-backend/app/services/auth_rate_limit_service.py`; a integracao com `auth_service.py` ou endpoint ainda e etapa futura.
 
 ## 11. Seguranca
 

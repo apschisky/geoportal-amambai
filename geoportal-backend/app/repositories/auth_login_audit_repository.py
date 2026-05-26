@@ -1,0 +1,95 @@
+from datetime import datetime
+
+from sqlalchemy import text
+from sqlalchemy.engine import Engine
+
+from app.core.database import get_engine
+
+
+def _blank_to_none(value: str | None) -> str | None:
+    if value is None:
+        return None
+    if not value.strip():
+        return None
+    return value
+
+
+def record_login_attempt(
+    sucesso: bool,
+    usuario_id: int | None = None,
+    login_informado: str | None = None,
+    motivo_falha: str | None = None,
+    origem: str | None = None,
+    engine: Engine | None = None,
+) -> int:
+    db_engine = engine or get_engine()
+
+    statement = text(
+        """
+        INSERT INTO mod_auth.login_auditoria (
+            usuario_id,
+            login_informado,
+            sucesso,
+            motivo_falha,
+            origem
+        )
+        VALUES (
+            :usuario_id,
+            :login_informado,
+            :sucesso,
+            :motivo_falha,
+            :origem
+        )
+        RETURNING id
+        """
+    )
+
+    params = {
+        "usuario_id": usuario_id,
+        "login_informado": _blank_to_none(login_informado),
+        "sucesso": sucesso,
+        "motivo_falha": _blank_to_none(motivo_falha),
+        "origem": _blank_to_none(origem),
+    }
+
+    with db_engine.begin() as connection:
+        row = connection.execute(statement, params).mappings().one()
+
+    return int(row["id"])
+
+
+def count_recent_failed_attempts(
+    since: datetime,
+    login_informado: str | None = None,
+    origem: str | None = None,
+    engine: Engine | None = None,
+) -> int:
+    db_engine = engine or get_engine()
+
+    statement = text(
+        """
+        SELECT count(*) AS failed_count
+        FROM mod_auth.login_auditoria
+        WHERE sucesso IS false
+          AND criado_em >= :since
+          AND (
+              :login_informado IS NULL
+              OR login_informado = :login_informado
+          )
+          AND (
+              :origem IS NULL
+              OR origem = :origem
+          )
+        """
+    )
+
+    params = {
+        "since": since,
+        "login_informado": _blank_to_none(login_informado),
+        "origem": _blank_to_none(origem),
+    }
+
+    with db_engine.begin() as connection:
+        row = connection.execute(statement, params).mappings().one()
+
+    return int(row["failed_count"])
