@@ -9,9 +9,12 @@ Este documento registra o plano tecnico conceitual para implantar a API FastAPI 
 - A API deve usar variaveis reais fora do Git.
 - A API deve ser exposta de forma controlada por Apache/proxy reverso/HTTPS.
 - O CORS deve ser restrito a origem oficial do Geoportal, sem wildcard.
+- A exposição pública de documentação deve permanecer fechada; `/docs`, `/redoc` e `/openapi.json` devem retornar `404` quando não forem publicados.
+- O proxy Apache deve endurecer headers e avaliar ocultar `Server: uvicorn`.
 - Nesta fase experimental, a API publica fica exposta pelo dominio tecnico do GeoServer em `https://geoserver.amambai.ms.gov.br/api/`.
 - O front-end oficial em `https://geoportal.amambai.ms.gov.br` acessa a API por CORS restrito e validado.
 - Expor a API tambem em `https://geoportal.amambai.ms.gov.br/api/` fica como evolucao futura de infraestrutura.
+- A mensagem pública de sucesso em produção deve ser ajustada para não referir `ambiente de teste`.
 
 ## 2. Separacao de schemas
 

@@ -33,6 +33,10 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 
 - [ ] HTTPS obrigatorio.
 - [ ] Headers de seguranca revisados.
+- [ ] Adicionar cabeçalhos de seguranca no Apache/proxy: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` e `Strict-Transport-Security` quando HTTPS estiver consolidado.
+- [ ] Avaliar ocultacao ou substituicao do header `Server` no proxy para evitar expor `uvicorn`.
+- [ ] Ajustar mensagem publica de sucesso em producao para evitar texto de ambiente de teste.
+- [ ] Criar tratamento global de erro de validacao para evitar ecoar input bruto em respostas `422`.
 - [ ] Proxy reverso revisado.
 - [ ] Versoes ocultadas quando possivel.
 - [ ] Metodos HTTP desnecessarios limitados.

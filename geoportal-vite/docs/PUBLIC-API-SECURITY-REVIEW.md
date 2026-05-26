@@ -76,7 +76,78 @@ Legenda de status: `OK`, `ATENCAO`, `PENDENTE`, `NAO APLICAVEL`.
 | Testes automatizados de abuso ampliados | PENDENTE | Ha testes de rate limit, payload invalido e consulta segura; faltam cenarios ampliados de payload muito grande, origem CORS negada e logs. |
 | Consumo de APIs externas | NAO APLICAVEL | Nao foi identificada integracao externa sensivel na API publica revisada. Reavaliar se novas integracoes forem adicionadas. |
 
-## 6. Recomendacoes Praticas
+## 6. Resultados da validação prática em produção
+
+As validações práticas realizadas na API pública de Iluminação Pública em produção confirmaram os seguintes resultados:
+
+- **CORS autorizado**: OK
+  - `OPTIONS /api/public/iluminacao/solicitacoes` com origem `https://geoportal.amambai.ms.gov.br` retornou `200`.
+  - `Access-Control-Allow-Origin` retornou `https://geoportal.amambai.ms.gov.br`.
+  - Métodos permitidos: `GET`, `POST`, `HEAD`, `OPTIONS`.
+  - Headers permitidos: `Origin`, `Content-Type`, `Accept`, `Authorization`, `X-Requested-With`.
+- **CORS não autorizado**: OK
+  - Origem `https://site-invalido.example` retornou `400`.
+  - Mensagem: `Disallowed CORS origin`.
+- **Solicitação pública válida**: OK
+  - `POST /api/public/iluminacao/solicitacoes` retornou protocolo e status `aberta`.
+  - O teste criou registro de validação identificado por `poste_id` de teste.
+  - Observação: o registro de teste deve ser removido após a validação.
+- **Consulta pública com confirmação correta**: OK
+  - `POST /api/public/iluminacao/consulta` com protocolo existente e últimos dígitos corretos retornou apenas dados públicos:
+    - `protocolo`;
+    - `status`;
+    - `status_publico`;
+    - `data_abertura`;
+    - `ultima_atualizacao`;
+    - `mensagem`.
+  - Não retornou telefone completo, nome, descrição, observações internas ou histórico administrativo.
+- **Consulta pública com protocolo inexistente**: OK
+  - Retornou `404` com mensagem genérica.
+- **Consulta pública com protocolo existente e confirmação errada**: OK
+  - Retornou `404` com a mesma mensagem genérica do protocolo inexistente.
+  - Conclusão: reduz o risco de enumeração de protocolo.
+- **Payload com campo extra**: OK
+  - Retornou `422`.
+  - Campo extra foi rejeitado.
+- **Coordenada inválida**: OK
+  - Retornou `422`.
+  - Latitude/longitude fora da faixa foram rejeitadas.
+- **Texto grande**: OK para limite
+  - Descrição com `10000` caracteres retornou `422`.
+  - Limite de `1000` caracteres foi aplicado.
+  - Atenção: a resposta `422` ecoou o conteúdo bruto do campo inválido em `input`, o que pode expor dados pessoais em respostas de erro.
+  - Correção planejada: criar tratamento global de erro de validação para não retornar input bruto em produção.
+- **Rate limit**: OK
+  - Testes repetidos em `/solicitacoes` retornaram `429`.
+  - Testes repetidos em `/consulta` retornaram `429`.
+- **Documentação pública**: OK
+  - `/docs` retornou `404`.
+  - `/redoc` retornou `404`.
+  - `/openapi.json` retornou `404`.
+- **Headers de segurança**: ATENÇÃO
+  - `/api/health` retornou apenas headers básicos: `Vary`, `Content-Length`, `Content-Type`, `Date`, `Server: uvicorn`.
+  - Recomendação: adicionar hardening no Apache/proxy com os seguintes headers:
+    - `X-Content-Type-Options`
+    - `X-Frame-Options`
+    - `Referrer-Policy`
+    - `Permissions-Policy`
+    - `Strict-Transport-Security` quando HTTPS estiver consolidado.
+  - Observação: `Content-Security-Policy` deve ser tratado com cuidado em etapa separada para não quebrar o Geoportal, mapas, tiles, GeoServer ou front-end.
+- **Server header**: ATENÇÃO BAIXA
+  - O header `Server` expôs `uvicorn`.
+  - Recomendação: avaliar ocultação ou substituição no proxy.
+- **Privilégio mínimo no banco**: OK
+  - Usuário `api_iluminacao_prod` tem `USAGE` no schema `mod_iluminacao`.
+  - Tem `SELECT` e `INSERT` em `mod_iluminacao.solicitacoes`.
+  - Não tem `UPDATE`.
+  - Não tem `DELETE`.
+  - Não tem `USAGE` em `mod_auth`.
+  - Não tem `SELECT` em `mod_auth.usuarios`.
+- **Mensagem de sucesso**: ATENÇÃO BAIXA-MÉDIA
+  - A solicitação pública em produção retornou mensagem com texto `ambiente de teste`.
+  - Correção planejada: ajustar mensagem pública de sucesso em produção para `Solicitação registrada com sucesso.` ou equivalente.
+
+## 7. Recomendacoes Praticas
 
 Prioridade Alta:
 
@@ -103,7 +174,7 @@ Prioridade Baixa:
 - Criar playbook de resposta a incidente.
 - Criar metricas de abuso e alertas.
 
-## 7. Testes Defensivos Recomendados
+## 8. Testes Defensivos Recomendados
 
 - `OPTIONS` CORS com origem autorizada.
 - `OPTIONS` CORS com origem nao autorizada.
@@ -119,7 +190,7 @@ Prioridade Baixa:
 - Confirmar que `404`, `400` e `422` nao trazem stack trace.
 - Confirmar que a API publica continua saudavel apos erro.
 
-## 8. Criterios de Aceite Antes de Endpoints Internos
+## 9. Criterios de Aceite Antes de Endpoints Internos
 
 - Inventario publico documentado.
 - CORS validado.
@@ -131,7 +202,7 @@ Prioridade Baixa:
 - Testes de abuso definidos.
 - Nenhuma regressao na API publica.
 
-## 9. Fora do Escopo
+## 10. Fora do Escopo
 
 - Pentest ofensivo.
 - Exploracao real de terceiros.
