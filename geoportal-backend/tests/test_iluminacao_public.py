@@ -52,6 +52,23 @@ def valid_payload() -> dict[str, object]:
     }
 
 
+def assert_sanitized_validation_detail(response: object) -> list[dict[str, object]]:
+    body = response.json()
+    assert "detail" in body
+    assert isinstance(body["detail"], list)
+    assert body["detail"]
+
+    for error in body["detail"]:
+        assert set(error).issubset({"type", "loc", "msg", "ctx"})
+        assert "input" not in error
+        assert "url" not in error
+        assert "type" in error
+        assert "loc" in error
+        assert "msg" in error
+
+    return body["detail"]
+
+
 def test_create_solicitacao_valid_payload_returns_simulated_protocol() -> None:
     response = client.post("/api/public/iluminacao/solicitacoes", json=valid_payload())
 
@@ -253,6 +270,11 @@ def test_create_solicitacao_rejects_invalid_latitude() -> None:
     response = client.post("/api/public/iluminacao/solicitacoes", json=payload)
 
     assert response.status_code == 422
+    detail = assert_sanitized_validation_detail(response)
+    assert any(
+        error["loc"] == ["body", "coordenada", "latitude"]
+        for error in detail
+    )
 
 
 def test_create_solicitacao_rejects_invalid_longitude() -> None:
@@ -272,6 +294,19 @@ def test_create_solicitacao_rejects_extra_field() -> None:
     response = client.post("/api/public/iluminacao/solicitacoes", json=payload)
 
     assert response.status_code == 422
+    assert_sanitized_validation_detail(response)
+
+
+def test_create_solicitacao_rejects_too_long_descricao_without_echoing_input() -> None:
+    too_long_descricao = "TEXTO-FICTICIO-NAO-ECOAR-" * 50
+    payload = valid_payload()
+    payload["descricao"] = too_long_descricao
+
+    response = client.post("/api/public/iluminacao/solicitacoes", json=payload)
+
+    assert response.status_code == 422
+    assert too_long_descricao not in response.text
+    assert_sanitized_validation_detail(response)
 
 
 def test_create_solicitacao_rejects_public_status_field() -> None:

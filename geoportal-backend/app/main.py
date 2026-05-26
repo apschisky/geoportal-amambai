@@ -1,5 +1,8 @@
 from fastapi import FastAPI
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api.router import api_router
 from app.core.config import settings
@@ -16,6 +19,26 @@ app = FastAPI(
     title="Geoportal Amambai API",
     version="0.1.0",
 )
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_exception_handler(
+    _request: object,
+    exc: RequestValidationError,
+) -> JSONResponse:
+    safe_detail = []
+    for error in exc.errors():
+        safe_error = {
+            key: error[key]
+            for key in ("type", "loc", "msg", "ctx")
+            if key in error
+        }
+        safe_detail.append(safe_error)
+
+    return JSONResponse(
+        status_code=422,
+        content={"detail": jsonable_encoder(safe_detail)},
+    )
 
 app.add_middleware(
     CORSMiddleware,
