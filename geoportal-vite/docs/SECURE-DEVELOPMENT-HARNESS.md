@@ -52,6 +52,18 @@ Use o harness do servidor para validar alterações após pull ou antes de homol
 
 > O deploy e os restarts devem ser manuais e controlados. O script apenas auxilia na validação.
 
+### Restart e validacao controlada de servico
+
+Use o harness abaixo quando a necessidade operacional for apenas reiniciar e validar um servico da API. Ele nao faz deploy, `git pull`, migrations, alteracao de banco, alteracao de `.env`, instalacao de dependencias, ativacao de rotas internas ou alteracao de Apache/proxy. O reinicio so ocorre quando `-Restart` e informado explicitamente. Em producao, `-Restart` exige confirmacao interativa ou `-Force`.
+
+```powershell
+.\scripts\deploy\backend-restart-validate-service.ps1 -Environment Homologacao -Validate
+.\scripts\deploy\backend-restart-validate-service.ps1 -Environment Homologacao -Restart -Validate
+.\scripts\deploy\backend-restart-validate-service.ps1 -Environment Producao -Validate -CheckPublicProxy
+.\scripts\deploy\backend-restart-validate-service.ps1 -Environment Producao -Restart -Validate -CheckPublicProxy
+.\scripts\deploy\backend-restart-validate-service.ps1 -Environment Producao -Restart -Validate -CheckPublicProxy -Force
+```
+
 ## Harness de segurança
 
 O harness de segurança ajuda a verificar exposição indevida e configuração segura.
@@ -85,12 +97,13 @@ Pare imediatamente se:
 - `scripts/dev/backend-test-local.ps1`
 - `scripts/dev/backend-security-check.ps1`
 - `scripts/deploy/backend-validate-server.ps1`
+- `scripts/deploy/backend-restart-validate-service.ps1`
 
 ## Observações de segurança
 
 - Não criar scripts destrutivos.
 - Não criar scripts que façam push automático.
 - Não criar scripts que pivotem migrations automaticamente.
-- Não criar scripts que reiniciem serviços automaticamente.
+- Nao criar scripts que reiniciem servicos sem parametro explicito e confirmacao adequada.
 - Não incluir dados sensíveis.
 - Os resultados do `backend-security-check.ps1` devem ser avaliados manualmente antes de confiar integralmente.

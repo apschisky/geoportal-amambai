@@ -81,3 +81,4 @@ Para enviar uma etapa para produção, confirme:
 - Consulte `docs/API-SERVER-DEPLOYMENT-PLAN.md` para validações de implantação.
 - Consulte `docs/SECURITY-HARDENING-PLAN.md` para validações de segurança.
 - Referencie `docs/SECURE-DEVELOPMENT-HARNESS.md` para padrões de validação e repetibilidade.
+- Para reinicio operacional controlado da API, use `scripts/deploy/backend-restart-validate-service.ps1`; ele nao faz deploy, `git pull`, migrations ou alteracao de banco, e producao exige confirmacao ou `-Force`.
