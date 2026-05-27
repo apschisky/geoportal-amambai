@@ -1,4 +1,8 @@
+import os
+import subprocess
+import sys
 from io import StringIO
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -15,6 +19,7 @@ RAW_PASSWORD = "senha-ficticia-para-teste"
 PASSWORD_HASH = "argon2id-hash-ficticio-nao-real"
 TOKEN_VALUE = "token-ficticio-nao-deve-aparecer"
 DATABASE_CONFIG_MARKER = "database-config-ficticia-nao-usada"
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
 
 class FakeResult:
@@ -67,6 +72,32 @@ def sql_for(engine: FakeEngine) -> str:
 def params_for(engine: FakeEngine) -> dict[str, Any]:
     assert engine.connection.params is not None
     return engine.connection.params
+
+
+def test_script_can_run_from_backend_root_without_external_pythonpath() -> None:
+    env = os.environ.copy()
+    env.pop("PYTHONPATH", None)
+
+    response = subprocess.run(
+        [
+            sys.executable,
+            "scripts/admin/create_internal_user.py",
+            "--help",
+        ],
+        cwd=BACKEND_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    combined_output = f"{response.stdout}\n{response.stderr}"
+    assert response.returncode == 0
+    assert "ModuleNotFoundError" not in combined_output
+    assert "No module named 'app'" not in combined_output
+    assert "--password" not in combined_output
+    assert RAW_PASSWORD not in combined_output
+    assert PASSWORD_HASH not in combined_output
 
 
 def test_script_reads_password_with_getpass_and_not_cli_argument() -> None:
