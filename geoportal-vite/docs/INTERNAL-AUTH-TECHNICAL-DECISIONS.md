@@ -137,9 +137,11 @@ Status:
 - Esse service não valida criptograficamente a sessão nem consulta o banco; ele apenas extrai e normaliza o token.
 - A validação real de sessão continua em `auth_current_session_service.py`.
 - Dependency FastAPI interna criada em `geoportal-backend/app/dependencies/auth_dependencies.py`, sem aplicar a endpoints reais.
-- A dependency compõe `auth_token_transport_service.py` e `auth_current_session_service.py`; falhas de autenticação retornam `HTTPException 401` com detalhe genérico `Not authenticated`.
+- A dependency `get_current_authenticated_session(...)` compõe `extract_session_token(...)` de `auth_token_transport_service.py` e `resolve_authenticated_session(...)` de `auth_current_session_service.py`.
+- Falhas de autenticação retornam `HTTPException 401` com detalhe genérico `Not authenticated`; a resposta não revela token ausente, token malformado, cookie+bearer simultâneos, sessão expirada, sessão revogada ou usuário inativo.
+- `get_session_secret(...)` lê `GEOPORTAL_INTERNAL_SESSION_SECRET` apenas como configuração futura; nenhum valor real de segredo foi incluído no repositório e `.env` não foi alterado.
 - O nome futuro do cookie interno ficou definido como `geoportal_internal_session`, mas nenhum cookie real é criado ou configurado nesta etapa.
-- `session_secret` é obtido por função injetável/testável; ausência de configuração crítica gera erro interno, sem valor real no repositório.
+- `session_secret` é obtido por função injetável/testável; ausência de configuração crítica gera RuntimeError interno, sem valor real no repositório.
 - Cookie HttpOnly/Secure/SameSite permanece preferencia futura; Bearer permanece alternativa operacional a decidir antes do endpoint.
 - O servico de sessao usa token aleatorio forte (`secrets.token_urlsafe(32)`), HMAC-SHA256 e comparacao segura com `hmac.compare_digest`.
 - O token bruto nao e persistido nem logado. O hash de sessao e prefixado com `hmac-sha256:`.
