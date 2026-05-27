@@ -122,14 +122,16 @@ Status:
   - Sem dependencia de FastAPI ou banco de dados; apenas logica pura.
 - Auditoria e rate limit foram integrados ao `auth_service.py` antes de qualquer endpoint de login; o rate limit e avaliado antes de verificar senha.
 - Auditoria registra sucesso/falha sem incluir senha, senha_hash, token, token_hash ou session_secret.
+- Service interno de validacao de sessao autenticada criado em `geoportal-backend/app/services/auth_current_session_service.py`, sem endpoint, sem middleware e sem dependency FastAPI.
+- A validacao de sessao recebe token bruto e `session_secret`, calcula `token_hash`, consulta sessao ativa pelo repository e retorna apenas dados internos minimos (`usuario_id`, `sessao_id`, `expira_em`), sem retornar token bruto, `token_hash`, `session_secret`, senha ou `senha_hash`.
 - O servico de sessao usa token aleatorio forte (`secrets.token_urlsafe(32)`), HMAC-SHA256 e comparacao segura com `hmac.compare_digest`.
 - O token bruto nao e persistido nem logado. O hash de sessao e prefixado com `hmac-sha256:`.
 - A expiração usa `datetime` timezone-aware em UTC. A revogacao e tratada quando `revoked_at` esta preenchido.
-- Validacao local desta etapa: `tests/test_auth_service.py` passou com 25 testes; `tests/test_auth_login_audit_repository.py` passou com 4 testes; `tests/test_auth_rate_limit_service.py` passou com 8 testes; suite completa local passou com 164 testes.
+- Validacao local desta etapa: `tests/test_auth_current_session_service.py` passou com 12 testes; `tests/test_auth_session_repository.py` passou com 12 testes; `tests/test_session_security.py` passou com 22 testes; suite completa local passou com 176 testes.
 - Validacao no servidor: git pull aplicado; testes no servidor passaram; homologacao, producao local e producao publica foram reiniciadas e validadas.
 - Endpoints de saude confirmados saudaveis em homologacao, producao local e producao publica: `/api/health`, `/api/public/iluminacao/health`, `/api/version` retornaram status correto em todos os ambientes.
-- Ainda nao ha endpoint interno de login, rota, cookie, CSRF, JWT, middleware, usuario real ou sessao real criada por endpoint.
-- Proxima etapa: planejar transporte de token e middleware/dependency antes de criar qualquer endpoint de login. Classificacao de risco: Codex High.
+- Ainda nao ha endpoint interno de login, rota, cookie, CSRF, JWT, middleware, dependency FastAPI, usuario real ou sessao real criada por endpoint.
+- Proxima etapa: planejar transporte de token e middleware/dependency FastAPI controlado antes de criar qualquer endpoint de login. Classificacao de risco: Codex High.
 
 ## 4. Política inicial de senha
 
@@ -225,8 +227,9 @@ Status:
 - Token opaco usa geracao criptograficamente segura; `token_hash` usa HMAC-SHA256 com segredo recebido por parametro.
 - Segredo real de HMAC ainda nao foi configurado e deve ser definido em etapa futura segura, antes de qualquer endpoint de login.
 - Repository interno de sessoes criado em `geoportal-backend/app/repositories/auth_session_repository.py`, operando apenas com `token_hash`, expiracao e revogacao por `revogado_em`.
-- Ainda nao ha endpoint, sessao real no banco criada por endpoint, middleware, cookie, CSRF, JWT ou transporte de token implementado.
-- A proxima etapa pode planejar middleware/dependency, transporte de token e endpoint controlado, sem criar acesso interno sem autenticacao/autorizacao.
+- Service interno de validacao de sessao autenticada criado em `geoportal-backend/app/services/auth_current_session_service.py`, recebendo token bruto e `session_secret` para consultar sessao ativa por `token_hash`.
+- Ainda nao ha endpoint, sessao real no banco criada por endpoint, middleware, dependency FastAPI, cookie, CSRF, JWT ou transporte de token implementado.
+- A proxima etapa pode planejar middleware/dependency FastAPI, transporte de token e endpoint controlado, sem criar acesso interno sem autenticacao/autorizacao.
 
 ## 6. Transporte do token no cliente
 
@@ -433,9 +436,9 @@ Testes mínimos:
 | Tema | Decisão recomendada | Status |
 |---|---|---|
 | Hash de senha | Argon2id com `argon2-cffi`; bcrypt apenas como alternativa operacional | Serviço, repository de usuários e service de autenticação criados sem endpoint |
-| Sessão/token | Sessão opaca com token_hash HMAC-SHA256 no banco | Service e repositories internos criados sem endpoint |
-| Auditoria de login | Repository com `record_login_attempt(...)` e `count_recent_failed_attempts(...)` | Repository criado; ainda não integrado ao `auth_service.py` |
-| Rate limit de login | Service puro com `LoginRateLimitDecision` e `evaluate_login_rate_limit(...)` | Service criado; ainda não integrado ao `auth_service.py` |
+| Sessão/token | Sessão opaca com token_hash HMAC-SHA256 no banco | Services e repositories internos criados sem endpoint; validação de sessão autenticada criada sem middleware |
+| Auditoria de login | Repository com `record_login_attempt(...)` e `count_recent_failed_attempts(...)` | Repository criado e integrado ao `auth_service.py` |
+| Rate limit de login | Service puro com `LoginRateLimitDecision` e `evaluate_login_rate_limit(...)` | Service criado e integrado ao `auth_service.py` |
 | Atraso progressivo e bloqueio temporário | Implementar integrado ao rate limit antes de endpoint | Pendente; pronto para integração |
 | Transporte do token | Decidir após desenho do frontend interno | Pendente |
 | JWT | Não recomendado para primeira versão salvo necessidade real | Adiado |
@@ -450,7 +453,7 @@ Testes mínimos:
 2. Manter testes do serviço de hash/verificação de senha.
 3. Manter auditoria e rate limit integrados ao `auth_service.py`.
 4. Implementar atraso progressivo e bloqueio temporário persistente integrados ao rate limit.
-5. Planejar middleware/dependency de autenticação usando service integrado, sem endpoint público.
+5. Planejar middleware/dependency de autenticação usando `auth_current_session_service.py`, sem endpoint público.
 6. Configurar segredo real de HMAC em etapa segura, sem registrar em log.
 7. Implementar dependency/middleware de autenticação.
 8. Implementar autorização por permissão.
