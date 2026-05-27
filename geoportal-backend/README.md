@@ -12,8 +12,11 @@ A feature flag `GEOPORTAL_INTERNAL_ROUTES_ENABLED` foi conectada ao app principa
 
 Validação operacional:
 - `scripts/deploy/backend-restart-validate-service.ps1` foi usado para reiniciar e validar `GeoportalAPIHomologacao` e `GeoportalAPIProducao`.
-- Homologação com flag desligada/ausente retornou `404` em `/api/internal/auth/smoke`.
-- Produção pública com flag desligada/ausente retornou `404` em `/api/internal/auth/smoke`.
+- Em homologação, `GeoportalAPIHomologacao` foi configurado via NSSM com `GEOPORTAL_INTERNAL_ROUTES_ENABLED=true` e `GEOPORTAL_INTERNAL_SESSION_SECRET` forte apenas no serviço, fora do Git. `.env` não foi alterado.
+- A homologação foi reiniciada e validada pelo harness operacional `scripts/deploy/backend-restart-validate-service.ps1 -Environment Homologacao -Restart -Validate`.
+- Em homologação, `/api/health`, `/api/public/iluminacao/health` e `/api/version` permaneceram OK.
+- Em homologação, `/api/internal/auth/smoke` retornou `401`, confirmando que a rota interna está ativa e protegida.
+- Em produção pública, `/api/internal/auth/smoke` continuou retornando `404`, confirmando que a rota interna permanece não exposta.
 - A API pública continuou saudável: `/api/health`, `/api/public/iluminacao/health` e `/api/version` retornaram status correto em homologação e produção.
 
 `get_session_secret(...)` le `GEOPORTAL_INTERNAL_SESSION_SECRET` apenas como configuracao futura; nenhum valor real de segredo foi incluido no repositorio e `.env` nao foi alterado. Falhas de autenticacao geram 401 genérico sem revelar se o problema foi token ausente, token malformado, cookie+bearer, sessao expirada, sessao revogada ou usuario inativo. Ainda nao ha login funcional, endpoint interno ativo por padrao, middleware, cookie real, CSRF, JWT, usuario real ou sessao real criada por endpoint.
