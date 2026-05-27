@@ -4,7 +4,7 @@ Este documento define o modelo conceitual de autenticacao e autorizacao para o G
 
 O detalhamento tecnico das futuras migrations do schema `mod_auth` esta em `docs/INTERNAL-AUTH-MIGRATIONS-PLAN.md`.
 As escolhas de hash, sessao, transporte de token e autorizacao devem seguir as decisoes iniciais documentadas em `docs/INTERNAL-AUTH-TECHNICAL-DECISIONS.md`.
-O serviço interno de hash/verificação de senha com Argon2id já foi implementado e validado, o serviço interno de sessão opaca/token também foi implementado e validado, o repository interno de sessões foi criado para operar somente com `token_hash`, o repository interno de usuários foi criado para busca autenticável por login/e-mail, o service interno de autenticação/sessão foi criado em `geoportal-backend/app/services/auth_service.py` sem endpoint, e o repository interno de auditoria/rate limit puro foram criados sem endpoint. A busca de sessão ativa filtra revogação, expiração e estado do usuário, e a revogação usa `revogado_em`, sem `DELETE`. Ainda não há endpoint interno exposto, usuário real, sessão real criada por endpoint, token real, cookie, CSRF, JWT ou middleware.
+O serviço interno de hash/verificação de senha com Argon2id já foi implementado e validado. O serviço interno de sessão opaca/token foi implementado e validado. O repository interno de sessões foi criado para operar somente com `token_hash` e filtrar revogação, expiração e estado do usuário. O repository interno de usuários foi criado para busca autenticável por login/e-mail. O service interno de autenticação/sessão foi criado em `geoportal-backend/app/services/auth_service.py` sem endpoint. O repository interno de auditoria de login foi criado em `geoportal-backend/app/repositories/auth_login_audit_repository.py` com `record_login_attempt(...)` e `count_recent_failed_attempts(...)`; registra apenas campos seguros (`usuario_id`, `login_informado`, `sucesso`, `motivo_falha`, `criado_em`, `origem`); não registra senha, token ou session_secret. O service puro de rate limit de login foi criado em `geoportal-backend/app/services/auth_rate_limit_service.py` com lógica pura que não revela existência de usuário. A revogação de sessão usa `revogado_em`, sem `DELETE`. Validação concluída: testes locais passaram (4 auditoria + 8 rate limit + 143 outros = 155 total); servidor validado; homologação e produção (local e pública) reiniciadas e validadas com `/api/health`, `/api/public/iluminacao/health` e `/api/version` OK. Auditoria e rate limit ainda não estão integrados ao `auth_service.py` nem a endpoint. Ainda não há endpoint interno exposto, usuário real, sessão real criada por endpoint, token real, cookie, CSRF, JWT ou middleware.
 O plano de threat model, controles e validacao para a implementacao segura da autenticacao backend esta em `docs/INTERNAL-AUTH-SECURITY-IMPLEMENTATION-PLAN.md`.
 
 Registro documental: a migration `0006_create_mod_auth_schema.sql` foi criada e aplicada em homologacao e no banco ativo de producao apos backup manual validado. O schema `mod_auth` foi criado com comentario validado, e nenhuma tabela foi criada nesta etapa. O rollback correspondente permanece disponivel para ambiente controlado.
@@ -179,7 +179,7 @@ Regras:
 Finalidade:
 
 - Registrar tentativas de login.
-- Apoiar deteccao de abuso e investigacao operacional segura.
+- Apoiar detecção de abuso e investigação operacional segura.
 
 Campos conceituais:
 
@@ -193,11 +193,16 @@ Campos conceituais:
 
 Regras:
 
-- Nao registrar senha.
-- `motivo_falha` deve ser generico.
-- Evitar IP bruto se nao houver politica definida.
-- Registro de auditoria nao deve expor token, senha, hash de senha ou detalhes internos sensiveis.
-- Repository interno criado em `geoportal-backend/app/repositories/auth_login_audit_repository.py`, sem endpoint e sem integracao com login exposto.
+- Não registrar senha.
+- `motivo_falha` deve ser genérico.
+- Evitar IP bruto se não houver política definida.
+- Registro de auditoria não deve expor token, senha, hash de senha ou detalhes internos sensíveis.
+- Repository interno criado em `geoportal-backend/app/repositories/auth_login_audit_repository.py` com funções `record_login_attempt(...)` e `count_recent_failed_attempts(...)`.
+- `record_login_attempt(...)` insere usando parametrização SQL; registra apenas campos seguros (`usuario_id`, `login_informado`, `sucesso`, `motivo_falha`, `criado_em`, `origem`); não registra senha, token, token_hash ou session_secret.
+- `count_recent_failed_attempts(...)` consulta usando parametrização SQL; conta tentativas falhadas em janela de tempo para suportar rate limit.
+- Service puro de rate limit criado em `geoportal-backend/app/services/auth_rate_limit_service.py` com `LoginRateLimitDecision` e `evaluate_login_rate_limit(...)`; não depende de FastAPI ou banco; decide por `failed_attempts`, `max_attempts` e `window_minutes`; não revela se usuário existe.
+- Auditoria e rate limit ainda não estão integrados ao `auth_service.py` nem a endpoint; integração planejada antes de expor login.
+- Testes passaram: `tests/test_auth_login_audit_repository.py` (4) + `tests/test_auth_rate_limit_service.py` (8) + suite completa (155).
 - O repository usa `usuario_id`, `login_informado`, `sucesso`, `motivo_falha`, `criado_em` e `origem`, conforme a migration `0009`.
 - Contagem de falhas recentes usa `SELECT count(*)`, janela temporal, falhas (`sucesso IS false`) e filtros opcionais por `login_informado` e `origem`.
 - Service puro de rate limit criado em `geoportal-backend/app/services/auth_rate_limit_service.py`; a integracao com `auth_service.py` ou endpoint ainda e etapa futura.
@@ -237,12 +242,15 @@ Essa separacao evita dar permissao ampla quando a necessidade operacional e limi
 
 ## 14. Roadmap
 
-1. Documentar o modelo conceitual.
-2. Criar migrations de `mod_auth` conforme `docs/INTERNAL-AUTH-MIGRATIONS-PLAN.md`.
-3. Implementar autenticacao no backend.
-4. Implementar autorizacao por dependencia, middleware ou mecanismo equivalente.
-5. Testar acesso autorizado e negado.
-6. Criar endpoints internos operacionais somente depois da autenticacao/autorizacao validada.
+1. ✓ Documentar o modelo conceitual.
+2. ✓ Criar migrations de `mod_auth` conforme `docs/INTERNAL-AUTH-MIGRATIONS-PLAN.md`.
+3. ✓ Implementar services internos de hash/sessão/token.
+4. ✓ Implementar repository de auditoria e service puro de rate limit.
+5. → Integrar auditoria e rate limit ao `auth_service.py`.
+6. → Implementar autenticação no backend com auditoria/rate limit integrados.
+7. → Implementar autorização por dependência, middleware ou mecanismo equivalente.
+8. → Testar acesso autorizado e negado com auditoria registrada.
+9. → Criar endpoints internos operacionais somente depois da autenticação/autorização validada.
 
 ## 15. Fora do escopo desta etapa
 

@@ -110,16 +110,26 @@ Status:
 - Service interno de autenticacao/sessao criado em `geoportal-backend/app/services/auth_service.py`, sem endpoint e sem login exposto.
 - O service orquestra busca de usuario, verificacao de senha, geracao de token opaco, persistencia de `token_hash`, expiracao, revogacao e registro de `ultimo_login_em`.
 - Falhas de autenticacao retornam resultado generico interno (`None`), sem distinguir usuario inexistente, senha invalida, usuario inativo, desativado ou bloqueado.
-- Repository interno de auditoria de login criado em `geoportal-backend/app/repositories/auth_login_audit_repository.py`, usando somente colunas existentes de `mod_auth.login_auditoria`.
-- Service puro de rate limit de login criado em `geoportal-backend/app/services/auth_rate_limit_service.py`, sem dependencia de FastAPI ou banco real.
+- Repository interno de auditoria de login criado em `geoportal-backend/app/repositories/auth_login_audit_repository.py`.
+  - Funcoes expostas: `record_login_attempt(...)` e `count_recent_failed_attempts(...)`.
+  - Campos auditados: `usuario_id`, `login_informado`, `sucesso`, `motivo_falha`, `criado_em`, `origem`.
+  - O repository nao registra senha, senha_hash, token, token_hash, session_secret ou corpo bruto de requisicao.
+  - Usa parametrizacao SQL para INSERT e SELECT count(*).
+- Service puro de rate limit de login criado em `geoportal-backend/app/services/auth_rate_limit_service.py`.
+  - Expoe `LoginRateLimitDecision` e `evaluate_login_rate_limit(...)`.
+  - Decisao baseada em `failed_attempts`, `max_attempts` e `window_minutes`.
+  - A decisao nao depende da existencia do usuario e nao revela se usuario existe.
+  - Sem dependencia de FastAPI ou banco de dados; apenas logica pura.
 - Auditoria e rate limit ainda nao estao integrados ao `auth_service.py` nem a endpoint; essa integracao deve ocorrer antes de expor login.
 - O servico de sessao usa token aleatorio forte (`secrets.token_urlsafe(32)`), HMAC-SHA256 e comparacao segura com `hmac.compare_digest`.
 - O token bruto nao e persistido nem logado. O hash de sessao e prefixado com `hmac-sha256:`.
 - A expiração usa `datetime` timezone-aware em UTC. A revogacao e tratada quando `revoked_at` esta preenchido.
-- Validacao local desta etapa: `tests/test_auth_login_audit_repository.py` e `tests/test_auth_rate_limit_service.py` passaram com 12 testes; a suite completa local passou com 155 testes.
-- Validacao de servidor concluida em homologacao, producao local e producao publica. `/api/health`, `/api/public/iluminacao/health` e `/api/version` ficaram saudaveis apos reinicializacoes.
-- Ainda nao ha endpoint interno, usuario real, sessao real criada por endpoint, token real, cookie, CSRF, JWT ou middleware de autenticacao.
-- Protecao contra brute force, atraso progressivo e bloqueio temporario continuam obrigatorios antes de qualquer endpoint de login.
+- Validacao local desta etapa: `tests/test_auth_login_audit_repository.py` passou com 4 testes; `tests/test_auth_rate_limit_service.py` passou com 8 testes; a suite completa local passou com 155 testes.
+- Validacao de servidor: git pull aplicado; testes passaram no servidor com mesma contagem; suites completas em homologacao e producao (127.0.0.1:8001 e URL publica) passaram com 155 testes.
+- Servidores reiniciados: GeoportalAPIHomologacao e GeoportalAPIProducao reiniciados e validados.
+- Endpoints de saude confirmados saudaveis em homologacao, producao local e producao publica: `/api/health`, `/api/public/iluminacao/health`, `/api/version` retornaram status correto em todos os ambientes.
+- Ainda nao ha endpoint interno de login, usuario real, sessao real criada por endpoint, token real, cookie, CSRF, JWT ou middleware de autenticacao.
+- Protecao contra brute force com rate limit e auditoria esta pronta para integracao; bloqueio temporario e atraso progressivo continuam obrigatorios antes de qualquer endpoint de login.
 
 ## 4. Política inicial de senha
 
@@ -422,8 +432,11 @@ Testes mínimos:
 
 | Tema | Decisão recomendada | Status |
 |---|---|---|
-| Hash de senha | Argon2id com `argon2-cffi`; bcrypt apenas como alternativa operacional | Servico, repository de usuarios e service de autenticacao criados sem endpoint |
-| Sessão/token | Sessão opaca com token_hash HMAC-SHA256 no banco futuramente | Service e repositories internos criados sem endpoint |
+| Hash de senha | Argon2id com `argon2-cffi`; bcrypt apenas como alternativa operacional | Serviço, repository de usuários e service de autenticação criados sem endpoint |
+| Sessão/token | Sessão opaca com token_hash HMAC-SHA256 no banco | Service e repositories internos criados sem endpoint |
+| Auditoria de login | Repository com `record_login_attempt(...)` e `count_recent_failed_attempts(...)` | Repository criado; ainda não integrado ao `auth_service.py` |
+| Rate limit de login | Service puro com `LoginRateLimitDecision` e `evaluate_login_rate_limit(...)` | Service criado; ainda não integrado ao `auth_service.py` |
+| Atraso progressivo e bloqueio temporário | Implementar integrado ao rate limit antes de endpoint | Pendente; pronto para integração |
 | Transporte do token | Decidir após desenho do frontend interno | Pendente |
 | JWT | Não recomendado para primeira versão salvo necessidade real | Adiado |
 | Usuário admin via migration | Não permitido | Decidido |
@@ -434,22 +447,22 @@ Testes mínimos:
 ## 15. Próximos passos
 
 1. Revisar este documento.
-2. Manter testes do servico de hash/verificacao de senha.
-3. Planejar politica final de senha antes de criar usuario real.
-4. Planejar middleware/dependency de autenticacao usando service interno, sem endpoint publico.
-5. Configurar segredo real de HMAC em etapa segura, sem registrar em log.
-6. Integrar auditoria/rate limit ao service ou endpoint antes de expor login.
+2. Manter testes do serviço de hash/verificação de senha.
+3. Integrar repository de auditoria e service de rate limit ao `auth_service.py` antes de criar endpoint.
+4. Implementar atraso progressivo e bloqueio temporário integrados ao rate limit.
+5. Planejar middleware/dependency de autenticação usando service integrado com auditoria/rate limit, sem endpoint público.
+6. Configurar segredo real de HMAC em etapa segura, sem registrar em log.
 7. Implementar dependency/middleware de autenticação.
 8. Implementar autorização por permissão.
-9. Criar endpoint de login somente após transporte de token, auditoria, rate limit e testes.
+9. Criar endpoint de login somente após testes, auditoria integrada, rate limit integrado e transporte de token definido.
 10. Trabalhar as próximas etapas críticas com Codex High.
-10. Criar endpoints internos mínimos protegidos.
-11. Criar tela interna mínima.
-12. Continuar a próxima etapa crítica com Codex High.
+11. Criar endpoints internos mínimos protegidos.
+12. Criar tela interna mínima.
+13. Continuar a próxima etapa crítica com Codex High.
 
 Observação:
 
-- Quando chegar na implementação de hash, sessão, token, middleware e endpoints internos, a tarefa deve ser feita com Codex High, não Copilot, por envolver segurança crítica.
+- Quando chegar na implementação de middleware, endpoints internos e telas, a tarefa deve ser feita com Codex High, não Copilot, por envolver segurança crítica e integração sensível.
 
 ## 16. Referências curtas
 
