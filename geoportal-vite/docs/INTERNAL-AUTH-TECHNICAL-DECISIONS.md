@@ -126,14 +126,17 @@ Status:
 - A validacao de sessao recebe token bruto e `session_secret` apenas internamente, calcula `token_hash`, consulta sessao ativa pelo repository e retorna apenas dados internos minimos (`usuario_id`, `sessao_id`, `expira_em`), sem retornar token bruto, `token_hash`, `session_secret`, senha ou `senha_hash`.
 - Sessao invalida ou token vazio retorna `None`.
 - `session_secret` invalido e erros de repository/banco sobem como erro interno, sem fallback inseguro.
+- Service puro de transporte/extracao de token criado em `geoportal-backend/app/services/auth_token_transport_service.py`, sem FastAPI, sem `Request`, sem endpoint e sem middleware.
+- A politica aceita token por cookie ou por `Authorization: Bearer`, rejeita valor ausente/malformado de forma generica e marca como ambiguo quando cookie e bearer validos chegam juntos, sem escolher silenciosamente.
+- Cookie HttpOnly/Secure/SameSite permanece preferencia futura; Bearer permanece alternativa operacional a decidir antes do endpoint.
 - O servico de sessao usa token aleatorio forte (`secrets.token_urlsafe(32)`), HMAC-SHA256 e comparacao segura com `hmac.compare_digest`.
 - O token bruto nao e persistido nem logado. O hash de sessao e prefixado com `hmac-sha256:`.
 - A expiração usa `datetime` timezone-aware em UTC. A revogacao e tratada quando `revoked_at` esta preenchido.
-- Validacao local desta etapa: `tests/test_auth_current_session_service.py` passou com 12 testes; `tests/test_auth_session_repository.py` passou com 12 testes; `tests/test_session_security.py` passou com 22 testes; suite completa local passou com 176 testes.
+- Validacao local desta etapa: `tests/test_auth_token_transport_service.py` passou com 15 testes; `tests/test_auth_current_session_service.py` passou com 12 testes; suite completa local passou com 191 testes.
 - Validacao no servidor: git pull aplicado; testes no servidor passaram; homologacao, producao local e producao publica foram reiniciadas e validadas.
 - Endpoints de saude confirmados saudaveis em homologacao, producao local e producao publica: `/api/health`, `/api/public/iluminacao/health`, `/api/version` retornaram status correto em todos os ambientes.
-- Ainda nao ha endpoint interno de login, rota, cookie, CSRF, JWT, middleware, dependency FastAPI, usuario real ou sessao real criada por endpoint.
-- Proxima etapa: planejar transporte de token e middleware/dependency FastAPI controlado antes de criar qualquer endpoint de login. Classificacao de risco: Codex High.
+- Ainda nao ha endpoint interno de login, rota, cookie real, CSRF, JWT, middleware, dependency FastAPI, usuario real ou sessao real criada por endpoint.
+- Proxima etapa: criar dependency/middleware FastAPI controlado usando o service de transporte e `auth_current_session_service.py`, ainda sem expor endpoints sensiveis. Classificacao de risco: Codex High.
 
 ## 4. Política inicial de senha
 
@@ -230,8 +233,9 @@ Status:
 - Segredo real de HMAC ainda nao foi configurado e deve ser definido em etapa futura segura, antes de qualquer endpoint de login.
 - Repository interno de sessoes criado em `geoportal-backend/app/repositories/auth_session_repository.py`, operando apenas com `token_hash`, expiracao e revogacao por `revogado_em`.
 - Service interno de validacao de sessao autenticada criado em `geoportal-backend/app/services/auth_current_session_service.py`, recebendo token bruto e `session_secret` para consultar sessao ativa por `token_hash`.
-- Ainda nao ha endpoint, sessao real no banco criada por endpoint, middleware, dependency FastAPI, cookie, CSRF, JWT ou transporte de token implementado.
-- A proxima etapa pode planejar middleware/dependency FastAPI, transporte de token e endpoint controlado, sem criar acesso interno sem autenticacao/autorizacao.
+- Service puro de transporte de token criado em `geoportal-backend/app/services/auth_token_transport_service.py`, extraindo token de cookie ou bearer sem depender de FastAPI.
+- Ainda nao ha endpoint, sessao real no banco criada por endpoint, middleware, dependency FastAPI, cookie real, CSRF ou JWT implementado.
+- A proxima etapa pode planejar middleware/dependency FastAPI usando o service de transporte e a validacao de sessao, sem criar acesso interno sem autenticacao/autorizacao.
 
 ## 6. Transporte do token no cliente
 
@@ -438,11 +442,11 @@ Testes mínimos:
 | Tema | Decisão recomendada | Status |
 |---|---|---|
 | Hash de senha | Argon2id com `argon2-cffi`; bcrypt apenas como alternativa operacional | Serviço, repository de usuários e service de autenticação criados sem endpoint |
-| Sessão/token | Sessão opaca com token_hash HMAC-SHA256 no banco | Services e repositories internos criados sem endpoint; validação de sessão autenticada criada sem middleware |
+| Sessão/token | Sessão opaca com token_hash HMAC-SHA256 no banco | Services e repositories internos criados sem endpoint; validação de sessão e transporte de token criados sem middleware |
 | Auditoria de login | Repository com `record_login_attempt(...)` e `count_recent_failed_attempts(...)` | Repository criado e integrado ao `auth_service.py` |
 | Rate limit de login | Service puro com `LoginRateLimitDecision` e `evaluate_login_rate_limit(...)` | Service criado e integrado ao `auth_service.py` |
 | Atraso progressivo e bloqueio temporário | Implementar integrado ao rate limit antes de endpoint | Pendente; pronto para integração |
-| Transporte do token | Decidir após desenho do frontend interno | Pendente |
+| Transporte do token | Cookie HttpOnly/Secure/SameSite como preferência futura; Bearer como alternativa operacional | Service puro de extração criado; decisão final ainda pendente antes de endpoint |
 | JWT | Não recomendado para primeira versão salvo necessidade real | Adiado |
 | Usuário admin via migration | Não permitido | Decidido |
 | Seed de usuários/perfis reais | Não permitido nesta fase | Decidido |
@@ -455,7 +459,7 @@ Testes mínimos:
 2. Manter testes do serviço de hash/verificação de senha.
 3. Manter auditoria e rate limit integrados ao `auth_service.py`.
 4. Implementar atraso progressivo e bloqueio temporário persistente integrados ao rate limit.
-5. Planejar middleware/dependency de autenticação usando `auth_current_session_service.py`, sem endpoint público.
+5. Planejar middleware/dependency de autenticação usando `auth_token_transport_service.py` e `auth_current_session_service.py`, sem endpoint público.
 6. Configurar segredo real de HMAC em etapa segura, sem registrar em log.
 7. Implementar dependency/middleware de autenticação.
 8. Implementar autorização por permissão.

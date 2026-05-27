@@ -6,11 +6,11 @@ A base estrutural inicial do schema `mod_auth` ja foi criada, aplicada e documen
 
 Antes de expor endpoints internos, a API publica atual deve permanecer revisada e saudavel conforme `docs/PUBLIC-API-SECURITY-REVIEW.md`.
 
-Registro atual de implementação: o serviço interno de hash/verificação de senha usando Argon2id (`argon2-cffi`) foi implementado e validado. O serviço interno de sessão opaca/token foi implementado e validado. O repository interno de sessões foi criado para `mod_auth.sessoes`, usando `token_hash`, expiração e revogação por `revogado_em`, sem `DELETE`. O repository interno de usuários foi criado para `mod_auth.usuarios`, buscando por login ou e-mail com bind param e comparações case-insensitive. O service interno de autenticação/sessão foi criado em `geoportal-backend/app/services/auth_service.py` sem endpoint. O service interno de validação de sessão autenticada foi criado em `geoportal-backend/app/services/auth_current_session_service.py`; recebe token bruto e `session_secret` apenas internamente, calcula `token_hash`, consulta sessão ativa e retorna apenas dados internos mínimos, sem retornar token bruto, `token_hash`, `session_secret`, senha ou `senha_hash`. Sessão inválida ou token vazio retorna `None`. `session_secret` inválido e erros de repository/banco sobem como erro interno, sem fallback inseguro. O repository interno de auditoria de login foi criado em `geoportal-backend/app/repositories/auth_login_audit_repository.py` com funções `record_login_attempt(...)` e `count_recent_failed_attempts(...)`; registra apenas campos seguros (`usuario_id`, `login_informado`, `sucesso`, `motivo_falha`, `criado_em`, `origem`); não registra senha, token ou session_secret. O service puro de rate limit de login foi criado em `geoportal-backend/app/services/auth_rate_limit_service.py` com `LoginRateLimitDecision` e `evaluate_login_rate_limit(...)`; não depende de FastAPI ou banco; não revela existência de usuário; decide por `failed_attempts`, `max_attempts` e `window_minutes`. Auditoria e rate limit foram integrados ao `auth_service.py`; o rate limit é avaliado antes da verificação de senha.
-Validação local desta etapa: `tests/test_auth_current_session_service.py`, `tests/test_auth_session_repository.py` e `tests/test_session_security.py` passaram; suite completa local passou com 176 testes.
+Registro atual de implementação: o serviço interno de hash/verificação de senha usando Argon2id (`argon2-cffi`) foi implementado e validado. O serviço interno de sessão opaca/token foi implementado e validado. O repository interno de sessões foi criado para `mod_auth.sessoes`, usando `token_hash`, expiração e revogação por `revogado_em`, sem `DELETE`. O repository interno de usuários foi criado para `mod_auth.usuarios`, buscando por login ou e-mail com bind param e comparações case-insensitive. O service interno de autenticação/sessão foi criado em `geoportal-backend/app/services/auth_service.py` sem endpoint. O service interno de validação de sessão autenticada foi criado em `geoportal-backend/app/services/auth_current_session_service.py`; recebe token bruto e `session_secret` apenas internamente, calcula `token_hash`, consulta sessão ativa e retorna apenas dados internos mínimos, sem retornar token bruto, `token_hash`, `session_secret`, senha ou `senha_hash`. O service puro de transporte de token foi criado em `geoportal-backend/app/services/auth_token_transport_service.py`; extrai token de cookie ou `Authorization: Bearer`, marca cookie+bearer simultâneos como ambíguos e não depende de FastAPI, `Request`, endpoint ou middleware. Sessão inválida ou token vazio retorna `None`. `session_secret` inválido e erros de repository/banco sobem como erro interno, sem fallback inseguro. O repository interno de auditoria de login foi criado em `geoportal-backend/app/repositories/auth_login_audit_repository.py` com funções `record_login_attempt(...)` e `count_recent_failed_attempts(...)`; registra apenas campos seguros (`usuario_id`, `login_informado`, `sucesso`, `motivo_falha`, `criado_em`, `origem`); não registra senha, token ou session_secret. O service puro de rate limit de login foi criado em `geoportal-backend/app/services/auth_rate_limit_service.py` com `LoginRateLimitDecision` e `evaluate_login_rate_limit(...)`; não depende de FastAPI ou banco; não revela existência de usuário; decide por `failed_attempts`, `max_attempts` e `window_minutes`. Auditoria e rate limit foram integrados ao `auth_service.py`; o rate limit é avaliado antes da verificação de senha.
+Validação local desta etapa: `tests/test_auth_token_transport_service.py` e `tests/test_auth_current_session_service.py` passaram; suite completa local passou com 191 testes.
 Validação no servidor: git pull aplicado; testes no servidor passaram; homologação, produção local e produção pública foram reiniciadas e validadas. A API pública continuou saudável em todos os ambientes.
-Ainda não há endpoint interno de login exposto, usuário real, sessão real criada por endpoint, token real, cookie, CSRF, JWT, dependency FastAPI ou middleware de autenticação.
-Próximos passos: planejar transporte de token e middleware/dependency FastAPI usando o service de validação de sessão antes de criar qualquer endpoint de login; esta etapa crítica deve seguir Codex High.
+Ainda não há endpoint interno de login exposto, usuário real, sessão real criada por endpoint, token real, cookie real, CSRF, JWT, dependency FastAPI ou middleware de autenticação.
+Próximos passos: criar dependency/middleware FastAPI usando o service de transporte de token e o service de validação de sessão antes de criar qualquer endpoint de login; esta etapa crítica deve seguir Codex High.
 
 Este documento complementa `docs/INTERNAL-AUTH-TECHNICAL-DECISIONS.md`, que registra as decisões técnicas iniciais de autenticação, sessão, transporte de token e autorização.
 
@@ -230,13 +230,14 @@ Antes de expor qualquer endpoint interno, os testes devem cobrir:
 6. ✓ Implementar service puro de rate limit sem endpoint público.
 7. ✓ Integrar auditoria e rate limit ao `auth_service.py` antes de criar endpoint.
 8. ✓ Implementar service interno de validação de sessão autenticada sem endpoint.
-9. → Implementar atraso progressivo e bloqueio temporário persistente integrados.
-10. → Implementar dependencies ou middleware de autenticação/autorização.
-11. → Criar testes automatizados de acesso negado/autorizado com dependency ou middleware.
-12. → Criar endpoint de login em homologação com auditoria/rate limit integrados.
-13. → Criar endpoints internos mínimos, todos protegidos.
-14. → Criar tela interna mínima.
-15. → Fazer revisão de segurança antes de uso por equipe real.
+9. ✓ Implementar service puro de transporte de token sem endpoint.
+10. → Implementar atraso progressivo e bloqueio temporário persistente integrados.
+11. → Implementar dependencies ou middleware de autenticação/autorização.
+12. → Criar testes automatizados de acesso negado/autorizado com dependency ou middleware.
+13. → Criar endpoint de login em homologação com auditoria/rate limit integrados.
+14. → Criar endpoints internos mínimos, todos protegidos.
+15. → Criar tela interna mínima.
+16. → Fazer revisão de segurança antes de uso por equipe real.
 
 ## 15. Checklist de Validacao Final
 
