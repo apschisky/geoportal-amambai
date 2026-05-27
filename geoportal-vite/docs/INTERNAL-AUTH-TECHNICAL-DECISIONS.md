@@ -140,17 +140,20 @@ Status:
 - A dependency `get_current_authenticated_session(...)` compõe `extract_session_token(...)` de `auth_token_transport_service.py` e `resolve_authenticated_session(...)` de `auth_current_session_service.py`.
 - Falhas de autenticação retornam `HTTPException 401` com detalhe genérico `Not authenticated`; a resposta não revela token ausente, token malformado, cookie+bearer simultâneos, sessão expirada, sessão revogada ou usuário inativo.
 - `get_session_secret(...)` lê `GEOPORTAL_INTERNAL_SESSION_SECRET` apenas como configuração futura; nenhum valor real de segredo foi incluído no repositório e `.env` não foi alterado.
+- Router técnico protegido de smoke test criado em `geoportal-backend/app/api/routes/internal_auth_smoke.py`, com rota `GET /api/internal/auth/smoke`.
+- O router usa `Depends(get_current_authenticated_session)` e retorna apenas `authenticated`, `usuario_id` e `sessao_id`; nao retorna token, `token_hash`, `session_secret`, senha, `senha_hash`, nome, e-mail ou dado de negocio.
+- O router de smoke ainda nao foi incluido no app principal nem em `app/api/router.py`; ele foi validado somente em app FastAPI isolado nos testes.
 - O nome futuro do cookie interno ficou definido como `geoportal_internal_session`, mas nenhum cookie real é criado ou configurado nesta etapa.
 - `session_secret` é obtido por função injetável/testável; ausência de configuração crítica gera RuntimeError interno, sem valor real no repositório.
 - Cookie HttpOnly/Secure/SameSite permanece preferencia futura; Bearer permanece alternativa operacional a decidir antes do endpoint.
 - O servico de sessao usa token aleatorio forte (`secrets.token_urlsafe(32)`), HMAC-SHA256 e comparacao segura com `hmac.compare_digest`.
 - O token bruto nao e persistido nem logado. O hash de sessao e prefixado com `hmac-sha256:`.
 - A expiração usa `datetime` timezone-aware em UTC. A revogacao e tratada quando `revoked_at` esta preenchido.
-- Validacao local desta etapa: `tests/test_auth_dependencies.py` passou com 10 testes; `tests/test_auth_token_transport_service.py` passou com 15 testes; `tests/test_auth_current_session_service.py` passou com 12 testes; suite completa local passou com 201 testes.
+- Validacao local desta etapa: `tests/test_internal_auth_smoke_router.py` passou com 7 testes; `tests/test_auth_dependencies.py` passou com 10 testes; suite completa local passou com 208 testes.
 - Validacao no servidor: git pull aplicado; testes no servidor passaram; homologacao, producao local e producao publica foram reiniciadas e validadas.
 - Endpoints de saude confirmados saudaveis em homologacao, producao local e producao publica: `/api/health`, `/api/public/iluminacao/health`, `/api/version` retornaram status correto em todos os ambientes.
-- Ainda nao ha endpoint interno de login, rota, cookie real, CSRF, JWT, middleware, usuario real ou sessao real criada por endpoint. A dependency FastAPI existe, mas nao esta aplicada a rota real.
-- Proxima etapa: criar smoke test protegido ou planejar endpoint de login com cautela, sem expor endpoints sensiveis antes dos controles finais. Classificacao de risco: Codex High.
+- Ainda nao ha endpoint interno de login, cookie real, CSRF, JWT, middleware, usuario real ou sessao real criada por endpoint. O router técnico de smoke existe, mas nao esta incluido no app principal.
+- Proxima etapa: criar feature flag/registro controlado para rotas internas ou planejar endpoint de login com cautela, sem expor endpoints sensiveis antes dos controles finais. Classificacao de risco: Codex High.
 
 ## 4. Política inicial de senha
 
@@ -249,8 +252,9 @@ Status:
 - Service interno de validacao de sessao autenticada criado em `geoportal-backend/app/services/auth_current_session_service.py`, recebendo token bruto e `session_secret` para consultar sessao ativa por `token_hash`.
 - Service puro de transporte de token criado em `geoportal-backend/app/services/auth_token_transport_service.py`, extraindo token de cookie ou bearer sem depender de FastAPI.
 - Dependency FastAPI interna criada em `geoportal-backend/app/dependencies/auth_dependencies.py`, ainda sem ser aplicada a endpoint real.
-- Ainda nao ha endpoint, sessao real no banco criada por endpoint, middleware global, cookie real, CSRF ou JWT implementado.
-- A proxima etapa pode planejar smoke test protegido, middleware ou endpoint de login controlado, sem criar acesso interno sem autenticacao/autorizacao.
+- Router tecnico protegido de smoke criado em `geoportal-backend/app/api/routes/internal_auth_smoke.py`, ainda sem ser incluido no app principal.
+- Ainda nao ha endpoint de login, sessao real no banco criada por endpoint, middleware global, cookie real, CSRF ou JWT implementado.
+- A proxima etapa pode planejar feature flag/registro controlado do smoke, middleware ou endpoint de login controlado, sem criar acesso interno sem autenticacao/autorizacao.
 
 ## 6. Transporte do token no cliente
 
@@ -457,7 +461,7 @@ Testes mínimos:
 | Tema | Decisão recomendada | Status |
 |---|---|---|
 | Hash de senha | Argon2id com `argon2-cffi`; bcrypt apenas como alternativa operacional | Serviço, repository de usuários e service de autenticação criados sem endpoint |
-| Sessão/token | Sessão opaca com token_hash HMAC-SHA256 no banco | Services e repositories internos criados sem endpoint; validação de sessão, transporte de token e dependency interna criados sem proteger rota real |
+| Sessão/token | Sessão opaca com token_hash HMAC-SHA256 no banco | Services, repositories, dependency e router tecnico de smoke criados; router ainda fora do app principal |
 | Auditoria de login | Repository com `record_login_attempt(...)` e `count_recent_failed_attempts(...)` | Repository criado e integrado ao `auth_service.py` |
 | Rate limit de login | Service puro com `LoginRateLimitDecision` e `evaluate_login_rate_limit(...)` | Service criado e integrado ao `auth_service.py` |
 | Atraso progressivo e bloqueio temporário | Implementar integrado ao rate limit antes de endpoint | Pendente; pronto para integração |
@@ -474,7 +478,7 @@ Testes mínimos:
 2. Manter testes do serviço de hash/verificação de senha.
 3. Manter auditoria e rate limit integrados ao `auth_service.py`.
 4. Implementar atraso progressivo e bloqueio temporário persistente integrados ao rate limit.
-5. Manter a dependency FastAPI interna sem aplicar a endpoint real ate a proxima validacao controlada.
+5. Manter a dependency FastAPI interna e o router tecnico de smoke fora do app principal ate ativacao controlada.
 6. Configurar segredo real de HMAC em etapa segura, sem registrar em log.
 7. Planejar smoke test protegido ou middleware de autenticacao.
 8. Implementar autorização por permissão.
