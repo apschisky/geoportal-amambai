@@ -122,8 +122,10 @@ Status:
   - Sem dependencia de FastAPI ou banco de dados; apenas logica pura.
 - Auditoria e rate limit foram integrados ao `auth_service.py` antes de qualquer endpoint de login; o rate limit e avaliado antes de verificar senha.
 - Auditoria registra sucesso/falha sem incluir senha, senha_hash, token, token_hash ou session_secret.
-- Service interno de validacao de sessao autenticada criado em `geoportal-backend/app/services/auth_current_session_service.py`, sem endpoint, sem middleware e sem dependency FastAPI.
-- A validacao de sessao recebe token bruto e `session_secret`, calcula `token_hash`, consulta sessao ativa pelo repository e retorna apenas dados internos minimos (`usuario_id`, `sessao_id`, `expira_em`), sem retornar token bruto, `token_hash`, `session_secret`, senha ou `senha_hash`.
+- Service interno de validacao de sessao autenticada criado em `geoportal-backend/app/services/auth_current_session_service.py`, sem endpoint, sem rota, sem middleware e sem dependency FastAPI.
+- A validacao de sessao recebe token bruto e `session_secret` apenas internamente, calcula `token_hash`, consulta sessao ativa pelo repository e retorna apenas dados internos minimos (`usuario_id`, `sessao_id`, `expira_em`), sem retornar token bruto, `token_hash`, `session_secret`, senha ou `senha_hash`.
+- Sessao invalida ou token vazio retorna `None`.
+- `session_secret` invalido e erros de repository/banco sobem como erro interno, sem fallback inseguro.
 - O servico de sessao usa token aleatorio forte (`secrets.token_urlsafe(32)`), HMAC-SHA256 e comparacao segura com `hmac.compare_digest`.
 - O token bruto nao e persistido nem logado. O hash de sessao e prefixado com `hmac-sha256:`.
 - A expiração usa `datetime` timezone-aware em UTC. A revogacao e tratada quando `revoked_at` esta preenchido.
