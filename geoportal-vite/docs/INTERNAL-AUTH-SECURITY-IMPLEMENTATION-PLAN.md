@@ -12,7 +12,7 @@ Validação no servidor: git pull aplicado; testes no servidor passaram; homolog
 Ainda não há endpoint interno de login exposto, endpoint de negócio interno, usuário real, sessão real criada por endpoint, token real, cookie real, CSRF, JWT ou middleware de autenticação. O router técnico de smoke só fica ativo com feature flag ligada explicitamente.
 Próximos passos: manter a flag desligada em produção; homologação permanece como ambiente controlado para smoke test protegido; ainda sem login, usuário real, cookie real, CSRF, JWT, endpoint `/me` ou endpoint de negócio interno.
 
-Registro atual adicional: foi criada somente a estrutura preparatoria do script administrativo `geoportal-backend/scripts/admin/create_internal_user.py` para futura criacao manual do primeiro usuario interno. O script nao e endpoint, nao e importado pelo app principal e nao cria rota. A senha sera lida no servidor com `getpass`, com confirmacao, nunca por argumento CLI. O modo `--dry-run` nao conecta ao banco e nao persiste nada. O repository administrativo usa bind parameters para consultar existencia e inserir em `mod_auth.usuarios`, recebe apenas `senha_hash` e nao recebe senha bruta. Esta etapa nao foi executada contra banco real e nao criou usuario operacional, credencial operacional, hash operacional documentado, token, sessao, cookie, JWT, CSRF, seed ou migration. A criacao operacional deve ocorrer primeiro em homologacao, em etapa futura, com operador humano; nao usar migration ou seed para credencial operacional.
+Registro atual adicional: foi criada somente a estrutura preparatoria do script administrativo `geoportal-backend/scripts/admin/create_internal_user.py` para futura criacao manual do primeiro usuario interno. O script nao e endpoint, nao e importado pelo app principal e nao cria rota. A senha sera lida no servidor com `getpass`, com confirmacao, nunca por argumento CLI. O modo `--dry-run` nao conecta ao banco e nao persiste nada. O repository administrativo usa bind parameters para consultar existencia e inserir em `mod_auth.usuarios`, recebe apenas `senha_hash` e nao recebe senha bruta. Esta etapa nao foi executada contra banco real e nao criou usuario operacional, credencial operacional, hash operacional documentado, token, sessao, cookie, JWT, CSRF, seed ou migration. Localmente, `tests/test_create_internal_user_admin.py` passou com 11 testes e a suite completa local passou com 256 testes. No servidor, git pull aplicado; `tests/test_create_internal_user_admin.py` passou com 11 testes e a suite completa no servidor passou com 256 testes. Homologacao e producao foram reiniciadas e validadas pelo harness operacional `scripts/deploy/backend-restart-validate-service.ps1 -Environment Homologacao -Restart -Validate` e `-Environment Producao -Restart -Validate -CheckPublicProxy`; a API publica continuou saudavel. A criacao operacional deve ocorrer primeiro em homologacao, em etapa futura, com operador humano; nao usar migration ou seed para credencial operacional.
 
 ## Status e roadmap
 
@@ -38,6 +38,8 @@ Registro atual adicional: foi criada somente a estrutura preparatoria do script 
 - Homologação reiniciada e validada pelo harness operacional `scripts/deploy/backend-restart-validate-service.ps1 -Environment Homologacao -Restart -Validate`.
 - Em homologação, `/api/internal/auth/smoke` retornou `401`, confirmando rota ativa e protegida.
 - Em produção pública, `/api/internal/auth/smoke` continuou retornando `404`, confirmando a rota interna não exposta.
+- Validação do script administrativo de usuário interno implementado: `tests/test_create_internal_user_admin.py` passou com 11 testes localmente e no servidor.
+- A suite completa de 256 testes passou localmente e no servidor.
 - Reinício operacional e validação realizados via `scripts/deploy/backend-restart-validate-service.ps1`.
 - Harnesses/metodologia de validação do projeto aplicados.
 
@@ -50,8 +52,8 @@ Registro atual adicional: foi criada somente a estrutura preparatoria do script 
 - Bearer permanece alternativa operacional futura.
 
 ### Pendente
-- Criar primeiro usuário interno por script administrativo seguro.
-- Estrutura preparatoria do script administrativo criada e testada; execucao real em homologacao continua pendente.
+- Executar dry-run em homologação.
+- Criar primeiro usuário interno em homologação.
 - Criar endpoint de login.
 - Setar cookie real HttpOnly/Secure/SameSite.
 - Criar CSRF antes de rotas mutáveis.
