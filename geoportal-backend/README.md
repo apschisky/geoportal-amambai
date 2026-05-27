@@ -8,6 +8,8 @@ As decisoes tecnicas para autenticacao interna estao documentadas em `geoportal-
 Implementação backend: o serviço interno de hash/verificação de senha usando Argon2id foi implementado e validado. O serviço interno de sessão opaca/token foi implementado e validado. O repository interno de usuários foi criado para `mod_auth.usuarios` e o repository interno de sessões foi criado para operar com `mod_auth.sessoes`, `token_hash`, expiração e revogação por `revogado_em`, sem `DELETE`. O service interno de autenticação/sessão foi implementado em `geoportal-backend/app/services/auth_service.py` e validado. O repository interno de auditoria de login foi criado em `geoportal-backend/app/repositories/auth_login_audit_repository.py` com `record_login_attempt(...)` e `count_recent_failed_attempts(...)`; não registra senha, token ou session_secret. O service puro de rate limit foi criado em `geoportal-backend/app/services/auth_rate_limit_service.py` com lógica que não revela existência de usuário.
 Validação: testes locais passaram (155 total); git pull no servidor; testes no servidor passaram; homologação, produção local e pública foram reiniciadas e validadas; `/api/health`, `/api/public/iluminacao/health` e `/api/version` OK em todos os ambientes. Auditoria e rate limit ainda não estão integrados ao `auth_service.py` nem a endpoint. Ainda não há login funcional, endpoint interno de autenticação ou middleware de autorização exposto.
 
+Para metodologia e validação de engenharia, consulte `geoportal-vite/docs/PROJECT-ENGINEERING-METHOD.md` e `geoportal-vite/docs/SECURE-DEVELOPMENT-HARNESS.md`.
+
 ## Como preparar o ambiente
 
 ```powershell
