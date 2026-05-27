@@ -120,16 +120,16 @@ Status:
   - Decisao baseada em `failed_attempts`, `max_attempts` e `window_minutes`.
   - A decisao nao depende da existencia do usuario e nao revela se usuario existe.
   - Sem dependencia de FastAPI ou banco de dados; apenas logica pura.
-- Auditoria e rate limit ainda nao estao integrados ao `auth_service.py` nem a endpoint; essa integracao deve ocorrer antes de expor login.
+- Auditoria e rate limit foram integrados ao `auth_service.py`; ainda nao ha endpoint de login.
 - O servico de sessao usa token aleatorio forte (`secrets.token_urlsafe(32)`), HMAC-SHA256 e comparacao segura com `hmac.compare_digest`.
 - O token bruto nao e persistido nem logado. O hash de sessao e prefixado com `hmac-sha256:`.
 - A expiração usa `datetime` timezone-aware em UTC. A revogacao e tratada quando `revoked_at` esta preenchido.
-- Validacao local desta etapa: `tests/test_auth_login_audit_repository.py` passou com 4 testes; `tests/test_auth_rate_limit_service.py` passou com 8 testes; a suite completa local passou com 155 testes.
-- Validacao de servidor: git pull aplicado; testes passaram no servidor com mesma contagem; suites completas em homologacao e producao (127.0.0.1:8001 e URL publica) passaram com 155 testes.
+- Validacao local desta etapa: `tests/test_auth_service.py` passou com 25 testes; `tests/test_auth_login_audit_repository.py` passou com 4 testes; `tests/test_auth_rate_limit_service.py` passou com 8 testes; suite completa local passou com 164 testes.
+- Validacao de servidor anterior: git pull aplicado; testes passaram no servidor; suites completas em homologacao e producao (127.0.0.1:8001 e URL publica) passaram com 155 testes antes da integracao atual de auditoria/rate limit ao service.
 - Servidores reiniciados: GeoportalAPIHomologacao e GeoportalAPIProducao reiniciados e validados.
 - Endpoints de saude confirmados saudaveis em homologacao, producao local e producao publica: `/api/health`, `/api/public/iluminacao/health`, `/api/version` retornaram status correto em todos os ambientes.
 - Ainda nao ha endpoint interno de login, usuario real, sessao real criada por endpoint, token real, cookie, CSRF, JWT ou middleware de autenticacao.
-- Protecao contra brute force com rate limit e auditoria esta pronta para integracao; bloqueio temporario e atraso progressivo continuam obrigatorios antes de qualquer endpoint de login.
+- Protecao inicial contra brute force com auditoria e rate limit esta integrada ao service interno; bloqueio temporario persistente, atraso progressivo e transporte de token continuam etapas obrigatorias antes de qualquer endpoint de login.
 
 ## 4. Política inicial de senha
 
@@ -225,8 +225,8 @@ Status:
 - Token opaco usa geracao criptograficamente segura; `token_hash` usa HMAC-SHA256 com segredo recebido por parametro.
 - Segredo real de HMAC ainda nao foi configurado e deve ser definido em etapa futura segura, antes de qualquer endpoint de login.
 - Repository interno de sessoes criado em `geoportal-backend/app/repositories/auth_session_repository.py`, operando apenas com `token_hash`, expiracao e revogacao por `revogado_em`.
-- Ainda nao ha login funcional, endpoint, sessao real no banco, middleware, cookie, CSRF, JWT ou transporte de token implementado.
-- A proxima etapa pode planejar service de autenticacao/sessao ou middleware, sem criar endpoint publico sem autenticacao/autorizacao.
+- Ainda nao ha endpoint, sessao real no banco criada por endpoint, middleware, cookie, CSRF, JWT ou transporte de token implementado.
+- A proxima etapa pode planejar middleware/dependency, transporte de token e endpoint controlado, sem criar acesso interno sem autenticacao/autorizacao.
 
 ## 6. Transporte do token no cliente
 
@@ -448,9 +448,9 @@ Testes mínimos:
 
 1. Revisar este documento.
 2. Manter testes do serviço de hash/verificação de senha.
-3. Integrar repository de auditoria e service de rate limit ao `auth_service.py` antes de criar endpoint.
-4. Implementar atraso progressivo e bloqueio temporário integrados ao rate limit.
-5. Planejar middleware/dependency de autenticação usando service integrado com auditoria/rate limit, sem endpoint público.
+3. Manter auditoria e rate limit integrados ao `auth_service.py`.
+4. Implementar atraso progressivo e bloqueio temporário persistente integrados ao rate limit.
+5. Planejar middleware/dependency de autenticação usando service integrado, sem endpoint público.
 6. Configurar segredo real de HMAC em etapa segura, sem registrar em log.
 7. Implementar dependency/middleware de autenticação.
 8. Implementar autorização por permissão.

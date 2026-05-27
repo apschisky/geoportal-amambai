@@ -5,6 +5,7 @@ import pytest
 from app.repositories.auth_session_repository import AuthSessionRecord
 from app.repositories.auth_user_repository import AuthUserRecord
 from app.services import auth_service
+from app.services.auth_rate_limit_service import evaluate_login_rate_limit
 
 
 TEST_LOGIN = "usuario.ficticio"
@@ -13,6 +14,7 @@ TEST_SECRET = "segredo-ficticio-para-testes"
 TEST_TOKEN = "token-ficticio-gerado-interno"
 TEST_TOKEN_HASH = "hmac-sha256:hash-ficticio-de-sessao"
 TEST_PASSWORD_HASH = "argon2id-hash-ficticio"
+TEST_ORIGEM = "origem-ficticia-controlada"
 NOW = datetime(2026, 5, 26, 12, 0, tzinfo=UTC)
 EXPIRES_AT = datetime(2026, 5, 26, 13, 0, tzinfo=UTC)
 DEFAULT_AUTH_USER = object()
@@ -50,13 +52,46 @@ def patch_successful_dependencies(
     user: AuthUserRecord | None | object = DEFAULT_AUTH_USER,
     verify_result: bool = True,
     record_result: bool = True,
+    failed_attempts: int = 0,
 ) -> dict[str, object]:
     calls: dict[str, object] = {
+        "count_failed": 0,
+        "rate_limit": 0,
         "get_user": 0,
         "verify": 0,
         "create_session": 0,
         "record_login": 0,
+        "audit": 0,
+        "audit_events": [],
     }
+
+    def fake_count_recent_failed_attempts(
+        since: datetime,
+        login_informado: str | None = None,
+        origem: str | None = None,
+        engine: object = None,
+    ) -> int:
+        calls["count_failed"] += 1
+        calls["count_since"] = since
+        calls["count_login_informado"] = login_informado
+        calls["count_origem"] = origem
+        calls["count_engine"] = engine
+        return failed_attempts
+
+    def fake_evaluate_login_rate_limit(
+        failed_attempts: int,
+        max_attempts: int,
+        window_minutes: int,
+    ):
+        calls["rate_limit"] += 1
+        calls["rate_failed_attempts"] = failed_attempts
+        calls["rate_max_attempts"] = max_attempts
+        calls["rate_window_minutes"] = window_minutes
+        return evaluate_login_rate_limit(
+            failed_attempts=failed_attempts,
+            max_attempts=max_attempts,
+            window_minutes=window_minutes,
+        )
 
     def fake_get_auth_user_by_login(login_informado: str, engine: object = None):
         calls["get_user"] += 1
@@ -106,6 +141,37 @@ def patch_successful_dependencies(
         calls["record_engine"] = engine
         return record_result
 
+    def fake_record_login_attempt(
+        sucesso: bool,
+        usuario_id: int | None = None,
+        login_informado: str | None = None,
+        motivo_falha: str | None = None,
+        origem: str | None = None,
+        engine: object = None,
+    ) -> int:
+        calls["audit"] += 1
+        event = {
+            "sucesso": sucesso,
+            "usuario_id": usuario_id,
+            "login_informado": login_informado,
+            "motivo_falha": motivo_falha,
+            "origem": origem,
+            "engine": engine,
+        }
+        calls["audit_events"].append(event)
+        calls["audit_last"] = event
+        return 40
+
+    monkeypatch.setattr(
+        auth_service,
+        "count_recent_failed_attempts",
+        fake_count_recent_failed_attempts,
+    )
+    monkeypatch.setattr(
+        auth_service,
+        "evaluate_login_rate_limit",
+        fake_evaluate_login_rate_limit,
+    )
     monkeypatch.setattr(
         auth_service,
         "get_auth_user_by_login",
@@ -129,6 +195,7 @@ def patch_successful_dependencies(
         "record_successful_login",
         fake_record_successful_login,
     )
+    monkeypatch.setattr(auth_service, "record_login_attempt", fake_record_login_attempt)
 
     return calls
 
@@ -161,6 +228,10 @@ def test_authenticate_user_returns_generic_failure_for_blank_inputs(
     assert calls["verify"] == 0
     assert calls["create_session"] == 0
     assert calls["record_login"] == 0
+    assert calls["count_failed"] == 0
+    assert calls["audit"] == 1
+    assert calls["audit_last"]["sucesso"] is False
+    assert calls["audit_last"]["motivo_falha"] == auth_service.AUTH_FAILURE_REASON
 
 
 @pytest.mark.parametrize("session_secret", ["", "   "])
@@ -199,9 +270,13 @@ def test_authenticate_user_returns_same_generic_failure_for_user_denials(
     )
 
     assert response is None
+    assert calls["count_failed"] == 1
     assert calls["verify"] == 0
     assert calls["create_session"] == 0
     assert calls["record_login"] == 0
+    assert calls["audit"] == 1
+    assert calls["audit_last"]["sucesso"] is False
+    assert calls["audit_last"]["motivo_falha"] == auth_service.AUTH_FAILURE_REASON
 
 
 @pytest.mark.parametrize(
@@ -228,6 +303,7 @@ def test_authenticate_user_allows_past_or_equal_block_until(
     )
 
     assert response is not None
+    assert calls["count_failed"] == 1
     assert calls["verify"] == 1
     assert calls["create_session"] == 1
 
@@ -245,9 +321,14 @@ def test_authenticate_user_returns_generic_failure_for_wrong_password(
     )
 
     assert response is None
+    assert calls["count_failed"] == 1
     assert calls["verify"] == 1
     assert calls["create_session"] == 0
     assert calls["record_login"] == 0
+    assert calls["audit"] == 1
+    assert calls["audit_last"]["sucesso"] is False
+    assert calls["audit_last"]["usuario_id"] == 20
+    assert calls["audit_last"]["motivo_falha"] == auth_service.AUTH_FAILURE_REASON
 
 
 def test_authenticate_user_success_creates_session_without_returning_secrets(
@@ -278,6 +359,15 @@ def test_authenticate_user_success_creates_session_without_returning_secrets(
 
     assert calls["login_informado"] == TEST_LOGIN
     assert calls["get_user_engine"] is engine
+    assert calls["count_failed"] == 1
+    assert calls["count_since"] == NOW - timedelta(minutes=15)
+    assert calls["count_login_informado"] == TEST_LOGIN
+    assert calls["count_origem"] is None
+    assert calls["count_engine"] is engine
+    assert calls["rate_limit"] == 1
+    assert calls["rate_failed_attempts"] == 0
+    assert calls["rate_max_attempts"] == 5
+    assert calls["rate_window_minutes"] == 15
     assert calls["password"] == TEST_PASSWORD
     assert calls["senha_hash"] == TEST_PASSWORD_HASH
     assert calls["hash_token"] == TEST_TOKEN
@@ -293,6 +383,15 @@ def test_authenticate_user_success_creates_session_without_returning_secrets(
     assert calls["record_login"] == 1
     assert calls["record_usuario_id"] == 20
     assert calls["record_engine"] is engine
+    assert calls["audit"] == 1
+    assert calls["audit_last"] == {
+        "sucesso": True,
+        "usuario_id": 20,
+        "login_informado": TEST_LOGIN,
+        "motivo_falha": None,
+        "origem": None,
+        "engine": engine,
+    }
 
 
 def test_authenticate_user_success_does_not_fail_when_login_timestamp_update_fails(
@@ -310,6 +409,7 @@ def test_authenticate_user_success_does_not_fail_when_login_timestamp_update_fai
     assert response is not None
     assert calls["create_session"] == 1
     assert calls["record_login"] == 1
+    assert calls["audit"] == 1
 
 
 def test_authenticate_user_failure_modes_are_indistinguishable(
@@ -343,3 +443,151 @@ def test_authenticate_user_failure_modes_are_indistinguishable(
     assert wrong_password_response is None
     assert inactive_response is None
     assert calls["create_session"] == 0
+
+
+def test_authenticate_user_uses_rate_limit_login_and_origin(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = patch_successful_dependencies(monkeypatch, failed_attempts=2)
+
+    response = auth_service.authenticate_user(
+        login_informado=f"  {TEST_LOGIN}  ",
+        password=TEST_PASSWORD,
+        session_secret=TEST_SECRET,
+        origem=TEST_ORIGEM,
+        now=NOW,
+        rate_limit_max_attempts=5,
+        rate_limit_window_minutes=20,
+    )
+
+    assert response is not None
+    assert calls["count_since"] == NOW - timedelta(minutes=20)
+    assert calls["count_login_informado"] == TEST_LOGIN
+    assert calls["count_origem"] == TEST_ORIGEM
+    assert calls["rate_failed_attempts"] == 2
+    assert calls["rate_max_attempts"] == 5
+    assert calls["rate_window_minutes"] == 20
+    assert calls["login_informado"] == TEST_LOGIN
+    assert calls["audit_last"]["origem"] == TEST_ORIGEM
+
+
+def test_authenticate_user_rate_limit_block_returns_generic_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = patch_successful_dependencies(monkeypatch, failed_attempts=5)
+
+    response = auth_service.authenticate_user(
+        login_informado=TEST_LOGIN,
+        password=TEST_PASSWORD,
+        session_secret=TEST_SECRET,
+        origem=TEST_ORIGEM,
+        now=NOW,
+        rate_limit_max_attempts=5,
+        rate_limit_window_minutes=15,
+    )
+
+    assert response is None
+    assert calls["count_failed"] == 1
+    assert calls["rate_limit"] == 1
+    assert calls["get_user"] == 0
+    assert calls["verify"] == 0
+    assert calls["create_session"] == 0
+    assert calls["record_login"] == 0
+    assert calls["audit"] == 1
+    assert calls["audit_last"] == {
+        "sucesso": False,
+        "usuario_id": None,
+        "login_informado": TEST_LOGIN,
+        "motivo_falha": auth_service.RATE_LIMIT_FAILURE_REASON,
+        "origem": TEST_ORIGEM,
+        "engine": None,
+    }
+
+
+@pytest.mark.parametrize(
+    ("rate_limit_max_attempts", "rate_limit_window_minutes"),
+    [
+        (0, 15),
+        (5, 0),
+    ],
+)
+def test_authenticate_user_rejects_invalid_rate_limit_parameters(
+    monkeypatch: pytest.MonkeyPatch,
+    rate_limit_max_attempts: int,
+    rate_limit_window_minutes: int,
+) -> None:
+    calls = patch_successful_dependencies(monkeypatch)
+
+    with pytest.raises(ValueError):
+        auth_service.authenticate_user(
+            login_informado=TEST_LOGIN,
+            password=TEST_PASSWORD,
+            session_secret=TEST_SECRET,
+            now=NOW,
+            rate_limit_max_attempts=rate_limit_max_attempts,
+            rate_limit_window_minutes=rate_limit_window_minutes,
+        )
+
+    assert calls["count_failed"] == 1
+    assert calls["get_user"] == 0
+    assert calls["verify"] == 0
+    assert calls["create_session"] == 0
+    assert calls["record_login"] == 0
+    assert calls["audit"] == 0
+
+
+@pytest.mark.parametrize(
+    "user",
+    [
+        None,
+        auth_user(ativo=False),
+        auth_user(desativado_em=NOW),
+        auth_user(bloqueado_ate=NOW + timedelta(minutes=1)),
+    ],
+)
+def test_authenticate_user_audits_generic_failure_reasons(
+    monkeypatch: pytest.MonkeyPatch,
+    user: AuthUserRecord | None,
+) -> None:
+    calls = patch_successful_dependencies(monkeypatch, user=user)
+
+    response = auth_service.authenticate_user(
+        login_informado=TEST_LOGIN,
+        password=TEST_PASSWORD,
+        session_secret=TEST_SECRET,
+        origem=TEST_ORIGEM,
+        now=NOW,
+    )
+
+    assert response is None
+    assert calls["audit"] == 1
+    assert calls["audit_last"]["sucesso"] is False
+    assert calls["audit_last"]["motivo_falha"] == auth_service.AUTH_FAILURE_REASON
+    assert calls["audit_last"]["login_informado"] == TEST_LOGIN
+    assert calls["audit_last"]["origem"] == TEST_ORIGEM
+
+
+def test_authenticate_user_audit_never_receives_sensitive_values(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = patch_successful_dependencies(monkeypatch)
+
+    response = auth_service.authenticate_user(
+        login_informado=TEST_LOGIN,
+        password=TEST_PASSWORD,
+        session_secret=TEST_SECRET,
+        origem=TEST_ORIGEM,
+        now=NOW,
+    )
+
+    assert response is not None
+    audit_values = {
+        str(value)
+        for value in calls["audit_last"].values()
+        if value is not None
+    }
+    assert TEST_PASSWORD not in audit_values
+    assert TEST_PASSWORD_HASH not in audit_values
+    assert TEST_TOKEN not in audit_values
+    assert TEST_TOKEN_HASH not in audit_values
+    assert TEST_SECRET not in audit_values
