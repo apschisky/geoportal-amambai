@@ -12,6 +12,8 @@ Validação no servidor: git pull aplicado; testes no servidor passaram; homolog
 Ainda não há endpoint interno de login exposto, endpoint de negócio interno, usuário real, sessão real criada por endpoint, token real, cookie real, CSRF, JWT ou middleware de autenticação. O router técnico de smoke só fica ativo com feature flag ligada explicitamente.
 Próximos passos: manter a flag desligada em produção; homologação permanece como ambiente controlado para smoke test protegido; ainda sem login, usuário real, cookie real, CSRF, JWT, endpoint `/me` ou endpoint de negócio interno.
 
+Registro atual adicional: foi criada somente a estrutura preparatoria do script administrativo `geoportal-backend/scripts/admin/create_internal_user.py` para futura criacao manual do primeiro usuario interno. O script nao e endpoint, nao e importado pelo app principal e nao cria rota. A senha sera lida no servidor com `getpass`, com confirmacao, nunca por argumento CLI. O modo `--dry-run` nao conecta ao banco e nao persiste nada. O repository administrativo usa bind parameters para consultar existencia e inserir em `mod_auth.usuarios`, recebe apenas `senha_hash` e nao recebe senha bruta. Esta etapa nao foi executada contra banco real e nao criou usuario operacional, credencial operacional, hash operacional documentado, token, sessao, cookie, JWT, CSRF, seed ou migration. A criacao operacional deve ocorrer primeiro em homologacao, em etapa futura, com operador humano; nao usar migration ou seed para credencial operacional.
+
 ## Status e roadmap
 
 ### Concluído e validado
@@ -49,6 +51,7 @@ Próximos passos: manter a flag desligada em produção; homologação permanece
 
 ### Pendente
 - Criar primeiro usuário interno por script administrativo seguro.
+- Estrutura preparatoria do script administrativo criada e testada; execucao real em homologacao continua pendente.
 - Criar endpoint de login.
 - Setar cookie real HttpOnly/Secure/SameSite.
 - Criar CSRF antes de rotas mutáveis.

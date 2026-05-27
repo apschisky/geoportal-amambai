@@ -194,6 +194,8 @@ Status:
 - Ainda nao ha endpoint interno de login, cookie real, CSRF, JWT, middleware, usuario real ou sessao real criada por endpoint. O router tecnico de smoke so fica ativo quando a feature flag e ligada explicitamente.
 - Proxima etapa: validar no servidor com a flag desligada e depois ativar somente em homologacao para smoke controlado. Classificacao de risco: Codex High.
 
+Atualizacao preparatoria: a estrutura do script administrativo `geoportal-backend/scripts/admin/create_internal_user.py` foi criada para futura criacao manual do primeiro usuario interno, sem execucao contra banco real. O script usa `getpass` para senha e confirmacao, rejeita senha vazia, nao aceita senha por argumento CLI, usa `hash_password(...)`, possui `--dry-run` sem conexao ao banco e nao imprime senha ou hash. O repository administrativo usa SQLAlchemy `text(...)` com bind parameters para existencia e `INSERT` em `mod_auth.usuarios`, recebendo apenas `senha_hash`. Esta etapa nao criou usuario real, seed, migration, endpoint, cookie, JWT, CSRF, token ou sessao real.
+
 ## 4. Política inicial de senha
 
 Proposta inicial:
