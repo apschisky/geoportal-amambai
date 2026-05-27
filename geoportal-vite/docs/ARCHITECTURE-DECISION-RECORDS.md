@@ -48,7 +48,7 @@ Este documento registra decisões arquiteturais importantes do projeto. Cada ADR
 - Contexto: A lógica de login deve ser observável e protegida contra abuso antes de expor um endpoint.
 - Decisão: Implementar repository de auditoria de login e service puro de rate limit antes de criar o endpoint de login.
 - Consequências: Melhora a detecção de abuso e ajuda a manter resposta genérica em falhas.
-- Validação atual: Repository de auditoria e service de rate limit criados; integração com `auth_service.py` realizada; rate limit agora é avaliado antes de verificar senha. Serviço interno de validação de sessão autenticada criado e documentado; ele recebe token bruto e `session_secret`, calcula `token_hash` e retorna apenas `usuario_id`, `sessao_id` e `expira_em`. Testes locais e de servidor passaram; homologação e produção local/pública foram reiniciadas e validadas.
+- Validação atual: Repository de auditoria e service de rate limit criados; integração com `auth_service.py` realizada; rate limit agora é avaliado antes de verificar senha. Serviço interno de validação de sessão autenticada criado e documentado; ele recebe token bruto e `session_secret`, calcula `token_hash` e retorna apenas `usuario_id`, `sessao_id` e `expira_em`. Serviço puro de transporte de token criado e documentado; ele extrai token de cookie ou `Authorization: Bearer`, marca cookie+bearer simultâneos como ambíguos e não depende de FastAPI. Testes locais e de servidor passaram; homologação e produção local/pública foram reiniciadas e validadas.
 
 ## ADR-007: Cookie HttpOnly/Secure/SameSite como preferência provisória
 

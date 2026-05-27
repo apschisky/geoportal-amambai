@@ -127,7 +127,15 @@ Status:
 - Sessao invalida ou token vazio retorna `None`.
 - `session_secret` invalido e erros de repository/banco sobem como erro interno, sem fallback inseguro.
 - Service puro de transporte/extracao de token criado em `geoportal-backend/app/services/auth_token_transport_service.py`, sem FastAPI, sem `Request`, sem endpoint e sem middleware.
-- A politica aceita token por cookie ou por `Authorization: Bearer`, rejeita valor ausente/malformado de forma generica e marca como ambiguo quando cookie e bearer validos chegam juntos, sem escolher silenciosamente.
+- Ele aceita apenas valores simples de `session_cookie` ou `Authorization: Bearer <token>`.
+- Cookie valido retorna token com `transport = "cookie"`.
+- Authorization Bearer valido retorna token com `transport = "bearer"`.
+- Cookie e Bearer simultaneos produzem resultado ambiguo, sem escolher silenciosamente.
+- Token ausente retorna `token = None`.
+- Authorization malformado, Basic, Bearer sem token ou Bearer com partes extras retornam `is_malformed = True`.
+- O resultado não mantém o `authorization_header` bruto nem o `session_cookie` bruto.
+- Esse service não valida criptograficamente a sessão nem consulta o banco; ele apenas extrai e normaliza o token.
+- A validação real de sessão continua em `auth_current_session_service.py`.
 - Cookie HttpOnly/Secure/SameSite permanece preferencia futura; Bearer permanece alternativa operacional a decidir antes do endpoint.
 - O servico de sessao usa token aleatorio forte (`secrets.token_urlsafe(32)`), HMAC-SHA256 e comparacao segura com `hmac.compare_digest`.
 - O token bruto nao e persistido nem logado. O hash de sessao e prefixado com `hmac-sha256:`.
