@@ -120,16 +120,16 @@ Status:
   - Decisao baseada em `failed_attempts`, `max_attempts` e `window_minutes`.
   - A decisao nao depende da existencia do usuario e nao revela se usuario existe.
   - Sem dependencia de FastAPI ou banco de dados; apenas logica pura.
-- Auditoria e rate limit foram integrados ao `auth_service.py`; ainda nao ha endpoint de login.
+- Auditoria e rate limit foram integrados ao `auth_service.py` antes de qualquer endpoint de login; o rate limit e avaliado antes de verificar senha.
+- Auditoria registra sucesso/falha sem incluir senha, senha_hash, token, token_hash ou session_secret.
 - O servico de sessao usa token aleatorio forte (`secrets.token_urlsafe(32)`), HMAC-SHA256 e comparacao segura com `hmac.compare_digest`.
 - O token bruto nao e persistido nem logado. O hash de sessao e prefixado com `hmac-sha256:`.
 - A expiração usa `datetime` timezone-aware em UTC. A revogacao e tratada quando `revoked_at` esta preenchido.
 - Validacao local desta etapa: `tests/test_auth_service.py` passou com 25 testes; `tests/test_auth_login_audit_repository.py` passou com 4 testes; `tests/test_auth_rate_limit_service.py` passou com 8 testes; suite completa local passou com 164 testes.
-- Validacao de servidor anterior: git pull aplicado; testes passaram no servidor; suites completas em homologacao e producao (127.0.0.1:8001 e URL publica) passaram com 155 testes antes da integracao atual de auditoria/rate limit ao service.
-- Servidores reiniciados: GeoportalAPIHomologacao e GeoportalAPIProducao reiniciados e validados.
+- Validacao no servidor: git pull aplicado; testes no servidor passaram; homologacao, producao local e producao publica foram reiniciadas e validadas.
 - Endpoints de saude confirmados saudaveis em homologacao, producao local e producao publica: `/api/health`, `/api/public/iluminacao/health`, `/api/version` retornaram status correto em todos os ambientes.
-- Ainda nao ha endpoint interno de login, usuario real, sessao real criada por endpoint, token real, cookie, CSRF, JWT ou middleware de autenticacao.
-- Protecao inicial contra brute force com auditoria e rate limit esta integrada ao service interno; bloqueio temporario persistente, atraso progressivo e transporte de token continuam etapas obrigatorias antes de qualquer endpoint de login.
+- Ainda nao ha endpoint interno de login, rota, cookie, CSRF, JWT, middleware, usuario real ou sessao real criada por endpoint.
+- Proxima etapa: planejar transporte de token e middleware/dependency antes de criar qualquer endpoint de login. Classificacao de risco: Codex High.
 
 ## 4. Política inicial de senha
 
