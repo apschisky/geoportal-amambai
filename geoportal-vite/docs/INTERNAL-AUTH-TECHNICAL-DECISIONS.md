@@ -13,6 +13,43 @@ Pontos importantes:
 - Estas decisões devem orientar implementação, testes, revisão de segurança e documentação.
 - O documento não implementa código, endpoints, telas, migrations, usuários reais, senhas reais, tokens reais ou acesso interno público.
 
+## 1.1 Status de implementação atual
+
+- Concluído e validado:
+  - Schema `mod_auth` criado e validado.
+  - Hash de senha Argon2id implementado.
+  - Serviço de sessão opaca/token implementado.
+  - Repository interno de usuários criado.
+  - Repository interno de sessões criado.
+  - Repository interno de auditoria de login criado.
+  - Service puro de rate limit implementado.
+  - `auth_service.py` com auditoria e rate limit integrado.
+  - Service interno de validação de sessão autenticada implementado.
+  - Service puro de transporte de token implementado.
+  - Dependency FastAPI interna de autenticação criada.
+  - Router técnico de smoke auth `GET /api/internal/auth/smoke` criado e validado isoladamente.
+
+- Preparado, mas ainda não exposto:
+  - Dependency FastAPI interna existe, mas não está aplicada a endpoint real.
+  - Router de smoke auth existe, mas não está incluído no app principal.
+  - `geoportal-backend/app/main.py` e `geoportal-backend/app/api/router.py` não foram alterados.
+  - `GEOPORTAL_INTERNAL_SESSION_SECRET` documentado como configuração futura, sem valor real no repositório.
+  - Cookie HttpOnly/Secure/SameSite permanece preferência futura.
+  - Bearer permanece alternativa operacional futura.
+
+- Pendente:
+  - Feature flag para ativar rotas internas.
+  - Incluir router interno no app apenas por feature flag.
+  - Configurar segredo real somente no servidor, fora do Git.
+  - Criar primeiro usuário interno por script administrativo seguro.
+  - Criar endpoint de login.
+  - Setar cookie real HttpOnly/Secure/SameSite.
+  - Criar CSRF antes de rotas mutáveis.
+  - Criar endpoint `/me` real.
+  - Criar logout/revogação de sessão.
+  - Criar autorização/perfis/permissões.
+  - Criar primeiro módulo interno de negócio.
+
 ## 2. Princípios de segurança
 
 - Segurança no backend, não apenas no frontend.

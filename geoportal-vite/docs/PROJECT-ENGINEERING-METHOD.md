@@ -35,6 +35,7 @@ Este documento define a metodologia de engenharia do Geoportal Amambai, focada e
 - Mudanças funcionais devem ser pequenas e específicas.
 - Migrations devem ser separadas de endpoints e de mudanças de negócio.
 - Endpoints internos nunca devem existir antes de autenticação e middleware.
+- Rotas internas de teste podem ser criadas isoladamente, mas só devem ser incluídas no app principal com uma feature flag desligada por padrão.
 - Frontend público deve permanecer isolado do backend interno.
 - A API pública deve ser preservada em todas as fases.
 

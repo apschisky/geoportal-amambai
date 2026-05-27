@@ -65,3 +65,11 @@ Este documento registra decisões arquiteturais importantes do projeto. Cada ADR
 - Decisão: Não criar endpoints internos sem middleware/dependency de autenticação e autorização.
 - Consequências: Obriga validação de security antes da exposição de APIs internas.
 - Validação atual: Documentação registra que não há endpoint interno de login exposto; middleware ainda não implementado.
+
+## ADR-009: Router técnico de smoke auth interno
+
+- Status: Confirmado
+- Contexto: É necessário validar a dependency interna de autenticação sem abrir superfície pública no app principal.
+- Decisão: Criar router técnico protegido de smoke auth em `geoportal-backend/app/api/routes/internal_auth_smoke.py` com `GET /api/internal/auth/smoke`, mas não incluí-lo no app principal sem feature flag.
+- Consequências: Permite testar o contrato de autenticação internamente e manter a API pública e o app principal seguros.
+- Validação atual: Router testado isoladamente com TestClient; testes locais e do servidor passaram; homologação e produção local/pública permaneceram saudáveis; o router não foi registrado no app principal.

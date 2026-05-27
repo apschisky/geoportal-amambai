@@ -12,6 +12,44 @@ Validação no servidor: git pull aplicado; testes no servidor passaram; homolog
 Ainda não há endpoint interno de login exposto, endpoint interno protegido ativo no app principal, usuário real, sessão real criada por endpoint, token real, cookie real, CSRF, JWT ou middleware de autenticação. O router técnico de smoke existe, mas não está incluído no app principal.
 Próximos passos: criar feature flag para ativar rotas internas ou planejar endpoint de login com cautela, mantendo respostas genéricas e controles de auditoria/rate limit; esta etapa crítica deve seguir Codex High.
 
+## Status e roadmap
+
+### Concluído e validado
+- Schema `mod_auth` criado e validado.
+- Hash de senha Argon2id implementado.
+- Serviço de sessão opaca/token implementado.
+- Repository interno de usuários criado.
+- Repository interno de sessões criado.
+- Repository interno de auditoria de login criado.
+- Service puro de rate limit implementado.
+- `auth_service.py` com auditoria e rate limit integrado.
+- Service interno de validação de sessão autenticada implementado.
+- Service puro de transporte de token implementado.
+- Dependency FastAPI interna de autenticação criada.
+- Router técnico de smoke auth `GET /api/internal/auth/smoke` criado e testado isoladamente.
+- Harnesses/metodologia de validação do projeto aplicados.
+
+### Preparado, mas ainda não exposto
+- Dependency FastAPI interna existe, mas não está aplicada a endpoint real.
+- Router técnico de smoke auth existe, mas não está incluído no app principal.
+- `geoportal-backend/app/main.py` e `geoportal-backend/app/api/router.py` não foram alterados.
+- `GEOPORTAL_INTERNAL_SESSION_SECRET` documentado como configuração futura, sem valor real incluído.
+- Cookie HttpOnly/Secure/SameSite permanece preferência futura.
+- Bearer permanece alternativa operacional futura.
+
+### Pendente
+- Feature flag para ativar rotas internas.
+- Incluir router interno no app apenas por feature flag.
+- Configurar segredo real somente no servidor, fora do Git.
+- Criar primeiro usuário interno por script administrativo seguro.
+- Criar endpoint de login.
+- Setar cookie real HttpOnly/Secure/SameSite.
+- Criar CSRF antes de rotas mutáveis.
+- Criar endpoint `/me` real.
+- Criar logout/revogação de sessão.
+- Criar autorização/perfis/permissões.
+- Criar primeiro módulo interno de negócio.
+
 Este documento complementa `docs/INTERNAL-AUTH-TECHNICAL-DECISIONS.md`, que registra as decisões técnicas iniciais de autenticação, sessão, transporte de token e autorização.
 
 ## 1. Objetivo
