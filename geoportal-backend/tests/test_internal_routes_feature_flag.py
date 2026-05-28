@@ -11,6 +11,7 @@ from app.services.auth_current_session_service import AuthenticatedCurrentSessio
 
 
 INTERNAL_SMOKE_PATH = "/api/internal/auth/smoke"
+INTERNAL_LOGIN_PATH = "/api/internal/auth/login"
 EXPIRES_AT = datetime(2026, 5, 27, 13, 0, tzinfo=UTC)
 
 
@@ -53,6 +54,7 @@ def test_internal_smoke_route_is_absent_when_flag_is_not_enabled(
     app = reload_main_app()
 
     assert INTERNAL_SMOKE_PATH not in route_paths(app)
+    assert INTERNAL_LOGIN_PATH not in route_paths(app)
 
 
 def test_internal_smoke_route_returns_404_when_flag_is_disabled(
@@ -65,6 +67,7 @@ def test_internal_smoke_route_returns_404_when_flag_is_disabled(
     response = client.get(INTERNAL_SMOKE_PATH)
 
     assert response.status_code == 404
+    assert client.post(INTERNAL_LOGIN_PATH, json={}).status_code == 404
 
 
 def test_internal_smoke_route_is_present_when_flag_is_enabled(
@@ -74,6 +77,7 @@ def test_internal_smoke_route_is_present_when_flag_is_enabled(
     app = reload_main_app()
 
     assert INTERNAL_SMOKE_PATH in route_paths(app)
+    assert INTERNAL_LOGIN_PATH in route_paths(app)
 
 
 def test_enabled_internal_smoke_route_without_auth_returns_generic_401(

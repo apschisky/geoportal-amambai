@@ -30,8 +30,9 @@ Pontos importantes:
   - Service puro de transporte de token implementado.
   - Dependency FastAPI interna de autenticação criada.
   - Router técnico de smoke auth `GET /api/internal/auth/smoke` criado e validado isoladamente.
+  - Endpoint interno de login `POST /api/internal/auth/login` criado sob feature flag, chamando `auth_service.authenticate_user(...)`.
   - Feature flag `GEOPORTAL_INTERNAL_ROUTES_ENABLED` implementada com comportamento fail-closed.
-  - Testes automatizados passaram: 264 testes no total (incluindo 26 `test_auth_service` com validação de robustez de `ultimo_login_em` best effort, 17 `test_create_internal_user` e 9 `test_auth_user_repository`) passaram localmente e no servidor.
+  - Testes automatizados locais passaram: 269 testes no total, incluindo 5 testes do endpoint interno de login, 26 `test_auth_service`, 17 `test_create_internal_user` e 9 `test_auth_user_repository`.
   - Migration `0010_make_auth_user_email_optional.sql` aplicada em homologação e produção.
   - Email agora é opcional; login permanece obrigatório como identificador principal de autenticação.
   - Validação operacional realizada pelo harness operacional em homologação e produção: `/api/health`, `/api/public/iluminacao/health` e `/api/version` permaneceram OK.
@@ -50,7 +51,7 @@ Pontos importantes:
   - Incluir router interno no app apenas por feature flag.
   - Configurar segredo real somente no servidor, fora do Git.
   - Criar primeiro usuário interno por script administrativo seguro.
-  - Criar endpoint de login.
+  - Validar endpoint de login em homologação controlada antes de qualquer exposição operacional.
   - Setar cookie real HttpOnly/Secure/SameSite.
   - Criar CSRF antes de rotas mutáveis.
   - Criar endpoint `/me` real.
@@ -199,7 +200,7 @@ Status:
 - Validacao local desta etapa: `tests/test_internal_routes_feature_flag.py` passou com 9 testes; `tests/test_internal_routes_config.py` passou com 28 testes; `tests/test_internal_auth_smoke_router.py` passou com 7 testes; suite completa local passou com 245 testes.
 - Validacao no servidor: git pull aplicado; testes no servidor passaram; homologacao, producao local e producao publica foram reiniciadas e validadas.
 - Endpoints de saude confirmados saudaveis em homologacao, producao local e producao publica: `/api/health`, `/api/public/iluminacao/health`, `/api/version` retornaram status correto em todos os ambientes.
-- Ainda nao ha endpoint interno de login, cookie real, CSRF, JWT, middleware ou sessao real criada por endpoint. O usuario `admin.homologacao` existe somente em homologacao por bootstrap administrativo controlado. O router tecnico de smoke so fica ativo quando a feature flag e ligada explicitamente.
+- O endpoint interno `POST /api/internal/auth/login` existe somente sob `GEOPORTAL_INTERNAL_ROUTES_ENABLED`, retorna 401 generico em falha e dados minimos em sucesso, incluindo token opaco bruto. Ainda nao ha cookie real, CSRF, JWT, middleware ou exposicao publica do login. O usuario `admin.homologacao` existe somente em homologacao por bootstrap administrativo controlado.
 - Proxima etapa: validar no servidor com a flag desligada e depois ativar somente em homologacao para smoke controlado. Classificacao de risco: Codex High.
 
 Atualizacao preparatoria: a estrutura do script administrativo `geoportal-backend/scripts/admin/create_internal_user.py` foi criada para futura criacao manual do primeiro usuario interno, sem execucao contra banco real. O script usa `getpass` para senha e confirmacao, rejeita senha vazia, nao aceita senha por argumento CLI, usa `hash_password(...)`, possui `--dry-run` sem conexao ao banco e nao imprime senha ou hash. O bootstrap do script administrativo foi corrigido; o script agora calcula a raiz `geoportal-backend` a partir de `__file__` e ajusta `sys.path` antes dos imports de `app.*`, permitindo execucao direta a partir da raiz `geoportal-backend` sem `PYTHONPATH` manual. O repository administrativo usa SQLAlchemy `text(...)` com bind parameters para existencia e `INSERT` em `mod_auth.usuarios`, recebendo apenas `senha_hash`. Esta etapa nao criou usuario real, seed, migration, endpoint, cookie, JWT, CSRF, token ou sessao real. Localmente, `tests/test_auth_service.py` passou com 26 testes de robustez de `ultimo_login_em` best effort, `tests/test_create_internal_user_admin.py` passou com 12 testes e a suite completa local passou com 264 testes. No servidor, git pull aplicado; `tests/test_auth_service.py` passou com 26 testes, `tests/test_create_internal_user_admin.py` passou com 12 testes e a suite completa no servidor passou com 264 testes. No servidor, o dry-run foi validado sem `PYTHONPATH` manual usando `python scripts/admin/create_internal_user.py --login "admin.homologacao" --email "admin.homologacao@example.test" --nome "Administrador Homologacao" --dry-run`; o script pediu senha via `getpass` e retornou: "Dry-run validado. Nenhum usuario foi criado." Homologacao e producao foram reiniciadas e validadas pelo harness operacional, mantendo a API publica saudavel.
@@ -298,14 +299,15 @@ Status:
 
 - Servico interno criado em `geoportal-backend/app/security/sessions.py`, apenas para gerar token opaco, calcular `token_hash`, verificar token, preparar expiracao UTC e avaliar revogacao.
 - Token opaco usa geracao criptograficamente segura; `token_hash` usa HMAC-SHA256 com segredo recebido por parametro.
-- Segredo real de HMAC ainda nao foi configurado e deve ser definido em etapa futura segura, antes de qualquer endpoint de login.
+- Segredo real de HMAC deve permanecer configurado somente em ambiente operacional controlado, fora do Git, antes de qualquer uso do endpoint de login.
 - Repository interno de sessoes criado em `geoportal-backend/app/repositories/auth_session_repository.py`, operando apenas com `token_hash`, expiracao e revogacao por `revogado_em`.
 - Service interno de validacao de sessao autenticada criado em `geoportal-backend/app/services/auth_current_session_service.py`, recebendo token bruto e `session_secret` para consultar sessao ativa por `token_hash`.
 - Service puro de transporte de token criado em `geoportal-backend/app/services/auth_token_transport_service.py`, extraindo token de cookie ou bearer sem depender de FastAPI.
-- Dependency FastAPI interna criada em `geoportal-backend/app/dependencies/auth_dependencies.py`, ainda sem ser aplicada a endpoint real.
-- Router tecnico protegido de smoke criado em `geoportal-backend/app/api/routes/internal_auth_smoke.py`, ainda sem ser incluido no app principal.
+- Dependency FastAPI interna criada em `geoportal-backend/app/dependencies/auth_dependencies.py`.
+- Router tecnico protegido de smoke criado em `geoportal-backend/app/api/routes/internal_auth_smoke.py`.
+- Endpoint interno de login criado em `geoportal-backend/app/api/routes/internal_auth_login.py`, chamando `auth_service.authenticate_user(...)` e retornando 401 generico em falha.
 - Parser fail-closed da feature flag `GEOPORTAL_INTERNAL_ROUTES_ENABLED` criado em `geoportal-backend/app/core/internal_routes_config.py` e conectado ao `include_router` em `geoportal-backend/app/main.py`.
-- Ainda nao ha endpoint de login, sessao real no banco criada por endpoint, middleware global, cookie real, CSRF ou JWT implementado.
+- Ainda nao ha cookie real, CSRF, JWT ou middleware global. Sessao real so sera criada quando o endpoint for usado em ambiente controlado com role runtime apropriada.
 - A proxima etapa pode validar em servidor com flag desligada e ativar o smoke somente em homologacao controlada.
 
 ## 6. Transporte do token no cliente
@@ -371,8 +373,8 @@ Riscos:
   - tokens sejam curtos e revogáveis;
   - XSS seja tratado como risco crítico.
 - Documentar preferência técnica por sessão opaca.
-- Decidir transporte após desenho do frontend interno e domínio final.
-- Não implementar endpoint de login antes dessa decisão.
+- Decidir transporte definitivo após desenho do frontend interno e domínio final.
+- O endpoint inicial retorna token opaco bruto no corpo da resposta; cookie HttpOnly/Secure/SameSite e CSRF ficam para etapa separada.
 
 #### Decisão provisória
 
@@ -380,8 +382,8 @@ Riscos:
 - Se cookie for escolhido, a proteção contra CSRF passa a ser obrigatória e deve ser implementada/testada antes de expor endpoints internos sensíveis.
 - `Authorization: Bearer` fica como alternativa operacional, não como primeira preferência, caso cookies seguros tragam complexidade operacional excessiva no primeiro ciclo.
 - Se `Authorization: Bearer` for usado, evitar `localStorage` quando possível, não registrar `Authorization` em logs, usar sessão opaca revogável, expiração curta/moderada e validar risco de XSS.
-- A decisão final sobre transporte deve ser tomada antes da criação do endpoint de login.
-- Nenhum endpoint de login deve ser implementado enquanto essa decisão estiver pendente.
+- A decisão final sobre transporte deve ser tomada antes de ativacao operacional ampla do login.
+- Cookie real e CSRF nao devem ser implementados parcialmente sem testes especificos.
 
 ## 7. Expiração, revogação e ciclo de vida da sessão
 
@@ -547,7 +549,7 @@ Observacao: Permissoes para schemas de modulos, como `mod_iluminacao`, devem ser
 **Restrições aplicadas:**
 
 - Nada será aplicado em produção nesta etapa.
-- Nenhum endpoint de login será criado nesta etapa.
+- Nenhuma role runtime real, GRANT real, cookie, CSRF ou JWT sera criada nesta etapa.
 - Roles reais, GRANTs reais e usuário interno real ocorrerão em etapa separada com backup e validação.
 
 ## 12. Testes obrigatórios antes de expor endpoint de login
@@ -588,8 +590,8 @@ Testes mínimos:
 
 | Tema | Decisão recomendada | Status |
 |---|---|---|
-| Hash de senha | Argon2id com `argon2-cffi`; bcrypt apenas como alternativa operacional | Serviço, repository de usuários e service de autenticação criados sem endpoint |
-| Sessão/token | Sessão opaca com token_hash HMAC-SHA256 no banco | Services, repositories, dependency, router tecnico de smoke e feature flag fail-closed criados; router ativo somente com flag ligada |
+| Hash de senha | Argon2id com `argon2-cffi`; bcrypt apenas como alternativa operacional | Serviço, repository de usuários, service de autenticação e endpoint interno de login sob feature flag criados |
+| Sessão/token | Sessão opaca com token_hash HMAC-SHA256 no banco | Services, repositories, dependency, router tecnico de smoke, endpoint de login e feature flag fail-closed criados; rotas internas ativas somente com flag ligada |
 | Auditoria de login | Repository com `record_login_attempt(...)` e `count_recent_failed_attempts(...)` | Repository criado e integrado ao `auth_service.py` |
 | Rate limit de login | Service puro com `LoginRateLimitDecision` e `evaluate_login_rate_limit(...)` | Service criado e integrado ao `auth_service.py` |
 | Atraso progressivo e bloqueio temporário | Implementar integrado ao rate limit antes de endpoint | Pendente; pronto para integração |
@@ -606,11 +608,11 @@ Testes mínimos:
 2. Manter testes do serviço de hash/verificação de senha.
 3. Manter auditoria e rate limit integrados ao `auth_service.py`.
 4. Implementar atraso progressivo e bloqueio temporário persistente integrados ao rate limit.
-5. Manter `GEOPORTAL_INTERNAL_ROUTES_ENABLED` desligada por padrao; ativar o smoke apenas em homologacao controlada.
+5. Manter `GEOPORTAL_INTERNAL_ROUTES_ENABLED` desligada por padrao; ativar rotas internas apenas em homologacao controlada.
 6. Configurar segredo real de HMAC em etapa segura, sem registrar em log.
 7. Planejar smoke test protegido ou middleware de autenticacao.
 8. Implementar autorização por permissão.
-9. Criar endpoint de login somente após testes, auditoria integrada, rate limit integrado e transporte de token definido.
+9. Validar endpoint de login em homologacao com auditoria, rate limit e controle de exposicao.
 10. Trabalhar as próximas etapas críticas com Codex High.
 11. Criar endpoints internos mínimos protegidos.
 12. Criar tela interna mínima.

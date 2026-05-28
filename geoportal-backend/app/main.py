@@ -4,6 +4,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.api.routes import internal_auth_login
 from app.api.routes import internal_auth_smoke
 from app.api.router import api_router
 from app.core.config import settings
@@ -53,4 +54,5 @@ app.add_middleware(
 app.include_router(api_router)
 
 if are_internal_routes_enabled_from_env():
+    app.include_router(internal_auth_login.router)
     app.include_router(internal_auth_smoke.router)
