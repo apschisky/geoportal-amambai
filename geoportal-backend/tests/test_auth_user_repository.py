@@ -102,7 +102,7 @@ def test_get_auth_user_by_login_uses_parameterized_select() -> None:
     assert "SELECT *" not in sql.upper()
     assert "FROM mod_auth.usuarios" in sql
     assert "lower(login) = lower(:login_informado)" in sql
-    assert "lower(email) = lower(:login_informado)" in sql
+    assert "lower(email)" not in sql
     assert ":login_informado" in sql
     assert params == {"login_informado": "Usuario.Ficticio"}
     assert "Usuario.Ficticio" not in sql
@@ -137,6 +137,16 @@ def test_get_auth_user_by_login_returns_internal_auth_user_record() -> None:
     assert response.bloqueado_ate == blocked_until
     assert response.desativado_em == deactivated_at
     assert not hasattr(response, "token_hash")
+
+
+def test_get_auth_user_by_login_allows_optional_email_missing() -> None:
+    engine = FakeEngine({**USER_ROW, "email": None})
+
+    response = get_auth_user_by_login("usuario.ficticio", engine=engine)
+
+    assert response is not None
+    assert response.email is None
+    assert response.login == "usuario.ficticio"
 
 
 def test_get_auth_user_by_login_returns_none_when_not_found() -> None:
@@ -177,10 +187,11 @@ def test_record_successful_login_returns_false_when_not_found() -> None:
 def test_repository_does_not_use_real_database_or_sensitive_values() -> None:
     engine = FakeEngine()
 
-    response = get_auth_user_by_login("usuario.ficticio@example.test", engine=engine)
+    response = get_auth_user_by_login("usuario.ficticio", engine=engine)
 
     assert response is not None
     sql = sql_for(engine)
+    assert "lower(email)" not in sql
     assert "DATABASE_URL" not in sql
     assert RAW_PASSWORD not in sql
     assert TOKEN_VALUE not in sql

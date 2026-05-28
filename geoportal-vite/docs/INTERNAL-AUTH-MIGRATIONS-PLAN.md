@@ -14,6 +14,7 @@ Migrations planejadas:
 - `0007_create_mod_auth_usuarios.sql`
 - `0008_create_mod_auth_perfis_permissoes.sql`
 - `0009_create_mod_auth_sessoes_login_auditoria.sql`
+- `0010_make_auth_user_email_optional.sql`
 
 Essas migrations nao devem alterar `mod_iluminacao`, `plano` ou `web_map`.
 
@@ -87,7 +88,7 @@ Campos conceituais/tecnicos:
 
 - `id bigserial primary key`
 - `nome varchar(180) not null`
-- `email varchar(180) not null`
+- `email varchar(180) null`
 - `login varchar(80) not null`
 - `senha_hash varchar(255) not null`
 - `ativo boolean not null default true`
@@ -99,10 +100,10 @@ Campos conceituais/tecnicos:
 
 Constraints:
 
-- `email` unico, preferencialmente por `lower(email)`.
+- `email` unico, preferencialmente por `lower(email)`, apenas quando informado.
 - `login` unico, preferencialmente por `lower(login)`.
 - `nome` nao vazio.
-- `email` nao vazio.
+- `email` opcional; quando informado, nao vazio.
 - `login` nao vazio.
 - `senha_hash` nao vazio.
 - `atualizado_em >= criado_em` quando informado.
@@ -295,6 +296,19 @@ Registro seguro da aplicacao em producao:
 - nenhum usuario real, sessao real, token real, auditoria real, seed, endpoint ou login funcional foi criado.
 
 Com a aplicacao da `0009`, a base estrutural inicial do schema `mod_auth` esta concluida. A proxima etapa deve planejar e implementar autenticacao backend com testes, sem criar acesso interno publico sem autenticacao.
+
+## 5.1 Migration `0010_make_auth_user_email_optional.sql`
+
+Esta migration ajusta `mod_auth.usuarios` para autenticacao interna por `login` obrigatorio e senha, com `email` opcional.
+
+Alteracoes:
+
+- `email` deixa de ser `NOT NULL`.
+- `ux_mod_auth_usuarios_email_lower` passa a ser indice unico parcial com `WHERE email IS NOT NULL`.
+- `ux_mod_auth_usuarios_login_lower` permanece como unicidade case-insensitive obrigatoria do login.
+- comentarios de `email` e `login` sao atualizados para documentar o login como identificador principal.
+
+Ela nao cria usuario real, seed, endpoint, sessao, cookie, CSRF, JWT, GRANT, trigger ou funcao. Permissoes futuras devem se vincular a `usuario_id` e, quando necessario para referencia humana, ao `login`, nao ao e-mail.
 
 Tabelas criadas pela migration:
 

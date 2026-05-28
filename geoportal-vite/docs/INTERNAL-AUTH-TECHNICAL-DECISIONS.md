@@ -136,7 +136,7 @@ Status:
 - Biblioteca escolhida para a implementacao inicial: `argon2-cffi` com Argon2id.
 - Servico interno criado em `geoportal-backend/app/security/passwords.py`, apenas para hash e verificacao de senha.
 - Repository interno de usuarios criado em `geoportal-backend/app/repositories/auth_user_repository.py`.
-- O repository de usuarios busca por login ou e-mail com bind param `:login_informado`, usando comparação case-insensitive via `lower(login)` e `lower(email)`. Login vazio ou só com espaços retorna `None` sem executar SQL.
+- O repository de usuarios busca por login com bind param `:login_informado`, usando comparacao case-insensitive via `lower(login)`. Login vazio ou so com espacos retorna `None` sem executar SQL. E-mail e opcional e nao e chave obrigatoria de autenticacao.
 - O repository de usuarios pode ler `senha_hash` somente em record interno para verificacao futura no backend; `senha_hash` nunca deve ser retornado por endpoint.
 - O repository registra `ultimo_login_em` e `atualizado_em` em login bem-sucedido, sem alterar `senha_hash`, sem criar sessão e sem criar auditoria.
 - Servico interno de sessao opaca criado em `geoportal-backend/app/security/sessions.py`.
@@ -195,6 +195,8 @@ Status:
 - Proxima etapa: validar no servidor com a flag desligada e depois ativar somente em homologacao para smoke controlado. Classificacao de risco: Codex High.
 
 Atualizacao preparatoria: a estrutura do script administrativo `geoportal-backend/scripts/admin/create_internal_user.py` foi criada para futura criacao manual do primeiro usuario interno, sem execucao contra banco real. O script usa `getpass` para senha e confirmacao, rejeita senha vazia, nao aceita senha por argumento CLI, usa `hash_password(...)`, possui `--dry-run` sem conexao ao banco e nao imprime senha ou hash. O bootstrap do script administrativo foi corrigido; o script agora calcula a raiz `geoportal-backend` a partir de `__file__` e ajusta `sys.path` antes dos imports de `app.*`, permitindo execucao direta a partir da raiz `geoportal-backend` sem `PYTHONPATH` manual. O repository administrativo usa SQLAlchemy `text(...)` com bind parameters para existencia e `INSERT` em `mod_auth.usuarios`, recebendo apenas `senha_hash`. Esta etapa nao criou usuario real, seed, migration, endpoint, cookie, JWT, CSRF, token ou sessao real. Localmente, `tests/test_create_internal_user_admin.py` passou com 12 testes e a suite completa local passou com 257 testes. No servidor, git pull aplicado; `tests/test_create_internal_user_admin.py` passou com 12 testes e a suite completa no servidor passou com 257 testes. No servidor, o dry-run foi validado sem `PYTHONPATH` manual usando `python scripts/admin/create_internal_user.py --login "admin.homologacao" --email "admin.homologacao@example.test" --nome "Administrador Homologacao" --dry-run`; o script pediu senha via `getpass` e retornou: "Dry-run validado. Nenhum usuario foi criado." Homologacao e producao foram reiniciadas e validadas pelo harness operacional, mantendo a API publica saudavel.
+
+Atualizacao de identificador interno: o login passa a ser o identificador obrigatorio de autenticacao do Geoportal Interno. E-mail e opcional para cadastro e nao deve ser usado como chave obrigatoria de login, permissao ou autorizacao. A migration `0010_make_auth_user_email_optional.sql` foi criada para tornar `mod_auth.usuarios.email` nullable e manter unicidade de e-mail apenas quando informado. O script administrativo agora exige `--login` e `--nome`, aceita `--email` opcional, continua lendo senha somente via `getpass` e mantem `--dry-run` sem banco. Nenhum usuario real, endpoint de login, cookie, CSRF, JWT, token real, sessao real ou segredo foi criado.
 
 ## 4. Política inicial de senha
 
@@ -430,7 +432,7 @@ Controles obrigatórios:
 - Rate limit no endpoint de login.
 - Atraso progressivo ou bloqueio temporário após falhas repetidas.
 - Resposta genérica para login inválido.
-- Não revelar se login/e-mail existe.
+- Não revelar se login existe.
 - Auditoria de tentativas.
 - Alerta futuro para volume anormal.
 - Não registrar senha tentada.

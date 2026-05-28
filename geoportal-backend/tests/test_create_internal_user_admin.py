@@ -20,6 +20,9 @@ PASSWORD_HASH = "argon2id-hash-ficticio-nao-real"
 TOKEN_VALUE = "token-ficticio-nao-deve-aparecer"
 DATABASE_CONFIG_MARKER = "database-config-ficticia-nao-usada"
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
+EMAIL_OPTIONAL_MIGRATION = (
+    BACKEND_ROOT / "db" / "migrations" / "0010_make_auth_user_email_optional.sql"
+)
 
 
 class FakeResult:
@@ -72,6 +75,18 @@ def sql_for(engine: FakeEngine) -> str:
 def params_for(engine: FakeEngine) -> dict[str, Any]:
     assert engine.connection.params is not None
     return engine.connection.params
+
+
+def test_email_optional_migration_keeps_login_unique_and_email_partial() -> None:
+    sql = EMAIL_OPTIONAL_MIGRATION.read_text(encoding="utf-8")
+
+    assert "ALTER COLUMN email DROP NOT NULL" in sql
+    assert "DROP INDEX IF EXISTS mod_auth.ux_mod_auth_usuarios_email_lower" in sql
+    assert "ON mod_auth.usuarios (lower(email))" in sql
+    assert "WHERE email IS NOT NULL" in sql
+    assert "COMMENT ON COLUMN mod_auth.usuarios.login" in sql
+    assert "INSERT INTO mod_auth.usuarios" not in sql
+    assert "DROP INDEX IF EXISTS mod_auth.ux_mod_auth_usuarios_login_lower" not in sql
 
 
 def test_script_can_run_from_backend_root_without_external_pythonpath() -> None:
@@ -127,6 +142,32 @@ def test_script_reads_password_with_getpass_and_not_cli_argument() -> None:
     assert prompts == ["Senha inicial: ", "Confirme a senha inicial: "]
     assert "--password" not in admin_script.build_parser().format_help()
     assert RAW_PASSWORD not in output.getvalue()
+
+
+def test_script_dry_run_accepts_missing_email_without_repository() -> None:
+    output = StringIO()
+    calls = {"hash": [], "exists": 0, "create": 0}
+
+    response = admin_script.run(
+        [
+            "--login",
+            "Usuario.Teste",
+            "--nome",
+            "Usuario Teste",
+            "--dry-run",
+        ],
+        getpass_func=lambda prompt: RAW_PASSWORD,
+        hash_password_func=lambda password: calls["hash"].append(password) or PASSWORD_HASH,
+        user_exists_func=lambda **kwargs: calls.__setitem__("exists", 1) or False,
+        create_user_func=lambda **kwargs: calls.__setitem__("create", 1),
+        stdout=output,
+    )
+
+    assert response == 0
+    assert calls == {"hash": [RAW_PASSWORD], "exists": 0, "create": 0}
+    assert "Dry-run validado" in output.getvalue()
+    assert RAW_PASSWORD not in output.getvalue()
+    assert PASSWORD_HASH not in output.getvalue()
 
 
 def test_script_rejects_password_cli_argument() -> None:
@@ -272,6 +313,41 @@ def test_valid_flow_calls_repository_with_hash_and_never_raw_password() -> None:
     assert PASSWORD_HASH not in output.getvalue()
 
 
+def test_valid_flow_calls_repository_with_optional_email_missing() -> None:
+    output = StringIO()
+    created_kwargs: dict[str, Any] = {}
+    exists_kwargs: dict[str, Any] = {}
+
+    response = admin_script.run(
+        [
+            "--login",
+            " Usuario.Teste ",
+            "--nome",
+            " Usuario Teste ",
+        ],
+        getpass_func=lambda prompt: RAW_PASSWORD,
+        hash_password_func=lambda password: PASSWORD_HASH,
+        user_exists_func=lambda **kwargs: exists_kwargs.update(kwargs) or False,
+        create_user_func=lambda **kwargs: created_kwargs.update(kwargs),
+        stdout=output,
+    )
+
+    assert response == 0
+    assert exists_kwargs == {
+        "login": "usuario.teste",
+        "email": None,
+    }
+    assert created_kwargs == {
+        "nome": "Usuario Teste",
+        "email": None,
+        "login": "usuario.teste",
+        "senha_hash": PASSWORD_HASH,
+    }
+    assert RAW_PASSWORD not in created_kwargs.values()
+    assert RAW_PASSWORD not in output.getvalue()
+    assert PASSWORD_HASH not in output.getvalue()
+
+
 def test_existing_user_aborts_without_creating() -> None:
     output = StringIO()
     calls = {"create": 0}
@@ -329,6 +405,28 @@ def test_internal_user_exists_uses_bind_params() -> None:
     assert DATABASE_CONFIG_MARKER not in sql
 
 
+def test_internal_user_exists_checks_login_only_when_email_is_missing() -> None:
+    engine = FakeEngine({"exists": 1})
+
+    response = internal_user_exists(
+        login=" Usuario.Teste ",
+        engine=engine,
+    )
+
+    sql = sql_for(engine)
+    params = params_for(engine)
+
+    assert response is True
+    assert "FROM mod_auth.usuarios" in sql
+    assert "lower(login) = lower(:login)" in sql
+    assert "lower(email)" not in sql
+    assert params == {"login": "Usuario.Teste"}
+    assert "Usuario.Teste" not in sql
+    assert RAW_PASSWORD not in sql
+    assert TOKEN_VALUE not in sql
+    assert DATABASE_CONFIG_MARKER not in sql
+
+
 def test_create_internal_user_uses_parameterized_insert_with_hash_only() -> None:
     engine = FakeEngine(
         {
@@ -365,6 +463,43 @@ def test_create_internal_user_uses_parameterized_insert_with_hash_only() -> None
     }
     assert "Usuario Teste" not in sql
     assert "usuario.teste@example.test" not in sql
+    assert PASSWORD_HASH not in sql
+    assert RAW_PASSWORD not in sql
+    assert TOKEN_VALUE not in sql
+    assert DATABASE_CONFIG_MARKER not in sql
+
+
+def test_create_internal_user_accepts_optional_email_missing() -> None:
+    engine = FakeEngine(
+        {
+            "id": 11,
+            "login": "usuario.sem.email",
+            "email": None,
+        }
+    )
+
+    response = create_internal_user(
+        nome=" Usuario Sem Email ",
+        login=" Usuario.Sem.Email ",
+        senha_hash=PASSWORD_HASH,
+        engine=engine,
+    )
+
+    sql = sql_for(engine)
+    params = params_for(engine)
+
+    assert response.id == 11
+    assert response.login == "usuario.sem.email"
+    assert response.email is None
+    assert "INSERT INTO mod_auth.usuarios" in sql
+    assert ":email" in sql
+    assert ":login" in sql
+    assert params == {
+        "nome": "Usuario Sem Email",
+        "email": None,
+        "login": "usuario.sem.email",
+        "senha_hash": PASSWORD_HASH,
+    }
     assert PASSWORD_HASH not in sql
     assert RAW_PASSWORD not in sql
     assert TOKEN_VALUE not in sql

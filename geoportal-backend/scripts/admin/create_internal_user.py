@@ -21,8 +21,8 @@ from app.security.passwords import hash_password
 @dataclass(frozen=True)
 class AdminUserInput:
     login: str
-    email: str
     nome: str
+    email: str | None
 
 
 class AdminUserCreationError(Exception):
@@ -34,8 +34,8 @@ def build_parser() -> argparse.ArgumentParser:
         description="Cria o primeiro usuario interno do Geoportal de forma manual e segura."
     )
     parser.add_argument("--login", required=True, help="Login interno do usuario.")
-    parser.add_argument("--email", required=True, help="Email institucional do usuario.")
     parser.add_argument("--nome", required=True, help="Nome de exibicao do usuario.")
+    parser.add_argument("--email", help="Email institucional opcional do usuario.")
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -44,24 +44,28 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def normalize_admin_user_input(login: str, email: str, nome: str) -> AdminUserInput:
+def normalize_admin_user_input(
+    login: str,
+    email: str | None,
+    nome: str,
+) -> AdminUserInput:
     normalized_login = login.strip().lower()
-    normalized_email = email.strip().lower()
+    normalized_email = email.strip().lower() if email is not None else None
     normalized_nome = nome.strip()
 
     if not normalized_login:
         raise AdminUserCreationError("login nao pode ser vazio.")
-    if not normalized_email:
-        raise AdminUserCreationError("email nao pode ser vazio.")
-    if "@" not in normalized_email:
+    if normalized_email == "":
+        normalized_email = None
+    if normalized_email is not None and "@" not in normalized_email:
         raise AdminUserCreationError("email deve ter formato minimo valido.")
     if not normalized_nome:
         raise AdminUserCreationError("nome nao pode ser vazio.")
 
     return AdminUserInput(
         login=normalized_login,
-        email=normalized_email,
         nome=normalized_nome,
+        email=normalized_email,
     )
 
 
@@ -112,7 +116,8 @@ def run(
             return 0
 
         if user_exists_func(login=user_input.login, email=user_input.email):
-            raise AdminUserCreationError("login ou email ja cadastrado.")
+            duplicated_fields = "login ou email" if user_input.email is not None else "login"
+            raise AdminUserCreationError(f"{duplicated_fields} ja cadastrado.")
 
         create_user_func(
             nome=user_input.nome,

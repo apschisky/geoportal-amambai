@@ -11,7 +11,7 @@ from app.core.database import get_engine
 class AuthUserRecord:
     id: int
     nome: str
-    email: str
+    email: str | None
     login: str
     senha_hash: str
     ativo: bool
@@ -42,7 +42,6 @@ def get_auth_user_by_login(
             desativado_em
         FROM mod_auth.usuarios
         WHERE lower(login) = lower(:login_informado)
-           OR lower(email) = lower(:login_informado)
         LIMIT 1
         """
     )
