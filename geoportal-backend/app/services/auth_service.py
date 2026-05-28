@@ -145,7 +145,11 @@ def authenticate_user(
 
     # Best effort: the session is already created, so a missed timestamp update
     # must not expose a different authentication result.
-    record_successful_login(user.id, engine=engine)
+    try:
+        record_successful_login(user.id, engine=engine)
+    except Exception:
+        pass
+
     record_login_attempt(
         usuario_id=user.id,
         login_informado=normalized_login,

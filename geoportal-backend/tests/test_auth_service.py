@@ -52,6 +52,7 @@ def patch_successful_dependencies(
     user: AuthUserRecord | None | object = DEFAULT_AUTH_USER,
     verify_result: bool = True,
     record_result: bool = True,
+    record_exception: Exception | None = None,
     failed_attempts: int = 0,
 ) -> dict[str, object]:
     calls: dict[str, object] = {
@@ -139,6 +140,8 @@ def patch_successful_dependencies(
         calls["record_login"] += 1
         calls["record_usuario_id"] = usuario_id
         calls["record_engine"] = engine
+        if record_exception is not None:
+            raise record_exception
         return record_result
 
     def fake_record_login_attempt(
@@ -410,6 +413,42 @@ def test_authenticate_user_success_does_not_fail_when_login_timestamp_update_fai
     assert calls["create_session"] == 1
     assert calls["record_login"] == 1
     assert calls["audit"] == 1
+
+
+def test_authenticate_user_success_audits_when_login_timestamp_update_raises(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    engine = object()
+    calls = patch_successful_dependencies(
+        monkeypatch,
+        record_exception=RuntimeError("timestamp update failed"),
+    )
+
+    response = auth_service.authenticate_user(
+        login_informado=TEST_LOGIN,
+        password=TEST_PASSWORD,
+        session_secret=TEST_SECRET,
+        engine=engine,
+        now=NOW,
+    )
+
+    assert response is not None
+    assert response.usuario_id == 20
+    assert response.session_id == 30
+    assert response.token == TEST_TOKEN
+    assert calls["create_session"] == 1
+    assert calls["record_login"] == 1
+    assert calls["record_usuario_id"] == 20
+    assert calls["record_engine"] is engine
+    assert calls["audit"] == 1
+    assert calls["audit_last"] == {
+        "sucesso": True,
+        "usuario_id": 20,
+        "login_informado": TEST_LOGIN,
+        "motivo_falha": None,
+        "origem": None,
+        "engine": engine,
+    }
 
 
 def test_authenticate_user_failure_modes_are_indistinguishable(
