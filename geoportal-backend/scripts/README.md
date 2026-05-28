@@ -22,6 +22,4 @@ O login e o identificador obrigatorio de autenticacao interna. E-mail e apenas d
 
 **Decisão**: Não ampliar `api_iluminacao_homolog` para acessar `mod_auth`. Usuários técnicos de módulos específicos devem permanecer restritos aos seus schemas.
 
-**Próximo passo**: Para bootstrap inicial de usuários internos em homologação, será criada em etapa operacional futura uma role técnica específica (sugestão: `geoportal_auth_admin_homolog`) com permissões mínimas em `mod_auth`. Consulte `geoportal-backend/db/security/README.md` para detalhes e contexto de escalabilidade.
-
-Nenhuma role real será criada nesta etapa.
+**Status de conclusão**: A role técnica `geoportal_auth_admin_homolog` foi criada em homologação com permissões mínimas em `mod_auth` para permitir bootstrap de usuários internos. O primeiro usuário administrativo `admin.homologacao` foi criado com sucesso via este script. Consulte `geoportal-backend/db/security/README.md` para detalhes de execução, validações e contexto de escalabilidade.

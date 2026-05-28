@@ -79,14 +79,34 @@ Sem acesso a plano, web_map ou schemas administrativos.
 
 Novos módulos terão seus próprios usuários técnicos específicos (ex: `api_drenagem_homolog`) seguindo o mesmo padrão de restrição.
 
-### Execução futura
+### Execução concluída
 
-As roles sugeridas serão criadas em etapas operacionais separadas:
+A role `geoportal_auth_admin_homolog` foi criada em homologação com sucesso:
 
-1. Com backup do banco.
-2. Com revisão manual do SQL.
-3. Com execução explícita em terminal.
-4. Com validação e teste de permissões.
-5. Com documentação de sucesso.
+1. **Backup do banco**: Realizado via `pg_dumpall -g` antes de qualquer operação.
+2. **SQL revisado**: Roles criadas com permissões mínimas, sem superuser, sem createdb, sem createrole.
+3. **Execução**: SQL executado manualmente em terminal contra banco de homologação.
+4. **Validação de permissões**:
+   - ✓ CONNECT ao banco de homologação
+   - ✓ USAGE no schema `mod_auth`
+   - ✓ SELECT em `mod_auth.usuarios`
+   - ✓ INSERT em `mod_auth.usuarios`
+   - ✓ USAGE na sequence `mod_auth.usuarios_id_seq`
+   - ✓ SELECT na sequence `mod_auth.usuarios_id_seq`
+   - ✓ Nenhum DELETE, UPDATE ou CREATE autorizado
+5. **Primeiro usuário**: O usuário administrativo `admin.homologacao` foi criado com sucesso via `create_internal_user.py` usando a role `geoportal_auth_admin_homolog`.
+6. **Validação do usuário**:
+   - ✓ Login: `admin.homologacao`
+   - ✓ Nome: `Administrador Homologacao`
+   - ✓ Ativo: `true`
+   - ✓ Email: `NULL` (opcional, não necessário)
+   - ✓ ID do usuário inserido corretamente
+7. **Validação de serviço**:
+   - ✓ Restart da aplicação via harness
+   - ✓ Health checks: `/api/health`, `/api/public/iluminacao/health`, `/api/version` OK
+   - ✓ Nenhuma endpoint nova criada
+   - ✓ Nenhuma sessão ou token criado
+   - ✓ Nenhuma mudança em `.env` ou migração
+8. **Estado de produção**: Não alterado. Todas as operações restritas a homologação.
 
-Nada será automatizado, criptografado ou incluído no Git.
+**Próxima etapa**: Não ampliar automaticamente `geoportal_auth_admin_homolog` para login runtime. Em etapa operacional separada, criar role `geoportal_api_homolog` com permissões ampliadas para endpoints internos (`/api/internal/...`).

@@ -72,12 +72,30 @@ Registro de decisão: Tentativa realizada de usar `api_iluminacao_homolog` (usu�
 - Bearer permanece alternativa operacional futura.
 
 ### Pendente
-- Criar primeiro usuário interno em homologação.
 - Criar endpoint de login.
 - Setar cookie real HttpOnly/Secure/SameSite.
 - Criar CSRF antes de rotas mutáveis.
 - Criar endpoint `/me` real.
 - Criar logout/revogação de sessão.
+
+### Bootstrap operacional concluído
+
+A role PostgreSQL `geoportal_auth_admin_homolog` foi criada em homologação para permitir bootstrap seguro de usuários internos:
+
+- **Backup préoperacional**: `pg_dumpall -g` executado e validado.
+- **SQL revisado manualmente**: Role criada sem superuser, sem createdb, sem createrole; com permissões mínimas exatamente especificadas em `geoportal-backend/db/security/README.md`.
+- **Execução operacional**: SQL executado manualmente em terminal contra banco de homologação.
+- **Validação de permissões**: CONNECT ✓, USAGE mod_auth ✓, SELECT usuarios ✓, INSERT usuarios ✓, USAGE sequence ✓, SELECT sequence ✓, sem DELETE/UPDATE/CREATE.
+- **Primeiro usuário administrativo criado**: `admin.homologacao` criado com sucesso via `geoportal-backend/scripts/admin/create_internal_user.py` usando role bootstrap:
+  - Login: `admin.homologacao`
+  - Nome: `Administrador Homologacao`
+  - Email: `NULL` (opcional conforme Migration 0010)
+  - Ativo: `true`
+  - Hash: Argon2id, não documentado
+- **Validação do usuário**: Conexão bem-sucedida, INSERT confirmado, sequence avançou, `mod_auth.usuarios` inserida e acessível.
+- **Validação de serviço**: Restart via harness `scripts/deploy/backend-restart-validate-service.ps1 -Environment Homologacao -Restart -Validate`, health checks OK (`/api/health`, `/api/public/iluminacao/health`, `/api/version`).
+- **Estado de produção**: Não alterado; todas operações restritas a homologação.
+- **Próxima etapa recomendada**: Não ampliar automaticamente `geoportal_auth_admin_homolog` para login runtime; criar role separada `geoportal_api_homolog` em etapa operacional futura com permissões para endpoints internos (`/api/internal/...`) acessando `mod_auth` + módulos específicos.
 - Criar autorização/perfis/permissões.
 - Criar primeiro módulo interno de negócio.
 

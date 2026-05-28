@@ -506,7 +506,18 @@ Para a criação inicial de usuários internos via `geoportal-backend/scripts/ad
 - Sem `CREATE`.
 - Sem acesso a `plano`, `web_map` ou `mod_iluminacao`.
 
-Observação: Esta role técnica será criada em etapa operacional separada com backup, inspeção, execução manual, validação e documentação. Nenhuma role real será criada nesta etapa.
+**Status operacional — Bootstrap concluído:**
+
+A role técnica `geoportal_auth_admin_homolog` foi criada em homologação com sucesso conforme especificação acima:
+
+- Backup `pg_dumpall -g` realizado antes de qualquer operação.
+- SQL revisado manualmente e executado em terminal contra banco de homologação.
+- Permissões validadas: CONNECT ✓, USAGE mod_auth ✓, SELECT usuarios ✓, INSERT usuarios ✓, USAGE sequence ✓, SELECT sequence ✓.
+- Primeira role sem DELETE, UPDATE ou CREATE; restrita ao escopo especificado.
+- Primeiro usuário administrativo `admin.homologacao` criado com sucesso via `create_internal_user.py`.
+- Health checks validados: `/api/health`, `/api/public/iluminacao/health`, `/api/version` OK.
+- Produção não alterada; todas as operações restritas a homologação.
+- Próxima etapa: não ampliar `geoportal_auth_admin_homolog` para login runtime; criar role separada `geoportal_api_homolog` para endpoints internos em etapa operacional futura.
 
 **Futura API interna (endpoints internos protegidos):**
 

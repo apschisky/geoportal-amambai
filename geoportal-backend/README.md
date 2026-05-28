@@ -45,6 +45,34 @@ Validacao operacional (harness):
 - Homologacao e producao foram reiniciadas e validadas pelo harness operacional `scripts/deploy/backend-restart-validate-service.ps1 -Environment Homologacao -Restart -Validate` e `-Environment Producao -Restart -Validate -CheckPublicProxy`.
 - Nenhum usuario real, seed, endpoint, sessao, cookie ou login funcional foi criado.
 
+Bootstrap operacional de autenticacao interna concluído:
+
+A role PostgreSQL `geoportal_auth_admin_homolog` foi criada em homologacao com sucesso para permitir bootstrap seguro de usuarios internos. O primeiro usuario administrativo `admin.homologacao` foi criado e validado:
+
+- Backup do banco realizado via `pg_dumpall -g` antes de qualquer operacao.
+- Role `geoportal_auth_admin_homolog` criada manualmente com permissoes minimas em `mod_auth`:
+  - CONNECT ao banco de homologacao
+  - USAGE no schema `mod_auth`
+  - SELECT e INSERT em `mod_auth.usuarios`
+  - USAGE e SELECT na sequence `mod_auth.usuarios_id_seq`
+  - Sem DELETE, UPDATE ou CREATE
+- Primeiro usuario `admin.homologacao` criado via `scripts/admin/create_internal_user.py`:
+  - Login: `admin.homologacao`
+  - Nome: `Administrador Homologacao`
+  - Email: `NULL` (opcional, conforme especificado)
+  - Ativo: `true`
+  - Hash de senha: Argon2id, nao incluido no Git nem em logs
+- Permissoes validadas: conexao bem-sucedida, insercao confirmada em `mod_auth.usuarios`, sequence avancou corretamente
+- Servico reiniciado e validado:
+  - `/api/health` OK
+  - `/api/public/iluminacao/health` OK
+  - `/api/version` OK
+  - Nenhuma endpoint interna criada nesta etapa
+  - Nenhuma sessao ou token criado
+  - Nenhuma alteracao em `.env` ou migration
+- Producao nao foi alterada; todas as operacoes restritas a homologacao
+- Proxima etapa: nao ampliar `geoportal_auth_admin_homolog` automaticamente; criar role `geoportal_api_homolog` em etapa operacional separada para endpoints internos
+
 Harness operacional seguro: `scripts/deploy/backend-restart-validate-service.ps1` reinicia e valida servicos da API apenas quando executado explicitamente. Ele nao faz deploy, `git pull`, migrations, alteracao de banco, alteracao de `.env`, instalacao de dependencias ou alteracao de Apache/proxy. Em producao, restart exige confirmacao interativa ou `-Force`.
 
 ## Como preparar o ambiente
