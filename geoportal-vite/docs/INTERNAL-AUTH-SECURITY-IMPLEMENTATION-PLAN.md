@@ -49,6 +49,20 @@ Atualizacao de identificador interno: o Geoportal Interno deve autenticar por `l
 - Validação operacional da migração 0010 realizada pelo harness operacional em homologação e produção: `/api/health`, `/api/public/iluminacao/health` e `/api/version` permaneceram OK; tabelas `mod_auth.usuarios`, `mod_auth.sessoes` e `mod_auth.login_auditoria` permaneceram vazias após aplicação.
 - Nenhum usuário real, endpoint de login, sessão real, token real, cookie real, CSRF ou JWT foi criado.
 
+### Decisão de arquitetura — Escalabilidade multi-módulo e usuários técnicos
+
+Registro de decisão: Tentativa realizada de usar `api_iluminacao_homolog` (usuário técnico restrito ao módulo de Iluminação Pública) para executar o script administrativo `create_internal_user.py`. A conexão ao banco funcionou, mas o acesso a `mod_auth` foi negado, confirmando que o usuário técnico está corretamente restrito ao seu escopo. Decisão tomada:
+
+1. **Manter restrição de usuários técnicos de módulos**: `api_iluminacao_homolog` permanece restrito a `mod_iluminacao` em homologação; `api_iluminacao_producao` permanece restrito a `mod_iluminacao` em produção. Não ampliar automaticamente para `mod_auth`.
+
+2. **Separação clara entre usuários humanos e técnicos**: Usuários humanos são armazenados em `mod_auth.usuarios` com login, senha e dados pessoais. Usuários técnicos são contas PostgreSQL com permissões mínimas limitadas a schemas específicos. Permissões de aplicação de usuários humanos são controladas em `mod_auth.perfis` e `mod_auth.permissoes`, não em roles PostgreSQL.
+
+3. **Escalabilidade transversal**: O Geoportal Interno é arquiteturado para suportar múltiplos módulos futuros. Cada módulo permanece em seu schema (ex: `mod_iluminacao`). Autenticação/autorização é centralizada em `mod_auth` de forma transversal. Um usuário humano em `mod_auth.usuarios` pode ter diferentes perfis e permissões em diferentes módulos, controlados via `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes`.
+
+4. **Roles técnicas futuras necessárias**: Para bootstrap inicial em homologação, será necessária role técnica com permissões mínimas sugerida como `geoportal_auth_admin_homolog`. Para futura API interna acessando múltiplos módulos, avaliar role técnica geral por ambiente sugerida como `geoportal_api_homolog` (homologação) e `geoportal_api_producao` (produção). Permissões concedidas gradualmente conforme novos endpoints forem implementados. Ambas as roles serão criadas em etapa operacional separada com backup, inspeção, execução manual e validação. Nenhuma role real será criada nesta etapa.
+
+5. **Nada em produção nesta etapa**: Nenhum endpoint de login, nenhum usuário real, nenhuma role real. Apenas documentação e decisão arquitetural.
+
 ### Preparado, mas ainda não exposto
 - Dependency FastAPI interna existe, mas não está aplicada a endpoint real.
 - Router técnico de smoke auth existe, mas não está incluído no app principal.

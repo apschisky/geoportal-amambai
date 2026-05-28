@@ -466,11 +466,67 @@ Critérios:
 
 - Usuário da API pública não deve acessar `mod_auth`.
 - Usuário da API interna deve ter privilégios mínimos.
+- Usuários técnicos de módulos específicos (ex: `api_iluminacao_homolog`) devem permanecer restritos aos seus schemas.
+- Usuários técnicos de módulos não devem ser ampliados automaticamente para `mod_auth`.
 - `GRANT`s devem ser etapa separada e documentada.
 - Evitar superuser.
 - Evitar `DELETE` em tabelas de auditoria.
 - Avaliar permissões separadas para leitura/escrita.
 - Produção deve começar sem usuário real até fluxo seguro ser criado.
+
+## 11.1 Decisão de usuários técnicos e escalabilidade
+
+**Contexto:**
+
+O Geoportal é arquiteturado para ser escalável e suportar múltiplos módulos internos, não apenas Iluminação Pública. A autenticação/autorização deve ser transversal via `mod_auth`, enquanto cada módulo permanece em seu schema específico. Usuários técnicos de banco são contas de serviço e devem ser restritos ao escopo necessário.
+
+**Decisão — Não ampliar usuários técnicos de módulos para `mod_auth`:**
+
+1. `api_iluminacao_homolog` permanece restrito a `mod_iluminacao` em homologação.
+2. `api_iluminacao_producao` permanece restrito a `mod_iluminacao` em produção.
+3. `mod_auth` não deve ser concedido automaticamente a usuários técnicos de módulos específicos.
+4. Permissões de aplicação devem ser controladas em `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes`, não em roles de banco.
+
+**Usuários humanos vs. técnicos:**
+
+- Usuários humanos: Armazenados em `mod_auth.usuarios` com `login`, `senha_hash`, `nome` e `email` opcional.
+- Usuários técnicos: Contas de serviço PostgreSQL com permissões mínimas limitadas a schemas específicos.
+- Permissões de usuários humanos: Controladas por `mod_auth.perfis` e `mod_auth.permissoes`, não por roles PostgreSQL.
+
+**Bootstrap inicial de usuários internos em homologação (etapa operacional futura):**
+
+Para a criação inicial de usuários internos via `geoportal-backend/scripts/admin/create_internal_user.py`, será necessária uma role técnica de banco com permissões mínimas. Sugestão de nome: `geoportal_auth_admin_homolog`. Permissões mínimas sugeridas:
+
+- `CONNECT` no banco de homologação.
+- `USAGE` no schema `mod_auth`.
+- `SELECT` e `INSERT` em `mod_auth.usuarios`.
+- `USAGE` e `SELECT` na sequence de `mod_auth.usuarios`.
+- Sem `DELETE`.
+- Sem `UPDATE` nesta etapa.
+- Sem `CREATE`.
+- Sem acesso a `plano`, `web_map` ou `mod_iluminacao`.
+
+Observação: Esta role técnica será criada em etapa operacional separada com backup, inspeção, execução manual, validação e documentação. Nenhuma role real será criada nesta etapa.
+
+**Futura API interna (endpoints internos protegidos):**
+
+Para endpoints internos futuros que acessam dados de múltiplos schemas, avaliar uma role técnica geral por ambiente. Sugestão de nome: `geoportal_api_homolog` (homologação) e `geoportal_api_producao` (produção). Permissões seriam concedidas gradualmente conforme endpoints internos forem implementados e testados:
+
+- `CONNECT` no banco respectivo.
+- `USAGE` no schema `mod_auth` (para consultar sessões, usuários, perfis).
+- `SELECT`, `INSERT` e `UPDATE` conforme necessário em cada módulo (ex: `mod_iluminacao`).
+- `USAGE` e `SELECT` em sequences conforme necessário.
+- Sem `DELETE` em tabelas de auditoria.
+- Sem `CREATE`, `ALTER` ou `DROP`.
+- Sem acesso a `plano`, `web_map` ou schemas administrativos.
+
+Observação: Permissões crescem conforme novos módulos internos forem implementados, sempre respeitando menor privilégio.
+
+**Restrições aplicadas:**
+
+- Nada será aplicado em produção nesta etapa.
+- Nenhum endpoint de login será criado nesta etapa.
+- Roles reais, GRANTs reais e usuário interno real ocorrerão em etapa separada com backup e validação.
 
 ## 12. Testes obrigatórios antes de expor endpoint de login
 

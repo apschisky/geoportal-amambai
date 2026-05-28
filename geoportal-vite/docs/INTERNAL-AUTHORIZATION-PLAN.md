@@ -127,6 +127,48 @@ A matriz final deve ser validada com a operacao antes de qualquer ativacao real.
 6. Fase 6: tela interna minima consumindo endpoints protegidos.
 7. Fase 7: auditoria e revisao de seguranca antes de uso por equipe real.
 
+## 9.1 Escalabilidade multi-módulo
+
+O Geoportal Interno é arquiteturado para ser escalável a múltiplos módulos, não apenas Iluminação Pública. A estratégia de autenticação e autorização reflete essa escalabilidade:
+
+**Estrutura de schemas:**
+
+- `mod_auth`: Schema transversal centralizado com usuários, perfis, permissões, sessões e auditoria de login.
+- `mod_iluminacao`: Schema do módulo de Iluminação Pública com dados operacionais específicos.
+- `mod_*`: Futuros schemas de outros módulos.
+
+**Modelo de usuários:**
+
+- Um usuário humano em `mod_auth.usuarios` representa uma pessoa.
+- O mesmo usuário pode ter diferentes perfis em diferentes módulos.
+- Exemplo: Um supervisor pode ser `admin` em Iluminação Pública, mas apenas `gestor_modulo` em futuro módulo de Drenagem.
+- Permissões específicas por módulo são controladas via `mod_auth.usuario_perfis` (vinculo entre usuário, perfil e módulo) e `mod_auth.perfil_permissoes`.
+
+**Separação de permissões:**
+
+- Permissões no banco (roles PostgreSQL) devem ser mínimas e restritas a schemas específicos.
+- Exemplos: `api_iluminacao_homolog` acessa apenas `mod_iluminacao`.
+- Permissões de aplicação (lógica de negócio) são controladas em `mod_auth` via perfis e permissões de aplicação.
+- Exemplo: Um usuário com permissão `visualizar_solicitacoes` no módulo de Iluminação Pública será verificado no backend antes de retornar dados.
+
+**Adição de novos módulos:**
+
+1. Criar schema dedicado (ex: `mod_drenagem`).
+2. Criar tabelas e estrutura específicas do módulo.
+3. Criar roles PostgreSQL mínimas para acesso ao novo schema.
+4. Adicionar novos perfis em `mod_auth.perfis` (ex: `gestor_drenagem`).
+5. Adicionar novas permissões em `mod_auth.permissoes` com `modulo = 'drenagem'`.
+6. Vincular usuários, perfis e permissões conforme necessário.
+7. Implementar endpoints internos com validação de permissão por módulo.
+
+**Benefícios:**
+
+- Isolamento de dados por módulo.
+- Controle de acesso centralizado em `mod_auth`.
+- Facilita adição de novos módulos.
+- Reduz duplicação de lógica de autenticação/autorização.
+- Permite matriz de permissões complexa e flexível por usuário/módulo.
+
 ## 10. Criterios de aceite
 
 - Nenhum endpoint interno publico.
@@ -149,3 +191,6 @@ A matriz final deve ser validada com a operacao antes de qualquer ativacao real.
 - Endpoint administrativo publico por engano.
 - Vazamento de token ou senha em log.
 - Confusao entre API publica e API interna.
+- Ampliacão inadvertida de permissões de usuários técnicos de módulos específicos.
+- Falta de escalabilidade para múltiplos módulos.
+- Duplicação de lógica de autenticação/autorização entre módulos.
