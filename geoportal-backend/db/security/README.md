@@ -46,25 +46,56 @@ Sem acesso a plano, web_map ou mod_iluminacao.
 
 **Sugestão de nome**: `geoportal_api_homolog`
 
-**Permissões mínimas sugeridas (crescem conforme novos módulos forem implementados):**
+**Finalidade inicial prevista**: role runtime da futura API interna de autenticacao em homologacao, separada da role de bootstrap `geoportal_auth_admin_homolog`. A role `geoportal_auth_admin_homolog` nao deve ser reutilizada pelo endpoint de login.
+
+**Matriz minima prevista derivada dos repositories atuais:**
 
 ```
 CONNECT no banco de homologação;
 USAGE no schema mod_auth;
-SELECT, INSERT e UPDATE em mod_auth.sessoes (para gerenciar sessões de usuários internos);
-SELECT em mod_auth.usuarios (para resolver dados de usuário autenticado);
-SELECT em mod_auth.perfis, mod_auth.permissoes, mod_auth.usuario_perfis, mod_auth.perfil_permissoes (para validar autorização);
-USAGE e SELECT em sequences de mod_auth conforme necessário;
-SELECT, INSERT em mod_iluminacao (conforme endpoints internos forem implementados);
-USAGE e SELECT em sequences de mod_iluminacao conforme necessário;
-Sem DELETE em tabelas de auditoria;
-Sem CREATE, ALTER ou DROP;
-Sem acesso a plano, web_map ou schemas administrativos.
+
+mod_auth.usuarios:
+- SELECT;
+- UPDATE somente para ultimo_login_em e atualizado_em via record_successful_login;
+- Sem INSERT;
+- Sem DELETE.
+
+mod_auth.sessoes:
+- SELECT;
+- INSERT;
+- UPDATE para revogacao de sessao;
+- Sem DELETE.
+
+mod_auth.login_auditoria:
+- SELECT;
+- INSERT;
+- Sem UPDATE;
+- Sem DELETE.
+
+Sequences:
+- USAGE e SELECT em mod_auth.sessoes_id_seq;
+- USAGE e SELECT em mod_auth.login_auditoria_id_seq.
+
+Sem CREATE;
+Sem DROP, ALTER ou TRUNCATE;
+Sem SUPERUSER, CREATEDB, CREATEROLE, REPLICATION ou BYPASSRLS;
+Sem acesso automatico a plano, web_map ou mod_iluminacao;
+Sem usar postgres como usuario runtime;
+Sem ampliar api_iluminacao_homolog para mod_auth.
 ```
 
-**Finalidade**: Suportar endpoints internos (`/api/internal/...`) que acessam dados de `mod_auth` e de módulos específicos como `mod_iluminacao`.
+**Base tecnica atual**:
 
-**Evolução esperada**: Conforme novos módulos (ex: drenagem, manutenção de vias) forem implementados, esta role poderá receber permissões adicionais SELECT/INSERT em seus schemas, mantendo o princípio de menor privilégio.
+- `auth_user_repository.py`: `SELECT` em `mod_auth.usuarios` e `UPDATE` apenas de `ultimo_login_em`/`atualizado_em`.
+- `auth_session_repository.py`: `INSERT`, `SELECT` e `UPDATE` em `mod_auth.sessoes`.
+- `auth_login_audit_repository.py`: `INSERT` e `SELECT` em `mod_auth.login_auditoria`.
+- `auth_current_session_service.py`: depende da consulta de sessao ativa por `token_hash`.
+
+**Etapa operacional futura**: a criacao real de `geoportal_api_homolog` deve ocorrer separadamente, sem producao, com backup de roles, comandos revisados, execucao manual e validacao de permissoes. Esta documentacao nao cria role real, nao cria GRANT real executavel e nao altera banco.
+
+**Finalidade**: Suportar o futuro endpoint de login e validacao de sessao interna em homologacao usando apenas `mod_auth`.
+
+**Evolucao esperada**: Permissoes para schemas de modulos, como `mod_iluminacao`, devem ser avaliadas apenas quando endpoints internos de negocio forem implementados e testados. Permissoes de aplicacao continuam em `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes`; roles PostgreSQL controlam somente acesso tecnico minimo as tabelas.
 
 #### Para produção (etapa futura)
 
@@ -109,4 +140,4 @@ A role `geoportal_auth_admin_homolog` foi criada em homologação com sucesso:
    - ✓ Nenhuma mudança em `.env` ou migração
 8. **Estado de produção**: Não alterado. Todas as operações restritas a homologação.
 
-**Próxima etapa**: Não ampliar automaticamente `geoportal_auth_admin_homolog` para login runtime. Em etapa operacional separada, criar role `geoportal_api_homolog` com permissões ampliadas para endpoints internos (`/api/internal/...`).
+**Próxima etapa**: Não ampliar automaticamente `geoportal_auth_admin_homolog` para login runtime. Em etapa operacional separada, planejar e criar `geoportal_api_homolog` com a matriz minima prevista acima, inicialmente voltada ao futuro login e validacao de sessao em `mod_auth`.

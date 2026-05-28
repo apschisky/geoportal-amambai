@@ -151,6 +151,15 @@ O Geoportal Interno é arquiteturado para ser escalável a múltiplos módulos, 
 - Permissões de aplicação (lógica de negócio) são controladas em `mod_auth` via perfis e permissões de aplicação.
 - Exemplo: Um usuário com permissão `visualizar_solicitacoes` no módulo de Iluminação Pública será verificado no backend antes de retornar dados.
 
+**Role runtime de autenticacao em homologacao:**
+
+- `geoportal_api_homolog` fica planejada como futura role runtime da API interna em homologacao, ainda sem criacao real nesta etapa.
+- `geoportal_auth_admin_homolog` e apenas role de bootstrap administrativo e nao deve ser usada pelo endpoint de login.
+- A matriz minima prevista para login e validacao de sessao inclui `CONNECT`, `USAGE` em `mod_auth`, `SELECT` em `mod_auth.usuarios`, `UPDATE` apenas de `ultimo_login_em`/`atualizado_em`, `SELECT`/`INSERT`/`UPDATE` em `mod_auth.sessoes` sem `DELETE`, `SELECT`/`INSERT` em `mod_auth.login_auditoria` sem `UPDATE`/`DELETE`, e `USAGE`/`SELECT` nas sequences `mod_auth.sessoes_id_seq` e `mod_auth.login_auditoria_id_seq`.
+- A role nao deve ter `CREATE`, `DROP`, `ALTER`, `TRUNCATE`, `SUPERUSER`, `CREATEDB`, `CREATEROLE`, `REPLICATION`, `BYPASSRLS`, acesso automatico a `plano`, `web_map` ou `mod_iluminacao`, nem deve reutilizar `postgres` como usuario runtime.
+- A criacao real deve ser etapa operacional separada, sem producao, com backup de roles, comandos revisados e validacao de permissoes.
+- O endpoint de login permanece etapa separada, com testes e feature flag ou controle equivalente de exposicao.
+
 **Adição de novos módulos:**
 
 1. Criar schema dedicado (ex: `mod_drenagem`).

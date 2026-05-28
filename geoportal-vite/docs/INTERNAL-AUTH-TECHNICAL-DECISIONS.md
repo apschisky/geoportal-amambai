@@ -199,12 +199,12 @@ Status:
 - Validacao local desta etapa: `tests/test_internal_routes_feature_flag.py` passou com 9 testes; `tests/test_internal_routes_config.py` passou com 28 testes; `tests/test_internal_auth_smoke_router.py` passou com 7 testes; suite completa local passou com 245 testes.
 - Validacao no servidor: git pull aplicado; testes no servidor passaram; homologacao, producao local e producao publica foram reiniciadas e validadas.
 - Endpoints de saude confirmados saudaveis em homologacao, producao local e producao publica: `/api/health`, `/api/public/iluminacao/health`, `/api/version` retornaram status correto em todos os ambientes.
-- Ainda nao ha endpoint interno de login, cookie real, CSRF, JWT, middleware, usuario real ou sessao real criada por endpoint. O router tecnico de smoke so fica ativo quando a feature flag e ligada explicitamente.
+- Ainda nao ha endpoint interno de login, cookie real, CSRF, JWT, middleware ou sessao real criada por endpoint. O usuario `admin.homologacao` existe somente em homologacao por bootstrap administrativo controlado. O router tecnico de smoke so fica ativo quando a feature flag e ligada explicitamente.
 - Proxima etapa: validar no servidor com a flag desligada e depois ativar somente em homologacao para smoke controlado. Classificacao de risco: Codex High.
 
 Atualizacao preparatoria: a estrutura do script administrativo `geoportal-backend/scripts/admin/create_internal_user.py` foi criada para futura criacao manual do primeiro usuario interno, sem execucao contra banco real. O script usa `getpass` para senha e confirmacao, rejeita senha vazia, nao aceita senha por argumento CLI, usa `hash_password(...)`, possui `--dry-run` sem conexao ao banco e nao imprime senha ou hash. O bootstrap do script administrativo foi corrigido; o script agora calcula a raiz `geoportal-backend` a partir de `__file__` e ajusta `sys.path` antes dos imports de `app.*`, permitindo execucao direta a partir da raiz `geoportal-backend` sem `PYTHONPATH` manual. O repository administrativo usa SQLAlchemy `text(...)` com bind parameters para existencia e `INSERT` em `mod_auth.usuarios`, recebendo apenas `senha_hash`. Esta etapa nao criou usuario real, seed, migration, endpoint, cookie, JWT, CSRF, token ou sessao real. Localmente, `tests/test_auth_service.py` passou com 26 testes de robustez de `ultimo_login_em` best effort, `tests/test_create_internal_user_admin.py` passou com 12 testes e a suite completa local passou com 264 testes. No servidor, git pull aplicado; `tests/test_auth_service.py` passou com 26 testes, `tests/test_create_internal_user_admin.py` passou com 12 testes e a suite completa no servidor passou com 264 testes. No servidor, o dry-run foi validado sem `PYTHONPATH` manual usando `python scripts/admin/create_internal_user.py --login "admin.homologacao" --email "admin.homologacao@example.test" --nome "Administrador Homologacao" --dry-run`; o script pediu senha via `getpass` e retornou: "Dry-run validado. Nenhum usuario foi criado." Homologacao e producao foram reiniciadas e validadas pelo harness operacional, mantendo a API publica saudavel.
 
-Atualizacao de identificador interno: o login passa a ser o identificador obrigatorio de autenticacao do Geoportal Interno. E-mail e opcional para cadastro e nao deve ser usado como chave obrigatoria de login, permissao ou autorizacao. A migration `0010_make_auth_user_email_optional.sql` foi criada para tornar `mod_auth.usuarios.email` nullable e manter unicidade de e-mail apenas quando informado. O script administrativo agora exige `--login` e `--nome`, aceita `--email` opcional, continua lendo senha somente via `getpass` e mantem `--dry-run` sem banco. Nenhum usuario real, endpoint de login, cookie, CSRF, JWT, token real, sessao real ou segredo foi criado.
+Atualizacao de identificador interno: o login passa a ser o identificador obrigatorio de autenticacao do Geoportal Interno. E-mail e opcional para cadastro e nao deve ser usado como chave obrigatoria de login, permissao ou autorizacao. A migration `0010_make_auth_user_email_optional.sql` foi criada para tornar `mod_auth.usuarios.email` nullable e manter unicidade de e-mail apenas quando informado. O script administrativo agora exige `--login` e `--nome`, aceita `--email` opcional, continua lendo senha somente via `getpass` e mantem `--dry-run` sem banco. Naquela etapa, nenhum usuario real, endpoint de login, cookie, CSRF, JWT, token real, sessao real ou segredo foi criado.
 
 ## 4. Política inicial de senha
 
@@ -519,21 +519,30 @@ A role técnica `geoportal_auth_admin_homolog` foi criada em homologação com s
 - Primeiro usuário administrativo `admin.homologacao` criado com sucesso via `create_internal_user.py`.
 - Health checks validados: `/api/health`, `/api/public/iluminacao/health`, `/api/version` OK.
 - Produção não alterada; todas as operações restritas a homologação.
-- Próxima etapa: não ampliar `geoportal_auth_admin_homolog` para login runtime; criar role separada `geoportal_api_homolog` para endpoints internos em etapa operacional futura.
+- Próxima etapa: não ampliar `geoportal_auth_admin_homolog` para login runtime; planejar role separada `geoportal_api_homolog` com matriz minima para futuro login e validacao de sessao em `mod_auth`.
 
-**Futura API interna (endpoints internos protegidos):**
+**Futura API interna de autenticacao em homologacao (role runtime):**
 
-Para endpoints internos futuros que acessam dados de múltiplos schemas, avaliar uma role técnica geral por ambiente. Sugestão de nome: `geoportal_api_homolog` (homologação) e `geoportal_api_producao` (produção). Permissões seriam concedidas gradualmente conforme endpoints internos forem implementados e testados:
+Para o futuro endpoint de login e validacao de sessao em homologacao, planejar uma role runtime separada. Sugestao de nome: `geoportal_api_homolog`. A role `geoportal_auth_admin_homolog` foi criada apenas para bootstrap administrativo e nao deve ser reutilizada como role runtime do endpoint de login.
 
-- `CONNECT` no banco respectivo.
-- `USAGE` no schema `mod_auth` (para consultar sessões, usuários, perfis).
-- `SELECT`, `INSERT` e `UPDATE` conforme necessário em cada módulo (ex: `mod_iluminacao`).
-- `USAGE` e `SELECT` em sequences conforme necessário.
-- Sem `DELETE` em tabelas de auditoria.
-- Sem `CREATE`, `ALTER` ou `DROP`.
-- Sem acesso a `plano`, `web_map` ou schemas administrativos.
+Matriz minima prevista para `geoportal_api_homolog`, derivada dos repositories atuais:
 
-Observação: Permissões crescem conforme novos módulos internos forem implementados, sempre respeitando menor privilégio.
+- `CONNECT` no banco de homologacao.
+- `USAGE` no schema `mod_auth`.
+- `mod_auth.usuarios`: `SELECT`; `UPDATE` somente para `ultimo_login_em` e `atualizado_em` via `record_successful_login`; sem `INSERT`; sem `DELETE`.
+- `mod_auth.sessoes`: `SELECT`; `INSERT`; `UPDATE` para revogacao de sessao; sem `DELETE`.
+- `mod_auth.login_auditoria`: `SELECT`; `INSERT`; sem `UPDATE`; sem `DELETE`.
+- Sequences: `USAGE` e `SELECT` em `mod_auth.sessoes_id_seq`; `USAGE` e `SELECT` em `mod_auth.login_auditoria_id_seq`.
+- Sem `CREATE`.
+- Sem `DROP`, `ALTER` ou `TRUNCATE`.
+- Sem `SUPERUSER`, `CREATEDB`, `CREATEROLE`, `REPLICATION` ou `BYPASSRLS`.
+- Sem acesso automatico a `plano`, `web_map` ou `mod_iluminacao`.
+- Sem usar `postgres` como usuario runtime.
+- Sem ampliar `api_iluminacao_homolog` para `mod_auth`.
+
+Permissoes de aplicacao continuam controladas em `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes`. Roles PostgreSQL controlam somente o acesso tecnico minimo as tabelas. A criacao real de `geoportal_api_homolog` deve ser etapa operacional separada, sem producao, com backup de roles, comandos revisados, execucao manual e validacao de permissoes. Esta documentacao nao cria role real nem GRANT real executavel.
+
+Observacao: Permissoes para schemas de modulos, como `mod_iluminacao`, devem ser avaliadas somente quando endpoints internos de negocio forem implementados e testados, sempre respeitando menor privilegio.
 
 **Restrições aplicadas:**
 
