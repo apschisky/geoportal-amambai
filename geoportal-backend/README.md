@@ -1,4 +1,4 @@
-# Geoportal Backend
+﻿# Geoportal Backend
 
 Prova de conceito local e segura da futura API do Geoportal de Amambai, iniciando pelo modulo de Iluminacao Publica / Manutencao de Postes.
 
@@ -25,6 +25,25 @@ Para metodologia e validação de engenharia, consulte `geoportal-vite/docs/PROJ
 Registro atual: o bootstrap do script administrativo `scripts/admin/create_internal_user.py` foi corrigido. O script agora calcula a raiz `geoportal-backend` a partir de `__file__` e ajusta `sys.path` antes dos imports de `app.*`, permitindo a execução direta a partir da raiz `geoportal-backend` sem `PYTHONPATH` manual. O script le a senha via `getpass`, pede confirmacao, rejeita senha vazia, usa Argon2id por `hash_password(...)` e nao aceita senha por argumento de linha de comando. O modo `--dry-run` valida entradas, gera hash apenas em memoria, nao conecta ao banco, nao persiste usuario e nao imprime senha ou hash. Foi criado repository administrativo testavel para `mod_auth.usuarios`, usando bind parameters e recebendo apenas `senha_hash`, nunca senha bruta. Esta etapa nao foi executada contra banco real, nao criou usuario operacional, nao criou seed, nao criou migration, nao criou endpoint, nao criou cookie, nao criou JWT e nao alterou `.env`. Localmente, `tests/test_create_internal_user_admin.py` passou com 12 testes e a suite completa local passou com 257 testes. No servidor, git pull aplicado; `tests/test_create_internal_user_admin.py` passou com 12 testes e a suite completa no servidor passou com 257 testes. No servidor, o dry-run foi validado sem `PYTHONPATH` manual usando `python scripts/admin/create_internal_user.py --login "admin.homologacao" --email "admin.homologacao@example.test" --nome "Administrador Homologacao" --dry-run`; o script pediu senha via `getpass` e retornou: "Dry-run validado. Nenhum usuario foi criado." Homologação e produção foram reiniciadas e validadas pelo harness operacional `scripts/deploy/backend-restart-validate-service.ps1 -Environment Homologacao -Restart -Validate` e `-Environment Producao -Restart -Validate -CheckPublicProxy`; a API pública continuou saudável. A criacao operacional deve ocorrer primeiro em homologacao, em etapa futura, com operador humano; nao usar migration ou seed para credencial operacional.
 
 Atualizacao de autenticacao interna: o identificador obrigatorio do usuario interno passa a ser `login`; `email` e opcional e nao deve ser requisito para criacao ou autenticacao. A migration `0010_make_auth_user_email_optional.sql` foi criada para tornar `mod_auth.usuarios.email` nullable e trocar a unicidade de e-mail para indice unico parcial apenas quando `email IS NOT NULL`, mantendo `login` obrigatorio e unico por comparacao case-insensitive. O script administrativo `scripts/admin/create_internal_user.py` agora exige `--login` e `--nome`, aceita `--email` opcional, le senha somente via `getpass`, nao aceita `--password` e preserva `--dry-run` sem banco e sem persistencia. O repository de autenticacao busca o usuario por `login`; permissoes futuras devem se vincular ao usuario por `id` e, quando necessario para exibicao/auditoria, por `login`, nunca por e-mail. Nenhum usuario real foi criado, nenhum endpoint de login foi criado, nenhum cookie/CSRF/JWT foi criado, nenhum segredo foi incluido e nenhum dado sensivel foi adicionado ao Git.
+
+Validacao da etapa 0010:
+
+Testes automatizados:
+- `tests/test_auth_user_repository.py` passou com 9 testes localmente e no servidor.
+- `tests/test_create_internal_user_admin.py` passou com 17 testes localmente e no servidor.
+- Suite completa passou com 263 testes localmente e no servidor.
+
+Validacao operacional (harness):
+- A migration `0010_make_auth_user_email_optional.sql` foi aplicada em homologacao com backup manual validado.
+- A migration `0010` foi aplicada no banco ativo de producao com backup manual validado.
+- Em homologacao e producao, `email` foi alterado para `NULL` em `mod_auth.usuarios`.
+- Em homologacao e producao, `ux_mod_auth_usuarios_email_lower` foi recreado como indice unico parcial com `WHERE email IS NOT NULL`.
+- Em homologacao e producao, `ux_mod_auth_usuarios_login_lower` permanece como indice unico obrigatorio.
+- Comentarios foram validados em homologacao e producao.
+- Tabelas `mod_auth.usuarios`, `mod_auth.sessoes` e `mod_auth.login_auditoria` permaneceram vazias apos a criacao em homologacao e producao.
+- A API publica continuou saudavel: `/api/health`, `/api/public/iluminacao/health` e `/api/version` retornaram status correto em homologacao e producao.
+- Homologacao e producao foram reiniciadas e validadas pelo harness operacional `scripts/deploy/backend-restart-validate-service.ps1 -Environment Homologacao -Restart -Validate` e `-Environment Producao -Restart -Validate -CheckPublicProxy`.
+- Nenhum usuario real, seed, endpoint, sessao, cookie ou login funcional foi criado.
 
 Harness operacional seguro: `scripts/deploy/backend-restart-validate-service.ps1` reinicia e valida servicos da API apenas quando executado explicitamente. Ele nao faz deploy, `git pull`, migrations, alteracao de banco, alteracao de `.env`, instalacao de dependencias ou alteracao de Apache/proxy. Em producao, restart exige confirmacao interativa ou `-Force`.
 

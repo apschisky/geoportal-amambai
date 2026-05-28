@@ -299,88 +299,50 @@ Com a aplicacao da `0009`, a base estrutural inicial do schema `mod_auth` esta c
 
 ## 5.1 Migration `0010_make_auth_user_email_optional.sql`
 
-Esta migration ajusta `mod_auth.usuarios` para autenticacao interna por `login` obrigatorio e senha, com `email` opcional.
+Status: aplicada e validada em homologacao e no banco ativo de producao.
+
+Esta migration altera `mod_auth.usuarios` para autenticacao interna por `login` obrigatorio e senha, com `email` opcional.
 
 Alteracoes:
 
 - `email` deixa de ser `NOT NULL`.
-- `ux_mod_auth_usuarios_email_lower` passa a ser indice unico parcial com `WHERE email IS NOT NULL`.
+- Recriar `ux_mod_auth_usuarios_email_lower` como indice unico parcial com `WHERE email IS NOT NULL`.
 - `ux_mod_auth_usuarios_login_lower` permanece como unicidade case-insensitive obrigatoria do login.
-- comentarios de `email` e `login` sao atualizados para documentar o login como identificador principal.
+- Atualizar comentarios de `email` e `login` para documentar o login como identificador principal.
 
 Ela nao cria usuario real, seed, endpoint, sessao, cookie, CSRF, JWT, GRANT, trigger ou funcao. Permissoes futuras devem se vincular a `usuario_id` e, quando necessario para referencia humana, ao `login`, nao ao e-mail.
 
-Tabelas criadas pela migration:
+Registro seguro da validacao em homologacao:
 
-- `mod_auth.sessoes`
-- `mod_auth.login_auditoria`
+- backup manual de homologacao foi criado antes da aplicacao;
+- backup manual foi validado como legivel;
+- a migration `0010` foi aplicada em homologacao;
+- `email` de `mod_auth.usuarios` foi alterado para `NULL`;
+- `ux_mod_auth_usuarios_email_lower` foi recreado como indice unico parcial com `WHERE email IS NOT NULL`;
+- `ux_mod_auth_usuarios_login_lower` permanece como indice unico obrigatorio;
+- comentarios foram validados em homologacao;
+- tabelas `mod_auth.usuarios`, `mod_auth.sessoes` e `mod_auth.login_auditoria` permaneceram vazias apos validacao;
+- nenhum usuario real, seed, endpoint ou login funcional foi criado.
 
-### `mod_auth.sessoes`
+Registro seguro da aplicacao em producao:
 
-Campos:
-
-- `id bigserial primary key`
-- `usuario_id bigint not null`
-- `token_hash varchar(255) not null`
-- `criado_em timestamptz not null default now()`
-- `expira_em timestamptz not null`
-- `revogado_em timestamptz null`
-- `ip_hash varchar(255) null`
-- `user_agent_hash varchar(255) null`
-
-Constraints:
-
-- FK restritiva de `usuario_id` para `mod_auth.usuarios(id)`.
-- `token_hash` unico.
-- `expira_em > criado_em`.
-- `revogado_em >= criado_em` quando informado.
-- `token_hash` nao vazio.
-- `ip_hash` nao vazio quando informado.
-- `user_agent_hash` nao vazio quando informado.
-- Nao armazenar token puro.
-- `ip_hash` e `user_agent_hash` sao opcionais e nunca devem conter valores brutos se houver alternativa segura.
-
-Indices:
-
-- `usuario_id`.
-- `token_hash`.
-- `expira_em`.
-- `revogado_em`.
-
-### `mod_auth.login_auditoria`
-
-Campos:
-
-- `id bigserial primary key`
-- `usuario_id bigint null`
-- `login_informado varchar(180) null`
-- `sucesso boolean not null`
-- `motivo_falha varchar(120) null`
-- `criado_em timestamptz not null default now()`
-- `origem varchar(80) null`
-
-Constraints:
-
-- FK opcional de `usuario_id` para `mod_auth.usuarios(id)`.
-- `login_informado` nao vazio quando informado.
-- `motivo_falha` nao vazio quando informado.
-- `origem` nao vazia quando informada.
-- `motivo_falha` deve ser generico, sem detalhes sensiveis.
-- Nunca registrar senha, token, hash de senha ou `DATABASE_URL`.
-
-Indices:
-
-- `usuario_id`.
-- `login_informado`.
-- `sucesso`.
-- `criado_em`.
+- backup manual do banco ativo foi criado antes da aplicacao;
+- backup manual foi validado como legivel;
+- a migration `0010` foi aplicada no banco ativo;
+- `email` de `mod_auth.usuarios` foi alterado para `NULL`;
+- `ux_mod_auth_usuarios_email_lower` foi recreado como indice unico parcial com `WHERE email IS NOT NULL`;
+- `ux_mod_auth_usuarios_login_lower` permanece como indice unico obrigatorio;
+- comentarios foram validados em producao;
+- tabelas `mod_auth.usuarios`, `mod_auth.sessoes` e `mod_auth.login_auditoria` permaneceram vazias apos a criacao;
+- a API publica continuou saudavel;
+- `/api/health`, `/api/public/iluminacao/health` e `/api/version` continuaram retornando status correto;
+- nenhum usuario real, seed, endpoint, sessao, cookie ou login funcional foi criado.
 
 Rollback correspondente:
 
-- Remover `mod_auth.sessoes`.
-- Remover `mod_auth.login_auditoria`.
-- Nao remover `mod_auth.usuarios`.
-- Nao remover perfis, permissoes, vinculos ou o schema `mod_auth`.
+- Restaurar `email` para `NOT NULL` em `mod_auth.usuarios`.
+- Recriar `ux_mod_auth_usuarios_email_lower` como indice unico obrigatorio por `lower(email)`.
+- Nao remover `mod_auth.usuarios`, `mod_auth.sessoes`, `mod_auth.login_auditoria` ou o schema `mod_auth`.
 
 ## 6. Rollbacks futuros
 

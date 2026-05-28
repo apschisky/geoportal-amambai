@@ -28,6 +28,12 @@ Pontos importantes:
   - Service puro de transporte de token implementado.
   - Dependency FastAPI interna de autenticação criada.
   - Router técnico de smoke auth `GET /api/internal/auth/smoke` criado e validado isoladamente.
+  - Feature flag `GEOPORTAL_INTERNAL_ROUTES_ENABLED` implementada com comportamento fail-closed.
+  - Testes automatizados passaram: 263 testes no total (incluindo 17 `test_create_internal_user` e 9 `test_auth_user_repository`) passaram localmente e no servidor.
+  - Migration `0010_make_auth_user_email_optional.sql` aplicada em homologação e produção.
+  - Email agora é opcional; login permanece obrigatório como identificador principal de autenticação.
+  - Validação operacional realizada pelo harness operacional em homologação e produção: `/api/health`, `/api/public/iluminacao/health` e `/api/version` permaneceram OK.
+  - Tabelas `mod_auth.usuarios`, `mod_auth.sessoes` e `mod_auth.login_auditoria` permaneceram vazias após aplicação.
 
 - Preparado, mas ainda não exposto:
   - Dependency FastAPI interna existe, mas não está aplicada a endpoint real.

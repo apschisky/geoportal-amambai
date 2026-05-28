@@ -40,10 +40,14 @@ Atualizacao de identificador interno: o Geoportal Interno deve autenticar por `l
 - Homologação reiniciada e validada pelo harness operacional `scripts/deploy/backend-restart-validate-service.ps1 -Environment Homologacao -Restart -Validate`.
 - Em homologação, `/api/internal/auth/smoke` retornou `401`, confirmando rota ativa e protegida.
 - Em produção pública, `/api/internal/auth/smoke` continuou retornando `404`, confirmando a rota interna não exposta.
-- Validação do script administrativo de usuário interno implementado: `tests/test_create_internal_user_admin.py` passou com 12 testes localmente e no servidor.
-- A suite completa de 257 testes passou localmente e no servidor.
-- Reinício operacional e validação realizados via `scripts/deploy/backend-restart-validate-service.ps1`.
+- Validação do script administrativo de usuário interno implementado: testes automatizados `tests/test_create_internal_user_admin.py` passaram com 12 testes localmente e no servidor; suite completa de 257 testes passou localmente e no servidor.
+- Reinício operacional e validação realizados pelo harness operacional `scripts/deploy/backend-restart-validate-service.ps1`.
 - Harnesses/metodologia de validação do projeto aplicados.
+- Migration `0010_make_auth_user_email_optional.sql` foi aplicada em homologação e no banco ativo de produção.
+- Email agora é opcional em `mod_auth.usuarios`; login permanece obrigatório como identificador principal.
+- Testes automatizados de autenticação passaram: 263 testes no total (incluindo 17 `test_create_internal_user` e 9 `test_auth_user_repository`) passaram localmente e no servidor.
+- Validação operacional da migração 0010 realizada pelo harness operacional em homologação e produção: `/api/health`, `/api/public/iluminacao/health` e `/api/version` permaneceram OK; tabelas `mod_auth.usuarios`, `mod_auth.sessoes` e `mod_auth.login_auditoria` permaneceram vazias após aplicação.
+- Nenhum usuário real, endpoint de login, sessão real, token real, cookie real, CSRF ou JWT foi criado.
 
 ### Preparado, mas ainda não exposto
 - Dependency FastAPI interna existe, mas não está aplicada a endpoint real.
