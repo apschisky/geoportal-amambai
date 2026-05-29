@@ -190,6 +190,8 @@ Validacao operacional em homologacao: o commit `092b5bb` foi aplicado no servido
 
 Listagem de perfis para uso futuro da tela: `GET /api/internal/admin/profiles` foi criado como endpoint somente leitura, protegido por `admin.perfis.ler`. A consulta usa apenas `SELECT` em `mod_auth.perfis`, filtra perfis ativos e retorna campos sanitizados (`id`, `chave`, `nome`, `ativo`, `criado_em`). Nao consulta `mod_auth.permissoes`, `mod_auth.perfil_permissoes`, usuarios, sessoes ou auditoria, e nao cria, altera ou remove perfis. Do ponto de vista de menor privilegio, nenhuma permissao tecnica adicional e necessaria alem da leitura de `mod_auth.perfis` ja prevista/validada para autorizacao runtime.
 
+Validacao operacional: o commit `93d96f4` Adiciona listagem interna de perfis foi aplicado no servidor e validado com pytest completo: 439 passed. A validacao isolada em homologacao confirmou 401 sem sessao e 200 com admin.homologacao possuindo `admin.perfis.ler`, retornando lista sanitizada com `id`, `chave`, `nome`, `ativo` e `criado_em`.
+
 **Finalidade**: Suportar o endpoint de login e validacao de sessao interna em homologacao usando apenas `mod_auth`.
 
 **Evolucao esperada**: Permissoes para schemas de modulos, como `mod_iluminacao`, devem ser avaliadas apenas quando endpoints internos de negocio forem implementados e testados. Permissoes de aplicacao continuam em `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes`; roles PostgreSQL controlam somente acesso tecnico minimo as tabelas.
