@@ -1,7 +1,9 @@
 from dataclasses import dataclass
+from datetime import datetime
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import IntegrityError
 
 from app.core.database import get_engine
 
@@ -11,6 +13,21 @@ class CreatedInternalUser:
     id: int
     login: str
     email: str | None
+
+
+@dataclass(frozen=True)
+class CreatedBasicInternalUser:
+    id: int
+    login: str
+    nome: str
+    email: str | None
+    ativo: bool
+    bloqueado: bool
+    criado_em: datetime
+
+
+class InternalUserConflictError(RuntimeError):
+    pass
 
 
 def internal_user_exists(
@@ -114,6 +131,84 @@ def create_internal_user(
         raise RuntimeError("internal user was not created")
 
     return CreatedInternalUser(**dict(row))
+
+
+def create_basic_internal_user(
+    *,
+    nome: str,
+    login: str,
+    senha_hash: str,
+    email: str | None = None,
+    engine: Engine | None = None,
+) -> CreatedBasicInternalUser:
+    normalized_nome = nome.strip()
+    normalized_email = email.strip().lower() if email is not None else None
+    normalized_login = login.strip().lower()
+    normalized_senha_hash = senha_hash.strip()
+
+    if not normalized_nome:
+        raise ValueError("nome must not be empty")
+    if normalized_email == "":
+        normalized_email = None
+    if normalized_email is not None and "@" not in normalized_email:
+        raise ValueError("email must have a valid minimum format")
+    if not normalized_login:
+        raise ValueError("login must not be empty")
+    if not normalized_senha_hash:
+        raise ValueError("senha_hash must not be empty")
+
+    db_engine = engine or get_engine()
+
+    statement = text(
+        """
+        INSERT INTO mod_auth.usuarios (
+            nome,
+            email,
+            login,
+            senha_hash,
+            ativo,
+            bloqueado_ate,
+            desativado_em,
+            atualizado_em
+        )
+        VALUES (
+            :nome,
+            :email,
+            :login,
+            :senha_hash,
+            true,
+            NULL,
+            NULL,
+            NULL
+        )
+        RETURNING
+            id,
+            login,
+            nome,
+            email,
+            ativo,
+            (bloqueado_ate IS NOT NULL AND bloqueado_ate > now()) AS bloqueado,
+            criado_em
+        """
+    )
+
+    params = {
+        "nome": normalized_nome,
+        "email": normalized_email,
+        "login": normalized_login,
+        "senha_hash": normalized_senha_hash,
+    }
+
+    try:
+        with db_engine.begin() as connection:
+            row = connection.execute(statement, params).mappings().first()
+    except IntegrityError as exc:
+        raise InternalUserConflictError("internal user already exists") from exc
+
+    if row is None:
+        raise RuntimeError("internal user was not created")
+
+    return CreatedBasicInternalUser(**dict(row))
 
 
 def update_internal_user_password_by_login(

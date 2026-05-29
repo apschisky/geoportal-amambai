@@ -86,6 +86,7 @@ def test_internal_smoke_route_returns_404_when_flag_is_disabled(
     assert client.get(INTERNAL_ME_PATH).status_code == 404
     assert client.get(INTERNAL_PERMISSION_SMOKE_PATH).status_code == 404
     assert client.get(INTERNAL_ADMIN_USERS_PATH).status_code == 404
+    assert client.post(INTERNAL_ADMIN_USERS_PATH, json={}).status_code == 404
     assert client.get(INTERNAL_ADMIN_USER_DETAIL_PATH).status_code == 404
 
 
