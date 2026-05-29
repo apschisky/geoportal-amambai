@@ -160,6 +160,27 @@ O Geoportal Interno é arquiteturado para ser escalável a múltiplos módulos, 
 - A criacao real foi etapa operacional separada em homologacao, sem producao, com validacao de permissoes confirmada.
 - O endpoint de login `POST /api/internal/auth/login` foi implementado sob feature flag `GEOPORTAL_INTERNAL_ROUTES_ENABLED`, testado e validado em homologacao com sucesso; retorna token opaco protegido; ainda sem cookie real, CSRF ou JWT nesta etapa.
 
+**Proteção CSRF e logout antes de endpoints mutáveis**:
+
+Antes de expor endpoints internos que alteram dados (POST/PUT/DELETE para negócio), as seguintes etapas devem ser planejadas e implementadas:
+
+1. **Decidir estratégia CSRF**: Escolher entre token CSRF separado, double-submit cookie, header customizado obrigatório, validação de Origin/Referer ou combinação. Documentado em `geoportal-vite/docs/INTERNAL-AUTH-TECHNICAL-DECISIONS.md`.
+2. **Implementar transporte de sessão seguro**: Cookie HttpOnly + Secure + SameSite com decisão consciente de política (Strict/Lax/None).
+3. **Implementar logout**: Endpoint `POST /api/internal/auth/logout` que revoga sessão preenchendo `revogado_em` em `mod_auth.sessoes`, sem DELETE físico.
+4. **Testes de CSRF**: Validar que requisições sem proteção CSRF são bloqueadas.
+5. **Testes de logout**: Validar que sessão revogada não autentica mais.
+6. **Validação operacional**: Testar em homologação com usuários reais antes de liberar para produção.
+
+**Critério de endpoint**:
+
+- GET de consulta sem efeito colateral: Sem proteção CSRF obrigatória.
+- POST/PUT/DELETE de negócio (criar/editar/deletar): Proteção CSRF obrigatória.
+- SameSite não deve ser única defesa contra CSRF; usar combinação de técnicas.
+
+**Validação intermediária com Bearer**:
+
+A validação técnica atual usa `Authorization: Bearer` com token no corpo. Esta abordagem é válida apenas para testes técnicos ou clientes não navegador. Para uso real em navegador, migrar para cookie HttpOnly conforme planejado.
+
 **Adição de novos módulos:**
 
 1. Criar schema dedicado (ex: `mod_drenagem`).

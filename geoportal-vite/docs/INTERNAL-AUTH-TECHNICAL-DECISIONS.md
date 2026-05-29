@@ -390,6 +390,95 @@ Riscos:
 - A decisão final sobre transporte deve ser tomada antes de ativacao operacional ampla do login.
 - Cookie real e CSRF nao devem ser implementados parcialmente sem testes especificos.
 
+#### Decisão arquitetural sobre transporte final e CSRF
+
+**Validação técnica intermediária realizada em homologação**:
+
+- Token opaco retornado no corpo da resposta de `POST /api/internal/auth/login` foi usado com `Authorization: Bearer` em validação técnica isolada em homologação.
+- Smoke test `GET /api/internal/auth/smoke` foi validado com Bearer token.
+- Esta abordagem foi aceita **apenas como validação técnica intermediária**, sem uso real por usuários finais.
+- Nenhum cookie real, CSRF ou frontend de usuários foi criado nesta validação.
+
+**Decisão recomendada para uso real em navegador**:
+
+Para o Geoportal Interno acessado por usuários finais em navegador, a decisão arquitetural recomendada é **cookie HttpOnly + Secure + SameSite**:
+
+- **Cookie HttpOnly**: JavaScript não pode ler o token, reduzindo risco de roubo por XSS.
+- **Cookie Secure**: Cookie enviado apenas por HTTPS em produção, protegendo contra sniffing.
+- **Cookie SameSite**: Configurado conscientemente (Strict/Lax/None) de acordo com política de compartilhamento cross-site.
+- **Padronização**: Nome do cookie, tempo de expiração e renovação devem ser padronizados em código.
+- **Conteúdo**: Cookie deve carregar apenas o token opaco bruto quando implementado; nunca deve conter senha, hash ou token_hash.
+- **Persistência de token_hash**: Continua persistido apenas em `mod_auth.sessoes` no banco, nunca no cookie.
+
+**Alternativa operacional temporária**:
+
+- `Authorization: Bearer` pode continuar para testes técnicos ou clientes não navegador (APIs de terceiros, ferramentas administrativas), se a arquitetura permitir.
+- Bearer **não deve ser o fluxo principal** para a tela interna de usuários reais em navegador.
+- Se Bearer for mantido em paralelo, aplicar salvaguardas: tokens curtos, revogação rápida, sem localStorage, sem registrar Authorization em logs.
+
+**Proteção CSRF antes de endpoints mutáveis**:
+
+Antes de implementar endpoints internos que alterem dados (POST/PUT/DELETE), proteção CSRF ou equivalente é **obrigatória**:
+
+**Opções de proteção a decidir em etapa futura**:
+
+1. **Token CSRF separado**: Gerar token específico por sessão, enviado em cookie ou session storage, validado em requisições mutáveis.
+   - Prós: Padrão estabelecido, bem testado.
+   - Contras: Exige gerenciamento duplo (token de sessão + token CSRF).
+
+2. **Double-submit cookie**: Enviar token em cookie e exigir o mesmo valor em cabeçalho customizado `X-CSRF-Token`.
+   - Prós: Simples, sem estado adicional.
+   - Contras: Requer JavaScript para ler e reenviar.
+
+3. **Header customizado obrigatório**: Exigir cabeçalho específico (ex: `X-Requested-With: XMLHttpRequest`) em todas as requisições mutáveis.
+   - Prós: Simples para SPA.
+   - Contras: Pode ser falsificado se origem/referer não forem validados.
+
+4. **Validação de Origin/Referer**: Comparar header `Origin` ou `Referer` da requisição com domínio esperado.
+   - Prós: Camada adicional, não depende apenas de cookie.
+   - Contras: Pode ter impacto com proxies/firewalls; não é única defesa.
+
+5. **SameSite como base**: Configurar SameSite=Strict ou SameSite=Lax como base, combinado com outra técnica acima.
+   - Prós: Nativa do navegador, sem código extra.
+   - Contras: Nem todos os navegadores antigos suportam; não deve ser única defesa.
+
+**Critério de escolha**:
+
+- SameSite **não deve ser tratado como única proteção** para todos os cenários.
+- GET de consulta não precisa de CSRF (idempotente, sem efeito colateral).
+- POST/PUT/DELETE de negócio (criar/editar/deletar) **exigem** proteção CSRF deliberada.
+- Escolher uma ou mais técnicas acima em etapa de design e validar em testes automatizados.
+- Implementação de CSRF será etapa separada com feature flag, testes e validação operacional em homologação.
+
+**Logout e revogação de sessão**:
+
+Logout será etapa futura separada:
+
+- Endpoint `POST /api/internal/auth/logout` revogará sessão em `mod_auth.sessoes` preenchendo `revogado_em`.
+- Uso de `DELETE` físico **não é permitido**; sessão revogada deve ser auditada, não deletada.
+- Se cookie for usado, será limpo no cliente (Set-Cookie com Max-Age=0).
+- Se Bearer for usado em paralelo, será invalidado no servidor por revogação em `revogado_em`.
+- Logout será testado e validado em homologação antes de liberar ao usuário.
+
+**Cronograma**:
+
+- Fase atual: Validação técnica intermediária concluída com Bearer + token em resposta.
+- Próxima fase: Decisão final e design de cookie HttpOnly + Secure + SameSite com CSRF.
+- Fase seguinte: Implementação de cookie/CSRF/logout com Codex High, testes e validação operacional.
+- Liberação: Após decisão e implementação, não liberar tela interna para usuários reais antes da etapa final.
+
+**Confirmações desta etapa**:
+
+- Nenhuma mudança de código Python.
+- Nenhuma mudança de testes automatizados.
+- Nenhuma migração SQL criada.
+- Nenhuma cookie real implementada.
+- Nenhuma CSRF real implementada.
+- Nenhuma mudança em produção.
+- Nenhuma mudança em NSSM.
+- Nenhuma mudança em `.env` versionado.
+- Decisão e direcionamento documentados em Markdown somente.
+
 ## 7. Expiração, revogação e ciclo de vida da sessão
 
 Proposta:

@@ -131,7 +131,9 @@ Validação realizada (processo isolado em homologação):
 
 **Finalidade**: Suportar o endpoint de login e validacao de sessao interna em homologacao usando apenas `mod_auth`.
 
-**Evolucao esperada**: Permissoes para schemas de modulos, como `mod_iluminacao`, devem ser avaliadas apenas quando endpoints internos de negocio forem implementados e testados. Permissoes de aplicacao continuam em `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes`; roles PostgreSQL controlam somente acesso tecnico minimo as tabelas.
+**Evolucao esperada**: Permissoes para schemas de modulos, como `mod_iluminacao`, devem ser avaliadas apenas quando endpoints internos de negocio forem implementados e testados. Permissoes de aplicacao continuam em `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes`; roles PostgreSQL controlam somente acesso tecnico minimo as tabelas. 
+
+**Logout e revogacao futura**: Logout sera etapa futura separada; sessoes revogadas serao marcadas com `revogado_em` preenchido no update, nunca deletadas fisicamente (auditoria). Endpoint `POST /api/internal/auth/logout` revogara sessao; se cookie for implementado, sera limpo no cliente; se Bearer for usado, sera invalidado no servidor. Testes de logout validarao que sessao revogada nao autentica mais.
 
 #### Para produção (etapa futura)
 
