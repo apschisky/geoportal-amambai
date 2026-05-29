@@ -150,6 +150,18 @@ A validacao confirmou, para cada uma dessas tabelas: `SELECT=true`, `INSERT=fals
 
 Resultado sanitizado final: `login_status=200`, `login_set_cookie=True`, `cookie_jar_tem_sessao=True`, `me_status=200`, `me_authenticated=True`, `me_usuario_id=7`, `me_permissoes=[]`, `me_tem_token=False`, `me_tem_cookie=False`, `me_tem_senha_hash=False`, `me_tem_token_hash=False`, `me_tem_session_secret=False`, `me_tem_database_url=False`. `permissoes=[]` e comportamento esperado porque nenhum perfil/permissao real foi criado ou atribuido ao `admin.homologacao`.
 
+**Plano de bootstrap do perfil administrativo inicial**:
+
+A proxima etapa deve criar, primeiro em homologacao, o perfil `Administrador Interno do Geoportal` e as permissoes administrativas iniciais por script administrativo idempotente, nao por SQL manual solto. O script devera aceitar `--dry-run`, exigir `--login` ou parametro explicito equivalente, usar bind parameters, validar ambiente antes da execucao real, nao apagar registros, nao duplicar perfis/permissoes/vinculos, criar permissoes e perfil somente quando ausentes, associar permissoes ao perfil quando faltar e atribuir o perfil ao usuario informado quando ainda nao atribuido. Tambem devera ter testes automatizados e nao imprimir senha, token, hash, `session_secret` ou `DATABASE_URL`.
+
+Permissoes administrativas iniciais propostas: `admin.usuarios.ler`, `admin.usuarios.criar`, `admin.usuarios.bloquear`, `admin.usuarios.redefinir_senha`, `admin.usuarios.atribuir_perfis`, `admin.perfis.ler`, `admin.perfis.gerenciar`, `admin.permissoes.ler`, `admin.permissoes.gerenciar` e `internal.auth.me`. Em homologacao, o perfil sera atribuido ao `admin.homologacao`.
+
+O administrador funcional do Geoportal Interno nao e superuser de banco e nao deve receber permissoes PostgreSQL especiais por ser administrador da aplicacao. A role runtime `geoportal_api_homolog` continua apenas lendo permissoes e nao deve criar, alterar ou excluir perfis/permissoes. Para executar bootstrap em homologacao, pode ser necessaria role administrativa operacional, como `geoportal_auth_admin_homolog`, com permissoes temporarias e controladas, seguidas de revogacao quando forem apenas operacionais.
+
+Roteiro recomendado em homologacao: backup antes; `--dry-run` do script; execucao real controlada; validacao das tabelas `mod_auth`; validacao de `/api/internal/auth/me` retornando permissoes administrativas; documentacao do resultado.
+
+Estrategia para producao: producao nao recebe dados automaticamente da homologacao e nao deve ter copia cega de dados. Usar o mesmo script idempotente apenas depois de validado, com backup obrigatorio e `--dry-run` obrigatorio antes da execucao real. Criacao de usuario real de producao e etapa propria. Nenhuma senha, token ou hash deve ser documentado; nenhuma migration ou restart de producao deve ocorrer sem confirmacao humana; a feature flag interna permanece sob controle; tela interna so depois de autorizacao e endpoints administrativos seguros.
+
 **Finalidade**: Suportar o endpoint de login e validacao de sessao interna em homologacao usando apenas `mod_auth`.
 
 **Evolucao esperada**: Permissoes para schemas de modulos, como `mod_iluminacao`, devem ser avaliadas apenas quando endpoints internos de negocio forem implementados e testados. Permissoes de aplicacao continuam em `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes`; roles PostgreSQL controlam somente acesso tecnico minimo as tabelas.

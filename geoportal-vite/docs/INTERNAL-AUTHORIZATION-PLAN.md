@@ -22,6 +22,10 @@ Registro operacional de validacao do `/api/internal/auth/me`: o commit `03efa10`
 
 Resultado sanitizado final do `/me`: `login_status=200`, `login_set_cookie=True`, `cookie_jar_tem_sessao=True`, `me_status=200`, `me_authenticated=True`, `me_usuario_id=7`, `me_permissoes=[]`, `me_tem_token=False`, `me_tem_cookie=False`, `me_tem_senha_hash=False`, `me_tem_token_hash=False`, `me_tem_session_secret=False`, `me_tem_database_url=False`. `permissoes=[]` e esperado porque ainda nao foi criado nem atribuido perfil/permissao real ao `admin.homologacao`. Producao, NSSM e `.env` versionado nao foram alterados.
 
+Plano de bootstrap controlado: a proxima etapa sera criar em homologacao o perfil inicial `Administrador Interno do Geoportal` e permissoes administrativas por script administrativo idempotente, com `--dry-run`, testes automatizados e validacao de ambiente, nao por SQL manual solto. O futuro script deve usar bind parameters, nao apagar registros, nao duplicar perfis/permissoes/vinculos, criar permissoes e perfil quando ausentes, associar permissoes ao perfil quando ainda nao associadas, atribuir o perfil ao usuario informado quando ainda nao atribuido, exigir parametros explicitos como `--login`, nao depender de login hardcoded e nao imprimir senha, token, hash, `session_secret` ou `DATABASE_URL`.
+
+Permissoes administrativas iniciais propostas: `admin.usuarios.ler`, `admin.usuarios.criar`, `admin.usuarios.bloquear`, `admin.usuarios.redefinir_senha`, `admin.usuarios.atribuir_perfis`, `admin.perfis.ler`, `admin.perfis.gerenciar`, `admin.permissoes.ler`, `admin.permissoes.gerenciar` e `internal.auth.me`. Em homologacao, o perfil sera atribuido ao `admin.homologacao`. Esse administrador funcional nao e superuser de banco e nao deve receber permissoes PostgreSQL especiais por ser administrador da aplicacao.
+
 ## 1. Separacao publico/interno
 
 - Endpoints publicos continuam em `/api/public/...`.
@@ -247,14 +251,18 @@ Próximos passos de autorização: decidir quando remover o token do corpo da re
 
 Sequencia imediata recomendada apos a base tecnica de autorizacao:
 
-1. Criar mecanismo administrativo controlado para perfil inicial `Administrador Interno`, se necessario, sem dado sensivel no Git.
-2. Atribuir o perfil administrativo ao `admin.homologacao` somente em homologacao.
-3. Validar permissoes efetivas em homologacao pelo endpoint tecnico `/api/internal/auth/me`.
-4. So depois criar endpoints administrativos reais de usuarios/perfis.
-5. So depois criar endpoints de negocio de Iluminacao Publica.
-6. So depois criar tela interna.
+1. Implementar o script administrativo de bootstrap de perfil/permissoes com Codex High.
+2. Testar localmente, incluindo idempotencia, `--dry-run`, bind parameters e ausencia de dados sensiveis na saida.
+3. Em homologacao: fazer backup, executar `--dry-run`, executar de forma real controlada, validar tabelas `mod_auth` e validar `/api/internal/auth/me` retornando permissoes administrativas.
+4. Documentar o resultado de homologacao.
+5. Planejar producao separadamente: backup obrigatorio, `--dry-run` obrigatorio, confirmacao humana, criacao de usuario real de producao em etapa propria, sem copiar dados de homologacao.
+6. So depois criar endpoints administrativos reais de usuarios/perfis.
+7. So depois criar endpoints de negocio de Iluminacao Publica.
+8. So depois criar tela interna.
 
 Producao continua sem alteracao nesta etapa documental.
+
+Nao havera copia cega dos dados de homologacao para producao. O que migra e codigo versionado, migrations estruturais quando existirem, scripts administrativos validados e roteiro operacional. Nao migram senhas, sessoes, tokens, dados de teste ou usuarios ficticios.
 
 **Adição de novos módulos:**
 

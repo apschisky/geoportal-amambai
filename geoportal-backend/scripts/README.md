@@ -18,6 +18,28 @@ Regras:
 
 O login e o identificador obrigatorio de autenticacao interna. E-mail e apenas dado opcional. Os scripts nao devem ser executados contra banco real sem revisao operacional e nao devem registrar senha, hash, token, segredo ou `DATABASE_URL` no Git. O reset de senha e ferramenta operacional controlada; nao cria endpoint, nao cria usuario, nao cria migration, nao altera schema e nao deve ser usado em producao sem etapa operacional revisada.
 
+## Bootstrap futuro de perfis e permissoes
+
+A proxima ferramenta administrativa planejada devera fazer o bootstrap idempotente do perfil inicial `Administrador Interno do Geoportal` e das permissoes administrativas iniciais. Esse bootstrap deve ser implementado por script administrativo revisado, com `--dry-run`, testes automatizados e validacao de ambiente; nao deve ser feito por SQL manual solto.
+
+Caracteristicas obrigatorias do futuro script:
+
+- Exigir parametros explicitos, como `--login`.
+- Usar bind parameters em todas as operacoes SQL.
+- Nao apagar registros.
+- Nao duplicar perfis, permissoes ou vinculos.
+- Criar permissoes se nao existirem.
+- Criar perfil se nao existir.
+- Associar permissoes ao perfil se ainda nao associadas.
+- Atribuir perfil ao usuario informado se ainda nao atribuido.
+- Nao depender de login hardcoded.
+- Nao imprimir senha, token, hash, `session_secret` ou `DATABASE_URL`.
+- Ter testes automatizados antes de qualquer execucao real.
+
+Permissoes iniciais propostas: `admin.usuarios.ler`, `admin.usuarios.criar`, `admin.usuarios.bloquear`, `admin.usuarios.redefinir_senha`, `admin.usuarios.atribuir_perfis`, `admin.perfis.ler`, `admin.perfis.gerenciar`, `admin.permissoes.ler`, `admin.permissoes.gerenciar` e `internal.auth.me`. Em homologacao, a atribuicao inicial prevista e ao usuario `admin.homologacao`.
+
+Producao nao deve receber dados automaticamente da homologacao. O que migra entre ambientes e codigo versionado, migrations estruturais quando existirem, scripts administrativos validados e roteiro operacional; nao migram senhas, sessoes, tokens, dados de teste ou usuarios ficticios.
+
 ### Decisão de usuários técnicos para bootstrap
 
 **Contexto**: Tentativa realizada de usar `api_iluminacao_homolog` (usuário técnico restrito a `mod_iluminacao`) para executar `create_internal_user.py`. A conexão funcionou, mas acesso a `mod_auth` foi negado, confirmando restrição correta.
