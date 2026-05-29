@@ -110,6 +110,55 @@ Validacao real do login interno: Foi realizada validacao com processo isolado em
 
 Proxima etapa recomendada: Decidir transporte final de sessao para uso real com usuarios finais (preferencialmente cookie HttpOnly + Secure + SameSite); planejar CSRF se necessario; nao liberar tela interna para usuarios antes dessa decisao; depois implementar autorizacao por modulo/perfil/permissao.
 
+Validacao operacional de cookie HttpOnly, logout e protecao mutavel inicial em homologacao (processo isolado):
+
+Commit validado no servidor: `eaf5724` Implementa cookie e logout internos.
+
+Testes no servidor: pytest completo passou com 298 testes.
+
+Validacao executada em processo isolado, sem alterar NSSM, sem alterar producao e sem alterar `.env` versionado. Foram usadas variaveis temporarias apenas no processo de teste: `DATABASE_URL` temporaria com `geoportal_api_homolog`, `GEOPORTAL_INTERNAL_ROUTES_ENABLED`, `GEOPORTAL_INTERNAL_SESSION_SECRET`, `GEOPORTAL_INTERNAL_SESSION_COOKIE_SECURE=false` para TestClient/local e `TEST_INTERNAL_PASSWORD`. Todas as variaveis temporarias foram limpas apos o teste.
+
+Resultado sanitizado do login:
+- `login_status=200`
+- `login_authenticated=True`
+- `login_usuario_id=7`
+- `login_login=admin.homologacao`
+- `login_tem_token_no_corpo=True`
+- `login_set_cookie=True`
+- `cookie_jar_tem_sessao=True`
+- `cookie_httponly=True`
+- `cookie_samesite_lax=True`
+- `cookie_path_internal=True`
+
+Resultado sanitizado do smoke autenticado por cookie:
+- `smoke_cookie_status=200`
+- `smoke_authenticated=True`
+- `smoke_usuario_id=7`
+- `smoke_tem_sessao_id=True`
+
+Protecao mutavel inicial validada:
+- `POST /api/internal/auth/logout` sem header retornou 403.
+- Header exigido: `X-Geoportal-Internal-Request: 1`.
+- `POST /api/internal/auth/login` nao exige esse header.
+- `GET /api/internal/auth/smoke` nao exige esse header.
+
+Resultado sanitizado do logout:
+- `logout_status=200`
+- `logout_logged_out=True`
+- `logout_limpa_cookie=True`
+- `cookie_jar_tem_sessao_apos_logout=False`
+- `smoke_apos_logout_status=401`
+
+Contagens apos teste:
+- `mod_auth.usuarios=1`
+- `mod_auth.sessoes=2`
+- `mod_auth.login_auditoria=2`
+- `sessoes_revogadas=1`
+
+Confirmacoes da validacao: cookie HttpOnly, SameSite=Lax, Path `/api/internal`, sessao opaca, revogacao logica por `revogado_em`, sem DELETE fisico, Bearer ainda disponivel como suporte tecnico/intermediario e cookie como transporte principal planejado para navegador. Nenhuma senha, token real, cookie real, hash, `token_hash`, `session_secret`, `DATABASE_URL` real, IP, host ou segredo foi registrado.
+
+Proximos passos: decidir quando remover o token do corpo da resposta ou restringi-lo a ambiente tecnico; planejar validacao de Origin/Referer como camada complementar; planejar endpoints internos de negocio somente apos autorizacao por perfis/permissoes; nao liberar tela interna para usuarios reais antes de fechar autorizacao e frontend seguro.
+
 Harness operacional seguro: `scripts/deploy/backend-restart-validate-service.ps1` reinicia e valida servicos da API apenas quando executado explicitamente. Ele nao faz deploy, `git pull`, migrations, alteracao de banco, alteracao de `.env`, instalacao de dependencias ou alteracao de Apache/proxy. Em producao, restart exige confirmacao interativa ou `-Force`.
 
 ## Como preparar o ambiente

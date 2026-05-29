@@ -183,6 +183,14 @@ Antes de expor endpoints internos que alteram dados (POST/PUT/DELETE para negóc
 
 A validação técnica inicial usou `Authorization: Bearer` com token no corpo. Esta abordagem permanece válida apenas para testes técnicos ou clientes não navegador. Para uso real em navegador, o fluxo principal passa a ser cookie HttpOnly.
 
+**Validação operacional do transporte por cookie e logout**:
+
+O commit `eaf5724` Implementa cookie e logout internos foi validado no servidor com pytest completo: 298 passed. A validação operacional ocorreu em processo isolado de homologação, usando variáveis temporárias (`DATABASE_URL` com `geoportal_api_homolog`, `GEOPORTAL_INTERNAL_ROUTES_ENABLED`, `GEOPORTAL_INTERNAL_SESSION_SECRET`, `GEOPORTAL_INTERNAL_SESSION_COOKIE_SECURE=false` para TestClient/local e `TEST_INTERNAL_PASSWORD`), todas limpas ao final. Não houve alteração de produção, NSSM, `.env` versionado, role, GRANT, migration ou schema.
+
+Resultado sanitizado: login status 200 para `admin.homologacao` (`usuario_id=7`), cookie setado com HttpOnly, SameSite=Lax e Path `/api/internal`, smoke autenticado por cookie status 200, logout sem header status 403, logout com `X-Geoportal-Internal-Request: 1` status 200, cookie limpo e smoke após logout status 401. Contagens após teste: `mod_auth.usuarios=1`, `mod_auth.sessoes=2`, `mod_auth.login_auditoria=2`, `sessoes_revogadas=1`.
+
+Próximos passos de autorização: decidir quando remover o token do corpo da resposta ou restringi-lo a ambiente técnico, planejar validação Origin/Referer como camada complementar, implementar endpoints internos de negócio somente após autorização por perfis/permissões, e não liberar tela interna para usuários reais antes de fechar autorização e frontend seguro.
+
 **Adição de novos módulos:**
 
 1. Criar schema dedicado (ex: `mod_drenagem`).

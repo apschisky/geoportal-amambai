@@ -12,6 +12,22 @@ Validação no servidor: commits `0baeeca` Corrige filtros opcionais da auditori
 O endpoint interno `POST /api/internal/auth/login` existe somente sob `GEOPORTAL_INTERNAL_ROUTES_ENABLED`; em sucesso, seta cookie `geoportal_internal_session` HttpOnly, SameSite=Lax, Path `/api/internal`, Max-Age alinhado a sessao e Secure configuravel com padrao seguro em producao. Bearer continua aceito como suporte tecnico/intermediario. O endpoint `POST /api/internal/auth/logout` revoga a sessao por `revogado_em`, limpa o cookie e exige header `X-Geoportal-Internal-Request: 1`. Não há endpoint de negócio interno, JWT ou middleware de autenticação global. O usuário `admin.homologacao` existe somente em homologação por bootstrap administrativo controlado. O router técnico de smoke e os endpoints de login/logout só ficam ativos com feature flag ligada explicitamente.
 Próximos passos: manter a flag desligada em produção; homologação permanece como ambiente controlado para smoke test protegido, login interno inicial e validação operacional do cookie/logout; ainda sem JWT, endpoint `/me` ou endpoint de negócio interno.
 
+Validação operacional de cookie HttpOnly, logout e proteção mutável inicial em homologação (processo isolado):
+
+Commit validado no servidor: `eaf5724` Implementa cookie e logout internos. Pytest completo no servidor: 298 passed.
+
+A validação foi executada em processo isolado, sem alterar NSSM, sem alterar produção, sem alterar `.env` versionado e sem manter variáveis temporárias no ambiente. Foram usadas apenas durante o processo: `DATABASE_URL` temporária com `geoportal_api_homolog`, `GEOPORTAL_INTERNAL_ROUTES_ENABLED`, `GEOPORTAL_INTERNAL_SESSION_SECRET`, `GEOPORTAL_INTERNAL_SESSION_COOKIE_SECURE=false` para TestClient/local e `TEST_INTERNAL_PASSWORD`. Todas foram limpas após o teste.
+
+Resultados sanitizados:
+- Login: `login_status=200`, `login_authenticated=True`, `login_usuario_id=7`, `login_login=admin.homologacao`, `login_tem_token_no_corpo=True`, `login_set_cookie=True`.
+- Cookie: `cookie_jar_tem_sessao=True`, `cookie_httponly=True`, `cookie_samesite_lax=True`, `cookie_path_internal=True`.
+- Smoke autenticado por cookie: `smoke_cookie_status=200`, `smoke_authenticated=True`, `smoke_usuario_id=7`, `smoke_tem_sessao_id=True`.
+- Proteção mutável inicial: logout sem header retornou 403; header exigido `X-Geoportal-Internal-Request: 1`; login e GET smoke não exigem esse header.
+- Logout: `logout_status=200`, `logout_logged_out=True`, `logout_limpa_cookie=True`, `cookie_jar_tem_sessao_apos_logout=False`, `smoke_apos_logout_status=401`.
+- Contagens após teste: `mod_auth.usuarios=1`, `mod_auth.sessoes=2`, `mod_auth.login_auditoria=2`, `sessoes_revogadas=1`.
+
+Confirmações: cookie HttpOnly, SameSite=Lax, Path `/api/internal`, sessão opaca, revogação lógica por `revogado_em`, sem DELETE físico, Bearer mantido como suporte técnico/intermediário e cookie como transporte principal planejado para navegador. Próximos passos: decidir quando remover o token do corpo da resposta ou restringi-lo a ambiente técnico; planejar validação Origin/Referer como camada complementar; planejar endpoints internos de negócio apenas após autorização por perfis/permissões; não liberar tela interna para usuários reais antes de autorização e frontend seguro.
+
 Validação operacional de login real em homologação (processo isolado):
 
 Preparação em homologação:

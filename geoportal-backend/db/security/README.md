@@ -129,11 +129,13 @@ Validação realizada (processo isolado em homologação):
 - Confirmada: SELECT em usuarios, INSERT em sessoes, INSERT em login_auditoria.
 - Nenhuma alteração em produção, NSSM ou .env versionado.
 
+Validação operacional posterior do commit `eaf5724` Implementa cookie e logout internos confirmou, em processo isolado de homologação, o transporte por cookie HttpOnly e o logout com a mesma role runtime. O processo usou variáveis temporárias (`DATABASE_URL` com `geoportal_api_homolog`, feature flag interna, segredo de sessão, cookie secure desabilitado apenas para TestClient/local e senha temporária de teste), todas limpas ao final. Pytest completo no servidor: 298 passed. Resultado sanitizado: login status 200, cookie HttpOnly/SameSite=Lax/Path `/api/internal` setado, smoke autenticado por cookie status 200, logout sem `X-Geoportal-Internal-Request: 1` retornou 403, logout com header retornou 200 e limpou cookie, smoke após logout retornou 401. Contagens após teste: `mod_auth.usuarios=1`, `mod_auth.sessoes=2`, `mod_auth.login_auditoria=2`, `sessoes_revogadas=1`. Nenhum token, cookie real, senha, hash, segredo, host, IP ou `DATABASE_URL` real foi registrado.
+
 **Finalidade**: Suportar o endpoint de login e validacao de sessao interna em homologacao usando apenas `mod_auth`.
 
 **Evolucao esperada**: Permissoes para schemas de modulos, como `mod_iluminacao`, devem ser avaliadas apenas quando endpoints internos de negocio forem implementados e testados. Permissoes de aplicacao continuam em `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes`; roles PostgreSQL controlam somente acesso tecnico minimo as tabelas.
 
-**Logout e revogacao futura**: Logout sera etapa futura separada; sessoes revogadas serao marcadas com `revogado_em` preenchido no update, nunca deletadas fisicamente (auditoria). Endpoint `POST /api/internal/auth/logout` revogara sessao; se cookie for implementado, sera limpo no cliente; se Bearer for usado, sera invalidado no servidor. Testes de logout validarao que sessao revogada nao autentica mais.
+**Logout e revogacao**: Logout foi implementado no endpoint interno `POST /api/internal/auth/logout`; sessoes revogadas sao marcadas com `revogado_em` preenchido no update, nunca deletadas fisicamente. O cookie `geoportal_internal_session` e limpo no cliente; se Bearer for usado como suporte tecnico/intermediario, a sessao tambem fica invalidada no servidor por revogacao.
 
 #### Para produção (etapa futura)
 
