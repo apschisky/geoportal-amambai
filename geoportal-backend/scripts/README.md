@@ -14,7 +14,9 @@ Regras:
 
 `admin/create_internal_user.py` e um script administrativo manual preparatorio para criacao futura de usuario interno. Ele exige `--login` e `--nome`, aceita `--email` opcional, le a senha somente via `getpass`, nao aceita `--password` e preserva `--dry-run` sem conectar ao banco e sem persistir usuario.
 
-O login e o identificador obrigatorio de autenticacao interna. E-mail e apenas dado opcional. O script nao deve ser executado contra banco real sem revisao operacional e nao deve registrar senha, hash, token, segredo ou `DATABASE_URL` no Git.
+`admin/reset_internal_user_password.py` e um script administrativo manual para redefinir a senha de usuario interno existente por `--login`. Ele le e confirma a nova senha somente via `getpass`, nao aceita `--password`, nao recebe hash por argumento e preserva `--dry-run` sem conectar ao banco e sem persistir alteracao. Fora de `--dry-run`, ele atualiza somente `senha_hash` e `atualizado_em` do usuario encontrado pelo login, usando bind parameters no repository administrativo.
+
+O login e o identificador obrigatorio de autenticacao interna. E-mail e apenas dado opcional. Os scripts nao devem ser executados contra banco real sem revisao operacional e nao devem registrar senha, hash, token, segredo ou `DATABASE_URL` no Git. O reset de senha e ferramenta operacional controlada; nao cria endpoint, nao cria usuario, nao cria migration, nao altera schema e nao deve ser usado em producao sem etapa operacional revisada.
 
 ### Decisão de usuários técnicos para bootstrap
 

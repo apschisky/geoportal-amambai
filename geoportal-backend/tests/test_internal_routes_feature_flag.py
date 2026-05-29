@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from datetime import UTC, datetime
 import importlib
 
@@ -22,7 +23,9 @@ def reload_main_app() -> object:
 
 
 @pytest.fixture(autouse=True)
-def reset_main_app_after_test(monkeypatch: pytest.MonkeyPatch) -> None:
+def reset_main_app_after_test(
+    monkeypatch: pytest.MonkeyPatch,
+) -> Generator[None, None, None]:
     yield
     monkeypatch.delenv(INTERNAL_ROUTES_ENABLED_ENV_VAR, raising=False)
     monkeypatch.delenv(SESSION_SECRET_ENV_VAR, raising=False)

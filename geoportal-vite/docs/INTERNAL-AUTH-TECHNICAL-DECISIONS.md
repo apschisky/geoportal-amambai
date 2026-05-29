@@ -32,7 +32,9 @@ Pontos importantes:
   - Router técnico de smoke auth `GET /api/internal/auth/smoke` criado e validado isoladamente.
   - Endpoint interno de login `POST /api/internal/auth/login` criado sob feature flag, chamando `auth_service.authenticate_user(...)`.
   - Feature flag `GEOPORTAL_INTERNAL_ROUTES_ENABLED` implementada com comportamento fail-closed.
-  - Testes automatizados locais passaram: 269 testes no total, incluindo 5 testes do endpoint interno de login, 26 `test_auth_service`, 17 `test_create_internal_user` e 9 `test_auth_user_repository`.
+  - Script administrativo `scripts/admin/reset_internal_user_password.py` criado para redefinir senha de usuario interno existente por login, com `getpass`, sem senha/hash por argumento e com `--dry-run` sem banco.
+  - Repository administrativo possui update parametrizado de senha por login, alterando somente `senha_hash` e `atualizado_em`.
+  - Testes automatizados locais passaram: 281 testes no total, incluindo 12 testes do reset administrativo, 5 testes do endpoint interno de login, 26 `test_auth_service`, 17 `test_create_internal_user` e 9 `test_auth_user_repository`.
   - Migration `0010_make_auth_user_email_optional.sql` aplicada em homologação e produção.
   - Email agora é opcional; login permanece obrigatório como identificador principal de autenticação.
   - Validação operacional realizada pelo harness operacional em homologação e produção: `/api/health`, `/api/public/iluminacao/health` e `/api/version` permaneceram OK.
@@ -72,6 +74,7 @@ Pontos importantes:
 - Nenhum dado real em teste automatizado.
 - Nenhum endpoint interno sem teste de acesso negado.
 - Resposta de login inválido sempre genérica.
+- Redefinicao administrativa de senha deve ocorrer por ferramenta operacional controlada, com `getpass`, sem senha/hash por CLI, sem endpoint dedicado e sem tentativa de recuperar senha a partir de hash.
 
 ## 3. Decisão sobre hash de senha
 

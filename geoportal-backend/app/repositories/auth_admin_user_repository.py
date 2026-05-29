@@ -114,3 +114,41 @@ def create_internal_user(
         raise RuntimeError("internal user was not created")
 
     return CreatedInternalUser(**dict(row))
+
+
+def update_internal_user_password_by_login(
+    *,
+    login: str,
+    senha_hash: str,
+    engine: Engine | None = None,
+) -> bool:
+    normalized_login = login.strip().lower()
+    normalized_senha_hash = senha_hash.strip()
+
+    if not normalized_login:
+        raise ValueError("login must not be empty")
+    if not normalized_senha_hash:
+        raise ValueError("senha_hash must not be empty")
+
+    db_engine = engine or get_engine()
+
+    statement = text(
+        """
+        UPDATE mod_auth.usuarios
+        SET
+            senha_hash = :senha_hash,
+            atualizado_em = now()
+        WHERE lower(login) = lower(:login)
+        RETURNING id
+        """
+    )
+
+    params = {
+        "login": normalized_login,
+        "senha_hash": normalized_senha_hash,
+    }
+
+    with db_engine.begin() as connection:
+        row = connection.execute(statement, params).mappings().first()
+
+    return row is not None
