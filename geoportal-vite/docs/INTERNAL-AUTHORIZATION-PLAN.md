@@ -18,6 +18,10 @@ Registro arquitetural atual: a autenticacao interna, a sessao opaca por cookie H
 
 Registro de implementacao da base tecnica: foram implementados repository de permissoes efetivas do usuario, service `has_permission(usuario_id, permissao)`, dependency FastAPI `require_permission("permissao")` e endpoint tecnico `GET /api/internal/auth/me`. Esta etapa nao cria perfis reais, permissoes reais, vinculos reais, usuarios reais, roles, GRANTs, migrations, seeds, endpoints administrativos reais ou tela interna.
 
+Registro operacional de validacao do `/api/internal/auth/me`: o commit `03efa10` Implementa base de autorizacao interna foi aplicado no servidor e validado com pytest completo: 311 passed. A validacao ocorreu em processo isolado de homologacao com `DATABASE_URL` temporaria usando `geoportal_api_homolog`, `GEOPORTAL_INTERNAL_ROUTES_ENABLED`, `GEOPORTAL_INTERNAL_SESSION_SECRET`, `GEOPORTAL_INTERNAL_SESSION_COOKIE_SECURE=false` para TestClient/local e `TEST_INTERNAL_PASSWORD`; todas as variaveis temporarias foram limpas ao final. O primeiro teste falhou por falta de `SELECT` em `mod_auth.usuario_perfis`, confirmando a necessidade de ampliar a matriz runtime apenas para leitura das tabelas de autorizacao. Em homologacao, foram concedidos somente `GRANT SELECT` para `geoportal_api_homolog` em `mod_auth.usuario_perfis`, `mod_auth.perfis`, `mod_auth.perfil_permissoes` e `mod_auth.permissoes`; a validacao confirmou `SELECT=true` e `INSERT=false`, `UPDATE=false`, `DELETE=false` em cada tabela.
+
+Resultado sanitizado final do `/me`: `login_status=200`, `login_set_cookie=True`, `cookie_jar_tem_sessao=True`, `me_status=200`, `me_authenticated=True`, `me_usuario_id=7`, `me_permissoes=[]`, `me_tem_token=False`, `me_tem_cookie=False`, `me_tem_senha_hash=False`, `me_tem_token_hash=False`, `me_tem_session_secret=False`, `me_tem_database_url=False`. `permissoes=[]` e esperado porque ainda nao foi criado nem atribuido perfil/permissao real ao `admin.homologacao`. Producao, NSSM e `.env` versionado nao foram alterados.
+
 ## 1. Separacao publico/interno
 
 - Endpoints publicos continuam em `/api/public/...`.

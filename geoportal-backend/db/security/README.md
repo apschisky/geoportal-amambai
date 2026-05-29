@@ -133,6 +133,23 @@ Validação realizada (processo isolado em homologação):
 
 Validação operacional posterior do commit `eaf5724` Implementa cookie e logout internos confirmou, em processo isolado de homologação, o transporte por cookie HttpOnly e o logout com a mesma role runtime. O processo usou variáveis temporárias (`DATABASE_URL` com `geoportal_api_homolog`, feature flag interna, segredo de sessão, cookie secure desabilitado apenas para TestClient/local e senha temporária de teste), todas limpas ao final. Pytest completo no servidor: 298 passed. Resultado sanitizado: login status 200, cookie HttpOnly/SameSite=Lax/Path `/api/internal` setado, smoke autenticado por cookie status 200, logout sem `X-Geoportal-Internal-Request: 1` retornou 403, logout com header retornou 200 e limpou cookie, smoke após logout retornou 401. Contagens após teste: `mod_auth.usuarios=1`, `mod_auth.sessoes=2`, `mod_auth.login_auditoria=2`, `sessoes_revogadas=1`. Nenhum token, cookie real, senha, hash, segredo, host, IP ou `DATABASE_URL` real foi registrado.
 
+**Validacao operacional de autorizacao e ajuste minimo da matriz runtime**:
+
+O commit `03efa10` Implementa base de autorizacao interna foi aplicado no servidor e validado com pytest completo: 311 passed. O endpoint tecnico `GET /api/internal/auth/me` foi validado em processo isolado de homologacao com variaveis temporarias (`DATABASE_URL` usando `geoportal_api_homolog`, `GEOPORTAL_INTERNAL_ROUTES_ENABLED`, `GEOPORTAL_INTERNAL_SESSION_SECRET`, `GEOPORTAL_INTERNAL_SESSION_COOKIE_SECURE=false` para TestClient/local e `TEST_INTERNAL_PASSWORD`), todas limpas ao final.
+
+O primeiro teste de `/me` falhou por falta de privilegio `SELECT` em `mod_auth.usuario_perfis`, confirmando que a role runtime precisava de leitura nas tabelas de autorizacao. O ajuste operacional em homologacao concedeu apenas:
+
+```sql
+GRANT SELECT ON TABLE mod_auth.usuario_perfis TO geoportal_api_homolog;
+GRANT SELECT ON TABLE mod_auth.perfis TO geoportal_api_homolog;
+GRANT SELECT ON TABLE mod_auth.perfil_permissoes TO geoportal_api_homolog;
+GRANT SELECT ON TABLE mod_auth.permissoes TO geoportal_api_homolog;
+```
+
+A validacao confirmou, para cada uma dessas tabelas: `SELECT=true`, `INSERT=false`, `UPDATE=false`, `DELETE=false`. A role `geoportal_api_homolog` passa a ter leitura suficiente para autenticacao, sessao e autorizacao, mantendo privilegio minimo: sem escrita nas tabelas de perfis/permissoes, sem superuser, sem `CREATEDB`, sem `CREATEROLE`, sem `BYPASSRLS` e sem acesso automatico a outros schemas.
+
+Resultado sanitizado final: `login_status=200`, `login_set_cookie=True`, `cookie_jar_tem_sessao=True`, `me_status=200`, `me_authenticated=True`, `me_usuario_id=7`, `me_permissoes=[]`, `me_tem_token=False`, `me_tem_cookie=False`, `me_tem_senha_hash=False`, `me_tem_token_hash=False`, `me_tem_session_secret=False`, `me_tem_database_url=False`. `permissoes=[]` e comportamento esperado porque nenhum perfil/permissao real foi criado ou atribuido ao `admin.homologacao`.
+
 **Finalidade**: Suportar o endpoint de login e validacao de sessao interna em homologacao usando apenas `mod_auth`.
 
 **Evolucao esperada**: Permissoes para schemas de modulos, como `mod_iluminacao`, devem ser avaliadas apenas quando endpoints internos de negocio forem implementados e testados. Permissoes de aplicacao continuam em `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes`; roles PostgreSQL controlam somente acesso tecnico minimo as tabelas.
