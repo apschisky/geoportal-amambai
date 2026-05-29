@@ -41,6 +41,8 @@ Endpoint tecnico de permissao: `GET /api/internal/auth/permission-smoke` foi cri
 
 Validacao operacional do permission-smoke em homologacao: o commit `251cf65` Adiciona smoke de permissao interna foi aplicado no servidor e validado com pytest completo: 335 passed. A validacao ocorreu em processo isolado de homologacao com variaveis temporarias; todas foram limpas ao final. Sem sessao, o endpoint retornou 401 com `{'detail': 'Not authenticated'}`. Com admin.homologacao autenticado (que possui a permissao internal.auth.me), o endpoint retornou 200 autorizado. Resultado sanitizado: `login_status=200`, `login_set_cookie=True`, `cookie_jar_tem_sessao=True`, `permission_status=200`, `permission_authorized=True`, `permission_code=internal.auth.me`, `permission_usuario_id=7`. A resposta nao expôs token, cookie, `senha_hash`, `token_hash`, `session_secret`, `DATABASE_URL`, SQL, role ou GRANT. Producao, NSSM, `.env` versionado e frontend nao foram alterados.
 
+Primeiro endpoint administrativo real: `GET /api/internal/admin/users` foi criado somente para leitura, sob `GEOPORTAL_INTERNAL_ROUTES_ENABLED`, protegido por `require_permission("admin.usuarios.ler")`. Ele lista usuarios internos com resposta sanitizada contendo apenas `id`, `login`, `nome`, `email`, `ativo`, `bloqueado` booleano e `criado_em`; nao retorna senha, `senha_hash`, token, `token_hash`, cookie, `session_secret`, `DATABASE_URL`, dados de sessao, auditoria, SQL, role, GRANT ou `bloqueado_ate`. Por ser GET de consulta, nao exige `X-Geoportal-Internal-Request`. Esta etapa nao criou endpoint mutavel, nao cria/edita/bloqueia/desbloqueia usuario, nao redefine senha e nao atribui perfil. Producao, NSSM, `.env` versionado e frontend nao foram alterados.
+
 Registro atual de ferramenta administrativa: `scripts/admin/reset_internal_user_password.py` foi criado para redefinir senha de usuario interno existente por `login`, em etapa operacional controlada. O script le e confirma a nova senha somente via `getpass`, nao aceita senha ou hash por argumento CLI, gera hash Argon2id apenas em memoria e nao imprime senha ou hash. O modo `--dry-run` valida entrada e senha sem conectar ao banco e sem persistir. Fora de `--dry-run`, o repository administrativo atualiza somente `senha_hash` e `atualizado_em` em `mod_auth.usuarios` por `lower(login) = lower(:login)`, com bind parameters, retornando erro controlado se o login nao existir. Esta etapa nao criou endpoint, migration, usuario real, role, GRANT, seed, cookie, CSRF/JWT ou alteracao de schema; producao nao foi alterada.
 
 Para metodologia e validação de engenharia, consulte `geoportal-vite/docs/PROJECT-ENGINEERING-METHOD.md` e `geoportal-vite/docs/SECURE-DEVELOPMENT-HARNESS.md`.
@@ -293,6 +295,7 @@ Endpoints internos de autenticacao existem apenas quando `GEOPORTAL_INTERNAL_ROU
 - `POST /api/internal/auth/logout`
 - `GET /api/internal/auth/me`
 - `GET /api/internal/auth/permission-smoke`
+- `GET /api/internal/admin/users`
 
 Essas rotas nao fazem parte da API publica e permanecem fora do app principal quando a feature flag esta desligada.
 

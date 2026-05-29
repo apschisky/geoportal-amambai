@@ -43,7 +43,9 @@ Resultado sanitizado da validacao do permission-smoke:
 - Variaveis temporarias foram limpas apos o teste.
 - Producao, NSSM, `.env` versionado e frontend nao foram alterados.
 
-Proximas etapas recomendadas: criar primeiro endpoint administrativo real somente de leitura, por exemplo `GET /api/internal/admin/users`, protegido com permissao `admin.usuarios.ler`; manter criacao, bloqueio, reset de senha e atribuicao de perfil para etapas posteriores; tela interna continua etapa posterior.
+Primeiro endpoint administrativo real: `GET /api/internal/admin/users` foi implementado somente para leitura e protegido por `require_permission("admin.usuarios.ler")`. Ele retorna lista sanitizada de usuarios internos com `id`, `login`, `nome`, `email`, `ativo`, `bloqueado` booleano e `criado_em`. O endpoint nao retorna senha, `senha_hash`, token, `token_hash`, cookie, `session_secret`, `DATABASE_URL`, dados de sessao, auditoria, SQL, role, GRANT ou `bloqueado_ate`; nao exige header mutavel por ser GET de consulta; e nao cria endpoint de escrita, criacao, bloqueio/desbloqueio, reset de senha ou atribuicao de perfil. Ele e base tecnica futura para tela administrativa, mas nenhuma tela foi criada.
+
+Proximas etapas recomendadas: validar `GET /api/internal/admin/users` em homologacao com usuario autorizado e, quando houver usuario sem permissao, confirmar o 403; depois planejar endpoints administrativos mutaveis gradualmente, cada um com permissao especifica, testes e auditoria; depois criar o primeiro endpoint interno de negocio do modulo Iluminacao; tela interna continua etapa posterior.
 
 ## 1. Separacao publico/interno
 
