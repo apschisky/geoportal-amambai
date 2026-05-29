@@ -2,6 +2,7 @@ from app.repositories.auth_admin_user_repository import CreatedBasicInternalUser
 from app.repositories.auth_admin_user_repository import InternalUserConflictError
 from app.repositories.auth_admin_user_repository import create_basic_internal_user
 from app.security.passwords import hash_password
+from app.security.passwords import validate_initial_password_policy
 
 
 def create_basic_internal_admin_user(
@@ -21,8 +22,11 @@ def create_basic_internal_admin_user(
         raise ValueError("login must not be empty")
     if not normalized_nome:
         raise ValueError("nome must not be empty")
-    if not senha_inicial.strip():
-        raise ValueError("senha_inicial must not be empty")
+    validate_initial_password_policy(
+        senha_inicial,
+        login=normalized_login,
+        nome=normalized_nome,
+    )
 
     senha_hash = hash_password(senha_inicial)
     return create_basic_internal_user(

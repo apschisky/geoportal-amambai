@@ -17,6 +17,7 @@ from app.services.auth_current_session_service import AuthenticatedCurrentSessio
 
 LIST_INTERNAL_USERS_PERMISSION = "admin.usuarios.ler"
 CREATE_INTERNAL_USERS_PERMISSION = "admin.usuarios.criar"
+INVALID_CREATE_USER_PAYLOAD_DETAIL = "Invalid payload"
 
 router = APIRouter(prefix="/api/internal/admin", tags=["internal-admin"])
 
@@ -61,14 +62,6 @@ class CreateInternalAdminUserRequest(BaseModel):
         if not _is_valid_optional_email(normalized_value):
             raise ValueError("Invalid value")
         return normalized_value
-
-    @field_validator("senha_inicial")
-    @classmethod
-    def validate_initial_password(cls, value: str) -> str:
-        if not isinstance(value, str) or not value.strip():
-            raise ValueError("Invalid value")
-        return value
-
 
 class InternalAdminUserResponse(BaseModel):
     id: int
@@ -136,6 +129,11 @@ def create_user(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Conflict",
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=INVALID_CREATE_USER_PAYLOAD_DETAIL,
         ) from exc
 
     return InternalAdminUserDetailResponse(usuario=_to_user_response(user))

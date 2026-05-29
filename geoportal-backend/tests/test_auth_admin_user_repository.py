@@ -278,3 +278,45 @@ def test_service_hashes_initial_password_and_never_passes_raw_password(
         "senha_hash": PASSWORD_HASH,
     }
     assert RAW_PASSWORD not in calls["create_basic_internal_user"].values()
+
+
+@pytest.mark.parametrize(
+    "senha_inicial",
+    [
+        "",
+        "abc12",
+        "abcdef",
+        "123456",
+        "usuario.exemplo",
+        "Usuario Exemplo",
+        "senha123",
+    ],
+)
+def test_service_rejects_weak_initial_password_without_hash_or_repository(
+    monkeypatch: pytest.MonkeyPatch,
+    senha_inicial: str,
+) -> None:
+    calls = {"hash": 0, "create": 0}
+
+    monkeypatch.setattr(
+        auth_admin_user_service,
+        "hash_password",
+        lambda password: calls.__setitem__("hash", 1) or PASSWORD_HASH,
+    )
+    monkeypatch.setattr(
+        auth_admin_user_service,
+        "create_basic_internal_user",
+        lambda **kwargs: calls.__setitem__("create", 1),
+    )
+
+    with pytest.raises(ValueError) as exc_info:
+        auth_admin_user_service.create_basic_internal_admin_user(
+            login="usuario.exemplo",
+            nome="Usuario Exemplo",
+            senha_inicial=senha_inicial,
+        )
+
+    assert calls == {"hash": 0, "create": 0}
+    assert "password does not meet policy" == str(exc_info.value)
+    if senha_inicial.strip():
+        assert senha_inicial.strip() not in str(exc_info.value)

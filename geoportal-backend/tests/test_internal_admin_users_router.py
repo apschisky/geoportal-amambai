@@ -656,6 +656,44 @@ def test_create_admin_user_returns_422_for_invalid_payload(
         assert forbidden not in response.text
 
 
+@pytest.mark.parametrize(
+    "weak_password",
+    [
+        "abc12",
+        "abcdef",
+        "123456",
+        "usuario.exemplo",
+        "Usuario Exemplo",
+        "senha123",
+    ],
+)
+def test_create_admin_user_returns_422_for_weak_initial_password_without_leaking_it(
+    monkeypatch: pytest.MonkeyPatch,
+    weak_password: str,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        ADMIN_USERS_PATH,
+        json={**CREATE_PAYLOAD, "senha_inicial": weak_password},
+        headers=mutating_headers(),
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "Invalid payload"}
+    assert "senha_inicial" not in response.text
+    assert weak_password not in response.text
+
+
 def test_create_admin_user_response_does_not_expose_sensitive_fields(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
