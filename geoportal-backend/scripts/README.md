@@ -40,6 +40,8 @@ Permissoes iniciais propostas: `admin.usuarios.ler`, `admin.usuarios.criar`, `ad
 
 Nesta etapa, o script foi criado e testado localmente, mas nao foi executado contra banco real e nao criou perfil, permissao, usuario ou vinculo real. Producao nao deve receber dados automaticamente da homologacao. O que migra entre ambientes e codigo versionado, migrations estruturais quando existirem, scripts administrativos validados e roteiro operacional; nao migram senhas, sessoes, tokens, dados de teste ou usuarios ficticios.
 
+**Validacao operacional em homologacao**: O commit `5a4d2bf` com `admin/bootstrap_internal_admin_profile.py` foi aplicado no servidor e validado com pytest completo: 327 passed. Antes da execucao, houve backup de roles e backup custom do banco de homologacao. O dry-run retornou a mensagem segura esperada e a execucao real concluiu com sucesso. Foram validados o perfil `administrador-interno-geoportal`, 10 permissoes administrativas ativas, 10 vinculos perfil-permissao e vinculo global do usuario `admin.homologacao` ao perfil com `modulo NULL`. A role `geoportal_auth_admin_homolog` recebeu permissoes temporarias de bootstrap e elas foram revogadas apos a operacao, ficando apenas com leitura nas tabelas de autorizacao, sem INSERT/UPDATE/DELETE e sem USAGE/SELECT nas sequences. Producao, NSSM, `.env` versionado e frontend nao foram alterados.
+
 ### Decisão de usuários técnicos para bootstrap
 
 **Contexto**: Tentativa realizada de usar `api_iluminacao_homolog` (usuário técnico restrito a `mod_iluminacao`) para executar `create_internal_user.py`. A conexão funcionou, mas acesso a `mod_auth` foi negado, confirmando restrição correta.

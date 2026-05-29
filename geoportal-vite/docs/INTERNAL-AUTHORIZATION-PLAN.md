@@ -28,6 +28,10 @@ Permissoes administrativas iniciais propostas: `admin.usuarios.ler`, `admin.usua
 
 Implementacao local do bootstrap: foram criados `geoportal-backend/scripts/admin/bootstrap_internal_admin_profile.py`, `geoportal-backend/app/repositories/auth_admin_profile_repository.py` e testes automatizados dedicados. O script exige `--login`, aceita `--dry-run`, nao aceita senha por argumento, nao usa login hardcoded, nao executa `DELETE` e usa SQL parametrizado. Nesta etapa, nao foi executado contra banco real e nao criou perfil/permissao/vinculo real.
 
+Validacao operacional do bootstrap em homologacao: o commit `5a4d2bf` Adiciona bootstrap de perfil administrativo foi aplicado no servidor e validado com pytest completo: 327 passed. Houve backup de roles e backup custom do banco de homologacao antes da operacao. O dry-run passou com a mensagem "Dry-run validado. Nenhum perfil, permissao ou vinculo foi alterado."; a execucao real passou com "Bootstrap do perfil administrativo interno concluido com sucesso.". Foram criados/validados o perfil `administrador-interno-geoportal`, 10 permissoes administrativas ativas, 10 vinculos perfil-permissao e o vinculo global `admin.homologacao` -> `administrador-interno-geoportal` com `modulo NULL`.
+
+A role operacional `geoportal_auth_admin_homolog` recebeu permissoes temporarias de `SELECT`/`INSERT` nas tabelas de autorizacao e `USAGE`/`SELECT` nas sequences `perfis_id_seq` e `permissoes_id_seq`; apos a operacao, `INSERT` e permissoes de sequence foram revogadas. O estado final validado manteve apenas `SELECT` nas tabelas de autorizacao, sem `INSERT`, `UPDATE` ou `DELETE`. O `/api/internal/auth/me` retornou 10 permissoes esperadas para `admin.homologacao` e nao retornou token, cookie, `senha_hash`, `token_hash`, `session_secret` ou `DATABASE_URL`. Producao, NSSM, `.env` versionado e frontend nao foram alterados.
+
 ## 1. Separacao publico/interno
 
 - Endpoints publicos continuam em `/api/public/...`.
@@ -253,13 +257,11 @@ Próximos passos de autorização: decidir quando remover o token do corpo da re
 
 Sequencia imediata recomendada apos a base tecnica de autorizacao:
 
-1. Aplicar em homologacao com backup previo, `--dry-run`, execucao real controlada e validacao das tabelas `mod_auth`.
-2. Validar `/api/internal/auth/me` retornando permissoes administrativas para o usuario atribuido.
-3. Documentar o resultado de homologacao.
-4. Planejar producao separadamente: backup obrigatorio, `--dry-run` obrigatorio, confirmacao humana, criacao de usuario real de producao em etapa propria, sem copiar dados de homologacao.
-5. So depois criar endpoints administrativos reais de usuarios/perfis.
-6. So depois criar endpoints de negocio de Iluminacao Publica.
-7. So depois criar tela interna.
+1. Implementar e testar `require_permission(...)` em endpoint tecnico protegido por permissao.
+2. Criar endpoints administrativos reais de usuarios/perfis somente apos teste de permissao permitido/negado.
+3. Criar o primeiro endpoint interno de negocio do modulo Iluminacao somente depois dos endpoints administrativos seguros.
+4. Criar tela interna somente depois que backend, autorizacao e endpoints estiverem fechados.
+5. Planejar producao separadamente: backup obrigatorio, `--dry-run` obrigatorio, confirmacao humana, criacao de usuario real de producao em etapa propria, sem copiar dados de homologacao.
 
 Producao continua sem alteracao nesta etapa documental.
 

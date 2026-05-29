@@ -164,6 +164,16 @@ Estrategia para producao: producao nao recebe dados automaticamente da homologac
 
 Implementacao local: o script `geoportal-backend/scripts/admin/bootstrap_internal_admin_profile.py` e o repository `geoportal-backend/app/repositories/auth_admin_profile_repository.py` foram criados para esse bootstrap, com idempotencia, bind parameters, `--dry-run` sem persistencia e sem `DELETE`. Nesta etapa, nenhum perfil/permissao/vinculo real foi criado e nenhuma operacao foi executada contra banco real.
 
+**Validacao operacional concluida em homologacao**:
+
+O commit `5a4d2bf` Adiciona bootstrap de perfil administrativo foi aplicado no servidor e validado com pytest completo: 327 passed. Antes da operacao, foram feitos backup de roles e backup custom do banco de homologacao. O dry-run do script retornou "Dry-run validado. Nenhum perfil, permissao ou vinculo foi alterado." e a execucao real retornou "Bootstrap do perfil administrativo interno concluido com sucesso.".
+
+Resultado em homologacao: perfil `administrador-interno-geoportal` criado/validado com nome `Administrador Interno do Geoportal` e `ativo=true`; 10 permissoes administrativas ativas; 10 vinculos `perfil_permissoes`; vinculo `admin.homologacao` -> `administrador-interno-geoportal` ativo em `usuario_perfis`, com `modulo NULL` para escopo global.
+
+Permissoes operacionais temporarias: `geoportal_auth_admin_homolog` recebeu `SELECT`/`INSERT` temporario nas tabelas de autorizacao e `USAGE`/`SELECT` temporario nas sequences `perfis_id_seq` e `permissoes_id_seq`. Apos a operacao, as permissoes temporarias foram revogadas. Estado final validado: `SELECT=true`, `INSERT=false`, `UPDATE=false`, `DELETE=false` nas tabelas de autorizacao; `USAGE=false` e `SELECT=false` nas sequences temporarias.
+
+Validacao do `/api/internal/auth/me`: usando `geoportal_api_homolog` e `admin.homologacao`, o resultado sanitizado foi `login_status=200`, `login_set_cookie=True`, `cookie_jar_tem_sessao=True`, `me_status=200`, `me_authenticated=True`, `me_usuario_id=7`, `me_total_permissoes=10`, `me_permissoes_esperadas=True`, `me_tem_token=False`, `me_tem_cookie=False`, `me_tem_senha_hash=False`, `me_tem_token_hash=False`, `me_tem_session_secret=False`, `me_tem_database_url=False`. Variaveis temporarias foram limpas ao final. Producao, NSSM, `.env` versionado e frontend nao foram alterados.
+
 **Finalidade**: Suportar o endpoint de login e validacao de sessao interna em homologacao usando apenas `mod_auth`.
 
 **Evolucao esperada**: Permissoes para schemas de modulos, como `mod_iluminacao`, devem ser avaliadas apenas quando endpoints internos de negocio forem implementados e testados. Permissoes de aplicacao continuam em `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes`; roles PostgreSQL controlam somente acesso tecnico minimo as tabelas.
