@@ -34,6 +34,17 @@ A role operacional `geoportal_auth_admin_homolog` recebeu permissoes temporarias
 
 Endpoint tecnico de permissao: `GET /api/internal/auth/permission-smoke` foi implementado para validar `require_permission("internal.auth.me")` em rota real antes de endpoints administrativos. Ele fica sob a mesma feature flag interna, exige sessao autenticada e permissao `internal.auth.me`, nao exige `X-Geoportal-Internal-Request` por ser GET tecnico de consulta e retorna payload minimo (`authorized`, `permission`, `usuario_id`). As respostas sao padronizadas para futuro frontend: 401 generico sem sessao, 403 generico sem permissao e 200 quando autorizado. O endpoint nao retorna token, cookie, senha, `senha_hash`, `token_hash`, `session_secret`, `DATABASE_URL`, SQL, role ou GRANT, nao usa login hardcoded e nao e endpoint administrativo real.
 
+Validacao operacional do endpoint tecnico de permissao em homologacao: o commit `251cf65` Adiciona smoke de permissao interna foi aplicado no servidor e validado com pytest completo: 335 passed. A validacao ocorreu em processo isolado de homologacao com variaveis temporarias (`DATABASE_URL` para `geoportal_api_homolog`, `GEOPORTAL_INTERNAL_ROUTES_ENABLED=true`, `GEOPORTAL_INTERNAL_SESSION_SECRET` temporario, `GEOPORTAL_INTERNAL_SESSION_COOKIE_SECURE=false` para TestClient, `TEST_INTERNAL_PASSWORD` temporario); todas as variaveis foram limpas ao final.
+
+Resultado sanitizado da validacao do permission-smoke:
+- Sem sessao: `sem_sessao_status=401`, `sem_sessao_body={'detail': 'Not authenticated'}`.
+- Com admin.homologacao autenticado e com permissao internal.auth.me: `login_status=200`, `login_set_cookie=True`, `cookie_jar_tem_sessao=True`, `permission_status=200`, `permission_authorized=True`, `permission_code=internal.auth.me`, `permission_usuario_id=7`.
+- A resposta do endpoint nao retornou: token, cookie, `senha_hash`, `token_hash`, `session_secret`, `DATABASE_URL`, SQL, role ou GRANT.
+- Variaveis temporarias foram limpas apos o teste.
+- Producao, NSSM, `.env` versionado e frontend nao foram alterados.
+
+Proximas etapas recomendadas: criar primeiro endpoint administrativo real somente de leitura, por exemplo `GET /api/internal/admin/users`, protegido com permissao `admin.usuarios.ler`; manter criacao, bloqueio, reset de senha e atribuicao de perfil para etapas posteriores; tela interna continua etapa posterior.
+
 ## 1. Separacao publico/interno
 
 - Endpoints publicos continuam em `/api/public/...`.
