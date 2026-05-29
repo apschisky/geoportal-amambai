@@ -552,6 +552,8 @@ Observação:
 - A proxima fase apos autenticacao/sessao deve ser repository de permissoes efetivas, service `has_permission(usuario_id, permissao)`, dependency `require_permission("permissao")` e endpoint tecnico `/api/internal/auth/me` ou `/api/internal/auth/permissions`.
 - Endpoints administrativos reais, endpoints de negocio de Iluminacao Publica e tela interna devem vir somente depois da autorizacao base validada em homologacao.
 
+Status da base de autorizacao: repository de permissoes efetivas, service `has_permission(usuario_id, permissao)`, dependency `require_permission("permissao")` e endpoint tecnico `GET /api/internal/auth/me` foram implementados no backend. `/me` retorna apenas `authenticated`, `usuario_id` e permissoes efetivas ordenadas. Nenhum perfil/permissao real, vinculo real, seed, migration, role/GRANT, endpoint administrativo real ou tela foi criado. Testes locais passaram com 311 testes.
+
 ## 9. Proteção contra brute force e credential stuffing
 
 Controles obrigatórios:
@@ -728,10 +730,10 @@ Testes mínimos:
 5. Manter `GEOPORTAL_INTERNAL_ROUTES_ENABLED` desligada por padrao; ativar rotas internas apenas em homologacao controlada.
 6. Configurar segredo real de HMAC em etapa segura, sem registrar em log.
 7. Planejar smoke test protegido ou middleware de autenticacao.
-8. Implementar repository de permissoes efetivas do usuario autenticado.
-9. Implementar service `has_permission(usuario_id, permissao)`.
-10. Implementar dependency `require_permission("permissao")`.
-11. Criar endpoint tecnico `/api/internal/auth/me` ou `/api/internal/auth/permissions`.
+8. Implementar repository de permissoes efetivas do usuario autenticado. Concluido.
+9. Implementar service `has_permission(usuario_id, permissao)`. Concluido.
+10. Implementar dependency `require_permission("permissao")`. Concluido.
+11. Criar endpoint tecnico `/api/internal/auth/me` ou `/api/internal/auth/permissions`. Concluido com `/api/internal/auth/me`.
 12. Criar mecanismo administrativo controlado para perfil inicial `Administrador Interno`, se necessario, e atribuir ao `admin.homologacao` somente em homologacao.
 13. Trabalhar as proximas etapas criticas com Codex High.
 14. Criar endpoints administrativos reais somente depois da autorizacao base.

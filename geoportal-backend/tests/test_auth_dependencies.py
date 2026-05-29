@@ -11,6 +11,7 @@ from app.dependencies.auth_dependencies import get_internal_session_cookie_secur
 from app.dependencies.auth_dependencies import get_session_secret
 from app.dependencies.auth_dependencies import is_internal_session_cookie_secure
 from app.dependencies.auth_dependencies import require_internal_mutating_request_header
+from app.dependencies.auth_dependencies import require_permission
 from app.dependencies.auth_dependencies import set_internal_session_cookie
 from app.services.auth_current_session_service import AuthenticatedCurrentSession
 from app.services.auth_token_transport_service import AuthTokenTransportResult
@@ -280,6 +281,71 @@ def test_internal_mutating_request_header_accepts_only_expected_value() -> None:
 
     assert exc_info.value.status_code == 403
     assert exc_info.value.detail == "Invalid internal request"
+
+
+def test_require_permission_allows_user_with_permission(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: dict[str, object] = {}
+
+    def fake_has_permission(usuario_id: int, permission_code: str) -> bool:
+        calls.update(
+            {
+                "usuario_id": usuario_id,
+                "permission_code": permission_code,
+            }
+        )
+        return True
+
+    monkeypatch.setattr(auth_dependencies, "has_permission", fake_has_permission)
+
+    dependency = require_permission(" Admin.Usuarios.Ler ")
+    response = dependency(current_session=authenticated_session())
+
+    assert response == authenticated_session()
+    assert calls == {
+        "usuario_id": 20,
+        "permission_code": "admin.usuarios.ler",
+    }
+
+
+def test_require_permission_rejects_user_without_permission(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: False,
+    )
+
+    dependency = require_permission("admin.usuarios.criar")
+
+    with pytest.raises(HTTPException) as exc_info:
+        dependency(current_session=authenticated_session())
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail == "Forbidden"
+
+
+def test_require_permission_rejects_blank_permission_without_lookup(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = {"has_permission": 0}
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: calls.__setitem__("has_permission", 1)
+        or True,
+    )
+
+    dependency = require_permission("   ")
+
+    with pytest.raises(HTTPException) as exc_info:
+        dependency(current_session=authenticated_session())
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail == "Forbidden"
+    assert calls == {"has_permission": 0}
 
 
 def test_dependency_does_not_depend_on_endpoint_or_request() -> None:

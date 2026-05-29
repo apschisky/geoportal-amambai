@@ -19,7 +19,7 @@ O Geoportal é escalável para múltiplos módulos. Usuários técnicos de banco
 
 Usuários técnicos de módulos específicos (ex: `api_iluminacao_homolog`, `api_iluminacao_producao`) não serão ampliados automaticamente para acessar `mod_auth`.
 
-Autorizacao funcional de usuarios humanos deve vir de `mod_auth.usuarios`, `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes`. Um usuario pode ter um ou mais perfis; perfis agrupam permissoes; permissoes devem ser granulares por modulo/recurso/acao. Administrador funcional do Geoportal Interno nao deve ser superuser de banco e nao deve ser liberado por regra hardcoded de login. A proxima fase apos autenticacao/sessao e implementar autorizacao funcional no backend, nao tela/frontend.
+Autorizacao funcional de usuarios humanos deve vir de `mod_auth.usuarios`, `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes`. Um usuario pode ter um ou mais perfis; perfis agrupam permissoes; permissoes devem ser granulares por modulo/recurso/acao. Administrador funcional do Geoportal Interno nao deve ser superuser de banco e nao deve ser liberado por regra hardcoded de login. A base tecnica de autorizacao no backend foi implementada com repository de permissoes efetivas, service `has_permission(...)`, dependency `require_permission(...)` e endpoint tecnico `/api/internal/auth/me`, sem criar perfis/permissoes reais ou alterar schema. Tela/frontend continuam etapa posterior.
 
 ### Roles técnicas sugeridas
 

@@ -16,6 +16,8 @@ Registro documental: a migration `0009_create_mod_auth_sessoes_login_auditoria.s
 
 Registro arquitetural atual: a autenticacao interna, a sessao opaca por cookie HttpOnly e o logout ja foram validados em homologacao. A proxima fase segura nao e tela/frontend. A proxima fase deve ser autorizacao funcional por usuarios, perfis, permissoes, modulos e acoes, com validacao no backend antes de qualquer endpoint de negocio ou tela administrativa.
 
+Registro de implementacao da base tecnica: foram implementados repository de permissoes efetivas do usuario, service `has_permission(usuario_id, permissao)`, dependency FastAPI `require_permission("permissao")` e endpoint tecnico `GET /api/internal/auth/me`. Esta etapa nao cria perfis reais, permissoes reais, vinculos reais, usuarios reais, roles, GRANTs, migrations, seeds, endpoints administrativos reais ou tela interna.
+
 ## 1. Separacao publico/interno
 
 - Endpoints publicos continuam em `/api/public/...`.
@@ -165,10 +167,10 @@ A matriz final deve ser validada com a operacao antes de qualquer ativacao real.
 2. Fase 2: modelo de dados de usuarios, perfis, permissoes e sessoes.
 3. Fase 3: migrations de seguranca e autenticacao.
 4. Fase 4: implementacao de autenticacao, sessao, cookie e logout no backend com testes.
-5. Fase 5: implementar repository para buscar permissoes efetivas do usuario autenticado.
-6. Fase 6: implementar service `has_permission(usuario_id, permissao)`.
-7. Fase 7: implementar dependency FastAPI `require_permission("permissao")`.
-8. Fase 8: criar endpoint tecnico `/api/internal/auth/me` ou `/api/internal/auth/permissions`.
+5. Fase 5: implementar repository para buscar permissoes efetivas do usuario autenticado. Concluida.
+6. Fase 6: implementar service `has_permission(usuario_id, permissao)`. Concluida.
+7. Fase 7: implementar dependency FastAPI `require_permission("permissao")`. Concluida.
+8. Fase 8: criar endpoint tecnico `/api/internal/auth/me` ou `/api/internal/auth/permissions`. Concluida com `/api/internal/auth/me`.
 9. Fase 9: criar script/seed administrativo controlado para perfil inicial `Administrador Interno`, se necessario, sem dado sensivel no Git.
 10. Fase 10: atribuir perfil administrativo ao `admin.homologacao` em homologacao e validar.
 11. Fase 11: criar endpoints administrativos reais apenas depois da autorizacao base.
@@ -239,18 +241,14 @@ Resultado sanitizado: login status 200 para `admin.homologacao` (`usuario_id=7`)
 
 Próximos passos de autorização: decidir quando remover o token do corpo da resposta ou restringi-lo a ambiente técnico, planejar validação Origin/Referer como camada complementar, implementar endpoints internos de negócio somente após autorização por perfis/permissões, e não liberar tela interna para usuários reais antes de fechar autorização e frontend seguro.
 
-Sequencia imediata recomendada apos autenticacao/sessao:
+Sequencia imediata recomendada apos a base tecnica de autorizacao:
 
-1. Implementar busca de permissoes efetivas do usuario autenticado em repository.
-2. Implementar `has_permission(usuario_id, permissao)`.
-3. Implementar `require_permission("permissao")` para FastAPI.
-4. Criar endpoint tecnico `/api/internal/auth/me` ou `/api/internal/auth/permissions`.
-5. Criar mecanismo administrativo controlado para perfil inicial `Administrador Interno`, se necessario.
-6. Atribuir o perfil administrativo ao `admin.homologacao` somente em homologacao.
-7. Validar permissoes efetivas em homologacao.
-8. So depois criar endpoints administrativos reais de usuarios/perfis.
-9. So depois criar endpoints de negocio de Iluminacao Publica.
-10. So depois criar tela interna.
+1. Criar mecanismo administrativo controlado para perfil inicial `Administrador Interno`, se necessario, sem dado sensivel no Git.
+2. Atribuir o perfil administrativo ao `admin.homologacao` somente em homologacao.
+3. Validar permissoes efetivas em homologacao pelo endpoint tecnico `/api/internal/auth/me`.
+4. So depois criar endpoints administrativos reais de usuarios/perfis.
+5. So depois criar endpoints de negocio de Iluminacao Publica.
+6. So depois criar tela interna.
 
 Producao continua sem alteracao nesta etapa documental.
 

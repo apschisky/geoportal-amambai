@@ -6,6 +6,7 @@ from fastapi import Cookie, Depends, Header, HTTPException, Response, status
 from app.core.config import settings
 from app.services.auth_current_session_service import AuthenticatedCurrentSession
 from app.services.auth_current_session_service import resolve_authenticated_session
+from app.services.auth_permission_service import has_permission
 from app.services.auth_token_transport_service import extract_session_token
 
 
@@ -18,6 +19,7 @@ INTERNAL_MUTATING_REQUEST_HEADER_VALUE = "1"
 SESSION_SECRET_ENV_VAR = "GEOPORTAL_INTERNAL_SESSION_SECRET"
 NOT_AUTHENTICATED_DETAIL = "Not authenticated"
 INVALID_INTERNAL_REQUEST_DETAIL = "Invalid internal request"
+FORBIDDEN_DETAIL = "Forbidden"
 
 _TRUE_VALUES = frozenset({"true", "1", "yes", "on"})
 _FALSE_VALUES = frozenset({"false", "0", "no", "off"})
@@ -110,6 +112,34 @@ def require_internal_mutating_request_header(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=INVALID_INTERNAL_REQUEST_DETAIL,
         )
+
+
+def require_permission(permission_code: str):
+    normalized_permission = permission_code.strip().lower()
+
+    def permission_dependency(
+        current_session: AuthenticatedCurrentSession = Depends(
+            get_current_authenticated_session
+        ),
+    ) -> AuthenticatedCurrentSession:
+        if not normalized_permission:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=FORBIDDEN_DETAIL,
+            )
+
+        if not has_permission(
+            current_session.usuario_id,
+            normalized_permission,
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=FORBIDDEN_DETAIL,
+            )
+
+        return current_session
+
+    return permission_dependency
 
 
 def get_current_authenticated_session(
