@@ -20,7 +20,7 @@ O login e o identificador obrigatorio de autenticacao interna. E-mail e apenas d
 
 ## Bootstrap futuro de perfis e permissoes
 
-A proxima ferramenta administrativa planejada devera fazer o bootstrap idempotente do perfil inicial `Administrador Interno do Geoportal` e das permissoes administrativas iniciais. Esse bootstrap deve ser implementado por script administrativo revisado, com `--dry-run`, testes automatizados e validacao de ambiente; nao deve ser feito por SQL manual solto.
+`admin/bootstrap_internal_admin_profile.py` e a ferramenta administrativa planejada para fazer o bootstrap idempotente do perfil inicial `Administrador Interno do Geoportal` e das permissoes administrativas iniciais. O script possui `--dry-run`, testes automatizados e validacao de entrada; nao deve ser substituido por SQL manual solto.
 
 Caracteristicas obrigatorias do futuro script:
 
@@ -38,7 +38,7 @@ Caracteristicas obrigatorias do futuro script:
 
 Permissoes iniciais propostas: `admin.usuarios.ler`, `admin.usuarios.criar`, `admin.usuarios.bloquear`, `admin.usuarios.redefinir_senha`, `admin.usuarios.atribuir_perfis`, `admin.perfis.ler`, `admin.perfis.gerenciar`, `admin.permissoes.ler`, `admin.permissoes.gerenciar` e `internal.auth.me`. Em homologacao, a atribuicao inicial prevista e ao usuario `admin.homologacao`.
 
-Producao nao deve receber dados automaticamente da homologacao. O que migra entre ambientes e codigo versionado, migrations estruturais quando existirem, scripts administrativos validados e roteiro operacional; nao migram senhas, sessoes, tokens, dados de teste ou usuarios ficticios.
+Nesta etapa, o script foi criado e testado localmente, mas nao foi executado contra banco real e nao criou perfil, permissao, usuario ou vinculo real. Producao nao deve receber dados automaticamente da homologacao. O que migra entre ambientes e codigo versionado, migrations estruturais quando existirem, scripts administrativos validados e roteiro operacional; nao migram senhas, sessoes, tokens, dados de teste ou usuarios ficticios.
 
 ### Decisão de usuários técnicos para bootstrap
 

@@ -162,6 +162,8 @@ Roteiro recomendado em homologacao: backup antes; `--dry-run` do script; execuca
 
 Estrategia para producao: producao nao recebe dados automaticamente da homologacao e nao deve ter copia cega de dados. Usar o mesmo script idempotente apenas depois de validado, com backup obrigatorio e `--dry-run` obrigatorio antes da execucao real. Criacao de usuario real de producao e etapa propria. Nenhuma senha, token ou hash deve ser documentado; nenhuma migration ou restart de producao deve ocorrer sem confirmacao humana; a feature flag interna permanece sob controle; tela interna so depois de autorizacao e endpoints administrativos seguros.
 
+Implementacao local: o script `geoportal-backend/scripts/admin/bootstrap_internal_admin_profile.py` e o repository `geoportal-backend/app/repositories/auth_admin_profile_repository.py` foram criados para esse bootstrap, com idempotencia, bind parameters, `--dry-run` sem persistencia e sem `DELETE`. Nesta etapa, nenhum perfil/permissao/vinculo real foi criado e nenhuma operacao foi executada contra banco real.
+
 **Finalidade**: Suportar o endpoint de login e validacao de sessao interna em homologacao usando apenas `mod_auth`.
 
 **Evolucao esperada**: Permissoes para schemas de modulos, como `mod_iluminacao`, devem ser avaliadas apenas quando endpoints internos de negocio forem implementados e testados. Permissoes de aplicacao continuam em `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes`; roles PostgreSQL controlam somente acesso tecnico minimo as tabelas.

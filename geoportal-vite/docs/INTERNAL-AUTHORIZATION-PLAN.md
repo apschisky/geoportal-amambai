@@ -22,9 +22,11 @@ Registro operacional de validacao do `/api/internal/auth/me`: o commit `03efa10`
 
 Resultado sanitizado final do `/me`: `login_status=200`, `login_set_cookie=True`, `cookie_jar_tem_sessao=True`, `me_status=200`, `me_authenticated=True`, `me_usuario_id=7`, `me_permissoes=[]`, `me_tem_token=False`, `me_tem_cookie=False`, `me_tem_senha_hash=False`, `me_tem_token_hash=False`, `me_tem_session_secret=False`, `me_tem_database_url=False`. `permissoes=[]` e esperado porque ainda nao foi criado nem atribuido perfil/permissao real ao `admin.homologacao`. Producao, NSSM e `.env` versionado nao foram alterados.
 
-Plano de bootstrap controlado: a proxima etapa sera criar em homologacao o perfil inicial `Administrador Interno do Geoportal` e permissoes administrativas por script administrativo idempotente, com `--dry-run`, testes automatizados e validacao de ambiente, nao por SQL manual solto. O futuro script deve usar bind parameters, nao apagar registros, nao duplicar perfis/permissoes/vinculos, criar permissoes e perfil quando ausentes, associar permissoes ao perfil quando ainda nao associadas, atribuir o perfil ao usuario informado quando ainda nao atribuido, exigir parametros explicitos como `--login`, nao depender de login hardcoded e nao imprimir senha, token, hash, `session_secret` ou `DATABASE_URL`.
+Plano de bootstrap controlado: a proxima etapa sera criar em homologacao o perfil inicial `Administrador Interno do Geoportal` e permissoes administrativas por script administrativo idempotente, com `--dry-run`, testes automatizados e validacao de ambiente, nao por SQL manual solto. O script deve usar bind parameters, nao apagar registros, nao duplicar perfis/permissoes/vinculos, criar permissoes e perfil quando ausentes, associar permissoes ao perfil quando ainda nao associadas, atribuir o perfil ao usuario informado quando ainda nao atribuido, exigir parametros explicitos como `--login`, nao depender de login hardcoded e nao imprimir senha, token, hash, `session_secret` ou `DATABASE_URL`.
 
 Permissoes administrativas iniciais propostas: `admin.usuarios.ler`, `admin.usuarios.criar`, `admin.usuarios.bloquear`, `admin.usuarios.redefinir_senha`, `admin.usuarios.atribuir_perfis`, `admin.perfis.ler`, `admin.perfis.gerenciar`, `admin.permissoes.ler`, `admin.permissoes.gerenciar` e `internal.auth.me`. Em homologacao, o perfil sera atribuido ao `admin.homologacao`. Esse administrador funcional nao e superuser de banco e nao deve receber permissoes PostgreSQL especiais por ser administrador da aplicacao.
+
+Implementacao local do bootstrap: foram criados `geoportal-backend/scripts/admin/bootstrap_internal_admin_profile.py`, `geoportal-backend/app/repositories/auth_admin_profile_repository.py` e testes automatizados dedicados. O script exige `--login`, aceita `--dry-run`, nao aceita senha por argumento, nao usa login hardcoded, nao executa `DELETE` e usa SQL parametrizado. Nesta etapa, nao foi executado contra banco real e nao criou perfil/permissao/vinculo real.
 
 ## 1. Separacao publico/interno
 
@@ -251,14 +253,13 @@ Próximos passos de autorização: decidir quando remover o token do corpo da re
 
 Sequencia imediata recomendada apos a base tecnica de autorizacao:
 
-1. Implementar o script administrativo de bootstrap de perfil/permissoes com Codex High.
-2. Testar localmente, incluindo idempotencia, `--dry-run`, bind parameters e ausencia de dados sensiveis na saida.
-3. Em homologacao: fazer backup, executar `--dry-run`, executar de forma real controlada, validar tabelas `mod_auth` e validar `/api/internal/auth/me` retornando permissoes administrativas.
-4. Documentar o resultado de homologacao.
-5. Planejar producao separadamente: backup obrigatorio, `--dry-run` obrigatorio, confirmacao humana, criacao de usuario real de producao em etapa propria, sem copiar dados de homologacao.
-6. So depois criar endpoints administrativos reais de usuarios/perfis.
-7. So depois criar endpoints de negocio de Iluminacao Publica.
-8. So depois criar tela interna.
+1. Aplicar em homologacao com backup previo, `--dry-run`, execucao real controlada e validacao das tabelas `mod_auth`.
+2. Validar `/api/internal/auth/me` retornando permissoes administrativas para o usuario atribuido.
+3. Documentar o resultado de homologacao.
+4. Planejar producao separadamente: backup obrigatorio, `--dry-run` obrigatorio, confirmacao humana, criacao de usuario real de producao em etapa propria, sem copiar dados de homologacao.
+5. So depois criar endpoints administrativos reais de usuarios/perfis.
+6. So depois criar endpoints de negocio de Iluminacao Publica.
+7. So depois criar tela interna.
 
 Producao continua sem alteracao nesta etapa documental.
 
