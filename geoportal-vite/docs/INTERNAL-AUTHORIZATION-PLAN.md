@@ -32,6 +32,8 @@ Validacao operacional do bootstrap em homologacao: o commit `5a4d2bf` Adiciona b
 
 A role operacional `geoportal_auth_admin_homolog` recebeu permissoes temporarias de `SELECT`/`INSERT` nas tabelas de autorizacao e `USAGE`/`SELECT` nas sequences `perfis_id_seq` e `permissoes_id_seq`; apos a operacao, `INSERT` e permissoes de sequence foram revogadas. O estado final validado manteve apenas `SELECT` nas tabelas de autorizacao, sem `INSERT`, `UPDATE` ou `DELETE`. O `/api/internal/auth/me` retornou 10 permissoes esperadas para `admin.homologacao` e nao retornou token, cookie, `senha_hash`, `token_hash`, `session_secret` ou `DATABASE_URL`. Producao, NSSM, `.env` versionado e frontend nao foram alterados.
 
+Endpoint tecnico de permissao: `GET /api/internal/auth/permission-smoke` foi implementado para validar `require_permission("internal.auth.me")` em rota real antes de endpoints administrativos. Ele fica sob a mesma feature flag interna, exige sessao autenticada e permissao `internal.auth.me`, nao exige `X-Geoportal-Internal-Request` por ser GET tecnico de consulta e retorna payload minimo (`authorized`, `permission`, `usuario_id`). As respostas sao padronizadas para futuro frontend: 401 generico sem sessao, 403 generico sem permissao e 200 quando autorizado. O endpoint nao retorna token, cookie, senha, `senha_hash`, `token_hash`, `session_secret`, `DATABASE_URL`, SQL, role ou GRANT, nao usa login hardcoded e nao e endpoint administrativo real.
+
 ## 1. Separacao publico/interno
 
 - Endpoints publicos continuam em `/api/public/...`.
@@ -257,7 +259,7 @@ Próximos passos de autorização: decidir quando remover o token do corpo da re
 
 Sequencia imediata recomendada apos a base tecnica de autorizacao:
 
-1. Implementar e testar `require_permission(...)` em endpoint tecnico protegido por permissao.
+1. Validar o endpoint tecnico `permission-smoke` em homologacao com usuario autorizado e, quando houver usuario sem permissao, confirmar o 403.
 2. Criar endpoints administrativos reais de usuarios/perfis somente apos teste de permissao permitido/negado.
 3. Criar o primeiro endpoint interno de negocio do modulo Iluminacao somente depois dos endpoints administrativos seguros.
 4. Criar tela interna somente depois que backend, autorizacao e endpoints estiverem fechados.
