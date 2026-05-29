@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import text
@@ -22,6 +23,15 @@ class BootstrapAdminProfileResult:
     permissao_ids: tuple[int, ...]
     perfil_permissoes_criadas: int
     usuario_perfil_criado: bool
+
+
+@dataclass(frozen=True)
+class InternalAdminProfileListItem:
+    id: int
+    chave: str
+    nome: str
+    ativo: bool
+    criado_em: datetime
 
 
 def _normalize_required(value: str, field_name: str) -> str:
@@ -73,6 +83,40 @@ def get_user_id_by_login(
     db_engine = engine or get_engine()
     with db_engine.begin() as connection:
         return _get_user_id_by_login_with_connection(connection, login=login)
+
+
+def list_internal_admin_profiles(
+    *,
+    limit: int = 500,
+    engine: Engine | None = None,
+) -> list[InternalAdminProfileListItem]:
+    if limit <= 0:
+        raise ValueError("limit must be positive")
+
+    db_engine = engine or get_engine()
+
+    statement = text(
+        """
+        SELECT
+            id,
+            chave,
+            nome,
+            ativo,
+            criado_em
+        FROM mod_auth.perfis
+        WHERE ativo = :active
+        ORDER BY lower(nome), lower(chave), id
+        LIMIT :limit
+        """
+    )
+
+    with db_engine.begin() as connection:
+        rows = connection.execute(
+            statement,
+            {"active": True, "limit": limit},
+        ).mappings().all()
+
+    return [InternalAdminProfileListItem(**dict(row)) for row in rows]
 
 
 def _ensure_permission_with_connection(

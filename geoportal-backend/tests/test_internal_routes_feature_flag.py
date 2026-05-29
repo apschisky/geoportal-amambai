@@ -16,6 +16,7 @@ INTERNAL_LOGIN_PATH = "/api/internal/auth/login"
 INTERNAL_LOGOUT_PATH = "/api/internal/auth/logout"
 INTERNAL_ME_PATH = "/api/internal/auth/me"
 INTERNAL_PERMISSION_SMOKE_PATH = "/api/internal/auth/permission-smoke"
+INTERNAL_ADMIN_PROFILES_PATH = "/api/internal/admin/profiles"
 INTERNAL_ADMIN_USERS_PATH = "/api/internal/admin/users"
 INTERNAL_ADMIN_USER_DETAIL_ROUTE = "/api/internal/admin/users/{usuario_id}"
 INTERNAL_ADMIN_USER_DETAIL_PATH = "/api/internal/admin/users/7"
@@ -69,6 +70,7 @@ def test_internal_smoke_route_is_absent_when_flag_is_not_enabled(
     assert INTERNAL_LOGOUT_PATH not in route_paths(app)
     assert INTERNAL_ME_PATH not in route_paths(app)
     assert INTERNAL_PERMISSION_SMOKE_PATH not in route_paths(app)
+    assert INTERNAL_ADMIN_PROFILES_PATH not in route_paths(app)
     assert INTERNAL_ADMIN_USERS_PATH not in route_paths(app)
     assert INTERNAL_ADMIN_USER_DETAIL_ROUTE not in route_paths(app)
     assert INTERNAL_ADMIN_USER_PROFILES_ROUTE not in route_paths(app)
@@ -88,6 +90,7 @@ def test_internal_smoke_route_returns_404_when_flag_is_disabled(
     assert client.post(INTERNAL_LOGOUT_PATH).status_code == 404
     assert client.get(INTERNAL_ME_PATH).status_code == 404
     assert client.get(INTERNAL_PERMISSION_SMOKE_PATH).status_code == 404
+    assert client.get(INTERNAL_ADMIN_PROFILES_PATH).status_code == 404
     assert client.get(INTERNAL_ADMIN_USERS_PATH).status_code == 404
     assert client.post(INTERNAL_ADMIN_USERS_PATH, json={}).status_code == 404
     assert client.get(INTERNAL_ADMIN_USER_DETAIL_PATH).status_code == 404
@@ -105,6 +108,7 @@ def test_internal_smoke_route_is_present_when_flag_is_enabled(
     assert INTERNAL_LOGOUT_PATH in route_paths(app)
     assert INTERNAL_ME_PATH in route_paths(app)
     assert INTERNAL_PERMISSION_SMOKE_PATH in route_paths(app)
+    assert INTERNAL_ADMIN_PROFILES_PATH in route_paths(app)
     assert INTERNAL_ADMIN_USERS_PATH in route_paths(app)
     assert INTERNAL_ADMIN_USER_DETAIL_ROUTE in route_paths(app)
     assert INTERNAL_ADMIN_USER_PROFILES_ROUTE in route_paths(app)
