@@ -19,6 +19,8 @@ O Geoportal é escalável para múltiplos módulos. Usuários técnicos de banco
 
 Usuários técnicos de módulos específicos (ex: `api_iluminacao_homolog`, `api_iluminacao_producao`) não serão ampliados automaticamente para acessar `mod_auth`.
 
+Autorizacao funcional de usuarios humanos deve vir de `mod_auth.usuarios`, `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes`. Um usuario pode ter um ou mais perfis; perfis agrupam permissoes; permissoes devem ser granulares por modulo/recurso/acao. Administrador funcional do Geoportal Interno nao deve ser superuser de banco e nao deve ser liberado por regra hardcoded de login. A proxima fase apos autenticacao/sessao e implementar autorizacao funcional no backend, nao tela/frontend.
+
 ### Roles técnicas sugeridas
 
 As seguintes roles técnicas poderão ser criadas em etapas operacionais futuras, sempre com backup, inspeção, execução manual e validação. **Nenhuma role real será criada nesta etapa.**

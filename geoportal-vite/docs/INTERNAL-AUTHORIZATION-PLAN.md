@@ -1,6 +1,6 @@
 # Plano de Autenticacao e Autorizacao Interna
 
-Este documento registra o desenho conceitual dos endpoints internos protegidos do modulo de Iluminacao Publica. Ele nao cria codigo, migrations, endpoints, usuarios reais, senhas, tokens ou configuracoes de ambiente.
+Este documento registra a arquitetura funcional de autorizacao do Geoportal Interno e o desenho conceitual dos endpoints internos protegidos do modulo de Iluminacao Publica. Ele nao cria codigo, migrations, endpoints, usuarios reais, perfis reais, permissoes reais, senhas, tokens ou configuracoes de ambiente.
 
 O modelo conceitual transversal de dados de autenticacao/autorizacao esta em `docs/INTERNAL-AUTH-DATA-MODEL.md`.
 
@@ -13,6 +13,8 @@ O plano de threat model, controles e validacao para a implementacao segura da au
 Registro documental: a migration `0008_create_mod_auth_perfis_permissoes.sql` foi aplicada e validada em homologacao e no banco ativo de producao para estruturar perfis, permissoes e vinculos. Dados ficticios de validacao foram removidos em homologacao, todas as tabelas `mod_auth` permaneceram vazias apos a criacao em producao e nenhum usuario, perfil, permissao, vinculo, seed, endpoint ou login funcional foi criado.
 
 Registro documental: a migration `0009_create_mod_auth_sessoes_login_auditoria.sql` foi aplicada e validada em homologacao e no banco ativo de producao para estruturar sessoes e auditoria de login. Dados ficticios de validacao foram removidos em homologacao, todas as tabelas `mod_auth` permaneceram vazias apos a criacao em producao e nenhum login funcional, endpoint, token real, sessao real, auditoria real ou seed foi criado. A base estrutural inicial do schema `mod_auth` esta concluida; a proxima etapa deve planejar e implementar autenticacao backend com testes, sem criar acesso interno publico sem autenticacao.
+
+Registro arquitetural atual: a autenticacao interna, a sessao opaca por cookie HttpOnly e o logout ja foram validados em homologacao. A proxima fase segura nao e tela/frontend. A proxima fase deve ser autorizacao funcional por usuarios, perfis, permissoes, modulos e acoes, com validacao no backend antes de qualquer endpoint de negocio ou tela administrativa.
 
 ## 1. Separacao publico/interno
 
@@ -54,6 +56,16 @@ Nenhum endpoint interno deve ser implementado sem autenticacao. Nenhum endpoint 
 
 ## 4. Perfis e permissoes
 
+Modelo funcional:
+
+- Usuario: pessoa autenticada em `mod_auth.usuarios`.
+- Perfil: agrupamento funcional de permissoes.
+- Permissao: capacidade granular nomeada por modulo e acao.
+- Modulo: area funcional do Geoportal Interno, como `admin` ou `iluminacao`.
+- Acao: operacao permitida, como ler, criar, bloquear, comentar ou atualizar status.
+
+Um usuario pode ter um ou mais perfis. Um perfil agrupa uma ou mais permissoes. As permissoes efetivas do usuario devem ser derivadas dos seus perfis e vinculos em `mod_auth`, nunca de regra fixa no codigo por login.
+
 Perfis sugeridos:
 
 - `admin`
@@ -62,17 +74,45 @@ Perfis sugeridos:
 - `equipe_execucao`
 - `leitura`
 
-Permissoes conceituais:
+Permissoes conceituais granulares:
 
-- `visualizar_solicitacoes`
-- `visualizar_detalhe`
-- `alterar_status`
-- `registrar_observacao`
-- `visualizar_historico`
-- `visualizar_estatisticas`
-- `administrar_usuarios`
+- `admin.usuarios.ler`
+- `admin.usuarios.criar`
+- `admin.usuarios.bloquear`
+- `admin.usuarios.redefinir_senha`
+- `admin.usuarios.atribuir_perfis`
+- `admin.perfis.ler`
+- `admin.perfis.gerenciar`
+- `iluminacao.solicitacoes.ler`
+- `iluminacao.solicitacoes.atualizar_status`
+- `iluminacao.solicitacoes.comentar`
+- `iluminacao.dashboard.ler`
+- `iluminacao.relatorios.ler`
 
-`administrar_usuarios` deve ficar restrita a `admin` em etapa futura.
+As permissoes reais devem ser criadas em etapa operacional propria, sem seed publico com dado real, e devem seguir o padrao `modulo.recurso.acao`.
+
+Administrador funcional do Geoportal Interno:
+
+- Pode criar usuarios internos por fluxo administrativo proprio.
+- Pode bloquear e desbloquear usuarios.
+- Pode redefinir senha.
+- Pode atribuir e remover perfis.
+- Pode gerenciar permissoes por modulo.
+- Nao deve ser superuser de banco.
+- Nao deve depender de regra hardcoded por login.
+
+Usuarios de modulo, como Iluminacao Publica:
+
+- So devem acessar o modulo autorizado.
+- Nao podem criar usuarios globais.
+- Nao podem atribuir permissoes.
+- Nao podem acessar administracao global.
+- So podem executar as acoes permitidas pelo perfil do modulo.
+
+Regra proibida:
+
+- Nao usar condicao do tipo `if login == "admin.homologacao": libera tudo`.
+- A autorizacao deve vir de perfis e permissoes em `mod_auth`, associadas ao usuario autenticado.
 
 ## 5. Matriz de permissoes sugerida
 
@@ -122,12 +162,19 @@ A matriz final deve ser validada com a operacao antes de qualquer ativacao real.
 ## 9. Estrategia de implementacao segura
 
 1. Fase 1: documentacao de autenticacao e autorizacao.
-2. Fase 2: modelo de dados de usuarios, perfis e sessoes, ou decisao tecnica equivalente.
+2. Fase 2: modelo de dados de usuarios, perfis, permissoes e sessoes.
 3. Fase 3: migrations de seguranca e autenticacao.
-4. Fase 4: implementacao de autenticacao no backend com testes.
-5. Fase 5: implementacao dos endpoints internos protegidos.
-6. Fase 6: tela interna minima consumindo endpoints protegidos.
-7. Fase 7: auditoria e revisao de seguranca antes de uso por equipe real.
+4. Fase 4: implementacao de autenticacao, sessao, cookie e logout no backend com testes.
+5. Fase 5: implementar repository para buscar permissoes efetivas do usuario autenticado.
+6. Fase 6: implementar service `has_permission(usuario_id, permissao)`.
+7. Fase 7: implementar dependency FastAPI `require_permission("permissao")`.
+8. Fase 8: criar endpoint tecnico `/api/internal/auth/me` ou `/api/internal/auth/permissions`.
+9. Fase 9: criar script/seed administrativo controlado para perfil inicial `Administrador Interno`, se necessario, sem dado sensivel no Git.
+10. Fase 10: atribuir perfil administrativo ao `admin.homologacao` em homologacao e validar.
+11. Fase 11: criar endpoints administrativos reais apenas depois da autorizacao base.
+12. Fase 12: criar endpoints internos de negocio, com o primeiro modulo pratico previsto sendo Iluminacao Publica.
+13. Fase 13: criar tela interna somente depois que backend autenticar e autorizar com seguranca.
+14. Fase 14: auditoria e revisao de seguranca antes de uso por equipe real.
 
 ## 9.1 Escalabilidade multi-módulo
 
@@ -145,6 +192,7 @@ O Geoportal Interno é arquiteturado para ser escalável a múltiplos módulos, 
 - O mesmo usuário pode ter diferentes perfis em diferentes módulos.
 - Exemplo: Um supervisor pode ser `admin` em Iluminação Pública, mas apenas `gestor_modulo` em futuro módulo de Drenagem.
 - Permissões específicas por módulo são controladas via `mod_auth.usuario_perfis` (vinculo entre usuário, perfil e módulo) e `mod_auth.perfil_permissoes`.
+- O primeiro modulo pratico previsto continua sendo Iluminacao Publica, mas endpoints de negocio so devem ser criados depois da autorizacao base (`require_permission`) existir e estar validada.
 
 **Separação de permissões:**
 
@@ -190,6 +238,21 @@ O commit `eaf5724` Implementa cookie e logout internos foi validado no servidor 
 Resultado sanitizado: login status 200 para `admin.homologacao` (`usuario_id=7`), cookie setado com HttpOnly, SameSite=Lax e Path `/api/internal`, smoke autenticado por cookie status 200, logout sem header status 403, logout com `X-Geoportal-Internal-Request: 1` status 200, cookie limpo e smoke após logout status 401. Contagens após teste: `mod_auth.usuarios=1`, `mod_auth.sessoes=2`, `mod_auth.login_auditoria=2`, `sessoes_revogadas=1`.
 
 Próximos passos de autorização: decidir quando remover o token do corpo da resposta ou restringi-lo a ambiente técnico, planejar validação Origin/Referer como camada complementar, implementar endpoints internos de negócio somente após autorização por perfis/permissões, e não liberar tela interna para usuários reais antes de fechar autorização e frontend seguro.
+
+Sequencia imediata recomendada apos autenticacao/sessao:
+
+1. Implementar busca de permissoes efetivas do usuario autenticado em repository.
+2. Implementar `has_permission(usuario_id, permissao)`.
+3. Implementar `require_permission("permissao")` para FastAPI.
+4. Criar endpoint tecnico `/api/internal/auth/me` ou `/api/internal/auth/permissions`.
+5. Criar mecanismo administrativo controlado para perfil inicial `Administrador Interno`, se necessario.
+6. Atribuir o perfil administrativo ao `admin.homologacao` somente em homologacao.
+7. Validar permissoes efetivas em homologacao.
+8. So depois criar endpoints administrativos reais de usuarios/perfis.
+9. So depois criar endpoints de negocio de Iluminacao Publica.
+10. So depois criar tela interna.
+
+Producao continua sem alteracao nesta etapa documental.
 
 **Adição de novos módulos:**
 

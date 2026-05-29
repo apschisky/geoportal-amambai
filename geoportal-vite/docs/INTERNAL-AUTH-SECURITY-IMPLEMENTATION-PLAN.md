@@ -28,6 +28,10 @@ Resultados sanitizados:
 
 Confirmações: cookie HttpOnly, SameSite=Lax, Path `/api/internal`, sessão opaca, revogação lógica por `revogado_em`, sem DELETE físico, Bearer mantido como suporte técnico/intermediário e cookie como transporte principal planejado para navegador. Próximos passos: decidir quando remover o token do corpo da resposta ou restringi-lo a ambiente técnico; planejar validação Origin/Referer como camada complementar; planejar endpoints internos de negócio apenas após autorização por perfis/permissões; não liberar tela interna para usuários reais antes de autorização e frontend seguro.
 
+Registro arquitetural de autorizacao funcional: a proxima fase apos autenticacao/sessao nao e tela/frontend. A proxima fase deve implementar autorizacao por `mod_auth.usuarios`, `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes`. Um usuario pode ter um ou mais perfis; um perfil agrupa permissoes; permissoes devem ser granulares por modulo/recurso/acao, como `admin.usuarios.criar`, `admin.usuarios.bloquear`, `admin.usuarios.redefinir_senha`, `admin.usuarios.atribuir_perfis`, `admin.perfis.gerenciar`, `iluminacao.solicitacoes.ler`, `iluminacao.solicitacoes.atualizar_status`, `iluminacao.solicitacoes.comentar`, `iluminacao.dashboard.ler` e `iluminacao.relatorios.ler`. Nao usar regra hardcoded por login, especialmente `admin.homologacao`, para liberar tudo.
+
+Sequencia segura recomendada: repository de permissoes efetivas; service `has_permission(usuario_id, permissao)`; dependency `require_permission("permissao")`; endpoint tecnico `/api/internal/auth/me` ou `/api/internal/auth/permissions`; mecanismo administrativo controlado para perfil inicial `Administrador Interno`, se necessario; atribuicao do perfil ao `admin.homologacao` em homologacao; validacao em homologacao; so depois endpoints administrativos reais; so depois endpoints de negocio do primeiro modulo pratico, Iluminacao Publica; so depois tela interna. Producao permanece sem alteracao nesta etapa documental.
+
 Validação operacional de login real em homologação (processo isolado):
 
 Preparação em homologação:

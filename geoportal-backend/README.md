@@ -159,6 +159,8 @@ Confirmacoes da validacao: cookie HttpOnly, SameSite=Lax, Path `/api/internal`, 
 
 Proximos passos: decidir quando remover o token do corpo da resposta ou restringi-lo a ambiente tecnico; planejar validacao de Origin/Referer como camada complementar; planejar endpoints internos de negocio somente apos autorizacao por perfis/permissoes; nao liberar tela interna para usuarios reais antes de fechar autorizacao e frontend seguro.
 
+Arquitetura funcional de autorizacao: apos a validacao de autenticacao/sessao, a proxima fase segura e implementar autorizacao por usuarios, perfis, permissoes, modulos e acoes, nao tela/frontend. O backend deve buscar permissoes efetivas em `mod_auth`, expor service `has_permission(usuario_id, permissao)` e dependency `require_permission("permissao")`, sem regra hardcoded como `login == "admin.homologacao"`. O administrador funcional pode criar/bloquear usuarios, redefinir senha e atribuir perfis em etapa futura, mas nao deve ser superuser de banco. Usuarios de modulo, como Iluminacao Publica, devem acessar somente o modulo e as acoes permitidas. O primeiro modulo pratico previsto e Iluminacao Publica, mas endpoints de negocio e tela interna so devem vir depois da autorizacao base validada em homologacao.
+
 Harness operacional seguro: `scripts/deploy/backend-restart-validate-service.ps1` reinicia e valida servicos da API apenas quando executado explicitamente. Ele nao faz deploy, `git pull`, migrations, alteracao de banco, alteracao de `.env`, instalacao de dependencias ou alteracao de Apache/proxy. Em producao, restart exige confirmacao interativa ou `-Force`.
 
 ## Como preparar o ambiente

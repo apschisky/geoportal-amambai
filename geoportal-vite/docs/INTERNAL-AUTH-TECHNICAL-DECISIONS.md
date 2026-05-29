@@ -525,21 +525,32 @@ Diretrizes:
 - Autorização nunca depende apenas do frontend.
 - Perfis são agrupadores.
 - Permissões são as regras reais.
+- Um usuario pode ter um ou mais perfis.
+- Um perfil agrupa permissoes granulares por modulo/recurso/acao.
 - Ações sensíveis precisam de permissão específica.
 - Listagens devem aplicar escopo por módulo/setor quando necessário.
+- Nao usar regra hardcoded do tipo `if login == "admin.homologacao": libera tudo`; autorizacao deve vir de `mod_auth`.
 
 Exemplos de permissões futuras:
 
+- `admin.usuarios.ler`
+- `admin.usuarios.criar`
+- `admin.usuarios.bloquear`
+- `admin.usuarios.redefinir_senha`
+- `admin.usuarios.atribuir_perfis`
+- `admin.perfis.ler`
+- `admin.perfis.gerenciar`
 - `iluminacao.solicitacoes.ler`
-- `iluminacao.solicitacoes.triagem`
 - `iluminacao.solicitacoes.atualizar_status`
-- `iluminacao.solicitacoes.adicionar_observacao`
-- `iluminacao.solicitacoes.ver_contato`
-- `auth.usuarios.gerenciar`
+- `iluminacao.solicitacoes.comentar`
+- `iluminacao.dashboard.ler`
+- `iluminacao.relatorios.ler`
 
 Observação:
 
 - Nomes são exemplos; permissões reais devem ser criadas em etapa própria, sem seed pública com dados reais.
+- A proxima fase apos autenticacao/sessao deve ser repository de permissoes efetivas, service `has_permission(usuario_id, permissao)`, dependency `require_permission("permissao")` e endpoint tecnico `/api/internal/auth/me` ou `/api/internal/auth/permissions`.
+- Endpoints administrativos reais, endpoints de negocio de Iluminacao Publica e tela interna devem vir somente depois da autorizacao base validada em homologacao.
 
 ## 9. Proteção contra brute force e credential stuffing
 
@@ -717,12 +728,16 @@ Testes mínimos:
 5. Manter `GEOPORTAL_INTERNAL_ROUTES_ENABLED` desligada por padrao; ativar rotas internas apenas em homologacao controlada.
 6. Configurar segredo real de HMAC em etapa segura, sem registrar em log.
 7. Planejar smoke test protegido ou middleware de autenticacao.
-8. Implementar autorização por permissão.
-9. Validar endpoint de login em homologacao com auditoria, rate limit e controle de exposicao.
-10. Trabalhar as próximas etapas críticas com Codex High.
-11. Criar endpoints internos mínimos protegidos.
-12. Criar tela interna mínima.
-13. Continuar a próxima etapa crítica com Codex High.
+8. Implementar repository de permissoes efetivas do usuario autenticado.
+9. Implementar service `has_permission(usuario_id, permissao)`.
+10. Implementar dependency `require_permission("permissao")`.
+11. Criar endpoint tecnico `/api/internal/auth/me` ou `/api/internal/auth/permissions`.
+12. Criar mecanismo administrativo controlado para perfil inicial `Administrador Interno`, se necessario, e atribuir ao `admin.homologacao` somente em homologacao.
+13. Trabalhar as proximas etapas criticas com Codex High.
+14. Criar endpoints administrativos reais somente depois da autorizacao base.
+15. Criar endpoints internos de negocio de Iluminacao Publica somente depois da autorizacao base.
+16. Criar tela interna minima somente depois que o backend validar autorizacao com seguranca.
+17. Continuar a proxima etapa critica com Codex High.
 
 Observação:
 
