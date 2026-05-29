@@ -25,3 +25,11 @@ O login e o identificador obrigatorio de autenticacao interna. E-mail e apenas d
 **Decisão**: Não ampliar `api_iluminacao_homolog` para acessar `mod_auth`. Usuários técnicos de módulos específicos devem permanecer restritos aos seus schemas.
 
 **Status de conclusão**: A role técnica `geoportal_auth_admin_homolog` foi criada em homologação com permissões mínimas em `mod_auth` para permitir bootstrap de usuários internos. O primeiro usuário administrativo `admin.homologacao` foi criado com sucesso via este script. Consulte `geoportal-backend/db/security/README.md` para detalhes de execução, validações e contexto de escalabilidade.
+
+**Validação operacional de reset de senha**: O script `admin/reset_internal_user_password.py` foi executado em homologação com sucesso para redefinir a senha do usuário `admin.homologacao`:
+- Role `geoportal_auth_admin_homolog` recebeu GRANT UPDATE temporário em `mod_auth.usuarios` para permitir atualização de `senha_hash` e `atualizado_em`.
+- Reset executado interativamente com `getpass` (sem imprimir senha ou hash em logs).
+- Apos reset, REVOKE UPDATE foi executado, restringindo a role novamente apenas para SELECT e INSERT.
+- Validação: SELECT true, INSERT true, UPDATE false, DELETE false.
+- Nenhuma alteração em schema, migration ou produção.
+- Script preserva `--dry-run` mode para testes sem persistência.

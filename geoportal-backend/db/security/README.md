@@ -93,7 +93,43 @@ Sem ampliar api_iluminacao_homolog para mod_auth.
 
 **Etapa operacional futura**: a criacao real de `geoportal_api_homolog` deve ocorrer separadamente, sem producao, com backup de roles, comandos revisados, execucao manual e validacao de permissoes. Esta documentacao nao cria role real, nao cria GRANT real executavel e nao altera banco.
 
-**Finalidade**: Suportar o futuro endpoint de login e validacao de sessao interna em homologacao usando apenas `mod_auth`.
+**Criação operacional realizada em homologação**:
+
+A role `geoportal_api_homolog` foi criada em homologação com sucesso para permitir validação do fluxo de login interno isolado. Permissões implementadas (mínimas):
+
+```sql
+CONNECT ao banco de homologação;
+USAGE no schema mod_auth;
+
+mod_auth.usuarios:
+- SELECT;
+
+mod_auth.sessoes:
+- SELECT;
+- INSERT;
+- Sem UPDATE nesta validação;
+- Sem DELETE.
+
+mod_auth.login_auditoria:
+- INSERT;
+- SELECT;
+
+Sequences:
+- USAGE e SELECT em mod_auth.usuarios_id_seq;
+- USAGE e SELECT em mod_auth.sessoes_id_seq;
+- USAGE e SELECT em mod_auth.login_auditoria_id_seq.
+
+Sem DELETE, UPDATE global, CREATE, DROP, ALTER, TRUNCATE, ou SUPERUSER.
+```
+
+Validação realizada (processo isolado em homologação):
+- Teste isolado com DATABASE_URL apontado para `geoportal_api_homolog` + homologação.
+- POST /api/internal/auth/login com `admin.homologacao`: status 200, token presente.
+- GET /api/internal/auth/smoke com token: status 200, sessão ativa.
+- Confirmada: SELECT em usuarios, INSERT em sessoes, INSERT em login_auditoria.
+- Nenhuma alteração em produção, NSSM ou .env versionado.
+
+**Finalidade**: Suportar o endpoint de login e validacao de sessao interna em homologacao usando apenas `mod_auth`.
 
 **Evolucao esperada**: Permissoes para schemas de modulos, como `mod_iluminacao`, devem ser avaliadas apenas quando endpoints internos de negocio forem implementados e testados. Permissoes de aplicacao continuam em `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes`; roles PostgreSQL controlam somente acesso tecnico minimo as tabelas.
 

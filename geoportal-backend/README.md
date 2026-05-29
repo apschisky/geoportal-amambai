@@ -6,7 +6,7 @@ Esta etapa nao conecta banco de dados, nao implementa autenticacao real, nao usa
 
 As decisoes tecnicas para autenticacao interna estao documentadas em `geoportal-vite/docs/INTERNAL-AUTH-TECHNICAL-DECISIONS.md`.
 Implementacao backend: o servico interno de hash/verificacao de senha usando Argon2id foi implementado e validado. O servico interno de sessao opaca/token foi implementado e validado. O repository interno de usuarios foi criado para `mod_auth.usuarios` e o repository interno de sessoes foi criado para operar com `mod_auth.sessoes`, `token_hash`, expiracao e revogacao por `revogado_em`, sem `DELETE`. O service interno de autenticacao/sessao foi implementado em `geoportal-backend/app/services/auth_service.py`, com auditoria e rate limit integrados, sem endpoint. A atualizacao de `ultimo_login_em` foi tornada best effort via try/except controlado; se falhar, a sessao autenticada ja criada permanece valida e a auditoria de sucesso continua sendo registrada, reduzindo risco de inconsistencia no futuro login. O service interno de validacao de sessao autenticada foi criado em `geoportal-backend/app/services/auth_current_session_service.py`; ele resolve sessao ativa a partir de token bruto e `session_secret`, consulta o banco somente por `token_hash` e nao retorna token bruto, `token_hash`, `session_secret`, senha ou `senha_hash`. O service puro de transporte de token foi criado em `geoportal-backend/app/services/auth_token_transport_service.py`; ele extrai token de cookie ou `Authorization: Bearer`, retorna `transport = "cookie"` para cookie válido e `transport = "bearer"` para Bearer válido, marca cookie+bearer simultaneos como ambiguos e não escolhe silenciosamente, e não depende de FastAPI, `Request`, endpoint ou middleware. Token ausente retorna `None`. Authorization malformado, Basic, Bearer sem token ou Bearer com partes extras retornam `is_malformed = True`. Esse service não valida criptograficamente a sessão nem consulta o banco; ele apenas extrai e normaliza o token. A validação real de sessão continua em `auth_current_session_service.py`. `session_secret` invalido e erros de repository/banco sobem como erro interno, sem fallback inseguro. O repository interno de auditoria de login foi criado em `geoportal-backend/app/repositories/auth_login_audit_repository.py` com `record_login_attempt(...)` e `count_recent_failed_attempts(...)`; nao registra senha, token ou session_secret. O service puro de rate limit foi criado em `geoportal-backend/app/services/auth_rate_limit_service.py` com logica que nao revela existencia de usuario.
-Validacao: testes locais passaram (281 total). `tests/test_reset_internal_user_password_admin.py` passou com 12 testes; `tests/test_internal_auth_login_router.py` passou com 5 testes; `tests/test_auth_service.py` passou com 26 testes, incluindo validacao de robustez da atualizacao de `ultimo_login_em` com try/except; `tests/test_internal_routes_feature_flag.py` passou com 9 testes; `tests/test_auth_user_repository.py` passou com 9 testes. A dependency FastAPI interna `get_current_authenticated_session(...)` foi criada em `geoportal-backend/app/dependencies/auth_dependencies.py` e valida sessao usando `extract_session_token(...)` e `resolve_authenticated_session(...)`. O router tecnico protegido de smoke foi criado em `geoportal-backend/app/api/routes/internal_auth_smoke.py` com `GET /api/internal/auth/smoke`.
+Validacao: testes locais passaram (283 total). `tests/test_auth_login_audit_repository.py` passou com 6 testes; `tests/test_reset_internal_user_password_admin.py` passou com 12 testes; `tests/test_internal_auth_login_router.py` passou com 5 testes; `tests/test_auth_service.py` passou com 26 testes, incluindo validacao de robustez da atualizacao de `ultimo_login_em` com try/except; `tests/test_internal_routes_feature_flag.py` passou com 9 testes; `tests/test_auth_user_repository.py` passou com 9 testes. A dependency FastAPI interna `get_current_authenticated_session(...)` foi criada em `geoportal-backend/app/dependencies/auth_dependencies.py` e valida sessao usando `extract_session_token(...)` e `resolve_authenticated_session(...)`. O router tecnico protegido de smoke foi criado em `geoportal-backend/app/api/routes/internal_auth_smoke.py` com `GET /api/internal/auth/smoke`.
 
 A feature flag `GEOPORTAL_INTERNAL_ROUTES_ENABLED` foi conectada ao app principal em `geoportal-backend/app/main.py` e condiciona os routers internos de autenticacao. O comportamento é fail-closed: ausencia, false, valor invalido ou valor desligado mantêm as rotas `/api/internal/auth/...` fora do app principal. Apenas valores explícitos de ativação permitem incluir o router técnico interno.
 
@@ -77,6 +77,32 @@ A role PostgreSQL `geoportal_auth_admin_homolog` foi criada em homologacao com s
   - Nenhuma alteracao em `.env` ou migration
 - Producao nao foi alterada; todas as operacoes restritas a homologacao
 - Proxima etapa: nao ampliar `geoportal_auth_admin_homolog` automaticamente; planejar `geoportal_api_homolog` como futura role runtime da API interna em homologacao, com matriz minima documentada em `geoportal-backend/db/security/README.md`, sem criacao real nesta etapa
+
+Validacao operacional de reset de senha e login interno em homologacao (processo isolado):
+
+Commits no servidor: `0baeeca` Corrige filtros opcionais da auditoria de login; `8431e0e` Adiciona reset administrativo de senha interna; `3ebfc4f` Adiciona endpoint interno de login.
+
+Testes no servidor: `tests/test_auth_login_audit_repository.py` passou com 6 testes; `tests/test_auth_service.py` passou com 26 testes; `tests/test_internal_auth_login_router.py` passou com 5 testes; pytest completo passou com 283 testes.
+
+Reset da senha em homologacao: O script administrativo `scripts/admin/reset_internal_user_password.py` redefiniu a senha do usuario `admin.homologacao` em homologacao via etapa controlada:
+- Role `geoportal_auth_admin_homolog` recebeu GRANT UPDATE temporario em `mod_auth.usuarios` para permitir atualizacao de `senha_hash` e `atualizado_em`.
+- Reset executado com o script administrativo (sem imprimir senha ou hash).
+- Apos o reset, REVOKE UPDATE foi executado, restringindo a role novamente apenas para SELECT e INSERT.
+- Validacao final confirmou: SELECT true, INSERT true, UPDATE false, DELETE false.
+- Nenhuma alteracao em schema, migration ou producao.
+
+Validacao real do login interno: Foi realizada validacao com processo isolado em homologacao:
+- Role `geoportal_api_homolog` foi criada em homologacao com permissoes runtime minimas: CONNECT, USAGE mod_auth, SELECT/INSERT mod_auth.sessoes, SELECT mod_auth.usuarios.
+- Processo isolado foi executado com variaveis temporarias: DATABASE_URL apontando para geoportal_api_homolog + homologacao, GEOPORTAL_INTERNAL_ROUTES_ENABLED=true, GEOPORTAL_INTERNAL_SESSION_SECRET temporario, TEST_INTERNAL_PASSWORD temporario.
+- NSSM / servico Windows nao foi alterado nesta etapa; validacao foi isolada.
+- Todas as variaveis temporarias foram limpas apos o teste.
+- Resultado sanitizado do teste (sem token real, sem hash, sem session_secret):
+  - POST /api/internal/auth/login status=200, authenticated=True, usuario_id=7, login=admin.homologacao, tem_token=True.
+  - GET /api/internal/auth/smoke (usando token do login) status=200, authenticated=True, usuario_id=7, tem_sessao_id=True.
+- Contadores apos teste: mod_auth.usuarios=1, mod_auth.sessoes=1, mod_auth.login_auditoria=1.
+- Nenhuma alteracao em producao, NSSM, .env versionado, migration, endpoint adicional ou exposicao de senha/token/hash/segredo.
+
+Proxima etapa recomendada: Decidir transporte final de sessao para uso real com usuarios finais (preferencialmente cookie HttpOnly + Secure + SameSite); planejar CSRF se necessario; nao liberar tela interna para usuarios antes dessa decisao; depois implementar autorizacao por modulo/perfil/permissao.
 
 Harness operacional seguro: `scripts/deploy/backend-restart-validate-service.ps1` reinicia e valida servicos da API apenas quando executado explicitamente. Ele nao faz deploy, `git pull`, migrations, alteracao de banco, alteracao de `.env`, instalacao de dependencias ou alteracao de Apache/proxy. Em producao, restart exige confirmacao interativa ou `-Force`.
 
