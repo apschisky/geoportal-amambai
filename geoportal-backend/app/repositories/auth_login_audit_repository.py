@@ -73,12 +73,12 @@ def count_recent_failed_attempts(
         WHERE sucesso IS false
           AND criado_em >= :since
           AND (
-              :login_informado IS NULL
-              OR login_informado = :login_informado
+              CAST(:login_informado AS text) IS NULL
+              OR login_informado = CAST(:login_informado AS text)
           )
           AND (
-              :origem IS NULL
-              OR origem = :origem
+              CAST(:origem AS text) IS NULL
+              OR origem = CAST(:origem AS text)
           )
         """
     )

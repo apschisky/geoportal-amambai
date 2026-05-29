@@ -161,15 +161,73 @@ def test_count_recent_failed_attempts_uses_count_and_bind_params() -> None:
     assert "FROM mod_auth.login_auditoria" in sql
     assert "sucesso IS false" in sql
     assert "criado_em >= :since" in sql
-    assert "login_informado = :login_informado" in sql
-    assert "origem = :origem" in sql
+    assert "CAST(:login_informado AS text) IS NULL" in sql
+    assert "login_informado = CAST(:login_informado AS text)" in sql
+    assert "CAST(:origem AS text) IS NULL" in sql
+    assert "origem = CAST(:origem AS text)" in sql
     assert "SELECT *" not in sql.upper()
     assert "senha" not in sql.lower()
     assert "token" not in sql.lower()
+    assert LOGIN_FICTICIO not in sql
+    assert ORIGEM_FICTICIA not in sql
     assert params == {
         "since": since,
         "login_informado": LOGIN_FICTICIO,
         "origem": ORIGEM_FICTICIA,
+    }
+    assert_sensitive_values_absent(sql, params)
+
+
+def test_count_recent_failed_attempts_allows_missing_login_filter() -> None:
+    engine = FakeEngine({"failed_count": 2})
+    since = datetime(2026, 5, 26, 12, 0, tzinfo=UTC)
+
+    response = count_recent_failed_attempts(
+        since=since,
+        login_informado=None,
+        origem=ORIGEM_FICTICIA,
+        engine=engine,
+    )
+
+    sql = sql_for(engine)
+    params = params_for(engine)
+
+    assert response == 2
+    assert "CAST(:login_informado AS text) IS NULL" in sql
+    assert "login_informado = CAST(:login_informado AS text)" in sql
+    assert "origem = CAST(:origem AS text)" in sql
+    assert ORIGEM_FICTICIA not in sql
+    assert params == {
+        "since": since,
+        "login_informado": None,
+        "origem": ORIGEM_FICTICIA,
+    }
+    assert_sensitive_values_absent(sql, params)
+
+
+def test_count_recent_failed_attempts_allows_missing_origin_filter() -> None:
+    engine = FakeEngine({"failed_count": 1})
+    since = datetime(2026, 5, 26, 12, 0, tzinfo=UTC)
+
+    response = count_recent_failed_attempts(
+        since=since,
+        login_informado=LOGIN_FICTICIO,
+        origem=None,
+        engine=engine,
+    )
+
+    sql = sql_for(engine)
+    params = params_for(engine)
+
+    assert response == 1
+    assert "login_informado = CAST(:login_informado AS text)" in sql
+    assert "CAST(:origem AS text) IS NULL" in sql
+    assert "origem = CAST(:origem AS text)" in sql
+    assert LOGIN_FICTICIO not in sql
+    assert params == {
+        "since": since,
+        "login_informado": LOGIN_FICTICIO,
+        "origem": None,
     }
     assert_sensitive_values_absent(sql, params)
 
@@ -188,6 +246,8 @@ def test_count_recent_failed_attempts_supports_generic_window_without_filters() 
     params = params_for(engine)
 
     assert response == 0
+    assert "CAST(:login_informado AS text) IS NULL" in sql_for(engine)
+    assert "CAST(:origem AS text) IS NULL" in sql_for(engine)
     assert params == {
         "since": since,
         "login_informado": None,
