@@ -34,7 +34,11 @@ Pontos importantes:
   - Feature flag `GEOPORTAL_INTERNAL_ROUTES_ENABLED` implementada com comportamento fail-closed.
   - Script administrativo `scripts/admin/reset_internal_user_password.py` criado para redefinir senha de usuario interno existente por login, com `getpass`, sem senha/hash por argumento e com `--dry-run` sem banco.
   - Repository administrativo possui update parametrizado de senha por login, alterando somente `senha_hash` e `atualizado_em`.
-  - Testes automatizados locais passaram: 281 testes no total, incluindo 12 testes do reset administrativo, 5 testes do endpoint interno de login, 26 `test_auth_service`, 17 `test_create_internal_user` e 9 `test_auth_user_repository`.
+  - Transporte principal por cookie HttpOnly implementado no login interno, com nome `geoportal_internal_session`, SameSite=Lax, Path `/api/internal`, Max-Age alinhado a sessao e Secure configuravel com padrao seguro em producao.
+  - Endpoint `POST /api/internal/auth/logout` criado sob feature flag, com revogacao por `revogado_em` e limpeza de cookie, sem DELETE fisico.
+  - Protecao CSRF/equivalente inicial implementada para rotas internas mutaveis protegidas por header `X-Geoportal-Internal-Request: 1`; login e GET de smoke ficam fora dessa exigencia.
+  - Bearer permanece aceito como suporte tecnico/intermediario e para clientes nao navegador, mas o fluxo principal de navegador passa a ser cookie HttpOnly.
+  - Testes automatizados locais passaram: 298 testes no total, incluindo 14 testes do endpoint interno de login/logout/cookie, 15 `test_auth_dependencies`, 12 testes do reset administrativo, 26 `test_auth_service`, 17 `test_create_internal_user` e 9 `test_auth_user_repository`.
   - Migration `0010_make_auth_user_email_optional.sql` aplicada em homologação e produção.
   - Email agora é opcional; login permanece obrigatório como identificador principal de autenticação.
   - Validação operacional realizada pelo harness operacional em homologação e produção: `/api/health`, `/api/public/iluminacao/health` e `/api/version` permaneceram OK.
@@ -45,8 +49,8 @@ Pontos importantes:
   - Router de smoke auth existe, mas não está incluído no app principal.
   - `geoportal-backend/app/main.py` e `geoportal-backend/app/api/router.py` não foram alterados.
   - `GEOPORTAL_INTERNAL_SESSION_SECRET` documentado como configuração futura, sem valor real no repositório.
-  - Cookie HttpOnly/Secure/SameSite permanece preferência futura.
-  - Bearer permanece alternativa operacional futura.
+  - Cookie HttpOnly/Secure/SameSite esta implementado como transporte principal para navegador.
+  - Bearer permanece alternativa tecnica/intermediaria, nao fluxo principal de navegador.
 
 - Pendente:
   - Feature flag para ativar rotas internas.
@@ -54,10 +58,8 @@ Pontos importantes:
   - Configurar segredo real somente no servidor, fora do Git.
   - Criar primeiro usuário interno por script administrativo seguro.
   - Validar endpoint de login em homologação controlada antes de qualquer exposição operacional.
-  - Setar cookie real HttpOnly/Secure/SameSite.
-  - Criar CSRF antes de rotas mutáveis.
+  - Avaliar validacao complementar de Origin/Referer para rotas internas mutaveis.
   - Criar endpoint `/me` real.
-  - Criar logout/revogação de sessão.
   - Criar autorização/perfis/permissões.
   - Criar primeiro módulo interno de negócio.
 
@@ -194,21 +196,21 @@ Status:
 - O router de smoke e incluido no app principal somente quando `GEOPORTAL_INTERNAL_ROUTES_ENABLED` retorna `True`; com flag ausente, desligada ou invalida, a rota nao existe no app principal.
 - Base de feature flag futura criada em `geoportal-backend/app/core/internal_routes_config.py` com `GEOPORTAL_INTERNAL_ROUTES_ENABLED`.
 - A flag e fail-closed: ausencia, vazio, valor desligado ou valor invalido retornam `False`; apenas `true`, `1`, `yes` e `on` ativam o parser e incluem o router tecnico.
-- O nome futuro do cookie interno ficou definido como `geoportal_internal_session`, mas nenhum cookie real é criado ou configurado nesta etapa.
+- O cookie interno `geoportal_internal_session` foi implementado para o login interno.
 - `session_secret` é obtido por função injetável/testável; ausência de configuração crítica gera RuntimeError interno, sem valor real no repositório.
-- Cookie HttpOnly/Secure/SameSite permanece preferencia futura; Bearer permanece alternativa operacional a decidir antes do endpoint.
+- Cookie HttpOnly/Secure/SameSite=Lax passa a ser o transporte principal para navegador; Bearer permanece alternativa tecnica/intermediaria.
 - O servico de sessao usa token aleatorio forte (`secrets.token_urlsafe(32)`), HMAC-SHA256 e comparacao segura com `hmac.compare_digest`.
 - O token bruto nao e persistido nem logado. O hash de sessao e prefixado com `hmac-sha256:`.
 - A expiração usa `datetime` timezone-aware em UTC. A revogacao e tratada quando `revoked_at` esta preenchido.
 - Validacao local desta etapa: `tests/test_internal_routes_feature_flag.py` passou com 9 testes; `tests/test_internal_routes_config.py` passou com 28 testes; `tests/test_internal_auth_smoke_router.py` passou com 7 testes; suite completa local passou com 245 testes.
 - Validacao no servidor: git pull aplicado; testes no servidor passaram; homologacao, producao local e producao publica foram reiniciadas e validadas.
 - Endpoints de saude confirmados saudaveis em homologacao, producao local e producao publica: `/api/health`, `/api/public/iluminacao/health`, `/api/version` retornaram status correto em todos os ambientes.
-- O endpoint interno `POST /api/internal/auth/login` existe somente sob `GEOPORTAL_INTERNAL_ROUTES_ENABLED`, retorna 401 generico em falha e dados minimos em sucesso, incluindo token opaco bruto. Ainda nao ha cookie real, CSRF, JWT, middleware ou exposicao publica do login. O usuario `admin.homologacao` existe somente em homologacao por bootstrap administrativo controlado.
+- O endpoint interno `POST /api/internal/auth/login` existe somente sob `GEOPORTAL_INTERNAL_ROUTES_ENABLED`, retorna 401 generico em falha e dados minimos em sucesso, incluindo token opaco bruto temporariamente no corpo. Em sucesso, tambem seta o cookie HttpOnly `geoportal_internal_session` com o token opaco bruto, SameSite=Lax, Path `/api/internal`, Max-Age alinhado a expiracao da sessao e Secure configuravel com padrao seguro em producao. Ainda nao ha JWT, middleware global ou exposicao publica do login. O usuario `admin.homologacao` existe somente em homologacao por bootstrap administrativo controlado.
 - Proxima etapa: validar no servidor com a flag desligada e depois ativar somente em homologacao para smoke controlado. Classificacao de risco: Codex High.
 
 Atualizacao preparatoria: a estrutura do script administrativo `geoportal-backend/scripts/admin/create_internal_user.py` foi criada para futura criacao manual do primeiro usuario interno, sem execucao contra banco real. O script usa `getpass` para senha e confirmacao, rejeita senha vazia, nao aceita senha por argumento CLI, usa `hash_password(...)`, possui `--dry-run` sem conexao ao banco e nao imprime senha ou hash. O bootstrap do script administrativo foi corrigido; o script agora calcula a raiz `geoportal-backend` a partir de `__file__` e ajusta `sys.path` antes dos imports de `app.*`, permitindo execucao direta a partir da raiz `geoportal-backend` sem `PYTHONPATH` manual. O repository administrativo usa SQLAlchemy `text(...)` com bind parameters para existencia e `INSERT` em `mod_auth.usuarios`, recebendo apenas `senha_hash`. Esta etapa nao criou usuario real, seed, migration, endpoint, cookie, JWT, CSRF, token ou sessao real. Localmente, `tests/test_auth_service.py` passou com 26 testes de robustez de `ultimo_login_em` best effort, `tests/test_create_internal_user_admin.py` passou com 12 testes e a suite completa local passou com 264 testes. No servidor, git pull aplicado; `tests/test_auth_service.py` passou com 26 testes, `tests/test_create_internal_user_admin.py` passou com 12 testes e a suite completa no servidor passou com 264 testes. No servidor, o dry-run foi validado sem `PYTHONPATH` manual usando `python scripts/admin/create_internal_user.py --login "admin.homologacao" --email "admin.homologacao@example.test" --nome "Administrador Homologacao" --dry-run`; o script pediu senha via `getpass` e retornou: "Dry-run validado. Nenhum usuario foi criado." Homologacao e producao foram reiniciadas e validadas pelo harness operacional, mantendo a API publica saudavel.
 
-Atualizacao de validacao operacional de login real: commits `0baeeca` Corrige filtros opcionais da auditoria de login, `8431e0e` Adiciona reset administrativo de senha interna, `3ebfc4f` Adiciona endpoint interno de login foram aplicados. Testes: `tests/test_auth_login_audit_repository.py` passou com 6 testes; `tests/test_reset_internal_user_password_admin.py` passou com 12 testes; `tests/test_internal_auth_login_router.py` passou com 5 testes; pytest completo passou com 283 testes no servidor. Role `geoportal_api_homolog` foi criada em homologacao com permissoes runtime minimas: CONNECT, USAGE mod_auth, SELECT mod_auth.usuarios, SELECT/INSERT mod_auth.sessoes. Validacao operacional realizada em processo isolado em homologacao: POST /api/internal/auth/login status 200, authenticated true, usuario_id 7, token presente; GET /api/internal/auth/smoke status 200, authenticated true, sessao_id presente. Contadores apos teste: usuarios=1, sessoes=1, login_auditoria=1. Nenhuma alteracao em producao, NSSM, .env versionado ou migration. Proxima etapa: decidir transporte final de sessao para usuarios finais (preferencialmente cookie HttpOnly).
+Atualizacao de validacao operacional de login real: commits `0baeeca` Corrige filtros opcionais da auditoria de login, `8431e0e` Adiciona reset administrativo de senha interna, `3ebfc4f` Adiciona endpoint interno de login foram aplicados. Testes: `tests/test_auth_login_audit_repository.py` passou com 6 testes; `tests/test_reset_internal_user_password_admin.py` passou com 12 testes; `tests/test_internal_auth_login_router.py` passou com 5 testes; pytest completo passou com 283 testes no servidor. Role `geoportal_api_homolog` foi criada em homologacao com permissoes runtime minimas: CONNECT, USAGE mod_auth, SELECT mod_auth.usuarios, SELECT/INSERT mod_auth.sessoes. Validacao operacional realizada em processo isolado em homologacao: POST /api/internal/auth/login status 200, authenticated true, usuario_id 7, token presente; GET /api/internal/auth/smoke status 200, authenticated true, sessao_id presente. Contadores apos teste: usuarios=1, sessoes=1, login_auditoria=1. Nenhuma alteracao em producao, NSSM, .env versionado ou migration. Em etapa posterior, o transporte principal por cookie HttpOnly foi implementado no backend.
 
 Atualizacao de identificador interno: o login passa a ser o identificador obrigatorio de autenticacao do Geoportal Interno. E-mail e opcional para cadastro e nao deve ser usado como chave obrigatoria de login, permissao ou autorizacao. A migration `0010_make_auth_user_email_optional.sql` foi criada para tornar `mod_auth.usuarios.email` nullable e manter unicidade de e-mail apenas quando informado. O script administrativo agora exige `--login` e `--nome`, aceita `--email` opcional, continua lendo senha somente via `getpass` e mantem `--dry-run` sem banco. Naquela etapa, nenhum usuario real, endpoint de login, cookie, CSRF, JWT, token real, sessao real ou segredo foi criado.
 
@@ -310,10 +312,10 @@ Status:
 - Service puro de transporte de token criado em `geoportal-backend/app/services/auth_token_transport_service.py`, extraindo token de cookie ou bearer sem depender de FastAPI.
 - Dependency FastAPI interna criada em `geoportal-backend/app/dependencies/auth_dependencies.py`.
 - Router tecnico protegido de smoke criado em `geoportal-backend/app/api/routes/internal_auth_smoke.py`.
-- Endpoint interno de login criado em `geoportal-backend/app/api/routes/internal_auth_login.py`, chamando `auth_service.authenticate_user(...)` e retornando 401 generico em falha.
+- Endpoint interno de login criado em `geoportal-backend/app/api/routes/internal_auth_login.py`, chamando `auth_service.authenticate_user(...)`, retornando 401 generico em falha e setando cookie HttpOnly em sucesso.
 - Parser fail-closed da feature flag `GEOPORTAL_INTERNAL_ROUTES_ENABLED` criado em `geoportal-backend/app/core/internal_routes_config.py` e conectado ao `include_router` em `geoportal-backend/app/main.py`.
-- Ainda nao ha cookie real, CSRF, JWT ou middleware global. Sessao real so sera criada quando o endpoint for usado em ambiente controlado com role runtime apropriada.
-- A proxima etapa pode validar em servidor com flag desligada e ativar o smoke somente em homologacao controlada.
+- Cookie HttpOnly, logout e protecao mutavel inicial por header customizado foram implementados no backend. Ainda nao ha JWT ou middleware global.
+- A proxima etapa pode validar cookie/logout/header em homologacao controlada antes de integracao frontend/proxy.
 
 ## 6. Transporte do token no cliente
 
@@ -378,17 +380,16 @@ Riscos:
   - tokens sejam curtos e revogáveis;
   - XSS seja tratado como risco crítico.
 - Documentar preferência técnica por sessão opaca.
-- Decidir transporte definitivo após desenho do frontend interno e domínio final.
-- O endpoint inicial retorna token opaco bruto no corpo da resposta; cookie HttpOnly/Secure/SameSite e CSRF ficam para etapa separada.
+- O transporte principal para navegador foi definido como cookie HttpOnly/Secure/SameSite=Lax.
+- O endpoint inicial ainda retorna token opaco bruto no corpo da resposta de forma temporaria para compatibilidade tecnica; o cookie HttpOnly passa a ser o fluxo principal para navegador.
 
 #### Decisão provisória
 
-- Preferência técnica inicial: usar cookie `HttpOnly` + `Secure` + `SameSite` se o painel interno estiver no mesmo domínio ou subdomínio controlado e se a configuração com Apache/proxy/CORS for validada em homologação.
-- Se cookie for escolhido, a proteção contra CSRF passa a ser obrigatória e deve ser implementada/testada antes de expor endpoints internos sensíveis.
-- `Authorization: Bearer` fica como alternativa operacional, não como primeira preferência, caso cookies seguros tragam complexidade operacional excessiva no primeiro ciclo.
+- Preferência técnica implementada: usar cookie `HttpOnly` + `Secure` + `SameSite=Lax` para navegador.
+- A proteção mutável inicial usa header customizado `X-Geoportal-Internal-Request: 1` em rotas internas mutáveis protegidas.
+- `Authorization: Bearer` fica como alternativa operacional/tecnica, não como primeira preferência para navegador.
 - Se `Authorization: Bearer` for usado, evitar `localStorage` quando possível, não registrar `Authorization` em logs, usar sessão opaca revogável, expiração curta/moderada e validar risco de XSS.
-- A decisão final sobre transporte deve ser tomada antes de ativacao operacional ampla do login.
-- Cookie real e CSRF nao devem ser implementados parcialmente sem testes especificos.
+- Validacao complementar de `Origin`/`Referer` permanece etapa futura antes de ativacao operacional ampla, se necessaria ao desenho de dominio/proxy.
 
 #### Decisão arquitetural sobre transporte final e CSRF
 
@@ -397,17 +398,17 @@ Riscos:
 - Token opaco retornado no corpo da resposta de `POST /api/internal/auth/login` foi usado com `Authorization: Bearer` em validação técnica isolada em homologação.
 - Smoke test `GET /api/internal/auth/smoke` foi validado com Bearer token.
 - Esta abordagem foi aceita **apenas como validação técnica intermediária**, sem uso real por usuários finais.
-- Nenhum cookie real, CSRF ou frontend de usuários foi criado nesta validação.
+- Nenhum cookie real, CSRF ou frontend de usuários havia sido criado nesta validação intermediaria. Em etapa posterior, cookie HttpOnly e header mutavel inicial foram implementados no backend, ainda sem frontend e sem producao.
 
 **Decisão recomendada para uso real em navegador**:
 
-Para o Geoportal Interno acessado por usuários finais em navegador, a decisão arquitetural recomendada é **cookie HttpOnly + Secure + SameSite**:
+Para o Geoportal Interno acessado por usuários finais em navegador, a decisão arquitetural implementada no backend é **cookie HttpOnly + Secure + SameSite=Lax**:
 
 - **Cookie HttpOnly**: JavaScript não pode ler o token, reduzindo risco de roubo por XSS.
 - **Cookie Secure**: Cookie enviado apenas por HTTPS em produção, protegendo contra sniffing.
-- **Cookie SameSite**: Configurado conscientemente (Strict/Lax/None) de acordo com política de compartilhamento cross-site.
-- **Padronização**: Nome do cookie, tempo de expiração e renovação devem ser padronizados em código.
-- **Conteúdo**: Cookie deve carregar apenas o token opaco bruto quando implementado; nunca deve conter senha, hash ou token_hash.
+- **Cookie SameSite**: Configurado inicialmente como Lax.
+- **Padronização**: Nome `geoportal_internal_session`, Path `/api/internal`, Max-Age alinhado a expiracao da sessao opaca.
+- **Conteúdo**: Cookie carrega apenas o token opaco bruto; nunca deve conter senha, hash, token_hash ou session_secret.
 - **Persistência de token_hash**: Continua persistido apenas em `mod_auth.sessoes` no banco, nunca no cookie.
 
 **Alternativa operacional temporária**:
@@ -418,9 +419,9 @@ Para o Geoportal Interno acessado por usuários finais em navegador, a decisão 
 
 **Proteção CSRF antes de endpoints mutáveis**:
 
-Antes de implementar endpoints internos que alterem dados (POST/PUT/DELETE), proteção CSRF ou equivalente é **obrigatória**:
+Antes de implementar endpoints internos que alterem dados (POST/PUT/PATCH/DELETE), proteção CSRF ou equivalente é **obrigatória**. A primeira proteção implementada exige o header `X-Geoportal-Internal-Request: 1` em rotas internas mutáveis protegidas, com exceção do login por ser início da sessão.
 
-**Opções de proteção a decidir em etapa futura**:
+**Opções complementares para etapa futura**:
 
 1. **Token CSRF separado**: Gerar token específico por sessão, enviado em cookie ou session storage, validado em requisições mutáveis.
    - Prós: Padrão estabelecido, bem testado.
@@ -446,38 +447,37 @@ Antes de implementar endpoints internos que alterem dados (POST/PUT/DELETE), pro
 
 - SameSite **não deve ser tratado como única proteção** para todos os cenários.
 - GET de consulta não precisa de CSRF (idempotente, sem efeito colateral).
-- POST/PUT/DELETE de negócio (criar/editar/deletar) **exigem** proteção CSRF deliberada.
-- Escolher uma ou mais técnicas acima em etapa de design e validar em testes automatizados.
-- Implementação de CSRF será etapa separada com feature flag, testes e validação operacional em homologação.
+- POST/PUT/PATCH/DELETE de negocio (criar/editar/deletar) **exigem** protecao CSRF/equivalente deliberada.
+- O header customizado inicial esta implementado e testado para logout; rotas mutaveis futuras devem reutilizar ou fortalecer esse controle.
+- Validacao de Origin/Referer permanece camada complementar futura e deve ser configuravel/testada antes de uso amplo, se adotada.
 
 **Logout e revogação de sessão**:
 
-Logout será etapa futura separada:
+Logout foi implementado no backend:
 
-- Endpoint `POST /api/internal/auth/logout` revogará sessão em `mod_auth.sessoes` preenchendo `revogado_em`.
+- Endpoint `POST /api/internal/auth/logout` revoga sessão em `mod_auth.sessoes` preenchendo `revogado_em`.
 - Uso de `DELETE` físico **não é permitido**; sessão revogada deve ser auditada, não deletada.
-- Se cookie for usado, será limpo no cliente (Set-Cookie com Max-Age=0).
-- Se Bearer for usado em paralelo, será invalidado no servidor por revogação em `revogado_em`.
-- Logout será testado e validado em homologação antes de liberar ao usuário.
+- O cookie é limpo no cliente com Set-Cookie de expiração.
+- Se Bearer for usado em paralelo, tambem é invalidado no servidor por revogação em `revogado_em`.
+- Logout exige sessão autenticada e header `X-Geoportal-Internal-Request: 1`.
 
 **Cronograma**:
 
-- Fase atual: Validação técnica intermediária concluída com Bearer + token em resposta.
-- Próxima fase: Decisão final e design de cookie HttpOnly + Secure + SameSite com CSRF.
-- Fase seguinte: Implementação de cookie/CSRF/logout com Codex High, testes e validação operacional.
-- Liberação: Após decisão e implementação, não liberar tela interna para usuários reais antes da etapa final.
+- Fase atual: cookie HttpOnly, logout e header mutavel inicial implementados e testados no backend, sem producao e sem NSSM.
+- Próxima fase: validar operacionalmente em homologação controlada e decidir se Origin/Referer sera exigido.
+- Liberação: não liberar tela interna para usuários reais antes de validacao operacional e integracao frontend/proxy.
 
 **Confirmações desta etapa**:
 
-- Nenhuma mudança de código Python.
-- Nenhuma mudança de testes automatizados.
+- Código Python de backend alterado apenas no fluxo interno de autenticacao.
+- Testes automatizados adicionados/ajustados.
 - Nenhuma migração SQL criada.
-- Nenhuma cookie real implementada.
-- Nenhuma CSRF real implementada.
+- Cookie HttpOnly implementado.
+- Protecao CSRF/equivalente inicial por header customizado implementada.
 - Nenhuma mudança em produção.
 - Nenhuma mudança em NSSM.
 - Nenhuma mudança em `.env` versionado.
-- Decisão e direcionamento documentados em Markdown somente.
+- Nenhum dado sensivel incluido.
 
 ## 7. Expiração, revogação e ciclo de vida da sessão
 
@@ -689,7 +689,7 @@ Testes mínimos:
 | Auditoria de login | Repository com `record_login_attempt(...)` e `count_recent_failed_attempts(...)` | Repository criado e integrado ao `auth_service.py` |
 | Rate limit de login | Service puro com `LoginRateLimitDecision` e `evaluate_login_rate_limit(...)` | Service criado e integrado ao `auth_service.py` |
 | Atraso progressivo e bloqueio temporário | Implementar integrado ao rate limit antes de endpoint | Pendente; pronto para integração |
-| Transporte do token | Cookie HttpOnly/Secure/SameSite como preferência futura; Bearer como alternativa operacional | Service puro de extração criado; decisão final ainda pendente antes de endpoint |
+| Transporte do token | Cookie HttpOnly/Secure/SameSite=Lax como fluxo principal de navegador; Bearer como alternativa tecnica/intermediaria | Cookie implementado no login, service de extracao aceita cookie e Bearer |
 | JWT | Não recomendado para primeira versão salvo necessidade real | Adiado |
 | Usuário admin via migration | Não permitido | Decidido |
 | Seed de usuários/perfis reais | Não permitido nesta fase | Decidido |

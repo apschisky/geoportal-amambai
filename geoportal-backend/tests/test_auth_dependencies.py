@@ -2,11 +2,16 @@ from datetime import UTC, datetime
 import inspect
 
 import pytest
-from fastapi import HTTPException
+from fastapi import HTTPException, Response
 
 from app.dependencies import auth_dependencies
+from app.dependencies.auth_dependencies import clear_internal_session_cookie
 from app.dependencies.auth_dependencies import get_current_authenticated_session
+from app.dependencies.auth_dependencies import get_internal_session_cookie_secure
 from app.dependencies.auth_dependencies import get_session_secret
+from app.dependencies.auth_dependencies import is_internal_session_cookie_secure
+from app.dependencies.auth_dependencies import require_internal_mutating_request_header
+from app.dependencies.auth_dependencies import set_internal_session_cookie
 from app.services.auth_current_session_service import AuthenticatedCurrentSession
 from app.services.auth_token_transport_service import AuthTokenTransportResult
 
@@ -207,6 +212,74 @@ def test_configured_session_secret_is_read_without_logging_value(
     response = get_session_secret()
 
     assert response == TEST_SESSION_SECRET
+
+
+def test_internal_session_cookie_secure_defaults_to_true_in_production() -> None:
+    assert is_internal_session_cookie_secure(app_env="production") is True
+    assert is_internal_session_cookie_secure(app_env="producao") is True
+    assert is_internal_session_cookie_secure(app_env="development") is False
+
+
+def test_internal_session_cookie_secure_can_be_configured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(auth_dependencies.INTERNAL_SESSION_COOKIE_SECURE_ENV_VAR, "true")
+
+    assert get_internal_session_cookie_secure() is True
+
+    monkeypatch.setenv(auth_dependencies.INTERNAL_SESSION_COOKIE_SECURE_ENV_VAR, "false")
+
+    assert get_internal_session_cookie_secure() is False
+
+
+def test_set_internal_session_cookie_uses_safe_attributes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(auth_dependencies.INTERNAL_SESSION_COOKIE_SECURE_ENV_VAR, "true")
+    response = Response()
+
+    set_internal_session_cookie(
+        response=response,
+        token=TEST_COOKIE_TOKEN,
+        expira_em=EXPIRES_AT,
+        now=datetime(2026, 5, 27, 12, 0, tzinfo=UTC),
+    )
+
+    set_cookie = response.headers["set-cookie"]
+    assert "geoportal_internal_session=" in set_cookie
+    assert "HttpOnly" in set_cookie
+    assert "Secure" in set_cookie
+    assert "SameSite=lax" in set_cookie
+    assert "Path=/api/internal" in set_cookie
+    assert "Max-Age=3600" in set_cookie
+    assert TEST_COOKIE_TOKEN in set_cookie
+    assert TEST_SESSION_SECRET not in set_cookie
+
+
+def test_clear_internal_session_cookie_expires_cookie(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(auth_dependencies.INTERNAL_SESSION_COOKIE_SECURE_ENV_VAR, "false")
+    response = Response()
+
+    clear_internal_session_cookie(response)
+
+    set_cookie = response.headers["set-cookie"]
+    assert "geoportal_internal_session=" in set_cookie
+    assert "Max-Age=0" in set_cookie
+    assert "HttpOnly" in set_cookie
+    assert "SameSite=lax" in set_cookie
+    assert "Path=/api/internal" in set_cookie
+
+
+def test_internal_mutating_request_header_accepts_only_expected_value() -> None:
+    assert require_internal_mutating_request_header("1") is None
+
+    with pytest.raises(HTTPException) as exc_info:
+        require_internal_mutating_request_header(None)
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail == "Invalid internal request"
 
 
 def test_dependency_does_not_depend_on_endpoint_or_request() -> None:

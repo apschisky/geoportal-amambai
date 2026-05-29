@@ -40,13 +40,14 @@ Nenhum endpoint interno deve ser implementado sem autenticacao. Nenhum endpoint 
 ## 3. Autenticacao conceitual
 
 - Login interno obrigatorio.
-- Sessao ou token com expiracao.
+- Sessao opaca com expiracao; para navegador, transporte principal por cookie HttpOnly `geoportal_internal_session`.
 - Renovacao controlada quando aplicavel.
 - Usuario precisa estar ativo para acessar.
 - Senha armazenada somente como hash com algoritmo adequado.
 - Senha nunca armazenada em texto puro.
 - Senha, token e segredo nunca registrados em log.
 - Falhas de autenticacao devem retornar erro generico.
+- Endpoints internos mutaveis devem exigir protecao CSRF/equivalente; a protecao inicial definida e o header `X-Geoportal-Internal-Request: 1`, alem de SameSite=Lax no cookie.
 - Tentativas excessivas de login devem aplicar atraso, bloqueio temporario ou outra protecao equivalente.
 - Politica de senha deve ser revisada antes do uso por equipe real.
 - Integracao futura com provedor externo pode ser avaliada, mas a primeira versao nao deve depender disso para ser segura.
@@ -111,6 +112,7 @@ A matriz final deve ser validada com a operacao antes de qualquer ativacao real.
 - Endpoints internos devem ter rate limit ou protecao equivalente contra abuso.
 - CORS deve permanecer restrito.
 - HTTPS deve ser obrigatorio em producao.
+- Cookie de sessao interno deve usar HttpOnly, Secure em producao, SameSite=Lax e Path `/api/internal`.
 - Mensagens de erro nao devem revelar detalhes de seguranca.
 - Falhas de autenticacao devem usar resposta generica.
 - Tentativas excessivas de login devem gerar atraso, bloqueio temporario ou alerta operacional.
@@ -158,16 +160,16 @@ O Geoportal Interno é arquiteturado para ser escalável a múltiplos módulos, 
 - A matriz minima para login e validacao de sessao foi implementada e testada: `CONNECT`, `USAGE` em `mod_auth`, `SELECT` em `mod_auth.usuarios`, `SELECT`/`INSERT` em `mod_auth.sessoes`, `SELECT`/`INSERT` em `mod_auth.login_auditoria`, `USAGE`/`SELECT` nas sequences.
 - A role nao deve ter `CREATE`, `DROP`, `ALTER`, `TRUNCATE`, `SUPERUSER`, `CREATEDB`, `CREATEROLE`, `REPLICATION`, `BYPASSRLS`, acesso automatico a `plano`, `web_map` ou `mod_iluminacao`, nem deve reutilizar `postgres` como usuario runtime.
 - A criacao real foi etapa operacional separada em homologacao, sem producao, com validacao de permissoes confirmada.
-- O endpoint de login `POST /api/internal/auth/login` foi implementado sob feature flag `GEOPORTAL_INTERNAL_ROUTES_ENABLED`, testado e validado em homologacao com sucesso; retorna token opaco protegido; ainda sem cookie real, CSRF ou JWT nesta etapa.
+- O endpoint de login `POST /api/internal/auth/login` foi implementado sob feature flag `GEOPORTAL_INTERNAL_ROUTES_ENABLED`, testado e validado em homologacao com sucesso; retorna token opaco protegido temporariamente no corpo e seta cookie HttpOnly `geoportal_internal_session`; ainda sem JWT nesta etapa.
 
 **Proteção CSRF e logout antes de endpoints mutáveis**:
 
 Antes de expor endpoints internos que alteram dados (POST/PUT/DELETE para negócio), as seguintes etapas devem ser planejadas e implementadas:
 
-1. **Decidir estratégia CSRF**: Escolher entre token CSRF separado, double-submit cookie, header customizado obrigatório, validação de Origin/Referer ou combinação. Documentado em `geoportal-vite/docs/INTERNAL-AUTH-TECHNICAL-DECISIONS.md`.
-2. **Implementar transporte de sessão seguro**: Cookie HttpOnly + Secure + SameSite com decisão consciente de política (Strict/Lax/None).
-3. **Implementar logout**: Endpoint `POST /api/internal/auth/logout` que revoga sessão preenchendo `revogado_em` em `mod_auth.sessoes`, sem DELETE físico.
-4. **Testes de CSRF**: Validar que requisições sem proteção CSRF são bloqueadas.
+1. **Estratégia CSRF/equivalente inicial**: Header customizado obrigatório `X-Geoportal-Internal-Request: 1` em rotas internas mutáveis protegidas; Origin/Referer permanece camada complementar futura configurável. Documentado em `geoportal-vite/docs/INTERNAL-AUTH-TECHNICAL-DECISIONS.md`.
+2. **Transporte de sessão seguro**: Cookie HttpOnly + Secure em produção + SameSite=Lax + Path `/api/internal`.
+3. **Logout implementado**: Endpoint `POST /api/internal/auth/logout` revoga sessão preenchendo `revogado_em` em `mod_auth.sessoes`, sem DELETE físico, e limpa o cookie.
+4. **Testes de CSRF/equivalente**: Validar que requisições mutáveis internas sem header são bloqueadas.
 5. **Testes de logout**: Validar que sessão revogada não autentica mais.
 6. **Validação operacional**: Testar em homologação com usuários reais antes de liberar para produção.
 
@@ -179,7 +181,7 @@ Antes de expor endpoints internos que alteram dados (POST/PUT/DELETE para negóc
 
 **Validação intermediária com Bearer**:
 
-A validação técnica atual usa `Authorization: Bearer` com token no corpo. Esta abordagem é válida apenas para testes técnicos ou clientes não navegador. Para uso real em navegador, migrar para cookie HttpOnly conforme planejado.
+A validação técnica inicial usou `Authorization: Bearer` com token no corpo. Esta abordagem permanece válida apenas para testes técnicos ou clientes não navegador. Para uso real em navegador, o fluxo principal passa a ser cookie HttpOnly.
 
 **Adição de novos módulos:**
 

@@ -9,6 +9,7 @@ from app.api.routes import internal_auth_smoke
 from app.api.router import api_router
 from app.core.config import settings
 from app.core.internal_routes_config import are_internal_routes_enabled_from_env
+from app.dependencies.auth_dependencies import INTERNAL_MUTATING_REQUEST_HEADER_NAME
 
 
 allowed_origins = [
@@ -48,7 +49,11 @@ app.add_middleware(
     allow_origins=allowed_origins,
     allow_credentials=False,
     allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        INTERNAL_MUTATING_REQUEST_HEADER_NAME,
+    ],
 )
 
 app.include_router(api_router)
