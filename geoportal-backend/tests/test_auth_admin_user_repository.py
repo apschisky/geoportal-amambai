@@ -6,8 +6,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql.elements import TextClause
 
 from app.repositories.auth_admin_user_repository import (
+    AssignedInternalUserProfile,
     CreatedBasicInternalUser,
     InternalUserConflictError,
+    InternalUserProfileInactiveConflictError,
+    InternalUserProfileNotFoundError,
+    assign_internal_user_profile,
     create_basic_internal_user,
 )
 from app.services import auth_admin_user_service
@@ -82,6 +86,27 @@ class FakeEngine:
         return FakeBegin(self.connection)
 
 
+class SequentialFakeConnection:
+    def __init__(self, rows: list[dict[str, Any] | None]) -> None:
+        self.rows = list(rows)
+        self.statements: list[TextClause] = []
+        self.params_list: list[dict[str, Any]] = []
+
+    def execute(self, statement: TextClause, params: dict[str, Any]) -> FakeResult:
+        self.statements.append(statement)
+        self.params_list.append(params)
+        row = self.rows.pop(0) if self.rows else None
+        return FakeResult(row)
+
+
+class SequentialFakeEngine:
+    def __init__(self, rows: list[dict[str, Any] | None]) -> None:
+        self.connection = SequentialFakeConnection(rows)
+
+    def begin(self) -> FakeBegin:
+        return FakeBegin(self.connection)  # type: ignore[arg-type]
+
+
 def sql_for(engine: FakeEngine) -> str:
     assert engine.connection.statement is not None
     return str(engine.connection.statement)
@@ -102,6 +127,23 @@ def created_row() -> dict[str, Any]:
         "bloqueado": False,
         "criado_em": CREATED_AT,
     }
+
+
+def profile_assignment_row(
+    *,
+    ativo: bool = True,
+    modulo: str | None = None,
+) -> dict[str, Any]:
+    return {
+        "usuario_id": 8,
+        "perfil_id": 3,
+        "modulo": modulo,
+        "ativo": ativo,
+    }
+
+
+def sql_history(engine: SequentialFakeEngine) -> str:
+    return "\n".join(str(statement) for statement in engine.connection.statements)
 
 
 def test_create_basic_internal_user_creates_user_with_normalized_data() -> None:
@@ -320,3 +362,221 @@ def test_service_rejects_weak_initial_password_without_hash_or_repository(
     assert "password does not meet policy" == str(exc_info.value)
     if senha_inicial.strip():
         assert senha_inicial.strip() not in str(exc_info.value)
+
+
+def test_assign_internal_user_profile_creates_new_link_with_bind_parameters() -> None:
+    engine = SequentialFakeEngine(
+        rows=[
+            {"exists": 1},
+            {"exists": 1},
+            None,
+            profile_assignment_row(),
+        ]
+    )
+
+    response = assign_internal_user_profile(
+        usuario_id=8,
+        perfil_id=3,
+        modulo=None,
+        engine=engine,
+    )
+
+    assert response == AssignedInternalUserProfile(
+        usuario_id=8,
+        perfil_id=3,
+        modulo=None,
+        ativo=True,
+        created=True,
+    )
+    sql = sql_history(engine)
+    assert "FROM mod_auth.usuarios" in sql
+    assert "FROM mod_auth.perfis" in sql
+    assert "FROM mod_auth.usuario_perfis" in sql
+    assert "INSERT INTO mod_auth.usuario_perfis" in sql
+    assert ":usuario_id" in sql
+    assert ":perfil_id" in sql
+    assert ":modulo" in sql
+    assert "teste.criacao" not in sql
+    assert "admin.homologacao" not in sql
+    assert "DELETE" not in sql.upper()
+    assert engine.connection.params_list[-1] == {
+        "usuario_id": 8,
+        "perfil_id": 3,
+        "modulo": None,
+    }
+
+
+def test_assign_internal_user_profile_is_idempotent_for_active_link() -> None:
+    engine = SequentialFakeEngine(
+        rows=[
+            {"exists": 1},
+            {"exists": 1},
+            profile_assignment_row(modulo="iluminacao"),
+        ]
+    )
+
+    response = assign_internal_user_profile(
+        usuario_id=8,
+        perfil_id=3,
+        modulo=" Iluminacao ",
+        engine=engine,
+    )
+
+    assert response == AssignedInternalUserProfile(
+        usuario_id=8,
+        perfil_id=3,
+        modulo="iluminacao",
+        ativo=True,
+        created=False,
+    )
+    sql = sql_history(engine)
+    assert "lower(modulo) = lower(:modulo)" in sql
+    assert "INSERT INTO mod_auth.usuario_perfis" not in sql
+    assert engine.connection.params_list[-1] == {
+        "usuario_id": 8,
+        "perfil_id": 3,
+        "modulo": "iluminacao",
+    }
+
+
+def test_assign_internal_user_profile_returns_not_found_for_missing_user() -> None:
+    engine = SequentialFakeEngine(rows=[None])
+
+    with pytest.raises(InternalUserProfileNotFoundError):
+        assign_internal_user_profile(
+            usuario_id=8,
+            perfil_id=3,
+            engine=engine,
+        )
+
+    sql = sql_history(engine)
+    assert "INSERT INTO mod_auth.usuario_perfis" not in sql
+
+
+def test_assign_internal_user_profile_returns_not_found_for_missing_profile() -> None:
+    engine = SequentialFakeEngine(rows=[{"exists": 1}, None])
+
+    with pytest.raises(InternalUserProfileNotFoundError):
+        assign_internal_user_profile(
+            usuario_id=8,
+            perfil_id=3,
+            engine=engine,
+        )
+
+    sql = sql_history(engine)
+    assert "INSERT INTO mod_auth.usuario_perfis" not in sql
+
+
+def test_assign_internal_user_profile_rejects_inactive_existing_link() -> None:
+    engine = SequentialFakeEngine(
+        rows=[
+            {"exists": 1},
+            {"exists": 1},
+            profile_assignment_row(ativo=False),
+        ]
+    )
+
+    with pytest.raises(InternalUserProfileInactiveConflictError):
+        assign_internal_user_profile(
+            usuario_id=8,
+            perfil_id=3,
+            engine=engine,
+        )
+
+    sql = sql_history(engine)
+    assert "INSERT INTO mod_auth.usuario_perfis" not in sql
+
+
+def test_assign_internal_user_profile_rejects_invalid_ids_without_sql() -> None:
+    engine = SequentialFakeEngine(rows=[])
+
+    with pytest.raises(ValueError, match="usuario_id must be positive"):
+        assign_internal_user_profile(usuario_id=0, perfil_id=3, engine=engine)
+    with pytest.raises(ValueError, match="perfil_id must be positive"):
+        assign_internal_user_profile(usuario_id=8, perfil_id=0, engine=engine)
+
+    assert engine.connection.statements == []
+
+
+def test_assign_internal_user_profile_does_not_touch_sensitive_tables() -> None:
+    engine = SequentialFakeEngine(
+        rows=[
+            {"exists": 1},
+            {"exists": 1},
+            None,
+            profile_assignment_row(),
+        ]
+    )
+
+    assign_internal_user_profile(
+        usuario_id=8,
+        perfil_id=3,
+        engine=engine,
+    )
+
+    sql = sql_history(engine).lower()
+    assert "perfil_permissoes" not in sql
+    assert "permissoes" not in sql
+    assert "sessoes" not in sql
+    assert "login_auditoria" not in sql
+    assert "senha_hash" not in sql
+    assert "delete" not in sql
+
+
+def test_service_assigns_internal_profile_with_normalized_module(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: dict[str, object] = {}
+
+    def fake_assign_internal_user_profile(**kwargs: object) -> AssignedInternalUserProfile:
+        calls.update(kwargs)
+        return AssignedInternalUserProfile(
+            usuario_id=8,
+            perfil_id=3,
+            modulo="iluminacao",
+            ativo=True,
+            created=True,
+        )
+
+    monkeypatch.setattr(
+        auth_admin_user_service,
+        "assign_internal_user_profile",
+        fake_assign_internal_user_profile,
+    )
+
+    response = auth_admin_user_service.assign_internal_admin_user_profile(
+        usuario_id=8,
+        perfil_id=3,
+        modulo=" Iluminacao ",
+    )
+
+    assert response.created is True
+    assert calls == {
+        "usuario_id": 8,
+        "perfil_id": 3,
+        "modulo": "iluminacao",
+    }
+
+
+def test_service_rejects_invalid_profile_assignment_without_repository(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = {"assign": 0}
+    monkeypatch.setattr(
+        auth_admin_user_service,
+        "assign_internal_user_profile",
+        lambda **kwargs: calls.__setitem__("assign", 1),
+    )
+
+    with pytest.raises(ValueError, match="usuario_id must be positive"):
+        auth_admin_user_service.assign_internal_admin_user_profile(
+            usuario_id=0,
+            perfil_id=3,
+        )
+    with pytest.raises(ValueError, match="perfil_id must be positive"):
+        auth_admin_user_service.assign_internal_admin_user_profile(
+            usuario_id=8,
+            perfil_id=0,
+        )
+
+    assert calls == {"assign": 0}

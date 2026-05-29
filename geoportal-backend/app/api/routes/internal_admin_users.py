@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, ConfigDict, field_validator
+from fastapi import APIRouter, Body, Depends, HTTPException, Response, status
+from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
 
 from app.dependencies.auth_dependencies import require_internal_mutating_request_header
 from app.dependencies.auth_dependencies import require_permission
@@ -11,13 +11,19 @@ from app.repositories.auth_admin_user_list_repository import (
     list_internal_admin_users,
 )
 from app.services.auth_admin_user_service import InternalUserConflictError
+from app.services.auth_admin_user_service import InternalUserProfileInactiveConflictError
+from app.services.auth_admin_user_service import InternalUserProfileNotFoundError
+from app.services.auth_admin_user_service import AssignedInternalUserProfile
+from app.services.auth_admin_user_service import assign_internal_admin_user_profile
 from app.services.auth_admin_user_service import create_basic_internal_admin_user
 from app.services.auth_current_session_service import AuthenticatedCurrentSession
 
 
 LIST_INTERNAL_USERS_PERMISSION = "admin.usuarios.ler"
 CREATE_INTERNAL_USERS_PERMISSION = "admin.usuarios.criar"
+ASSIGN_INTERNAL_USER_PROFILE_PERMISSION = "admin.usuarios.atribuir_perfis"
 INVALID_CREATE_USER_PAYLOAD_DETAIL = "Invalid payload"
+INVALID_ASSIGN_PROFILE_PAYLOAD_DETAIL = "Invalid payload"
 
 router = APIRouter(prefix="/api/internal/admin", tags=["internal-admin"])
 
@@ -63,6 +69,31 @@ class CreateInternalAdminUserRequest(BaseModel):
             raise ValueError("Invalid value")
         return normalized_value
 
+
+class AssignInternalUserProfileRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    perfil_id: int
+    modulo: str | None = None
+
+    @field_validator("perfil_id")
+    @classmethod
+    def validate_positive_profile_id(cls, value: int) -> int:
+        if value <= 0:
+            raise ValueError("Invalid value")
+        return value
+
+    @field_validator("modulo", mode="before")
+    @classmethod
+    def normalize_optional_module(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise ValueError("Invalid value")
+        normalized_value = value.strip().lower()
+        return normalized_value or None
+
+
 class InternalAdminUserResponse(BaseModel):
     id: int
     login: str
@@ -81,6 +112,17 @@ class InternalAdminUserDetailResponse(BaseModel):
     usuario: InternalAdminUserResponse
 
 
+class InternalUserProfileAssignmentResponse(BaseModel):
+    usuario_id: int
+    perfil_id: int
+    modulo: str | None
+    ativo: bool
+
+
+class InternalUserProfileAssignmentEnvelope(BaseModel):
+    vinculo: InternalUserProfileAssignmentResponse
+
+
 def _to_user_response(user: InternalAdminUserListItem) -> InternalAdminUserResponse:
     return InternalAdminUserResponse(
         id=user.id,
@@ -91,6 +133,28 @@ def _to_user_response(user: InternalAdminUserListItem) -> InternalAdminUserRespo
         bloqueado=user.bloqueado,
         criado_em=user.criado_em,
     )
+
+
+def _to_profile_assignment_response(
+    assignment: AssignedInternalUserProfile,
+) -> InternalUserProfileAssignmentResponse:
+    return InternalUserProfileAssignmentResponse(
+        usuario_id=assignment.usuario_id,
+        perfil_id=assignment.perfil_id,
+        modulo=assignment.modulo,
+        ativo=assignment.ativo,
+    )
+
+
+def _parse_assign_profile_payload(
+    payload: object,
+) -> AssignInternalUserProfileRequest:
+    if not isinstance(payload, dict):
+        raise ValueError("Invalid payload")
+    try:
+        return AssignInternalUserProfileRequest.model_validate(payload)
+    except ValidationError as exc:
+        raise ValueError("Invalid payload") from exc
 
 
 @router.get("/users", response_model=InternalAdminUsersResponse)
@@ -137,6 +201,51 @@ def create_user(
         ) from exc
 
     return InternalAdminUserDetailResponse(usuario=_to_user_response(user))
+
+
+@router.post(
+    "/users/{usuario_id}/profiles",
+    response_model=InternalUserProfileAssignmentEnvelope,
+    status_code=status.HTTP_201_CREATED,
+)
+def assign_user_profile(
+    usuario_id: int,
+    response: Response,
+    payload: object = Body(...),
+    _current_session: AuthenticatedCurrentSession = Depends(
+        require_permission(ASSIGN_INTERNAL_USER_PROFILE_PERMISSION)
+    ),
+    _internal_request: None = Depends(require_internal_mutating_request_header),
+) -> InternalUserProfileAssignmentEnvelope:
+    try:
+        parsed_payload = _parse_assign_profile_payload(payload)
+        assignment = assign_internal_admin_user_profile(
+            usuario_id=usuario_id,
+            perfil_id=parsed_payload.perfil_id,
+            modulo=parsed_payload.modulo,
+        )
+    except InternalUserProfileNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Not found",
+        ) from exc
+    except InternalUserProfileInactiveConflictError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Conflict",
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=INVALID_ASSIGN_PROFILE_PAYLOAD_DETAIL,
+        ) from exc
+
+    if not assignment.created:
+        response.status_code = status.HTTP_200_OK
+
+    return InternalUserProfileAssignmentEnvelope(
+        vinculo=_to_profile_assignment_response(assignment),
+    )
 
 
 @router.get("/users/{usuario_id}", response_model=InternalAdminUserDetailResponse)

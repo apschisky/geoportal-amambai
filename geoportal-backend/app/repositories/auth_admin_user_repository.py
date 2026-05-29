@@ -26,7 +26,24 @@ class CreatedBasicInternalUser:
     criado_em: datetime
 
 
+@dataclass(frozen=True)
+class AssignedInternalUserProfile:
+    usuario_id: int
+    perfil_id: int
+    modulo: str | None
+    ativo: bool
+    created: bool
+
+
 class InternalUserConflictError(RuntimeError):
+    pass
+
+
+class InternalUserProfileNotFoundError(RuntimeError):
+    pass
+
+
+class InternalUserProfileInactiveConflictError(RuntimeError):
     pass
 
 
@@ -247,3 +264,134 @@ def update_internal_user_password_by_login(
         row = connection.execute(statement, params).mappings().first()
 
     return row is not None
+
+
+def _normalize_optional_module(modulo: str | None) -> str | None:
+    if modulo is None:
+        return None
+    normalized_modulo = modulo.strip().lower()
+    return normalized_modulo or None
+
+
+def _assignment_from_row(
+    row: dict[str, object],
+    *,
+    created: bool,
+) -> AssignedInternalUserProfile:
+    return AssignedInternalUserProfile(
+        usuario_id=int(row["usuario_id"]),
+        perfil_id=int(row["perfil_id"]),
+        modulo=row["modulo"] if row["modulo"] is None else str(row["modulo"]),
+        ativo=bool(row["ativo"]),
+        created=created,
+    )
+
+
+def assign_internal_user_profile(
+    *,
+    usuario_id: int,
+    perfil_id: int,
+    modulo: str | None = None,
+    engine: Engine | None = None,
+) -> AssignedInternalUserProfile:
+    if usuario_id <= 0:
+        raise ValueError("usuario_id must be positive")
+    if perfil_id <= 0:
+        raise ValueError("perfil_id must be positive")
+
+    normalized_modulo = _normalize_optional_module(modulo)
+    db_engine = engine or get_engine()
+
+    user_statement = text(
+        """
+        SELECT 1
+        FROM mod_auth.usuarios
+        WHERE id = :usuario_id
+        LIMIT 1
+        """
+    )
+    profile_statement = text(
+        """
+        SELECT 1
+        FROM mod_auth.perfis
+        WHERE id = :perfil_id
+          AND ativo IS true
+        LIMIT 1
+        """
+    )
+    if normalized_modulo is None:
+        existing_statement = text(
+            """
+            SELECT usuario_id, perfil_id, modulo, ativo
+            FROM mod_auth.usuario_perfis
+            WHERE usuario_id = :usuario_id
+              AND perfil_id = :perfil_id
+              AND modulo IS NULL
+            LIMIT 1
+            """
+        )
+    else:
+        existing_statement = text(
+            """
+            SELECT usuario_id, perfil_id, modulo, ativo
+            FROM mod_auth.usuario_perfis
+            WHERE usuario_id = :usuario_id
+              AND perfil_id = :perfil_id
+              AND lower(modulo) = lower(:modulo)
+            LIMIT 1
+            """
+        )
+    insert_statement = text(
+        """
+        INSERT INTO mod_auth.usuario_perfis (
+            usuario_id,
+            perfil_id,
+            modulo,
+            ativo
+        )
+        VALUES (
+            :usuario_id,
+            :perfil_id,
+            :modulo,
+            true
+        )
+        RETURNING usuario_id, perfil_id, modulo, ativo
+        """
+    )
+
+    params = {
+        "usuario_id": usuario_id,
+        "perfil_id": perfil_id,
+        "modulo": normalized_modulo,
+    }
+
+    with db_engine.begin() as connection:
+        user_row = connection.execute(
+            user_statement,
+            {"usuario_id": usuario_id},
+        ).mappings().first()
+        if user_row is None:
+            raise InternalUserProfileNotFoundError("internal user or profile not found")
+
+        profile_row = connection.execute(
+            profile_statement,
+            {"perfil_id": perfil_id},
+        ).mappings().first()
+        if profile_row is None:
+            raise InternalUserProfileNotFoundError("internal user or profile not found")
+
+        existing_row = connection.execute(existing_statement, params).mappings().first()
+        if existing_row is not None:
+            assignment = _assignment_from_row(dict(existing_row), created=False)
+            if assignment.ativo:
+                return assignment
+            raise InternalUserProfileInactiveConflictError(
+                "internal user profile link is inactive"
+            )
+
+        inserted_row = connection.execute(insert_statement, params).mappings().first()
+
+    if inserted_row is None:
+        raise RuntimeError("internal user profile link was not created")
+
+    return _assignment_from_row(dict(inserted_row), created=True)

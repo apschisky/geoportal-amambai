@@ -12,14 +12,19 @@ from app.dependencies.auth_dependencies import INTERNAL_MUTATING_REQUEST_HEADER_
 from app.dependencies.auth_dependencies import INTERNAL_MUTATING_REQUEST_HEADER_VALUE
 from app.main import app as main_app
 from app.repositories.auth_admin_user_list_repository import InternalAdminUserListItem
+from app.services.auth_admin_user_service import AssignedInternalUserProfile
 from app.services.auth_admin_user_service import InternalUserConflictError
+from app.services.auth_admin_user_service import InternalUserProfileInactiveConflictError
+from app.services.auth_admin_user_service import InternalUserProfileNotFoundError
 from app.services.auth_current_session_service import AuthenticatedCurrentSession
 
 
 ADMIN_USERS_PATH = "/api/internal/admin/users"
 ADMIN_USER_DETAIL_PATH = "/api/internal/admin/users/7"
+ADMIN_USER_PROFILES_PATH = "/api/internal/admin/users/8/profiles"
 EXPECTED_PERMISSION = "admin.usuarios.ler"
 EXPECTED_CREATE_PERMISSION = "admin.usuarios.criar"
+EXPECTED_ASSIGN_PROFILE_PERMISSION = "admin.usuarios.atribuir_perfis"
 EXPIRES_AT = datetime(2030, 5, 27, 13, 0, tzinfo=UTC)
 CREATED_AT = datetime(2026, 5, 29, 9, 30, tzinfo=UTC)
 CREATE_PAYLOAD = {
@@ -27,6 +32,10 @@ CREATE_PAYLOAD = {
     "nome": " Usuario Exemplo ",
     "email": None,
     "senha_inicial": "senha-ficticia-interna-123",
+}
+PROFILE_PAYLOAD = {
+    "perfil_id": 3,
+    "modulo": None,
 }
 
 
@@ -71,6 +80,20 @@ def fake_created_user() -> InternalAdminUserListItem:
         ativo=True,
         bloqueado=False,
         criado_em=CREATED_AT,
+    )
+
+
+def fake_profile_assignment(
+    *,
+    created: bool = True,
+    modulo: str | None = None,
+) -> AssignedInternalUserProfile:
+    return AssignedInternalUserProfile(
+        usuario_id=8,
+        perfil_id=3,
+        modulo=modulo,
+        ativo=True,
+        created=created,
     )
 
 
@@ -233,10 +256,13 @@ def test_admin_users_router_uses_permission_without_hardcoded_login() -> None:
 
     assert ADMIN_USERS_PATH in route_paths
     assert "/api/internal/admin/users/{usuario_id}" in route_paths
+    assert "/api/internal/admin/users/{usuario_id}/profiles" in route_paths
     assert 'require_permission(LIST_INTERNAL_USERS_PERMISSION)' in source
     assert 'require_permission(CREATE_INTERNAL_USERS_PERMISSION)' in source
+    assert 'require_permission(ASSIGN_INTERNAL_USER_PROFILE_PERMISSION)' in source
     assert EXPECTED_PERMISSION in source
     assert EXPECTED_CREATE_PERMISSION in source
+    assert EXPECTED_ASSIGN_PROFILE_PERMISSION in source
     assert "require_internal_mutating_request_header" in source
     assert "admin.homologacao" not in source
     assert "login ==" not in source
@@ -746,6 +772,337 @@ def test_create_admin_user_response_does_not_expose_sensitive_fields(
         "sessao",
         "auditoria",
         "bloqueado_ate",
+    ):
+        assert forbidden not in response_text
+
+
+def test_assign_admin_user_profile_returns_201_for_authenticated_user_with_permission_and_header(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    calls: dict[str, object] = {}
+
+    def fake_has_permission(usuario_id: int, permission_code: str) -> bool:
+        calls.update(
+            {
+                "usuario_id": usuario_id,
+                "permission_code": permission_code,
+            }
+        )
+        return permission_code == EXPECTED_ASSIGN_PROFILE_PERMISSION
+
+    assignment_kwargs: dict[str, object] = {}
+
+    def fake_assign_profile(**kwargs: object) -> AssignedInternalUserProfile:
+        assignment_kwargs.update(kwargs)
+        return fake_profile_assignment(created=True)
+
+    monkeypatch.setattr(auth_dependencies, "has_permission", fake_has_permission)
+    monkeypatch.setattr(
+        internal_admin_users,
+        "assign_internal_admin_user_profile",
+        fake_assign_profile,
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        ADMIN_USER_PROFILES_PATH,
+        json=PROFILE_PAYLOAD,
+        headers=mutating_headers(),
+    )
+
+    assert response.status_code == 201
+    assert response.json() == {
+        "vinculo": {
+            "usuario_id": 8,
+            "perfil_id": 3,
+            "modulo": None,
+            "ativo": True,
+        }
+    }
+    assert calls == {
+        "usuario_id": 7,
+        "permission_code": EXPECTED_ASSIGN_PROFILE_PERMISSION,
+    }
+    assert assignment_kwargs == {
+        "usuario_id": 8,
+        "perfil_id": 3,
+        "modulo": None,
+    }
+
+
+def test_assign_admin_user_profile_returns_200_when_active_link_exists(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+    monkeypatch.setattr(
+        internal_admin_users,
+        "assign_internal_admin_user_profile",
+        lambda **kwargs: fake_profile_assignment(created=False),
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        ADMIN_USER_PROFILES_PATH,
+        json=PROFILE_PAYLOAD,
+        headers=mutating_headers(),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["vinculo"] == {
+        "usuario_id": 8,
+        "perfil_id": 3,
+        "modulo": None,
+        "ativo": True,
+    }
+
+
+def test_assign_admin_user_profile_returns_401_without_valid_session() -> None:
+    app = build_isolated_app()
+
+    def fake_auth_failure() -> None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    app.dependency_overrides[get_current_authenticated_session] = fake_auth_failure
+    client = TestClient(app)
+
+    response = client.post(
+        ADMIN_USER_PROFILES_PATH,
+        json=PROFILE_PAYLOAD,
+        headers=mutating_headers(),
+    )
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Not authenticated"}
+
+
+def test_assign_admin_user_profile_returns_403_without_required_permission(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: False,
+    )
+    monkeypatch.setattr(
+        internal_admin_users,
+        "assign_internal_admin_user_profile",
+        lambda **kwargs: fake_profile_assignment(),
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        ADMIN_USER_PROFILES_PATH,
+        json=PROFILE_PAYLOAD,
+        headers=mutating_headers(),
+    )
+
+    assert response.status_code == 403
+    assert response.json() == {"detail": "Forbidden"}
+    assert EXPECTED_ASSIGN_PROFILE_PERMISSION not in response.text
+    assert "perfil_id" not in response.text
+
+
+def test_assign_admin_user_profile_requires_internal_mutating_header(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+    monkeypatch.setattr(
+        internal_admin_users,
+        "assign_internal_admin_user_profile",
+        lambda **kwargs: fake_profile_assignment(),
+    )
+    client = TestClient(app)
+
+    response = client.post(ADMIN_USER_PROFILES_PATH, json=PROFILE_PAYLOAD)
+
+    assert response.status_code == 403
+    assert response.json() == {"detail": "Invalid internal request"}
+
+
+def test_assign_admin_user_profile_returns_404_when_user_or_profile_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+
+    def fake_assign_profile(**kwargs: object) -> AssignedInternalUserProfile:
+        raise InternalUserProfileNotFoundError("internal user or profile not found")
+
+    monkeypatch.setattr(
+        internal_admin_users,
+        "assign_internal_admin_user_profile",
+        fake_assign_profile,
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        ADMIN_USER_PROFILES_PATH,
+        json=PROFILE_PAYLOAD,
+        headers=mutating_headers(),
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Not found"}
+    assert "mod_auth" not in response.text
+
+
+def test_assign_admin_user_profile_returns_409_for_inactive_existing_link(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+
+    def fake_assign_profile(**kwargs: object) -> AssignedInternalUserProfile:
+        raise InternalUserProfileInactiveConflictError("inactive link")
+
+    monkeypatch.setattr(
+        internal_admin_users,
+        "assign_internal_admin_user_profile",
+        fake_assign_profile,
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        ADMIN_USER_PROFILES_PATH,
+        json=PROFILE_PAYLOAD,
+        headers=mutating_headers(),
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {"detail": "Conflict"}
+    assert "inactive" not in response.text
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"perfil_id": 0, "modulo": None},
+        {"perfil_id": -1, "modulo": None},
+        {"perfil_id": 3, "usuario_id": 8},
+        {"perfil_id": 3, "perfil_chave": "administrador-interno-geoportal"},
+        {"perfil_id": 3, "permissoes": ["internal.auth.me"]},
+        {"perfil_id": 3, "senha_hash": "hash-ficticio-nao-real"},
+    ],
+)
+def test_assign_admin_user_profile_returns_422_for_invalid_payload(
+    monkeypatch: pytest.MonkeyPatch,
+    payload: dict[str, object],
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        ADMIN_USER_PROFILES_PATH,
+        json=payload,
+        headers=mutating_headers(),
+    )
+
+    assert response.status_code == 422
+    for forbidden in (
+        "hash-ficticio-nao-real",
+        "senha_hash",
+        "token_hash",
+        "session_secret",
+        "DATABASE_URL",
+        "mod_auth",
+        "constraint",
+    ):
+        assert forbidden not in response.text
+
+
+def test_assign_admin_user_profile_response_does_not_expose_sensitive_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+    monkeypatch.setattr(
+        internal_admin_users,
+        "assign_internal_admin_user_profile",
+        lambda **kwargs: fake_profile_assignment(),
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        ADMIN_USER_PROFILES_PATH,
+        json=PROFILE_PAYLOAD,
+        headers=mutating_headers(),
+    )
+
+    response_text = response.text
+    body = response.json()
+    assert response.status_code == 201
+    assert set(body["vinculo"]) == {
+        "usuario_id",
+        "perfil_id",
+        "modulo",
+        "ativo",
+    }
+    for forbidden in (
+        "senha",
+        "senha_hash",
+        "token",
+        "token_hash",
+        "cookie",
+        "session_secret",
+        "DATABASE_URL",
+        "SQL",
+        "role",
+        "GRANT",
+        "sessao",
+        "auditoria",
     ):
         assert forbidden not in response_text
 
