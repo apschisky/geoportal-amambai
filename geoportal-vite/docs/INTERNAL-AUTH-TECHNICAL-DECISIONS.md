@@ -655,6 +655,90 @@ Decisao tecnica implementada para bloqueio/desbloqueio: `POST /api/internal/admi
 
 Bloqueio/desbloqueio ja foram validados em homologacao; reset de senha via endpoint foi implementado em etapa separada e aguarda validacao operacional propria.
 
+## 20. Consolidação da Fase Administrativa
+
+A fase administrativa da autenticação e autorização interna está **funcional, validada e pronta para escalabilidade multi-módulo**.
+
+### Status Final (Commit 1f3b19e)
+
+**Endpoints implementados e validados** (14 no total):
+- POST `/api/internal/auth/login` (validado)
+- POST `/api/internal/auth/logout` (validado)
+- GET `/api/internal/auth/me` (validado)
+- GET `/api/internal/auth/smoke` (validado)
+- GET `/api/internal/auth/permission-smoke` (validado)
+- GET `/api/internal/admin/users` (validado)
+- GET `/api/internal/admin/users/{usuario_id}` (validado)
+- POST `/api/internal/admin/users` (validado)
+- POST `/api/internal/admin/users/{usuario_id}/profiles` (validado)
+- GET `/api/internal/admin/profiles` (validado)
+- POST `/api/internal/admin/users/{usuario_id}/block` (validado)
+- POST `/api/internal/admin/users/{usuario_id}/unblock` (validado)
+- POST `/api/internal/admin/users/{usuario_id}/reset-password` (validado)
+
+**Permissões de aplicação implementadas** (9 no total):
+- `internal.auth.me`
+- `admin.usuarios.ler`
+- `admin.usuarios.criar`
+- `admin.usuarios.bloquear`
+- `admin.usuarios.redefinir_senha`
+- `admin.usuarios.atribuir_perfis`
+- `admin.perfis.ler`
+- `admin.perfis.gerenciar`
+- `admin.permissoes.ler`
+- `admin.permissoes.gerenciar`
+
+**Garantias de segurança consolidadas**:
+- ✅ Sem login hardcoded
+- ✅ Administrador funcional não é superuser de banco
+- ✅ Permissões de aplicação, não privilégios PostgreSQL
+- ✅ Argon2id robusto
+- ✅ Sessões revogadas logicamente (sem DELETE físico)
+- ✅ Sanitização total de respostas
+- ✅ Feature flag fail-closed
+- ✅ Header X-Geoportal-Internal-Request: 1 em mutáveis
+
+**Validações operacionais em homologação**:
+- Bloqueio/Desbloqueio: Commit 88ff004, Pytest 462 passed
+- Reset de Senha: Commit 72e7d80, Pytest 488 passed
+- API Pública: Health checks ✅ em todos os testes
+
+**Produção**:
+- Nenhuma alteração fora das migrations estruturais 0006-0010 previamente autorizadas
+- Feature flag desligada (rotas internas retornam 404)
+- Nenhum usuário/sessão/token administrativo real
+
+### Transição para Módulo Iluminação Pública
+
+A base está madura o suficiente para começar o **primeiro módulo interno de negócio**: Iluminação Pública.
+
+**Objetivo**: Substituir Google Forms por sistema próprio controlado por login, com gestão interna de solicitações e status, relatórios e dashboard.
+
+**Roadmap recomendado**:
+1. Planejamento backend: estudar schema, endpoints públicos existentes, permissões do módulo
+2. Implementação backend: primeiro endpoint interno GET (consulta), depois POST (criação/comentário)
+3. Frontend/tela: depois de endpoints backend validados em homologação
+4. Produção: deployment de código + bootstrap de perfis/permissões com confirmação humana
+
+**Permissões iniciais sugeridas** (planejamento, não criadas ainda):
+- `iluminacao.solicitacoes.ler`
+- `iluminacao.solicitacoes.criar`
+- `iluminacao.solicitacoes.atualizar_status`
+- `iluminacao.solicitacoes.comentar`
+- `iluminacao.dashboard.ler`
+- `iluminacao.relatorios.ler`
+
+### Próximos Passos Imediatos
+
+1. Abrir nova etapa/agente para "Geoportal Interno — Módulo Iluminação"
+2. Estudar schema/tabelas de `mod_iluminacao`
+3. Revisar endpoints públicos atuais
+4. Planejar contrato backend do primeiro endpoint interno
+5. Validar em homologação antes de qualquer produção
+6. Tela interna continua como etapa posterior
+
+**Esta consolidação não altera**: código, testes, migrations, schema, usuários reais, produção, NSSM, .env ou frontend. É exclusivamente documental.
+
 Estrategia homologacao/producao: homologacao deve seguir backup, `--dry-run`, execucao real controlada, validacao de tabelas `mod_auth`, validacao de `/api/internal/auth/me` retornando permissoes administrativas e documentacao do resultado. Producao nao recebe dados automaticamente da homologacao: usa o mesmo script idempotente apenas depois de validado, com backup obrigatorio, `--dry-run` obrigatorio, confirmacao humana, criacao de usuario real de producao em etapa propria, sem documentar senha/token/hash, sem migration ou restart sem confirmacao humana e com feature flag interna sob controle. Nao ha copia cega de senhas, sessoes, tokens, dados de teste ou usuarios ficticios.
 
 ## 9. Proteção contra brute force e credential stuffing

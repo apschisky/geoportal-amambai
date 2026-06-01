@@ -408,6 +408,49 @@ A matriz final deve ser validada com a operacao antes de qualquer ativacao real.
 - Nao deve existir alteracao de status sem historico.
 - Criacao de observacao deve gravar em `mod_iluminacao.solicitacoes_observacoes`.
 - Criacao de observacao tambem deve gravar evento resumido em `mod_iluminacao.solicitacoes_historico`.
+
+## 7. Consolidação da Fase Administrativa
+
+A **base de autenticação e autorização interna está consolidada, validada e pronta para escalar para módulos de negócio**.
+
+### Status Final
+
+**Endpoints administrativos** (9 no total):
+- Autenticação: login, logout, /me, permission-smoke
+- Usuários: listar, detalhe, criar, bloquear, desbloquear, reset de senha
+- Perfis: listar, atribuir
+
+**Permissões administrativas** (9 no total):
+- `internal.auth.me`, `admin.usuarios.*` (5), `admin.perfis.*` (2), `admin.permissoes.*` (2)
+
+**Garantias** (12 validadas em homologação):
+- Sem login hardcoded
+- Sem superuser de banco
+- Permissões de aplicação
+- Argon2id robusto
+- Sessões revogadas logicamente
+- Sanitização total
+- Feature flag fail-closed
+- Header X-Geoportal-Internal-Request: 1 em mutáveis
+- API Pública saudável
+
+**Documentação de referência**:
+- [INTERNAL-AUTH-TECHNICAL-DECISIONS.md](INTERNAL-AUTH-TECHNICAL-DECISIONS.md): Decisões técnicas
+- [INTERNAL-AUTH-SECURITY-IMPLEMENTATION-PLAN.md](INTERNAL-AUTH-SECURITY-IMPLEMENTATION-PLAN.md): Plano de segurança
+- [INTERNAL-AUTH-ADMIN-PHASE-SUMMARY.md](INTERNAL-AUTH-ADMIN-PHASE-SUMMARY.md): Resumo executivo
+
+### Próxima Fase: Módulo Iluminação Pública
+
+Com a base administrativa validada, o próximo passo é implementar o **primeiro módulo interno de negócio**: Iluminação Pública.
+
+**Fluxo planejado**:
+1. Backend: endpoints GET (consulta) e POST (criação/comentário) validados em homologação
+2. Autorização: permissões granulares por papel (gestor, atendente, execução, leitura)
+3. Auditoria: histórico de status, observações e eventos
+4. Frontend/Tela: depois dos endpoints backend validados
+5. Produção: código deployado + bootstrap de perfis com confirmação humana
+
+**Esta consolidação não altera**: código, testes, migrations, schema, usuários reais, produção, NSSM, .env ou frontend.
 - Acoes internas devem registrar `usuario_id`, `usuario_nome` e `origem_acao = 'usuario_interno'` quando aplicavel.
 - Acoes automaticas devem registrar `origem_acao = 'sistema'`.
 - Ajustes administrativos devem registrar `origem_acao = 'ajuste_administrativo'`.
