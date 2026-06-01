@@ -160,24 +160,18 @@ O administrador funcional do Geoportal Interno nao e superuser de banco e nao de
 
 Roteiro recomendado em homologacao: backup antes; `--dry-run` do script; execucao real controlada; validacao das tabelas `mod_auth`; validacao de `/api/internal/auth/me` retornando permissoes administrativas; documentacao do resultado.
 
----
-
-**Decisão Arquitetural (Importante): NÃO ATIVAR ROTAS INTERNAS EM PRODUÇÃO**
-
-- Código no GitHub/main NÃO implica ativação automática em produção.
-- Três estados: (1) GitHub/main — código versionado; (2) Homologação — feature flag `GEOPORTAL_INTERNAL_ROUTES_ENABLED=true` (ambiente controlado); (3) Produção — feature flag OFF (rotas internas retornam 404).
-- Ativação controlada (checklist mínimo):
-   1. Backup completo do banco e roles.
-   2. Executar script administrativo com `--dry-run` e revisar output.
-   3. Confirmar migrations aplicadas e integridade das tabelas `mod_auth`.
-   4. Verificar segredos fora do repositório (`GEOPORTAL_INTERNAL_SESSION_SECRET`) e variáveis de ambiente.
-   5. Aplicar permissões mínimas (roles/GRANT revisados).
-   6. Criar usuário administrativo de produção manualmente via script idempotente (não copiar dados de homologação).
-   7. Executar smoke tests e validações operacionais (login, `/me`, permission-smoke, health).
-   8. Ter plano de rollback documentado e autorização humana antes de qualquer restart.
-- Em produção, manter a flag desligada até completar a checklist e autorizar manualmente.
-
 Estrategia para producao: producao nao recebe dados automaticamente da homologacao e nao deve ter copia cega de dados. Usar o mesmo script idempotente apenas depois de validado, com backup obrigatorio e `--dry-run` obrigatorio antes da execucao real. Criacao de usuario real de producao e etapa propria. Nenhuma senha, token ou hash deve ser documentado; nenhuma migration ou restart de producao deve ocorrer sem confirmacao humana; a feature flag interna permanece sob controle; tela interna so depois de autorizacao e endpoints administrativos seguros.
+
+## Decisão Operacional — Não ativar áreas internas em produção
+
+Resumo: as roles e scripts documentados aqui suportam operacoes em homologacao; entretanto, a exposicao de rotas internas em producao deve permanecer controlada. A flag `GEOPORTAL_INTERNAL_ROUTES_ENABLED` deve permanecer **desligada em producao** (fail-closed) até que uma ativacao formal seja conduzida com checklist, backups e confirmacao humana.
+
+Regras imediatas:
+- Nao copiar usuarios/senhas/sessoes/tokens de homologacao para producao.
+- Nao criar usuarios reais em producao sem checklist e confirmacao humana.
+- Nao executar migrations, reiniciar servicos ou alterar NSSM em producao sem confirmacao humana.
+
+Proxima etapa: criar procedimento "Ativacao Controlada do Geoportal Interno em Producao" com checklist de backup, validacao, bootstrap de perfis/permissoes, plano de rollback e confirmacao humana.
 
 Implementacao local: o script `geoportal-backend/scripts/admin/bootstrap_internal_admin_profile.py` e o repository `geoportal-backend/app/repositories/auth_admin_profile_repository.py` foram criados para esse bootstrap, com idempotencia, bind parameters, `--dry-run` sem persistencia e sem `DELETE`. Nesta etapa, nenhum perfil/permissao/vinculo real foi criado e nenhuma operacao foi executada contra banco real.
 

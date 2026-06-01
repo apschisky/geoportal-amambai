@@ -302,19 +302,19 @@ Esta consolidação **não**:
 
 **Próximo passo recomendado**: Abrir nova etapa/agente para "Geoportal Interno — Módulo Iluminação" com escopo específico de planejamento backend do primeiro endpoint de negócio.
 
----
+## Decisão Operacional — Não ativar agora em produção
 
-**Decisão Arquitetural (Importante): NÃO ATIVAR ROTAS INTERNAS EM PRODUÇÃO**
+Resumo: o código no branch `main` não implica ativação automática em produção. A área interna foi validada em **homologação** e deve permanecer com a feature flag `GEOPORTAL_INTERNAL_ROUTES_ENABLED` **desligada em produção** até uma etapa de ativação formal e controlada.
 
-- Código no GitHub/main NÃO implica ativação automática em produção.
-- Três estados: (1) GitHub/main — código versionado; (2) Homologação — feature flag `GEOPORTAL_INTERNAL_ROUTES_ENABLED=true` (ambiente controlado); (3) Produção — feature flag OFF (rotas internas retornam 404).
-- Ativação controlada (checklist mínimo):
-   1. Backup completo do banco e roles.
-   2. Executar script administrativo com `--dry-run` e revisar output.
-   3. Confirmar migrations aplicadas e integridade das tabelas `mod_auth`.
-   4. Verificar segredos fora do repositório (`GEOPORTAL_INTERNAL_SESSION_SECRET`) e variáveis de ambiente.
-   5. Aplicar permissões mínimas (roles/GRANT revisados).
-   6. Criar usuário administrativo de produção manualmente via script idempotente (não copiar dados de homologação).
-   7. Executar smoke tests e validações operacionais (login, `/me`, permission-smoke, health).
-   8. Ter plano de rollback documentado e autorização humana antes de qualquer restart.
-- Em produção, manter a flag desligada até completar a checklist e autorizar manualmente.
+Pontos-chave:
+- Estado 1 — Código versionado em `main`.
+- Estado 2 — Homologação: feature flag ligada para validação controlada e desenvolvimento do módulo Iluminação.
+- Estado 3 — Produção: feature flag desligada (fail-closed); rotas internas retornam `404` até ativação formal.
+
+Regras operacionais (imediatas):
+- Não copiar usuários/senhas/sessões/tokens de homologação para produção.
+- Não criar usuários reais em produção sem checklist e confirmação humana.
+- Não executar migrations em produção sem confirmação humana.
+- Não reiniciar serviços de produção ou alterar NSSM sem confirmação humana.
+
+Próxima etapa: abrir etapa separada "Ativação Controlada do Geoportal Interno em Produção" com checklist de backup, validação, bootstrap de perfis, permissões mínimas, plano de rollback e confirmação humana.

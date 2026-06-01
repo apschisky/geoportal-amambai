@@ -12,6 +12,17 @@ Validação no servidor: commits `0baeeca` Corrige filtros opcionais da auditori
 O endpoint interno `POST /api/internal/auth/login` existe somente sob `GEOPORTAL_INTERNAL_ROUTES_ENABLED`; em sucesso, seta cookie `geoportal_internal_session` HttpOnly, SameSite=Lax, Path `/api/internal`, Max-Age alinhado a sessao e Secure configuravel com padrao seguro em producao. Bearer continua aceito como suporte tecnico/intermediario. O endpoint `POST /api/internal/auth/logout` revoga a sessao por `revogado_em`, limpa o cookie e exige header `X-Geoportal-Internal-Request: 1`. Não há endpoint de negócio interno, JWT ou middleware de autenticação global. O usuário `admin.homologacao` existe somente em homologação por bootstrap administrativo controlado. O router técnico de smoke e os endpoints de login/logout só ficam ativos com feature flag ligada explicitamente.
 Próximos passos: manter a flag desligada em produção; homologação permanece como ambiente controlado para smoke test protegido, login interno inicial e validação operacional do cookie/logout; ainda sem JWT, endpoint `/me` ou endpoint de negócio interno.
 
+## Decisão Operacional — Não ativar áreas internas em produção
+
+Resumo: a implementação e validação ocorreram em `main` e homologação, mas **não** autorizam ativação automática em produção. A flag `GEOPORTAL_INTERNAL_ROUTES_ENABLED` deve permanecer **desligada em produção** (fail-closed) até uma ativação controlada com checklist, backups e confirmação humana.
+
+Regras imediatas:
+- Não copiar dados de homologação (usuarios, senhas, sessoes, tokens) para produção.
+- Não criar usuarios reais em produção sem checklist e confirmação humana.
+- Não executar migrations, reiniciar serviços ou alterar NSSM em produção sem confirmação humana.
+
+Próximo passo: criar etapa "Ativação Controlada do Geoportal Interno em Produção" com checklist de backup, validação, bootstrap de perfis/permissoes, plano de rollback e confirmação humana.
+
 Validação operacional de cookie HttpOnly, logout e proteção mutável inicial em homologação (processo isolado):
 
 Commit validado no servidor: `eaf5724` Implementa cookie e logout internos. Pytest completo no servidor: 298 passed.
@@ -37,23 +48,6 @@ Validacao operacional do `/api/internal/auth/me`: o commit `03efa10` Implementa 
 Resultado sanitizado final: `login_status=200`, `login_set_cookie=True`, `cookie_jar_tem_sessao=True`, `me_status=200`, `me_authenticated=True`, `me_usuario_id=7`, `me_permissoes=[]`, `me_tem_token=False`, `me_tem_cookie=False`, `me_tem_senha_hash=False`, `me_tem_token_hash=False`, `me_tem_session_secret=False`, `me_tem_database_url=False`. `permissoes=[]` e esperado antes da criacao e atribuicao de perfis/permissoes reais ao `admin.homologacao`. A role `geoportal_api_homolog` ficou com leitura suficiente para autenticacao, sessao e autorizacao, sem escrita nas tabelas de perfis/permissoes, sem superuser, sem `CREATEDB`, sem `CREATEROLE`, sem `BYPASSRLS` e sem acesso automatico a outros schemas.
 
 Plano de bootstrap seguro do perfil administrativo inicial: a proxima etapa deve criar o perfil `Administrador Interno do Geoportal`, as permissoes administrativas iniciais e a atribuicao ao `admin.homologacao` primeiro em homologacao. Isso deve ocorrer por script administrativo idempotente, com `--dry-run`, bind parameters, testes automatizados e validacao de ambiente, nao por SQL manual solto. O script nao deve apagar registros, duplicar perfis/permissoes/vinculos, depender de login hardcoded ou imprimir senha, token, hash, `session_secret` ou `DATABASE_URL`. A role runtime `geoportal_api_homolog` continuara apenas lendo permissoes; criacao/alteracao de perfis/permissoes, se necessaria, deve usar role administrativa operacional controlada, como `geoportal_auth_admin_homolog`, com permissoes temporarias e revogacao quando aplicavel.
-
----
-
-**Decisão Arquitetural (Importante): NÃO ATIVAR ROTAS INTERNAS EM PRODUÇÃO**
-
-- Código no GitHub/main NÃO implica ativação automática em produção.
-- Três estados: (1) GitHub/main — código versionado; (2) Homologação — feature flag `GEOPORTAL_INTERNAL_ROUTES_ENABLED=true` (ambiente controlado); (3) Produção — feature flag OFF (rotas internas retornam 404).
-- Ativação controlada (checklist mínimo):
-  1. Backup completo do banco e roles.
-  2. Executar script administrativo com `--dry-run` e revisar output.
-  3. Confirmar migrations aplicadas e integridade das tabelas `mod_auth`.
-  4. Verificar segredos fora do repositório (`GEOPORTAL_INTERNAL_SESSION_SECRET`) e variáveis de ambiente.
-  5. Aplicar permissões mínimas (roles/GRANT revisados).
-  6. Criar usuário administrativo de produção manualmente via script idempotente (não copiar dados de homologação).
-  7. Executar smoke tests e validações operacionais (login, `/me`, permission-smoke, health).
-  8. Ter plano de rollback documentado e autorização humana antes de qualquer restart.
-- Em produção, manter a flag desligada até completar a checklist e autorizar manualmente.
 
 Permissoes iniciais propostas: `admin.usuarios.ler`, `admin.usuarios.criar`, `admin.usuarios.bloquear`, `admin.usuarios.redefinir_senha`, `admin.usuarios.atribuir_perfis`, `admin.perfis.ler`, `admin.perfis.gerenciar`, `admin.permissoes.ler`, `admin.permissoes.gerenciar` e `internal.auth.me`. O administrador funcional nao e superuser de banco e nao recebe privilegios PostgreSQL especiais por ser administrador da aplicacao.
 

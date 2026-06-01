@@ -71,22 +71,16 @@ Validacao operacional de GET /api/internal/admin/profiles em homologacao: o comm
 
 Proximas etapas recomendadas: validar a listagem de perfis em homologacao; planejar bloqueio/desbloqueio de usuario; planejar reset de senha via endpoint; depois criar o primeiro endpoint interno de negocio do modulo Iluminacao; tela interna continua etapa posterior.
 
----
+## Decisão Operacional — Não ativar áreas internas em produção
 
-**Decisão Arquitetural (Importante): NÃO ATIVAR ROTAS INTERNAS EM PRODUÇÃO**
+Resumo: este plano e a validacao em homologacao documentam a implementacao; entretanto, a ativacao em producao deve ser controlada. A flag `GEOPORTAL_INTERNAL_ROUTES_ENABLED` deve permanecer **desligada em producao** (fail-closed) até que uma ativacao formal ocorra com checklist, backups e confirmacao humana.
 
-- Código no GitHub/main NÃO implica ativação automática em produção.
-- Três estados: (1) GitHub/main — código versionado; (2) Homologação — feature flag `GEOPORTAL_INTERNAL_ROUTES_ENABLED=true` (ambiente controlado); (3) Produção — feature flag OFF (rotas internas retornam 404).
-- Ativação controlada (checklist mínimo):
-	1. Backup completo do banco e roles.
-	2. Executar script administrativo com `--dry-run` e revisar output.
-	3. Confirmar migrations aplicadas e integridade das tabelas `mod_auth`.
-	4. Verificar segredos fora do repositório (`GEOPORTAL_INTERNAL_SESSION_SECRET`) e variáveis de ambiente.
-	5. Aplicar permissões mínimas (roles/GRANT revisados).
-	6. Criar usuário administrativo de produção manualmente via script idempotente (não copiar dados de homologação).
-	7. Executar smoke tests e validações operacionais (login, `/me`, permission-smoke, health).
-	8. Ter plano de rollback documentado e autorização humana antes de qualquer restart.
-- Em produção, manter a flag desligada até completar a checklist e autorizar manualmente.
+Regras imediatas:
+- Nao copiar dados de homologacao (usuarios, senhas, sessoes, tokens) para producao.
+- Nao criar usuarios reais em producao sem checklist e confirmacao humana.
+- Nao executar migrations, reiniciar servicos ou alterar NSSM em producao sem confirmacao humana.
+
+Proxima etapa operacional: criar procedimento "Ativacao Controlada do Geoportal Interno em Producao" com checklist de backup, validacao, bootstrap de perfis/permissoes, plano de rollback e confirmacao humana.
 
 ## Plano: Bloqueio e Desbloqueio de Usuário Interno
 

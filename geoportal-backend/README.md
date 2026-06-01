@@ -4,23 +4,6 @@ Prova de conceito local e segura da futura API do Geoportal de Amambai, iniciand
 
 Esta etapa nao conecta banco de dados, nao implementa autenticacao real, nao usa dados de producao e nao integra com o Geoportal publico em producao.
 
----
-
-**Decisão Arquitetural (Importante): NÃO ATIVAR ROTAS INTERNAS EM PRODUÇÃO**
-
-- Código no GitHub/main NÃO implica ativação automática em produção.
-- Três estados: (1) GitHub/main — código versionado; (2) Homologação — feature flag `GEOPORTAL_INTERNAL_ROUTES_ENABLED=true` (ambiente controlado); (3) Produção — feature flag OFF (rotas internas retornam 404).
-- Ativação controlada (checklist mínimo):
-  1. Backup completo do banco e roles.
-  2. Executar script administrativo com `--dry-run` e revisar output.
-  3. Confirmar migrations aplicadas e integridade das tabelas `mod_auth`.
-  4. Verificar segredos fora do repositório (`GEOPORTAL_INTERNAL_SESSION_SECRET`) e variáveis de ambiente.
-  5. Aplicar permissões mínimas (roles/GRANT revisados).
-  6. Criar usuário administrativo de produção manualmente via script idempotente (não copiar dados de homologação).
-  7. Executar smoke tests e validações operacionais (login, `/me`, permission-smoke, health).
-  8. Ter plano de rollback documentado e autorização humana antes de qualquer restart.
-- Em produção, manter a flag desligada até completar a checklist e autorizar manualmente.
-
 As decisoes tecnicas para autenticacao interna estao documentadas em `geoportal-vite/docs/INTERNAL-AUTH-TECHNICAL-DECISIONS.md`.
 
 **Decisão arquitetural sobre transporte final de sessão**:
@@ -30,6 +13,17 @@ Implementacao backend: o servico interno de hash/verificacao de senha usando Arg
 Validacao: testes locais passaram (298 total). `tests/test_internal_auth_login_router.py` passou com 14 testes de login, cookie, Bearer, smoke e logout; `tests/test_auth_dependencies.py` passou com 15 testes, incluindo cookie seguro e header interno mutavel; `tests/test_auth_login_audit_repository.py` passou com 6 testes; `tests/test_reset_internal_user_password_admin.py` passou com 12 testes; `tests/test_auth_service.py` passou com 26 testes, incluindo validacao de robustez da atualizacao de `ultimo_login_em` com try/except; `tests/test_internal_routes_feature_flag.py` passou com 10 testes; `tests/test_auth_user_repository.py` passou com 9 testes. A dependency FastAPI interna `get_current_authenticated_session(...)` foi criada em `geoportal-backend/app/dependencies/auth_dependencies.py` e valida sessao usando `extract_session_token(...)` e `resolve_authenticated_session(...)`. O router tecnico protegido de smoke foi criado em `geoportal-backend/app/api/routes/internal_auth_smoke.py` com `GET /api/internal/auth/smoke`.
 
 A feature flag `GEOPORTAL_INTERNAL_ROUTES_ENABLED` foi conectada ao app principal em `geoportal-backend/app/main.py` e condiciona os routers internos de autenticacao. O comportamento é fail-closed: ausencia, false, valor invalido ou valor desligado mantêm as rotas `/api/internal/auth/...` fora do app principal. Apenas valores explícitos de ativação permitem incluir o router técnico interno.
+
+## Decisão Operacional — Não ativar áreas internas em produção
+
+Resumo: o código e a documentação validam a implementação em `main` e homologação; entretanto, as rotas internas devem permanecer desativadas em produção. A flag `GEOPORTAL_INTERNAL_ROUTES_ENABLED` deve permanecer **desligada em produção** (fail-closed) até que uma ativação controlada seja conduzida com checklist, backups e confirmação humana.
+
+Regras imediatas:
+- Não copiar dados de homologação (usuarios, senhas, sessoes, tokens) para produção.
+- Não criar usuarios reais em produção sem checklist e confirmação humana.
+- Não executar migrations, reiniciar serviços ou alterar NSSM em produção sem confirmação humana.
+
+Próximo passo: criar etapa "Ativação Controlada do Geoportal Interno em Produção" com checklist de backup, validação, bootstrap de perfis/permissoes, plano de rollback e confirmação humana.
 
 Validação operacional:
 - `scripts/deploy/backend-restart-validate-service.ps1` foi usado para reiniciar e validar `GeoportalAPIHomologacao` e `GeoportalAPIProducao`.
