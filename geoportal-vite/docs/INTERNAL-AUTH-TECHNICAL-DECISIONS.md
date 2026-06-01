@@ -277,6 +277,24 @@ Resultado: reset funcionou conforme contrato. Senha antiga invalida, senha nova 
 
 Proximos passos: encerrar fase administrativa de autenticacao/autorizacao com documentacao consolidada; depois planejar primeiro endpoint interno de negocio do modulo Iluminacao; tela interna continua etapa posterior.
 
+**Política de Ativação em Produção (decisão operacional)**
+
+- **Decisão**: NÃO ativar a área interna em produção neste momento. Código no GitHub/main não implica ativação automática em produção.
+- **Flag**: `GEOPORTAL_INTERNAL_ROUTES_ENABLED` deve permanecer desligada em produção (fail-closed); rotas internas em produção devem retornar 404.
+- **Proibições imediatas**: não copiar usuários/senhas/sessões/tokens/perfis de homologação para produção; não executar migrations, reiniciar produção ou alterar NSSM sem confirmação humana e checklist aprovado.
+- **Nome da etapa de ativação futura**: "Ativação Controlada do Geoportal Interno em Produção".
+- **Checklist mínimo antes de ativar em produção**:
+  - Backup completo de roles e banco de produção.
+  - Revisão e aprovação humana das migrations aplicáveis.
+  - Revisão da matriz de privilégios e GRANTs mínimos para runtime.
+  - Preparar e validar NSSM/serviço com variáveis seguras (segredo de sessão fora do Git).
+  - Validar bootstrap idempotente de perfis/usuários em `--dry-run` e executar com confirmação humana.
+  - Validar smoke endpoints e fluxos mutáveis em ambiente controlado pós-bootstrap.
+  - Testar rollback plan (restore de backup e validação de saúde pública).
+  - Obter confirmação humana explícita antes de qualquer restart de produção.
+
+Estas instruções são documentais e não acionam nenhuma mudança automática no código, migrations, ou infraestrutura.
+
 ## 4. Política inicial de senha
 
 Proposta inicial:
