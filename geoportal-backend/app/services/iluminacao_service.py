@@ -8,6 +8,7 @@ from app.schemas.iluminacao import (
     IluminacaoConsultaPublicResponse,
     IluminacaoConsultaRepositoryRecord,
     IluminacaoConsultaRequest,
+    IluminacaoSolicitacaoInternaItem,
     IluminacaoSolicitacaoCreate,
     IluminacaoSolicitacaoResponse,
     StatusSolicitacaoIluminacao,
@@ -161,3 +162,19 @@ def consultar_solicitacao_publica(
         raise PublicConsultaNotFoundError(PUBLIC_CONSULTA_NOT_FOUND_MESSAGE)
 
     return _build_public_consulta_response(record)
+
+
+def listar_solicitacoes_internas(
+    *,
+    status: StatusSolicitacaoIluminacao | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[IluminacaoSolicitacaoInternaItem]:
+    try:
+        return iluminacao_repository.list_solicitacoes_internas(
+            status=status,
+            limit=limit,
+            offset=offset,
+        )
+    except (SQLAlchemyError, RuntimeError) as exc:
+        raise DatabaseUnavailableError(DATABASE_UNAVAILABLE_MESSAGE) from exc

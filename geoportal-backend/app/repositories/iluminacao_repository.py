@@ -4,8 +4,10 @@ from sqlalchemy.engine import Engine
 from app.core.database import get_engine
 from app.schemas.iluminacao import (
     IluminacaoConsultaRepositoryRecord,
+    IluminacaoSolicitacaoInternaItem,
     IluminacaoSolicitacaoCreate,
     IluminacaoSolicitacaoResponse,
+    StatusSolicitacaoIluminacao,
 )
 
 ACTIVE_SOLICITACAO_STATUSES = (
@@ -161,3 +163,68 @@ def get_solicitacao_publica_por_protocolo(
         return None
 
     return IluminacaoConsultaRepositoryRecord.model_validate(dict(row))
+
+
+def list_solicitacoes_internas(
+    *,
+    status: StatusSolicitacaoIluminacao | None = None,
+    limit: int = 50,
+    offset: int = 0,
+    engine: Engine | None = None,
+) -> list[IluminacaoSolicitacaoInternaItem]:
+    if limit < 1 or limit > 100:
+        raise ValueError("limit must be between 1 and 100")
+    if offset < 0:
+        raise ValueError("offset must be greater than or equal to 0")
+
+    db_engine = engine or get_engine()
+    status_value = status.value if status is not None else None
+
+    statement = text(
+        """
+        SELECT
+            id,
+            protocolo,
+            origem,
+            localizacao_tipo,
+            poste_id,
+            tipo_problema,
+            descricao,
+            observacoes_localizacao,
+            ponto_referencia,
+            poste_proximo_informado,
+            nome_solicitante,
+            contato_solicitante,
+            status,
+            prioridade,
+            duplicidade_suspeita,
+            ST_Y(ST_Transform(geom, 4326)) AS latitude,
+            ST_X(ST_Transform(geom, 4326)) AS longitude,
+            criado_em,
+            atualizado_em,
+            finalizado_em
+        FROM mod_iluminacao.solicitacoes
+        WHERE deleted_at IS NULL
+          AND (
+              CAST(:status AS varchar) IS NULL
+              OR status = CAST(:status AS varchar)
+          )
+        ORDER BY criado_em DESC, id DESC
+        LIMIT :limit
+        OFFSET :offset
+        """
+    )
+
+    params = {
+        "status": status_value,
+        "limit": limit,
+        "offset": offset,
+    }
+
+    with db_engine.begin() as connection:
+        rows = connection.execute(statement, params).mappings().all()
+
+    return [
+        IluminacaoSolicitacaoInternaItem.model_validate(dict(row))
+        for row in rows
+    ]

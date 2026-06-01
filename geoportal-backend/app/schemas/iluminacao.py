@@ -139,3 +139,32 @@ class IluminacaoConsultaRepositoryRecord(BaseModel):
     contato_solicitante: str | None = None
     criado_em: datetime | date
     atualizado_em: datetime | date | None = None
+
+
+class IluminacaoSolicitacaoInternaItem(BaseModel):
+    id: int
+    protocolo: str
+    origem: str
+    localizacao_tipo: str
+    poste_id: str | None = None
+    tipo_problema: str
+    descricao: str
+    observacoes_localizacao: str | None = None
+    ponto_referencia: str | None = None
+    poste_proximo_informado: str | None = None
+    nome_solicitante: str
+    contato_solicitante: str
+    status: str
+    prioridade: str
+    duplicidade_suspeita: bool
+    latitude: float
+    longitude: float
+    criado_em: datetime
+    atualizado_em: datetime
+    finalizado_em: datetime | None = None
+
+
+class IluminacaoSolicitacoesInternasResponse(BaseModel):
+    items: list[IluminacaoSolicitacaoInternaItem]
+    limit: int
+    offset: int

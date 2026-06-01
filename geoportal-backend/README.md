@@ -259,6 +259,8 @@ Resultado: reset funcionou conforme contrato. Senha antiga invalida imediatament
 
 Proximos passos: encerrar fase administrativa de autenticacao/autorizacao; depois planejar primeiro endpoint interno de negocio do modulo Iluminacao; tela interna continua etapa posterior.
 
+Primeiro endpoint interno de negocio implementado: `GET /api/internal/iluminacao/solicitacoes` lista solicitacoes de Iluminacao Publica em rota interna somente leitura, sob `GEOPORTAL_INTERNAL_ROUTES_ENABLED`, com sessao autenticada e `require_permission("iluminacao.solicitacoes.ler")`. Por ser GET, nao exige `X-Geoportal-Internal-Request`. A consulta usa `mod_iluminacao.solicitacoes`, filtra `deleted_at IS NULL`, seleciona colunas explicitas, usa bind parameters para `status`, `limit` e `offset`, e retorna `latitude`/`longitude` em WGS84 por `ST_Transform(geom, 4326)`. A resposta contem `items`, `limit` e `offset`, sem SQL, traceback, `DATABASE_URL`, host, role, senha, token, cookie, hash ou segredo. Esta etapa nao cria endpoint mutavel, migration, schema, usuario, perfil, permissao real, role, GRANT, producao, NSSM, `.env`, frontend ou tela.
+
 Arquitetura funcional de autorizacao: apos a validacao de autenticacao/sessao, a proxima fase segura e implementar autorizacao por usuarios, perfis, permissoes, modulos e acoes, nao tela/frontend. O backend deve buscar permissoes efetivas em `mod_auth`, expor service `has_permission(usuario_id, permissao)` e dependency `require_permission("permissao")`, sem regra hardcoded como `login == "admin.homologacao"`. O administrador funcional pode criar/bloquear usuarios, redefinir senha e atribuir perfis em etapa futura, mas nao deve ser superuser de banco. Usuarios de modulo, como Iluminacao Publica, devem acessar somente o modulo e as acoes permitidas. O primeiro modulo pratico previsto e Iluminacao Publica, mas endpoints de negocio e tela interna so devem vir depois da autorizacao base validada em homologacao.
 
 Base tecnica de autorizacao implementada: foi criado repository para permissoes efetivas em `app/repositories/auth_permission_repository.py`, service `app/services/auth_permission_service.py` com `get_user_permissions(...)` e `has_permission(...)`, dependency `require_permission("permissao")` em `auth_dependencies.py` e endpoint tecnico `GET /api/internal/auth/me` sob feature flag. O endpoint `/me` exige sessao autenticada e retorna apenas `authenticated`, `usuario_id` e `permissoes` ordenadas, sem token, cookie, `senha_hash`, `token_hash`, `session_secret` ou `DATABASE_URL`. Nenhum perfil, permissao, usuario, seed, role, GRANT, migration, schema novo, endpoint administrativo real, tela, producao, NSSM ou `.env` foi alterado nesta etapa. `admin.homologacao` ainda precisara receber perfil/permissoes por etapa operacional posterior em homologacao. Testes locais passaram com 311 testes.
@@ -389,6 +391,7 @@ Endpoints internos de autenticacao existem apenas quando `GEOPORTAL_INTERNAL_ROU
 - `POST /api/internal/admin/users/{usuario_id}/block`
 - `POST /api/internal/admin/users/{usuario_id}/unblock`
 - `POST /api/internal/admin/users/{usuario_id}/reset-password`
+- `GET /api/internal/iluminacao/solicitacoes`
 
 Essas rotas nao fazem parte da API publica e permanecem fora do app principal quando a feature flag esta desligada.
 

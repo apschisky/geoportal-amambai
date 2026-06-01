@@ -6,6 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.schemas.iluminacao import (
     IluminacaoConsultaRepositoryRecord,
     IluminacaoConsultaRequest,
+    IluminacaoSolicitacaoInternaItem,
     IluminacaoSolicitacaoCreate,
     IluminacaoSolicitacaoResponse,
     StatusSolicitacaoIluminacao,
@@ -289,6 +290,33 @@ def repository_record(
     )
 
 
+def internal_solicitacao_item() -> IluminacaoSolicitacaoInternaItem:
+    return IluminacaoSolicitacaoInternaItem.model_validate(
+        {
+            "id": 10,
+            "protocolo": "IP-2026-000010",
+            "origem": "geoportal_publico",
+            "localizacao_tipo": "poste_mapa",
+            "poste_id": "POSTE-010",
+            "tipo_problema": "lampada_apagada",
+            "descricao": "Lampada apagada na rua principal.",
+            "observacoes_localizacao": None,
+            "ponto_referencia": "Perto da praca.",
+            "poste_proximo_informado": None,
+            "nome_solicitante": "Solicitante Interno",
+            "contato_solicitante": "contato interno",
+            "status": "aberta",
+            "prioridade": "normal",
+            "duplicidade_suspeita": False,
+            "latitude": -23.105,
+            "longitude": -55.225,
+            "criado_em": datetime(2026, 5, 20, 10, 30),
+            "atualizado_em": datetime(2026, 5, 21, 8, 15),
+            "finalizado_em": None,
+        }
+    )
+
+
 def test_consultar_solicitacao_publica_returns_filtered_response(monkeypatch) -> None:
     monkeypatch.setattr(
         iluminacao_service.iluminacao_repository,
@@ -415,6 +443,64 @@ def test_consultar_solicitacao_publica_converts_database_error_to_safe_503(
 
     with pytest.raises(DatabaseUnavailableError) as exc_info:
         iluminacao_service.consultar_solicitacao_publica(consulta_request())
+
+    message = str(exc_info.value)
+    assert message == "Servico temporariamente indisponivel. Tente novamente mais tarde."
+    assert "DATABASE_URL" not in message
+    assert "db.internal" not in message
+    assert "senha" not in message.lower()
+    assert "SELECT" not in message
+
+
+def test_listar_solicitacoes_internas_calls_repository_with_filters(
+    monkeypatch,
+) -> None:
+    calls: dict[str, object] = {}
+
+    def fake_list_solicitacoes_internas(**kwargs: object) -> list[IluminacaoSolicitacaoInternaItem]:
+        calls.update(kwargs)
+        return [internal_solicitacao_item()]
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "list_solicitacoes_internas",
+        fake_list_solicitacoes_internas,
+    )
+
+    response = iluminacao_service.listar_solicitacoes_internas(
+        status=StatusSolicitacaoIluminacao.aberta,
+        limit=25,
+        offset=5,
+    )
+
+    assert response[0].protocolo == "IP-2026-000010"
+    assert calls == {
+        "status": StatusSolicitacaoIluminacao.aberta,
+        "limit": 25,
+        "offset": 5,
+    }
+
+
+def test_listar_solicitacoes_internas_converts_database_error_to_safe_error(
+    monkeypatch,
+) -> None:
+    def fail_with_database_error(*args: object, **kwargs: object) -> None:
+        raise SQLAlchemyError(
+            "could not connect using DATABASE_URL on host db.internal:5432 SELECT"
+        )
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "list_solicitacoes_internas",
+        fail_with_database_error,
+    )
+
+    with pytest.raises(DatabaseUnavailableError) as exc_info:
+        iluminacao_service.listar_solicitacoes_internas(
+            status=None,
+            limit=50,
+            offset=0,
+        )
 
     message = str(exc_info.value)
     assert message == "Servico temporariamente indisponivel. Tente novamente mais tarde."

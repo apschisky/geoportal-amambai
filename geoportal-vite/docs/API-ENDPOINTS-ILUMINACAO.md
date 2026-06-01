@@ -205,26 +205,23 @@ Validacao manual registrada:
 
 Finalidade: listar solicitacoes para painel interno.
 
-Filtros:
+Primeira versao implementada:
 
-- `status`;
-- `data_inicial`;
-- `data_final`;
-- `bairro` ou `regiao`;
-- `tipo_problema`;
-- `prioridade`;
-- `poste_id`;
-- `protocolo`.
+- Rota interna somente leitura sob `GEOPORTAL_INTERNAL_ROUTES_ENABLED`.
+- Exige sessao autenticada e `require_permission("iluminacao.solicitacoes.ler")`.
+- Nao exige `X-Geoportal-Internal-Request`, por ser GET.
+- Query params: `status` opcional validado contra `StatusSolicitacaoIluminacao`, `limit` de 1 a 100 com padrao 50 e `offset` minimo 0 com padrao 0.
+- Retorna `items`, `limit` e `offset`.
+- Cada item retorna campos operacionais da solicitacao e coordenadas `latitude`/`longitude` em WGS84/EPSG:4326, calculadas a partir de `geom` com `ST_Transform(geom, 4326)`.
+- A consulta filtra sempre `deleted_at IS NULL`, usa colunas explicitas, bind parameters e nao usa `SELECT *`.
 
-Permissao:
+Campos retornados por item:
 
-- `visualizar`.
+- `id`, `protocolo`, `origem`, `localizacao_tipo`, `poste_id`, `tipo_problema`, `descricao`, `observacoes_localizacao`, `ponto_referencia`, `poste_proximo_informado`, `nome_solicitante`, `contato_solicitante`, `status`, `prioridade`, `duplicidade_suspeita`, `latitude`, `longitude`, `criado_em`, `atualizado_em`, `finalizado_em`.
 
-Resposta:
+Fases futuras podem adicionar filtros por periodo, regiao, tipo de problema, prioridade, poste, protocolo, total de registros e resumo por status. Esses campos nao fazem parte da primeira versao para manter menor escopo e menor risco.
 
-- lista paginada;
-- total de registros;
-- resumo por status, se aplicavel.
+Erros: 401 sem sessao, 403 sem permissao, 422 para query invalida e 503 generico se o banco estiver indisponivel, sem expor SQL, traceback, host, role, segredo ou `DATABASE_URL`.
 
 ### `GET /api/internal/iluminacao/solicitacoes/{id}`
 
