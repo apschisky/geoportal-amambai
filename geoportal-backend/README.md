@@ -209,7 +209,7 @@ Validacao operacional de bloqueio/desbloqueio em homologacao: o commit `88ff004`
 
 ## Planejamento: Reset Administrativo de Senha (Documental)
 
-O endpoint `POST /api/internal/admin/users/{usuario_id}/reset-password` sera a proxima acao mutavel de seguranca sensivel a ser implementada em etapa separada com Codex High. Exigira feature flag interna, sessao autenticada, `require_permission("admin.usuarios.redefinir_senha")` e header `X-Geoportal-Internal-Request: 1`. 
+O endpoint `POST /api/internal/admin/users/{usuario_id}/reset-password` sera a proxima acao mutavel de seguranca sensivel a ser implementada em etapa separada com Codex High. Exigira feature flag interna, sessao autenticada, `require_permission("admin.usuarios.redefinir_senha")` e header `X-Geoportal-Internal-Request: 1`.
 
 Payload planejado: `nova_senha` obrigatoria e `confirmar_nova_senha` obrigatoria (confirmacao); nao aceitar senha por query string ou path parameter. O servico deve validar senhas identicas, cumprir politica centralizada (6-128 caracteres, letra+numero, nao igual a login/nome, bloqueada se comum), gerar novo hash Argon2id, atualizar `mod_auth.usuarios.senha_hash` e `mod_auth.usuarios.atualizado_em`, revogar sessoes ativas via `mod_auth.sessoes.revogado_em = now()` (sem DELETE fisico) e nao desbloquear usuario se bloqueado.
 
