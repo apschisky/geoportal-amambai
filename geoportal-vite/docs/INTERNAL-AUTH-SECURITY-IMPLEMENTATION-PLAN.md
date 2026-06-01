@@ -38,6 +38,23 @@ Resultado sanitizado final: `login_status=200`, `login_set_cookie=True`, `cookie
 
 Plano de bootstrap seguro do perfil administrativo inicial: a proxima etapa deve criar o perfil `Administrador Interno do Geoportal`, as permissoes administrativas iniciais e a atribuicao ao `admin.homologacao` primeiro em homologacao. Isso deve ocorrer por script administrativo idempotente, com `--dry-run`, bind parameters, testes automatizados e validacao de ambiente, nao por SQL manual solto. O script nao deve apagar registros, duplicar perfis/permissoes/vinculos, depender de login hardcoded ou imprimir senha, token, hash, `session_secret` ou `DATABASE_URL`. A role runtime `geoportal_api_homolog` continuara apenas lendo permissoes; criacao/alteracao de perfis/permissoes, se necessaria, deve usar role administrativa operacional controlada, como `geoportal_auth_admin_homolog`, com permissoes temporarias e revogacao quando aplicavel.
 
+---
+
+**Decisão Arquitetural (Importante): NÃO ATIVAR ROTAS INTERNAS EM PRODUÇÃO**
+
+- Código no GitHub/main NÃO implica ativação automática em produção.
+- Três estados: (1) GitHub/main — código versionado; (2) Homologação — feature flag `GEOPORTAL_INTERNAL_ROUTES_ENABLED=true` (ambiente controlado); (3) Produção — feature flag OFF (rotas internas retornam 404).
+- Ativação controlada (checklist mínimo):
+  1. Backup completo do banco e roles.
+  2. Executar script administrativo com `--dry-run` e revisar output.
+  3. Confirmar migrations aplicadas e integridade das tabelas `mod_auth`.
+  4. Verificar segredos fora do repositório (`GEOPORTAL_INTERNAL_SESSION_SECRET`) e variáveis de ambiente.
+  5. Aplicar permissões mínimas (roles/GRANT revisados).
+  6. Criar usuário administrativo de produção manualmente via script idempotente (não copiar dados de homologação).
+  7. Executar smoke tests e validações operacionais (login, `/me`, permission-smoke, health).
+  8. Ter plano de rollback documentado e autorização humana antes de qualquer restart.
+- Em produção, manter a flag desligada até completar a checklist e autorizar manualmente.
+
 Permissoes iniciais propostas: `admin.usuarios.ler`, `admin.usuarios.criar`, `admin.usuarios.bloquear`, `admin.usuarios.redefinir_senha`, `admin.usuarios.atribuir_perfis`, `admin.perfis.ler`, `admin.perfis.gerenciar`, `admin.permissoes.ler`, `admin.permissoes.gerenciar` e `internal.auth.me`. O administrador funcional nao e superuser de banco e nao recebe privilegios PostgreSQL especiais por ser administrador da aplicacao.
 
 Implementacao local do bootstrap: foram criados o script `geoportal-backend/scripts/admin/bootstrap_internal_admin_profile.py`, o repository `geoportal-backend/app/repositories/auth_admin_profile_repository.py` e testes automatizados. O script exige `--login`, possui `--dry-run` sem persistencia, usa bind parameters, nao aceita senha, nao usa login hardcoded, nao executa `DELETE` e nao imprime dados sensiveis. Nesta etapa, nao foi executado contra banco real, nao criou perfil/permissao/vinculo real, nao alterou schema, nao criou endpoint e nao alterou producao.
@@ -116,24 +133,6 @@ Confirmacoes de seguranca:
 - Variaveis temporarias (DATABASE_URL, GEOPORTAL_INTERNAL_ROUTES_ENABLED, GEOPORTAL_INTERNAL_SESSION_SECRET, TEST_INTERNAL_PASSWORD) foram limpas apos teste.
 
 Nao havera copia cega de dados de homologacao para producao. Migram codigo versionado, migrations estruturais quando existirem, scripts administrativos validados e roteiro operacional. Nao migram senhas, sessoes, tokens, dados de teste ou usuarios ficticios. Nenhuma migration ou restart de producao deve ocorrer sem confirmacao humana, e a feature flag interna deve permanecer sob controle.
-
-**Política de Ativação em Produção (decisão operacional)**
-
-- **Decisão**: NÃO ativar a área interna em produção neste momento. Código no GitHub/main não implica ativação automática em produção.
-- **Flag**: `GEOPORTAL_INTERNAL_ROUTES_ENABLED` deve permanecer desligada em produção (fail-closed); rotas internas em produção devem retornar 404.
-- **Proibições imediatas**: não copiar usuários/senhas/sessões/tokens/perfis de homologação para produção; não executar migrations, reiniciar produção ou alterar NSSM sem confirmação humana e checklist aprovado.
-- **Nome da etapa de ativação futura**: "Ativação Controlada do Geoportal Interno em Produção".
-- **Checklist mínimo antes de ativar em produção**:
-  - Backup completo de roles e banco de produção.
-  - Revisão e aprovação humana das migrations aplicáveis.
-  - Revisão da matriz de privilégios e GRANTs mínimos para runtime.
-  - Preparar e validar NSSM/serviço com variáveis seguras (segredo de sessão fora do Git).
-  - Validar bootstrap idempotente de perfis/usuários em `--dry-run` e executar com confirmação humana.
-  - Validar smoke endpoints e fluxos mutáveis em ambiente controlado pós-bootstrap.
-  - Testar rollback plan (restore de backup e validação de saúde pública).
-  - Obter confirmação humana explícita antes de qualquer restart de produção.
-
-Estas instruções são documentais e não acionam nenhuma mudança automática no código, migrations, ou infraestrutura.
 
 Plano de seguranca para reset administrativo de senha: o endpoint futuro `POST /api/internal/admin/users/{usuario_id}/reset-password` sera implementado em etapa separada com Codex High como acao mutavel de seguranca sensivel. Deve ficar sob `GEOPORTAL_INTERNAL_ROUTES_ENABLED`, exigir sessao autenticada, `require_permission("admin.usuarios.redefinir_senha")`, header `X-Geoportal-Internal-Request: 1` e usar bind parameters em SQL. Payload aceito: `nova_senha` obrigatoria e `confirmar_nova_senha` obrigatoria; nao aceitar por query string/path. Payload proibido: `senha_hash`, `token`, `token_hash`, `cookie`, `session_secret`, `DATABASE_URL`, `role`, `GRANT`, `perfil`, `perfis`, `permissoes`, `ativo`, `bloqueado`, `bloqueado_ate`, `usuario_id` no corpo, campos de auditoria e campos de sessao. Validacoes obrigatorias: `nova_senha` e `confirmar_nova_senha` nao vazios apos `strip`; senhas identicas comparadas seguramente; `nova_senha` cumprindo politica existente (6-128 caracteres, letra+numero, nao igual a login/nome, bloqueada se comum); rejeicao de campos extras; sem login hardcoded. Persistencia planejada: nao aceitar senha por query/path; gerar novo hash Argon2id pelo utilitario existente; atualizar somente `mod_auth.usuarios.senha_hash` e `mod_auth.usuarios.atualizado_em`, se aplicavel; revogar sessoes ativas atualizando `mod_auth.sessoes.revogado_em = now()`, sem DELETE fisico; nao desbloquear usuario se bloqueado; nao alterar perfil, permissoes ou `ativo`; nao criar sessao, auditoria de login (salvo decisao futura) ou e-mail. Resposta 200 planejada: `usuario.id`, `usuario.login`, `usuario.nome`, `usuario.email`, `usuario.ativo`, `usuario.bloqueado`, `usuario.criado_em`, nunca `senha`, `nova_senha`, `senha_hash`, token, `token_hash`, cookie, `session_secret`, `DATABASE_URL`, SQL, role, GRANT, sessao, auditoria, `bloqueado_ate`, `atualizado_em` ou `ultimo_login_em`. Erros planejados: 401 `Not authenticated`, 403 `Forbidden`, 404 generico para usuario inexistente, 422 para payload invalido ou senha que nao cumpre politica, sempre sem expor detalhe de banco ou SQL. Esta etapa nao cria usuario, perfil, permissao, vinculo, migration, schema, producao, NSSM, `.env`, frontend ou tela. Proxima validacao: homologacao com `teste.criacao`, confirmando que senha antiga falha (401), senha nova funciona (200), sessoes ativas sao revogadas (401), usuario bloqueado continua bloqueado (sem desbloquear).
 
