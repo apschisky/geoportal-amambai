@@ -121,6 +121,35 @@ Plano de seguranca para reset administrativo de senha: o endpoint futuro `POST /
 
 Implementacao segura do reset administrativo de senha: `POST /api/internal/admin/users/{usuario_id}/reset-password` foi criado conforme o contrato. A rota mutavel exige feature flag interna, sessao autenticada, `require_permission("admin.usuarios.redefinir_senha")` e `X-Geoportal-Internal-Request: 1`. O payload aceita apenas `nova_senha` e `confirmar_nova_senha`; campos extras, divergencia e senha fraca retornam 422 generico sem ecoar valores. A politica centralizada de senha e reutilizada antes do hash Argon2id. O repository usa bind parameters para atualizar somente `senha_hash` e `atualizado_em` em `mod_auth.usuarios` e revogar sessoes ativas em `mod_auth.sessoes.revogado_em`, sem `DELETE`. O reset nao desbloqueia usuario, nao altera `ativo`, perfis, permissoes ou vinculos, nao cria sessao, nao envia e-mail e nao escreve em auditoria de login. A resposta e o mesmo envelope sanitizado de usuario, sem senha, hash, token, cookie, segredo, SQL, role, GRANT, sessao ou auditoria. Nao houve migration, alteracao de schema, producao, NSSM, `.env`, frontend ou tela.
 
+Validacao operacional de reset administrativo de senha em homologacao (processo isolado, commit 72e7d80, pytest 488 passed):
+
+Preparacao em homologacao:
+- Backup de roles e customizado do banco realizados antes das operacoes.
+- Matriz de privilegios da role `geoportal_api_homolog` confirmada: `usuarios_select=t`, `usuarios_insert=t`, `usuarios_update=t`, `usuarios_delete=f`; `sessoes_select=t`, `sessoes_insert=t`, `sessoes_update=t`, `sessoes_delete=f`.
+- Nenhum novo GRANT foi necessario alem do ja validado no bloqueio/desbloqueio.
+
+Execucao do teste operacional com `teste.criacao` (id=8):
+- Processo isolado em homologacao com variaveis temporarias limpas ao final.
+- Cenarios validados:
+  - 401 sem sessao autenticada.
+  - 403 sem header `X-Geoportal-Internal-Request: 1`.
+  - 422 para senhas divergentes (divergencia de confirmacao).
+  - 422 para senha fraca/invalida (politica centralizada).
+  - 404 para usuario inexistente.
+  - 200 reset bem-sucedido; usuario retornou sanitizado com campos esperados.
+  - 401 na sessao antiga apos reset (revogada em `mod_auth.sessoes` com `revogado_em` preenchido).
+  - 401 no login com senha antiga (invalida imediatamente apos reset).
+  - 200 no login com senha nova (passava a funcionar apos reset).
+  - Usuario bloqueado continuou bloqueado apos reset (sem desbloquear automatico).
+  - Desbloqueio final estabilizou ambiente, permitindo login com senha nova.
+
+Campos retornados (sanitizado): `id`, `login`, `nome`, `email`, `ativo`, `bloqueado`, `criado_em`.
+Nao retornou: `senha`, `nova_senha`, `confirmar_nova_senha`, `senha_hash`, `bloqueado_ate`, `atualizado_em`, `ultimo_login_em`, token, `token_hash`, cookie, `session_secret`, `DATABASE_URL`, SQL, role, GRANT, sessao, auditoria ou segredo.
+
+Sessoes ativas foram revogadas: `UPDATE mod_auth.sessoes SET revogado_em = now() WHERE usuario_id = :usuario_id AND revogado_em IS NULL`, sem `DELETE` fisico. Sessoes anteriores ficaram inacessiveis imediatamente apos reset.
+
+Resultado final: reset funcionou conforme especificado. Senha antiga deixou de funcionar. Senha nova passou a funcionar. Sessoes ativas foram revogadas logicamente. Usuario bloqueado continuou bloqueado. Nenhum dado sensivel foi exposto. Variaveis temporarias foram limpas. Producao, NSSM, `.env` versionado e frontend nao foram alterados.
+
 Validação operacional de login real em homologação (processo isolado):
 
 Preparação em homologação:

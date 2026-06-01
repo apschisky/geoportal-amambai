@@ -261,6 +261,22 @@ O fluxo reutiliza a politica centralizada de senha antes de `hash_password(...)`
 
 Resposta 200 retorna somente `usuario.id`, `usuario.login`, `usuario.nome`, `usuario.email`, `usuario.ativo`, `usuario.bloqueado` e `usuario.criado_em`. Nao retorna senha, `nova_senha`, `confirmar_nova_senha`, `senha_hash`, `bloqueado_ate`, `atualizado_em`, `ultimo_login_em`, token, cookie, `session_secret`, `DATABASE_URL`, SQL, role, GRANT, sessao ou auditoria. Nenhuma migration, schema, producao, NSSM, `.env`, frontend ou tela foi alterado.
 
+### Validacao operacional
+
+O commit `72e7d80` Adiciona reset administrativo de senha interna foi aplicado no servidor e validado com pytest completo: 488 passed. A validacao ocorreu em processo isolado de homologacao usando usuario de teste `teste.criacao` (`id=8`). Backup foi realizado antes da operacao.
+
+Matriz de privilegios confirmada (role `geoportal_api_homolog`): `usuarios_select=t`, `usuarios_insert=t`, `usuarios_update=t`, `usuarios_delete=f`; `sessoes_select=t`, `sessoes_insert=t`, `sessoes_update=t`, `sessoes_delete=f`. Nenhum novo GRANT foi necessario.
+
+Cenarios validados: 401 sem sessao; 403 sem header mutavel; 422 para senhas divergentes; 422 para senha fraca; 404 usuario inexistente; 200 reset valido; 401 sessao antiga revogada; 401 senha antiga invalida; 200 senha nova operacional; usuario bloqueado permaneceu bloqueado; desbloqueio final estabilizou ambiente.
+
+Sessoes ativas revogadas: `UPDATE mod_auth.sessoes SET revogado_em = now() WHERE usuario_id = :usuario_id AND revogado_em IS NULL`, sem `DELETE` fisico.
+
+Resposta sanitizada (7 campos): `id`, `login`, `nome`, `email`, `ativo`, `bloqueado`, `criado_em`. Nao retornou: `senha`, `nova_senha`, `confirmar_nova_senha`, `senha_hash`, `bloqueado_ate`, `atualizado_em`, `ultimo_login_em`, token, `token_hash`, cookie, `session_secret`, `DATABASE_URL`, SQL, role, GRANT, sessao, auditoria ou segredo.
+
+Resultado: reset funcionou conforme contrato. Senha antiga invalida, senha nova operacional, sessoes revogadas logicamente, usuario bloqueado permaneceu bloqueado. Matriz de privilegios nao precisou ser expandida alem do bloqueio/desbloqueio. Nenhum dado sensivel exposto. Variaveis temporarias limpas. Producao, NSSM, `.env` versionado e frontend nao foram alterados.
+
+Proximos passos: encerrar fase administrativa de autenticacao/autorizacao com documentacao consolidada; depois planejar primeiro endpoint interno de negocio do modulo Iluminacao; tela interna continua etapa posterior.
+
 ## 4. Política inicial de senha
 
 Proposta inicial:

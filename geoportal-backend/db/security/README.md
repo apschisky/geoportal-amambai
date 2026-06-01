@@ -280,6 +280,29 @@ Implementacao backend concluida: o endpoint `POST /api/internal/admin/users/{usu
 
 Matriz tecnica esperada para homologacao permanece alinhada ao menor privilegio ja validado no bloqueio/desbloqueio: `usuarios_select=t`, `usuarios_insert=t`, `usuarios_update=t`, `usuarios_delete=f`; `sessoes_select=t`, `sessoes_insert=t`, `sessoes_update=t`, `sessoes_delete=f`. Esta etapa nao cria novo GRANT e nao altera producao, NSSM, `.env`, migration ou schema. Resposta e logs devem permanecer sanitizados, sem senha, `nova_senha`, `confirmar_nova_senha`, `senha_hash`, token, cookie, `session_secret`, `DATABASE_URL`, SQL, role, GRANT, sessao ou auditoria.
 
+## Validacao Operacional: Reset Administrativo de Senha
+
+O commit `72e7d80` Adiciona reset administrativo de senha interna foi validado no servidor com pytest completo: 488 passed. A matriz de privilegios foi confirmada operacionalmente: nenhum novo GRANT foi necessario alem do ja existente para bloqueio/desbloqueio. Backup foi realizado antes da validacao em homologacao.
+
+Cenarios validados (processo isolado com `teste.criacao` id=8):
+- 401 sem sessao.
+- 403 sem header `X-Geoportal-Internal-Request: 1`.
+- 422 senhas divergentes.
+- 422 senha fraca/invalida.
+- 404 usuario inexistente.
+- 200 reset valido (usuario sanitizado).
+- 401 sessao antiga apos reset (revogada).
+- 401 login com senha antiga (invalida).
+- 200 login com senha nova (valida).
+- Bloqueado continua bloqueado apos reset.
+- Desbloqueio final permitiu acesso.
+
+Sessoes ativas revogadas: `UPDATE mod_auth.sessoes SET revogado_em = now() WHERE usuario_id = :usuario_id AND revogado_em IS NULL`, sem `DELETE` fisico. Sessoes anteriores ficaram inacessiveis imediatamente apos reset.
+
+Resposta sanitizada (7 campos): `id`, `login`, `nome`, `email`, `ativo`, `bloqueado`, `criado_em`. Nao retornou: `senha`, `nova_senha`, `confirmar_nova_senha`, `senha_hash`, `bloqueado_ate`, `atualizado_em`, `ultimo_login_em`, token, `token_hash`, cookie, `session_secret`, `DATABASE_URL`, SQL, role, GRANT, sessao, auditoria ou segredo.
+
+Resultado: endpoint funcionou conforme especificado. Senha antiga invalida, senha nova operacional, sessoes revogadas logicamente, usuario bloqueado permaneceu bloqueado. Matriz de privilegios nao precisou ser expandida. Nenhum dado sensivel exposto. Variaveis temporarias limpas. Producao, NSSM, `.env` versionado e frontend nao foram alterados.
+
    ## Bloqueio/Desbloqueio: implicações de privilégio (documental)
 
    - Operação esperada em ambiente futuro controlado:

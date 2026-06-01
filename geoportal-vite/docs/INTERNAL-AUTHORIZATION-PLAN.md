@@ -250,6 +250,48 @@ O reset nao desbloqueia usuario, nao altera `ativo`, perfis, permissoes ou vincu
 
 Esta implementacao nao cria migration, nao altera schema, nao cria usuario/perfil/permissao/vinculo real, nao cria role/GRANT, nao altera producao, NSSM, `.env`, frontend ou tela. Proxima etapa operacional: validar em homologacao com `teste.criacao`, confirmando que senha antiga falha, senha nova autentica, sessoes antigas sao revogadas e usuario bloqueado continua bloqueado ate desbloqueio explicito.
 
+## Validacao Operacional: Reset Administrativo de Senha
+
+O commit `72e7d80` Adiciona reset administrativo de senha interna foi aplicado no servidor e validado com pytest completo: 488 passed. A validacao ocorreu em processo isolado de homologacao usando o usuario de teste `teste.criacao` (`id=8`) criado em etapa anterior. Backup foi realizado antes da operacao. Nenhuma alteracao foi feita em producao, NSSM, `.env` versionado, schema ou migration.
+
+Matriz de privilegios confirmada (role `geoportal_api_homolog`):
+- `usuarios_select=t`, `usuarios_insert=t`, `usuarios_update=t`, `usuarios_delete=f`.
+- `sessoes_select=t`, `sessoes_insert=t`, `sessoes_update=t`, `sessoes_delete=f`.
+- Nenhum novo GRANT foi necessario.
+
+Cenarios validados:
+- Sem sessao: `reset_sem_sessao_status=401`, `reset_sem_sessao_body={'detail': 'Not authenticated'}`.
+- Sem header mutavel `X-Geoportal-Internal-Request: 1`: `reset_sem_header_status=403`, `reset_sem_header_body={'detail': 'Invalid internal request'}`.
+- Senhas divergentes: `reset_divergente_status=422`, `reset_divergente_body={'detail': 'Invalid payload'}`.
+- Senha fraca/invalida: `reset_senha_fraca_status=422`, `reset_senha_fraca_body={'detail': 'Invalid payload'}`.
+- Usuario inexistente: `reset_not_found_status=404`, `reset_not_found_body={'detail': 'Not found'}`.
+- Reset valido (200): `reset_status=200`, usuario retornou sanitizado com `bloqueado=false`, campos esperados presentes.
+- Sessao antiga revogada: `teste_me_sessao_antiga_apos_reset_status=401`, sessao anterior invalida devido a `revogado_em` preenchido.
+- Senha antiga passou a falhar: `teste_login_senha_antiga_status=401`, novo login com senha anterior retorna autenticacao negada.
+- Senha nova passou a funcionar: `teste_login_senha_nova_status=200`, login com nova senha funciona, `teste_me_senha_nova_status=200`, usuario pode acessar `/me` com sessao nova.
+- Usuario bloqueado continua bloqueado: bloqueio aplicado antes do reset; apos reset, usuario continua com `bloqueado=true` ate desbloqueio explicito.
+- Desbloqueio final estabilizou ambiente: `unblock_final_status=200`, usuario desbloqueado permitindo login final com senha nova.
+
+Campos retornados (sanitizado):
+- Envelope: `usuario` com `id`, `login`, `nome`, `email`, `ativo`, `bloqueado`, `criado_em`.
+- Nao retornou: `senha`, `nova_senha`, `confirmar_nova_senha`, `senha_hash`, `bloqueado_ate`, `atualizado_em`, `ultimo_login_em`, token, `token_hash`, cookie, `session_secret`, `DATABASE_URL`, SQL, role, GRANT, sessao, auditoria ou qualquer segredo.
+
+Sessoes ativas foram revogadas:
+- Durante o reset, `UPDATE mod_auth.sessoes SET revogado_em = now() WHERE usuario_id = :usuario_id AND revogado_em IS NULL` foi executado, sem `DELETE` fisico.
+- Sessoes revogadas ficaram inacessiveis imediatamente (status 401 ao tentar usar).
+
+Resultado final:
+- Reset funcionou conforme especificado.
+- Senha antiga deixou de funcionar imediatamente.
+- Senha nova passou a funcionar apos reset.
+- Sessoes ativas foram revogadas logicamente sem DELETE fisico.
+- Usuario bloqueado continuou bloqueado (sem desbloquear automaticamente).
+- Nenhum dado sensivel foi exposto em resposta ou log.
+- Variaveis temporarias foram limpas.
+- Producao, NSSM, `.env` versionado e frontend nao foram alterados.
+
+Proximos passos: encerrar fase administrativa de autenticacao/autorizacao com documentacao consolidada; depois planejar primeiro endpoint interno de negocio do modulo Iluminacao; tela interna continua etapa posterior.
+
 ## 1. Separacao publico/interno
 
 - Endpoints publicos continuam em `/api/public/...`.

@@ -223,6 +223,31 @@ Proximos passos: implementar endpoint com Codex High; validar em homologacao (co
 
 Implementacao do reset administrativo de senha: `POST /api/internal/admin/users/{usuario_id}/reset-password` foi criado como endpoint mutavel explicito, sob `GEOPORTAL_INTERNAL_ROUTES_ENABLED`, sessao autenticada, `require_permission("admin.usuarios.redefinir_senha")` e header `X-Geoportal-Internal-Request: 1`. O payload aceita somente `nova_senha` e `confirmar_nova_senha`, rejeita campos extras e retorna 422 generico para payload invalido, divergencia ou senha que nao cumpra a politica centralizada. O service busca o usuario por `id`, valida a politica existente com login/nome, gera hash Argon2id e o repository atualiza somente `mod_auth.usuarios.senha_hash` e `atualizado_em`, revogando sessoes ativas com `mod_auth.sessoes.revogado_em = now()`, sem `DELETE`. O reset nao desbloqueia usuario, nao altera `ativo`, perfis, permissoes ou vinculos, nao cria sessao, nao envia e-mail e nao escreve em auditoria de login. A resposta 200 usa o envelope `usuario` sanitizado com `id`, `login`, `nome`, `email`, `ativo`, `bloqueado` e `criado_em`, sem retornar senha, `nova_senha`, `confirmar_nova_senha`, `senha_hash`, `bloqueado_ate`, `atualizado_em`, `ultimo_login_em`, token, cookie, segredo, SQL, role, GRANT, sessao ou auditoria. Testes focados locais passaram com 210 testes; a validacao operacional em homologacao permanece etapa posterior.
 
+## Validacao Operacional: Reset Administrativo de Senha
+
+O commit `72e7d80` Adiciona reset administrativo de senha interna foi validado no servidor com pytest completo: 488 passed. A matriz de privilegios da role `geoportal_api_homolog` foi confirmada operacionalmente em processo isolado de homologacao: `usuarios_select=t`, `usuarios_insert=t`, `usuarios_update=t`, `usuarios_delete=f`; `sessoes_select=t`, `sessoes_insert=t`, `sessoes_update=t`, `sessoes_delete=f`. Nenhum novo GRANT foi necessario. Backup foi realizado antes da validacao.
+
+Cenarios validados com usuario `teste.criacao` (`id=8`):
+- 401 sem sessao autenticada.
+- 403 sem header `X-Geoportal-Internal-Request: 1`.
+- 422 para senhas divergentes (divergencia de confirmacao).
+- 422 para senha fraca ou invalida (politica centralizada).
+- 404 para usuario inexistente.
+- 200 reset bem-sucedido com usuario sanitizado retornado.
+- 401 ao tentar login com senha antiga (apos reset).
+- 200 ao autenticar com senha nova (apos reset).
+- 401 para sessoes ativas anteriores (revogadas com `revogado_em`).
+- Usuario bloqueado continuou bloqueado apos reset (sem desbloquear automatico).
+- Desbloqueio final permitiu login com senha nova (ambiente estabilizado).
+
+Campos sanitizados retornados: `id`, `login`, `nome`, `email`, `ativo`, `bloqueado`, `criado_em`. Nao retornou: `senha`, `nova_senha`, `confirmar_nova_senha`, `senha_hash`, `bloqueado_ate`, `atualizado_em`, `ultimo_login_em`, token, `token_hash`, cookie, `session_secret`, `DATABASE_URL`, SQL, role, GRANT, sessao, auditoria ou segredo.
+
+Sessoes ativas revogadas: `UPDATE mod_auth.sessoes SET revogado_em = now()` executado sem `DELETE` fisico. Sessoes antigas tornaram-se inacessiveis imediatamente.
+
+Resultado: reset funcionou conforme contrato. Senha antiga invalida imediatamente, senha nova operacional, sessoes revogadas logicamente, usuario bloqueado permaneceu bloqueado. Nenhum dados sensivel exposto. Variaveis temporarias limpas. Producao, NSSM, `.env` versionado e frontend nao foram alterados.
+
+Proximos passos: encerrar fase administrativa de autenticacao/autorizacao; depois planejar primeiro endpoint interno de negocio do modulo Iluminacao; tela interna continua etapa posterior.
+
 Arquitetura funcional de autorizacao: apos a validacao de autenticacao/sessao, a proxima fase segura e implementar autorizacao por usuarios, perfis, permissoes, modulos e acoes, nao tela/frontend. O backend deve buscar permissoes efetivas em `mod_auth`, expor service `has_permission(usuario_id, permissao)` e dependency `require_permission("permissao")`, sem regra hardcoded como `login == "admin.homologacao"`. O administrador funcional pode criar/bloquear usuarios, redefinir senha e atribuir perfis em etapa futura, mas nao deve ser superuser de banco. Usuarios de modulo, como Iluminacao Publica, devem acessar somente o modulo e as acoes permitidas. O primeiro modulo pratico previsto e Iluminacao Publica, mas endpoints de negocio e tela interna so devem vir depois da autorizacao base validada em homologacao.
 
 Base tecnica de autorizacao implementada: foi criado repository para permissoes efetivas em `app/repositories/auth_permission_repository.py`, service `app/services/auth_permission_service.py` com `get_user_permissions(...)` e `has_permission(...)`, dependency `require_permission("permissao")` em `auth_dependencies.py` e endpoint tecnico `GET /api/internal/auth/me` sob feature flag. O endpoint `/me` exige sessao autenticada e retorna apenas `authenticated`, `usuario_id` e `permissoes` ordenadas, sem token, cookie, `senha_hash`, `token_hash`, `session_secret` ou `DATABASE_URL`. Nenhum perfil, permissao, usuario, seed, role, GRANT, migration, schema novo, endpoint administrativo real, tela, producao, NSSM ou `.env` foi alterado nesta etapa. `admin.homologacao` ainda precisara receber perfil/permissoes por etapa operacional posterior em homologacao. Testes locais passaram com 311 testes.
