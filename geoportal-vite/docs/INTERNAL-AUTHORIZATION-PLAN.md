@@ -188,6 +188,38 @@ As respostas retornam o mesmo envelope sanitizado dos endpoints de usuario: `usu
 
 Esta implementacao nao altera senha, perfis ou permissoes, nao escreve em `login_auditoria`, nao envia e-mail, nao cria endpoint de reset de senha, nao cria endpoint de remocao de perfil, nao cria migration, nao altera schema, nao cria usuario/perfil/permissao/vinculo real, nao cria role/GRANT, nao altera producao, NSSM, `.env`, frontend ou tela. Proxima etapa operacional: validar em homologacao com `teste.criacao`, confirmando que usuario bloqueado nao autentica, sessoes ativas sao revogadas e o desbloqueio permite novo login quando a senha estiver valida.
 
+## Validacao Operacional: Bloqueio e Desbloqueio
+
+O commit `88ff004` Adiciona bloqueio interno de usuarios foi aplicado no servidor e validado com pytest completo: 462 passed. A validacao ocorreu em processo isolado de homologacao usando o usuario de teste `teste.criacao` (`id=8`) criado em etapa anterior. Backup de roles foi realizado antes da operacao. Nenhuma alteracao foi feita em producao, NSSM, `.env` versionado, schema ou migration.
+
+Matriz de privilegios confirmada (role `geoportal_api_homolog`):
+- `usuarios_select=t`, `usuarios_insert=t`, `usuarios_update=t`, `usuarios_delete=f`.
+- `sessoes_select=t`, `sessoes_insert=t`, `sessoes_update=t`, `sessoes_delete=f`.
+- Nenhum novo GRANT foi necessario para a validacao.
+
+Cenarios validados:
+- Sem sessao: `block_sem_sessao_status=401`, `block_sem_sessao_body={'detail': 'Not authenticated'}`.
+- Sem header mutavel: `block_sem_header_status=403`, `block_sem_header_body={'detail': 'Invalid internal request'}`.
+- Bloqueio (201/200): `block_status=200`, usuario retornou sanitizado com `bloqueado=true`. Repeticao retornou 200 idempotente.
+- Sessao ativa revogada durante bloqueio: `teste_me_durante_bloqueio_status=401` (sessao revogada em `mod_auth.sessoes` com `revogado_em = now()`).
+- Novo login bloqueado: `teste_login_bloqueado_status=401`.
+- Usuario inexistente: `block_not_found_status=404`.
+- Desbloqueio (200): `unblock_status=200`, usuario retornou sanitizado com `bloqueado=false`. Repeticao retornou 200 idempotente.
+- Login apos desbloqueio: `teste_login_depois_status=200`, sessao criada, `/me` retornou `permissoes` restauradas.
+
+Campos retornados (sanitizado):
+- Envelope: `usuario` com `id`, `login`, `nome`, `email`, `ativo`, `bloqueado`, `criado_em`.
+- Nao retornou: `senha`, `senha_hash`, `token_hash`, `bloqueado_ate`, `atualizado_em`, `ultimo_login_em`, `session_secret`, `DATABASE_URL`, SQL, role, GRANT, sessao, auditoria ou qualquer segredo.
+
+Resultado final:
+- Bloqueio e desbloqueio funcionaram conforme especificado.
+- Sessoes ativas foram revogadas logicamente sem DELETE fisico.
+- Novo login bloqueado foi negado.
+- Desbloqueio permitiu re-autenticacao normal.
+- Nenhum dado sensivel foi exposto.
+- Variaveis temporarias foram limpas.
+- Producao, NSSM, `.env` versionado e frontend nao foram alterados.
+
 ## 1. Separacao publico/interno
 
 - Endpoints publicos continuam em `/api/public/...`.

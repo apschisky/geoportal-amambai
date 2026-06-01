@@ -241,6 +241,31 @@ A role `geoportal_auth_admin_homolog` foi criada em homologação com sucesso:
    - ✓ Nenhuma endpoint nova criada
    - ✓ Nenhuma sessão ou token criado
 
+## Validacao Operacional de Bloqueio/Desbloqueio (62 passed)
+
+O commit `88ff004` Adiciona bloqueio interno de usuarios foi validado no servidor com pytest: 462 passed. A matriz de privilegios da role `geoportal_api_homolog` foi confirmada operacionalmente em processo isolado de homologacao:
+
+```
+usuarios_select=t
+usuarios_insert=t
+usuarios_update=t (para bloqueado_ate, atualizado_em)
+usuarios_delete=f
+
+sessoes_select=t
+sessoes_insert=t
+sessoes_update=t (para revogado_em)
+sessoes_delete=f
+```
+
+Cenarios validados:
+- Bloqueio com revogacao de sessoes ativas usando `UPDATE mod_auth.sessoes SET revogado_em = now()` (sem DELETE).
+- Desbloqueio limpando `bloqueado_ate` sem criar sessao automaticamente.
+- Novo login bloqueado impedido com 401 generico.
+- Sessoes ativas revogadas durante bloqueio confirmadas com status 401 apos bloqueio.
+- Nenhuma alteracao em producao, NSSM, `.env` versionado ou schema.
+- Resposta sanitizada retornando apenas `id`, `login`, `nome`, `email`, `ativo`, `bloqueado`, `criado_em`.
+- Nao retornou `bloqueado_ate`, `senha_hash`, token, `session_secret`, `DATABASE_URL`, SQL, role ou GRANT.
+
    ## Bloqueio/Desbloqueio: implicações de privilégio (documental)
 
    - Operação esperada em ambiente futuro controlado:

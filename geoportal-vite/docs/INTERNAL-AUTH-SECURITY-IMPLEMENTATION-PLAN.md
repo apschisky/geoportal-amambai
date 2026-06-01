@@ -87,6 +87,34 @@ Bloqueio/desbloqueio administrativo implementados: `POST /api/internal/admin/use
 
 Sequencia segura recomendada a partir daqui: validar bloqueio/desbloqueio em homologacao com `teste.criacao`; planejar reset de senha via endpoint; depois criar o primeiro endpoint interno de negocio do modulo Iluminacao; tela interna continua etapa posterior. Producao permanece sem alteracao nesta etapa.
 
+Validacao operacional de bloqueio/desbloqueio em homologacao (processo isolado, commit 88ff004, pytest 462 passed):
+
+Preparacao em homologacao:
+- Backup de roles e customizado do banco foram realizados antes das operacoes.
+- Matriz de privilegios da role `geoportal_api_homolog` foi expandida operacionalmente para UPDATE (bloqueio revoga sessoes): `usuarios_select=t`, `usuarios_insert=t`, `usuarios_update=t`, `usuarios_delete=f`; `sessoes_select=t`, `sessoes_insert=t`, `sessoes_update=t`, `sessoes_delete=f`.
+- Nenhum novo GRANT foi necessario alem de `UPDATE` em `sessoes` para revogacao.
+
+Execucao do teste operacional com `teste.criacao` (id=8):
+- Processo isolado em homologacao com variaveis temporarias limpas ao final.
+- Cenarios validados:
+  - 401 sem sessao autenticada.
+  - 403 sem header mutavel `X-Geoportal-Internal-Request: 1`.
+  - 200 bloqueio com resposta `bloqueado=true`; usuario bloqueado nao consegue novo login (401).
+  - 200 bloqueio idempotente se bloqueio ja existe.
+  - 401 com sessao ativa existente durante bloqueio: sessao revogada com `revogado_em = now()` e acesso negado imediatamente.
+  - 404 para usuario inexistente.
+  - 200 desbloqueio com resposta `bloqueado=false`; usuario desbloqueado consegue novo login (200 com sessao).
+  - 200 desbloqueio idempotente se ja desbloqueado.
+  - Resposta sanitizada retornou `id`, `login`, `nome`, `email`, `ativo`, `bloqueado`, `criado_em` apenas.
+  - Resposta nao retornou `bloqueado_ate`, `senha_hash`, `token_hash`, token, cookie, `session_secret`, `DATABASE_URL`, SQL, role, GRANT, sessao, auditoria ou segredo.
+
+Confirmacoes de seguranca:
+- Bloqueio revogou sessoes logicamente (UPDATE `revogado_em`, sem DELETE).
+- Novo login bloqueado foi negado com 401 generico.
+- Desbloqueio permitiu re-autenticacao normal sem criar sessao automaticamente.
+- Nenhuma alteracao em producao, NSSM, `.env` versionado, schema, migration, perfis, permissoes, senha ou frontend.
+- Variaveis temporarias (DATABASE_URL, GEOPORTAL_INTERNAL_ROUTES_ENABLED, GEOPORTAL_INTERNAL_SESSION_SECRET, TEST_INTERNAL_PASSWORD) foram limpas apos teste.
+
 Nao havera copia cega de dados de homologacao para producao. Migram codigo versionado, migrations estruturais quando existirem, scripts administrativos validados e roteiro operacional. Nao migram senhas, sessoes, tokens, dados de teste ou usuarios ficticios. Nenhuma migration ou restart de producao deve ocorrer sem confirmacao humana, e a feature flag interna deve permanecer sob controle.
 
 Validação operacional de login real em homologação (processo isolado):

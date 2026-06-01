@@ -234,6 +234,10 @@ Atualizacao de identificador interno: o login passa a ser o identificador obriga
 - Proteções: exigir `GEOPORTAL_INTERNAL_ROUTES_ENABLED`, sessão autenticada, `require_permission("admin.usuarios.bloquear")` e header `X-Geoportal-Internal-Request: 1` para rotas mutáveis.
 - Observação: esta decisão é documental — não aplicar migrations, roles, grants, código ou alterações em produção nesta etapa.
 
+### Validação operacional em homologação (commit 88ff004, pytest 462 passed)
+
+Os endpoints `POST /api/internal/admin/users/{usuario_id}/block` e `POST /api/internal/admin/users/{usuario_id}/unblock` foram implementados seguindo o contrato técnico e validados em homologação com sucesso. Matriz de privilégios: `usuarios_select=t`, `usuarios_insert=t`, `usuarios_update=t`, `usuarios_delete=f`; `sessoes_select=t`, `sessoes_insert=t`, `sessoes_update=t`, `sessoes_delete=f`. Nenhum novo GRANT foi necessário. Cenários validados: bloqueio revoga sessões ativas (UPDATE `revogado_em`), novo login bloqueado retorna 401, desbloqueio permite re-autenticação, respostas sanitizadas retornam apenas campos seguros (`id`, `login`, `nome`, `email`, `ativo`, `bloqueado`, `criado_em`), sem expor `bloqueado_ate`, `senha_hash`, token, `session_secret`, `DATABASE_URL`, SQL, role, GRANT ou segredo. Produção, NSSM, `.env` versionado e frontend não foram alterados.
+
 ## 4. Política inicial de senha
 
 Proposta inicial:
