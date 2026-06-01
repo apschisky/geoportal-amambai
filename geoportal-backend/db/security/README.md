@@ -276,7 +276,9 @@ Payload esperado: `nova_senha` e `confirmar_nova_senha` obrigatorios. O reposito
 
 Resposta 200: usuario sanitizado com `id`, `login`, `nome`, `email`, `ativo`, `bloqueado`, `criado_em`, sem retornar `senha_hash`, `bloqueado_ate`, token, `session_secret`, `DATABASE_URL`, SQL, role, GRANT, sessao ou auditoria. Comportamentos: 401 sem sessao; 403 sem permissao/header; 404 usuario inexistente; 422 para senha invalida/fraca. Nao desbloquear usuario; nao alterar perfil/permissoes/ativo; nao criar sessao; nao enviar e-mail; nao escrever auditoria de login.
 
-Nesta etapa apenas documental, nenhum GRANT foi criado ou alterado. Matriz sera confirmada operacionalmente em homologacao apos implementacao. Producao, NSSM, `.env` versionado e frontend nao serao alterados.
+Implementacao backend concluida: o endpoint `POST /api/internal/admin/users/{usuario_id}/reset-password` atualiza apenas `mod_auth.usuarios.senha_hash` e `mod_auth.usuarios.atualizado_em`, e revoga sessoes ativas em `mod_auth.sessoes.revogado_em = now()`, sem `DELETE` fisico. A protecao usa feature flag interna, sessao autenticada, `admin.usuarios.redefinir_senha` e header mutavel. O reset nao escreve em `mod_auth.usuario_perfis`, `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.perfil_permissoes` ou `mod_auth.login_auditoria`, nao cria usuario/perfil/permissao/vinculo e nao desbloqueia usuario automaticamente.
+
+Matriz tecnica esperada para homologacao permanece alinhada ao menor privilegio ja validado no bloqueio/desbloqueio: `usuarios_select=t`, `usuarios_insert=t`, `usuarios_update=t`, `usuarios_delete=f`; `sessoes_select=t`, `sessoes_insert=t`, `sessoes_update=t`, `sessoes_delete=f`. Esta etapa nao cria novo GRANT e nao altera producao, NSSM, `.env`, migration ou schema. Resposta e logs devem permanecer sanitizados, sem senha, `nova_senha`, `confirmar_nova_senha`, `senha_hash`, token, cookie, `session_secret`, `DATABASE_URL`, SQL, role, GRANT, sessao ou auditoria.
 
    ## Bloqueio/Desbloqueio: implicações de privilégio (documental)
 

@@ -18,6 +18,7 @@ from app.services.auth_admin_user_service import InternalUserNotFoundError
 from app.services.auth_admin_user_service import InternalUserProfileInactiveConflictError
 from app.services.auth_admin_user_service import InternalUserProfileNotFoundError
 from app.services.auth_admin_user_service import UpdatedInternalUserBlockStatus
+from app.services.auth_admin_user_service import UpdatedInternalUserPasswordStatus
 from app.services.auth_current_session_service import AuthenticatedCurrentSession
 
 
@@ -26,10 +27,12 @@ ADMIN_USER_DETAIL_PATH = "/api/internal/admin/users/7"
 ADMIN_USER_PROFILES_PATH = "/api/internal/admin/users/8/profiles"
 ADMIN_USER_BLOCK_PATH = "/api/internal/admin/users/8/block"
 ADMIN_USER_UNBLOCK_PATH = "/api/internal/admin/users/8/unblock"
+ADMIN_USER_RESET_PASSWORD_PATH = "/api/internal/admin/users/8/reset-password"
 EXPECTED_PERMISSION = "admin.usuarios.ler"
 EXPECTED_CREATE_PERMISSION = "admin.usuarios.criar"
 EXPECTED_ASSIGN_PROFILE_PERMISSION = "admin.usuarios.atribuir_perfis"
 EXPECTED_BLOCK_PERMISSION = "admin.usuarios.bloquear"
+EXPECTED_RESET_PASSWORD_PERMISSION = "admin.usuarios.redefinir_senha"
 EXPIRES_AT = datetime(2030, 5, 27, 13, 0, tzinfo=UTC)
 CREATED_AT = datetime(2026, 5, 29, 9, 30, tzinfo=UTC)
 CREATE_PAYLOAD = {
@@ -41,6 +44,10 @@ CREATE_PAYLOAD = {
 PROFILE_PAYLOAD = {
     "perfil_id": 3,
     "modulo": None,
+}
+RESET_PASSWORD_PAYLOAD = {
+    "nova_senha": "nova-senha-ficticia-interna-456",
+    "confirmar_nova_senha": "nova-senha-ficticia-interna-456",
 }
 
 
@@ -104,6 +111,21 @@ def fake_profile_assignment(
 
 def fake_block_status(*, bloqueado: bool) -> UpdatedInternalUserBlockStatus:
     return UpdatedInternalUserBlockStatus(
+        id=8,
+        login="usuario.exemplo",
+        nome="Usuario Exemplo",
+        email=None,
+        ativo=True,
+        bloqueado=bloqueado,
+        criado_em=CREATED_AT,
+    )
+
+
+def fake_password_status(
+    *,
+    bloqueado: bool = False,
+) -> UpdatedInternalUserPasswordStatus:
+    return UpdatedInternalUserPasswordStatus(
         id=8,
         login="usuario.exemplo",
         nome="Usuario Exemplo",
@@ -276,20 +298,22 @@ def test_admin_users_router_uses_permission_without_hardcoded_login() -> None:
     assert "/api/internal/admin/users/{usuario_id}/profiles" in route_paths
     assert "/api/internal/admin/users/{usuario_id}/block" in route_paths
     assert "/api/internal/admin/users/{usuario_id}/unblock" in route_paths
+    assert "/api/internal/admin/users/{usuario_id}/reset-password" in route_paths
     assert 'require_permission(LIST_INTERNAL_USERS_PERMISSION)' in source
     assert 'require_permission(CREATE_INTERNAL_USERS_PERMISSION)' in source
     assert 'require_permission(ASSIGN_INTERNAL_USER_PROFILE_PERMISSION)' in source
     assert 'require_permission(BLOCK_INTERNAL_USERS_PERMISSION)' in source
+    assert 'require_permission(RESET_INTERNAL_USER_PASSWORD_PERMISSION)' in source
     assert EXPECTED_PERMISSION in source
     assert EXPECTED_CREATE_PERMISSION in source
     assert EXPECTED_ASSIGN_PROFILE_PERMISSION in source
     assert EXPECTED_BLOCK_PERMISSION in source
+    assert EXPECTED_RESET_PASSWORD_PERMISSION in source
     assert "require_internal_mutating_request_header" in source
     assert "admin.homologacao" not in source
     assert "login ==" not in source
     assert "DELETE" not in source.upper()
     assert "create_internal_user" not in source
-    assert "update_internal_user_password" not in source
     assert "revoke_session" not in source
 
 
@@ -1044,6 +1068,343 @@ def test_block_actions_response_does_not_expose_sensitive_fields(
     }
     for forbidden in (
         "senha",
+        "senha_hash",
+        "token",
+        "token_hash",
+        "cookie",
+        "session_secret",
+        "DATABASE_URL",
+        "SQL",
+        "role",
+        "GRANT",
+        "sessao",
+        "auditoria",
+        "bloqueado_ate",
+        "atualizado_em",
+        "ultimo_login_em",
+    ):
+        assert forbidden not in response_text
+
+
+def test_reset_password_returns_200_for_authenticated_user_with_permission_and_header(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    calls: dict[str, object] = {}
+
+    def fake_has_permission(usuario_id: int, permission_code: str) -> bool:
+        calls.update(
+            {
+                "usuario_id": usuario_id,
+                "permission_code": permission_code,
+            }
+        )
+        return permission_code == EXPECTED_RESET_PASSWORD_PERMISSION
+
+    reset_kwargs: dict[str, object] = {}
+
+    def fake_reset_password(**kwargs: object) -> UpdatedInternalUserPasswordStatus:
+        reset_kwargs.update(kwargs)
+        return fake_password_status()
+
+    monkeypatch.setattr(auth_dependencies, "has_permission", fake_has_permission)
+    monkeypatch.setattr(
+        internal_admin_users,
+        "reset_internal_admin_user_password",
+        fake_reset_password,
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        ADMIN_USER_RESET_PASSWORD_PATH,
+        json=RESET_PASSWORD_PAYLOAD,
+        headers=mutating_headers(),
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "usuario": {
+            "id": 8,
+            "login": "usuario.exemplo",
+            "nome": "Usuario Exemplo",
+            "email": None,
+            "ativo": True,
+            "bloqueado": False,
+            "criado_em": "2026-05-29T09:30:00Z",
+        }
+    }
+    assert calls == {
+        "usuario_id": 7,
+        "permission_code": EXPECTED_RESET_PASSWORD_PERMISSION,
+    }
+    assert reset_kwargs == {
+        "usuario_id": 8,
+        "nova_senha": "nova-senha-ficticia-interna-456",
+        "confirmar_nova_senha": "nova-senha-ficticia-interna-456",
+    }
+
+
+def test_reset_password_returns_401_without_valid_session() -> None:
+    app = build_isolated_app()
+
+    def fake_auth_failure() -> None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    app.dependency_overrides[get_current_authenticated_session] = fake_auth_failure
+    client = TestClient(app)
+
+    response = client.post(
+        ADMIN_USER_RESET_PASSWORD_PATH,
+        json=RESET_PASSWORD_PAYLOAD,
+        headers=mutating_headers(),
+    )
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Not authenticated"}
+
+
+def test_reset_password_returns_403_without_required_permission(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: False,
+    )
+    monkeypatch.setattr(
+        internal_admin_users,
+        "reset_internal_admin_user_password",
+        lambda **kwargs: fake_password_status(),
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        ADMIN_USER_RESET_PASSWORD_PATH,
+        json=RESET_PASSWORD_PAYLOAD,
+        headers=mutating_headers(),
+    )
+
+    assert response.status_code == 403
+    assert response.json() == {"detail": "Forbidden"}
+    assert EXPECTED_RESET_PASSWORD_PERMISSION not in response.text
+    assert "nova-senha-ficticia-interna-456" not in response.text
+
+
+def test_reset_password_requires_internal_mutating_header(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+    monkeypatch.setattr(
+        internal_admin_users,
+        "reset_internal_admin_user_password",
+        lambda **kwargs: fake_password_status(),
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        ADMIN_USER_RESET_PASSWORD_PATH,
+        json=RESET_PASSWORD_PAYLOAD,
+    )
+
+    assert response.status_code == 403
+    assert response.json() == {"detail": "Invalid internal request"}
+
+
+def test_reset_password_returns_404_when_user_does_not_exist(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+
+    def fake_reset_password(**kwargs: object) -> UpdatedInternalUserPasswordStatus:
+        raise InternalUserNotFoundError("internal user was not found")
+
+    monkeypatch.setattr(
+        internal_admin_users,
+        "reset_internal_admin_user_password",
+        fake_reset_password,
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        ADMIN_USER_RESET_PASSWORD_PATH,
+        json=RESET_PASSWORD_PAYLOAD,
+        headers=mutating_headers(),
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Not found"}
+    assert "mod_auth" not in response.text
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {},
+        {"nova_senha": " ", "confirmar_nova_senha": " "},
+        {
+            "nova_senha": "nova-senha-ficticia-interna-456",
+            "confirmar_nova_senha": "nova-senha-ficticia-interna-456",
+            "usuario_id": 8,
+        },
+        {
+            "nova_senha": "nova-senha-ficticia-interna-456",
+            "confirmar_nova_senha": "nova-senha-ficticia-interna-456",
+            "senha_hash": "hash-ficticio-nao-real",
+        },
+    ],
+)
+def test_reset_password_returns_422_for_invalid_payload(
+    monkeypatch: pytest.MonkeyPatch,
+    payload: dict[str, object],
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        ADMIN_USER_RESET_PASSWORD_PATH,
+        json=payload,
+        headers=mutating_headers(),
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "Invalid payload"}
+    for forbidden in (
+        "nova_senha",
+        "confirmar_nova_senha",
+        "hash-ficticio-nao-real",
+        "senha_hash",
+        "token_hash",
+        "session_secret",
+        "DATABASE_URL",
+        "mod_auth",
+        "constraint",
+    ):
+        assert forbidden not in response.text
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {
+            "nova_senha": "nova-senha-ficticia-interna-456",
+            "confirmar_nova_senha": "outra-senha-ficticia-interna-789",
+        },
+        {
+            "nova_senha": "abc12",
+            "confirmar_nova_senha": "abc12",
+        },
+    ],
+)
+def test_reset_password_returns_422_for_mismatch_or_weak_password(
+    monkeypatch: pytest.MonkeyPatch,
+    payload: dict[str, str],
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+
+    def fake_reset_password(**kwargs: object) -> UpdatedInternalUserPasswordStatus:
+        raise ValueError("password does not meet policy")
+
+    monkeypatch.setattr(
+        internal_admin_users,
+        "reset_internal_admin_user_password",
+        fake_reset_password,
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        ADMIN_USER_RESET_PASSWORD_PATH,
+        json=payload,
+        headers=mutating_headers(),
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "Invalid payload"}
+    assert payload["nova_senha"] not in response.text
+    assert payload["confirmar_nova_senha"] not in response.text
+    assert "password does not meet policy" not in response.text
+
+
+def test_reset_password_response_does_not_expose_sensitive_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+    monkeypatch.setattr(
+        internal_admin_users,
+        "reset_internal_admin_user_password",
+        lambda **kwargs: fake_password_status(bloqueado=True),
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        ADMIN_USER_RESET_PASSWORD_PATH,
+        json=RESET_PASSWORD_PAYLOAD,
+        headers=mutating_headers(),
+    )
+
+    response_text = response.text
+    body = response.json()
+    assert response.status_code == 200
+    assert set(body["usuario"]) == {
+        "id",
+        "login",
+        "nome",
+        "email",
+        "ativo",
+        "bloqueado",
+        "criado_em",
+    }
+    assert body["usuario"]["bloqueado"] is True
+    for forbidden in (
+        "senha",
+        "nova_senha",
+        "confirmar_nova_senha",
         "senha_hash",
         "token",
         "token_hash",

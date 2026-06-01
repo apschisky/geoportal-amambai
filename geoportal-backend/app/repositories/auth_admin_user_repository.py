@@ -38,6 +38,17 @@ class UpdatedInternalUserBlockStatus:
 
 
 @dataclass(frozen=True)
+class UpdatedInternalUserPasswordStatus:
+    id: int
+    login: str
+    nome: str
+    email: str | None
+    ativo: bool
+    bloqueado: bool
+    criado_em: datetime
+
+
+@dataclass(frozen=True)
 class AssignedInternalUserProfile:
     usuario_id: int
     perfil_id: int
@@ -369,6 +380,72 @@ def unblock_internal_user(
         raise InternalUserNotFoundError("internal user was not found")
 
     return UpdatedInternalUserBlockStatus(**dict(row))
+
+
+def reset_internal_user_password(
+    *,
+    usuario_id: int,
+    senha_hash: str,
+    engine: Engine | None = None,
+) -> UpdatedInternalUserPasswordStatus:
+    if usuario_id <= 0:
+        raise ValueError("usuario_id must be positive")
+
+    normalized_senha_hash = senha_hash.strip()
+    if not normalized_senha_hash:
+        raise ValueError("senha_hash must not be empty")
+
+    db_engine = engine or get_engine()
+
+    statement = text(
+        """
+        WITH updated_user AS (
+            UPDATE mod_auth.usuarios
+            SET
+                senha_hash = :senha_hash,
+                atualizado_em = now()
+            WHERE id = :usuario_id
+            RETURNING
+                id,
+                login,
+                nome,
+                email,
+                ativo,
+                (bloqueado_ate IS NOT NULL AND bloqueado_ate > now()) AS bloqueado,
+                criado_em
+        ),
+        revoked_sessions AS (
+            UPDATE mod_auth.sessoes
+            SET revogado_em = now()
+            WHERE usuario_id = :usuario_id
+              AND revogado_em IS NULL
+            RETURNING id
+        )
+        SELECT
+            id,
+            login,
+            nome,
+            email,
+            ativo,
+            bloqueado,
+            criado_em
+        FROM updated_user
+        """
+    )
+
+    with db_engine.begin() as connection:
+        row = connection.execute(
+            statement,
+            {
+                "usuario_id": usuario_id,
+                "senha_hash": normalized_senha_hash,
+            },
+        ).mappings().first()
+
+    if row is None:
+        raise InternalUserNotFoundError("internal user was not found")
+
+    return UpdatedInternalUserPasswordStatus(**dict(row))
 
 
 def _normalize_optional_module(modulo: str | None) -> str | None:

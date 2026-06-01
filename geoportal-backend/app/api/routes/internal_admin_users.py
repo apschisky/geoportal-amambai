@@ -17,9 +17,11 @@ from app.services.auth_admin_user_service import InternalUserProfileInactiveConf
 from app.services.auth_admin_user_service import InternalUserProfileNotFoundError
 from app.services.auth_admin_user_service import AssignedInternalUserProfile
 from app.services.auth_admin_user_service import UpdatedInternalUserBlockStatus
+from app.services.auth_admin_user_service import UpdatedInternalUserPasswordStatus
 from app.services.auth_admin_user_service import assign_internal_admin_user_profile
 from app.services.auth_admin_user_service import block_internal_admin_user
 from app.services.auth_admin_user_service import create_basic_internal_admin_user
+from app.services.auth_admin_user_service import reset_internal_admin_user_password
 from app.services.auth_admin_user_service import unblock_internal_admin_user
 from app.services.auth_current_session_service import AuthenticatedCurrentSession
 
@@ -28,8 +30,10 @@ LIST_INTERNAL_USERS_PERMISSION = "admin.usuarios.ler"
 CREATE_INTERNAL_USERS_PERMISSION = "admin.usuarios.criar"
 ASSIGN_INTERNAL_USER_PROFILE_PERMISSION = "admin.usuarios.atribuir_perfis"
 BLOCK_INTERNAL_USERS_PERMISSION = "admin.usuarios.bloquear"
+RESET_INTERNAL_USER_PASSWORD_PERMISSION = "admin.usuarios.redefinir_senha"
 INVALID_CREATE_USER_PAYLOAD_DETAIL = "Invalid payload"
 INVALID_ASSIGN_PROFILE_PAYLOAD_DETAIL = "Invalid payload"
+INVALID_RESET_PASSWORD_PAYLOAD_DETAIL = "Invalid payload"
 
 router = APIRouter(prefix="/api/internal/admin", tags=["internal-admin"])
 
@@ -100,6 +104,22 @@ class AssignInternalUserProfileRequest(BaseModel):
         return normalized_value or None
 
 
+class ResetInternalUserPasswordRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    nova_senha: str
+    confirmar_nova_senha: str
+
+    @field_validator("nova_senha", "confirmar_nova_senha", mode="before")
+    @classmethod
+    def validate_required_password(cls, value: str) -> str:
+        if not isinstance(value, str):
+            raise ValueError("Invalid value")
+        if not value.strip():
+            raise ValueError("Invalid value")
+        return value
+
+
 class InternalAdminUserResponse(BaseModel):
     id: int
     login: str
@@ -134,6 +154,7 @@ def _to_user_response(
         InternalAdminUserListItem
         | CreatedBasicInternalUser
         | UpdatedInternalUserBlockStatus
+        | UpdatedInternalUserPasswordStatus
     ),
 ) -> InternalAdminUserResponse:
     return InternalAdminUserResponse(
@@ -165,6 +186,17 @@ def _parse_assign_profile_payload(
         raise ValueError("Invalid payload")
     try:
         return AssignInternalUserProfileRequest.model_validate(payload)
+    except ValidationError as exc:
+        raise ValueError("Invalid payload") from exc
+
+
+def _parse_reset_password_payload(
+    payload: object,
+) -> ResetInternalUserPasswordRequest:
+    if not isinstance(payload, dict):
+        raise ValueError("Invalid payload")
+    try:
+        return ResetInternalUserPasswordRequest.model_validate(payload)
     except ValidationError as exc:
         raise ValueError("Invalid payload") from exc
 
@@ -264,6 +296,39 @@ def unblock_user(
         raise HTTPException(
             status_code=422,
             detail="Invalid payload",
+        ) from exc
+
+    return InternalAdminUserDetailResponse(usuario=_to_user_response(user))
+
+
+@router.post(
+    "/users/{usuario_id}/reset-password",
+    response_model=InternalAdminUserDetailResponse,
+)
+def reset_user_password(
+    usuario_id: int,
+    payload: object = Body(...),
+    _current_session: AuthenticatedCurrentSession = Depends(
+        require_permission(RESET_INTERNAL_USER_PASSWORD_PERMISSION)
+    ),
+    _internal_request: None = Depends(require_internal_mutating_request_header),
+) -> InternalAdminUserDetailResponse:
+    try:
+        parsed_payload = _parse_reset_password_payload(payload)
+        user = reset_internal_admin_user_password(
+            usuario_id=usuario_id,
+            nova_senha=parsed_payload.nova_senha,
+            confirmar_nova_senha=parsed_payload.confirmar_nova_senha,
+        )
+    except InternalUserNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Not found",
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=INVALID_RESET_PASSWORD_PAYLOAD_DETAIL,
         ) from exc
 
     return InternalAdminUserDetailResponse(usuario=_to_user_response(user))

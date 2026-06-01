@@ -7,10 +7,13 @@ from app.repositories.auth_admin_user_repository import (
 )
 from app.repositories.auth_admin_user_repository import InternalUserProfileNotFoundError
 from app.repositories.auth_admin_user_repository import UpdatedInternalUserBlockStatus
+from app.repositories.auth_admin_user_repository import UpdatedInternalUserPasswordStatus
 from app.repositories.auth_admin_user_repository import assign_internal_user_profile
 from app.repositories.auth_admin_user_repository import block_internal_user
 from app.repositories.auth_admin_user_repository import create_basic_internal_user
+from app.repositories.auth_admin_user_repository import reset_internal_user_password
 from app.repositories.auth_admin_user_repository import unblock_internal_user
+from app.repositories.auth_admin_user_list_repository import get_internal_admin_user_by_id
 from app.security.passwords import hash_password
 from app.security.passwords import validate_initial_password_policy
 
@@ -89,6 +92,34 @@ def unblock_internal_admin_user(
     return unblock_internal_user(usuario_id=usuario_id)
 
 
+def reset_internal_admin_user_password(
+    *,
+    usuario_id: int,
+    nova_senha: str,
+    confirmar_nova_senha: str,
+) -> UpdatedInternalUserPasswordStatus:
+    if usuario_id <= 0:
+        raise ValueError("usuario_id must be positive")
+    if nova_senha != confirmar_nova_senha:
+        raise ValueError("password does not meet policy")
+
+    user = get_internal_admin_user_by_id(usuario_id=usuario_id)
+    if user is None:
+        raise InternalUserNotFoundError("internal user was not found")
+
+    validate_initial_password_policy(
+        nova_senha,
+        login=user.login,
+        nome=user.nome,
+    )
+
+    senha_hash = hash_password(nova_senha)
+    return reset_internal_user_password(
+        usuario_id=usuario_id,
+        senha_hash=senha_hash,
+    )
+
+
 __all__ = [
     "AssignedInternalUserProfile",
     "InternalUserConflictError",
@@ -96,8 +127,10 @@ __all__ = [
     "InternalUserProfileInactiveConflictError",
     "InternalUserProfileNotFoundError",
     "UpdatedInternalUserBlockStatus",
+    "UpdatedInternalUserPasswordStatus",
     "assign_internal_admin_user_profile",
     "block_internal_admin_user",
     "create_basic_internal_admin_user",
+    "reset_internal_admin_user_password",
     "unblock_internal_admin_user",
 ]

@@ -5,6 +5,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql.elements import TextClause
 
+from app.repositories.auth_admin_user_list_repository import InternalAdminUserListItem
 from app.repositories.auth_admin_user_repository import (
     AssignedInternalUserProfile,
     CreatedBasicInternalUser,
@@ -13,16 +14,20 @@ from app.repositories.auth_admin_user_repository import (
     InternalUserProfileInactiveConflictError,
     InternalUserProfileNotFoundError,
     UpdatedInternalUserBlockStatus,
+    UpdatedInternalUserPasswordStatus,
     assign_internal_user_profile,
     block_internal_user,
     create_basic_internal_user,
+    reset_internal_user_password,
     unblock_internal_user,
 )
 from app.services import auth_admin_user_service
 
 
 RAW_PASSWORD = "senha-ficticia-interna-123"
+NEW_RAW_PASSWORD = "nova-senha-ficticia-interna-456"
 PASSWORD_HASH = "argon2id-hash-ficticio-nao-real"
+NEW_PASSWORD_HASH = "argon2id-novo-hash-ficticio-nao-real"
 CREATED_AT = datetime(2026, 5, 29, 10, 45, tzinfo=UTC)
 SENSITIVE_MARKERS = (
     RAW_PASSWORD,
@@ -147,6 +152,18 @@ def profile_assignment_row(
 
 
 def block_status_row(*, bloqueado: bool) -> dict[str, Any]:
+    return {
+        "id": 8,
+        "login": "usuario.exemplo",
+        "nome": "Usuario Exemplo",
+        "email": None,
+        "ativo": True,
+        "bloqueado": bloqueado,
+        "criado_em": CREATED_AT,
+    }
+
+
+def password_status_row(*, bloqueado: bool = False) -> dict[str, Any]:
     return {
         "id": 8,
         "login": "usuario.exemplo",
@@ -704,6 +721,107 @@ def test_block_and_unblock_do_not_touch_password_profiles_permissions_or_audit()
         assert "delete" not in sql
 
 
+def test_reset_internal_user_password_updates_hash_and_revokes_active_sessions() -> None:
+    engine = FakeEngine(password_status_row())
+
+    response = reset_internal_user_password(
+        usuario_id=8,
+        senha_hash=f" {NEW_PASSWORD_HASH} ",
+        engine=engine,
+    )
+
+    assert response == UpdatedInternalUserPasswordStatus(
+        id=8,
+        login="usuario.exemplo",
+        nome="Usuario Exemplo",
+        email=None,
+        ativo=True,
+        bloqueado=False,
+        criado_em=CREATED_AT,
+    )
+    sql = sql_for(engine)
+    params = params_for(engine)
+    assert "UPDATE mod_auth.usuarios" in sql
+    assert "senha_hash = :senha_hash" in sql
+    assert "atualizado_em = now()" in sql
+    assert "UPDATE mod_auth.sessoes" in sql
+    assert "SET revogado_em = now()" in sql
+    assert "revogado_em IS NULL" in sql
+    assert "WHERE id = :usuario_id" in sql
+    assert params == {"usuario_id": 8, "senha_hash": NEW_PASSWORD_HASH}
+    assert "usuario_id = 8" not in sql
+    assert NEW_PASSWORD_HASH not in sql
+    assert RAW_PASSWORD not in sql
+    assert NEW_RAW_PASSWORD not in sql
+    assert "DELETE" not in sql.upper()
+
+
+def test_reset_internal_user_password_keeps_existing_block_status() -> None:
+    engine = FakeEngine(password_status_row(bloqueado=True))
+
+    response = reset_internal_user_password(
+        usuario_id=8,
+        senha_hash=NEW_PASSWORD_HASH,
+        engine=engine,
+    )
+
+    sql = sql_for(engine)
+    assert response.bloqueado is True
+    assert "SET bloqueado_ate" not in sql
+    assert "ativo =" not in sql
+
+
+def test_reset_internal_user_password_returns_not_found_for_missing_user() -> None:
+    engine = FakeEngine()
+
+    with pytest.raises(InternalUserNotFoundError):
+        reset_internal_user_password(
+            usuario_id=999,
+            senha_hash=NEW_PASSWORD_HASH,
+            engine=engine,
+        )
+
+
+def test_reset_internal_user_password_rejects_invalid_values_without_sql() -> None:
+    engine = FakeEngine(password_status_row())
+
+    with pytest.raises(ValueError, match="usuario_id must be positive"):
+        reset_internal_user_password(
+            usuario_id=0,
+            senha_hash=NEW_PASSWORD_HASH,
+            engine=engine,
+        )
+    with pytest.raises(ValueError, match="senha_hash must not be empty"):
+        reset_internal_user_password(
+            usuario_id=8,
+            senha_hash=" ",
+            engine=engine,
+        )
+
+    assert engine.connection.statement is None
+
+
+def test_reset_internal_user_password_does_not_touch_profiles_permissions_or_audit() -> None:
+    engine = FakeEngine(password_status_row())
+
+    response = reset_internal_user_password(
+        usuario_id=8,
+        senha_hash=NEW_PASSWORD_HASH,
+        engine=engine,
+    )
+
+    sql = sql_for(engine).lower()
+    assert not hasattr(response, "senha_hash")
+    assert not hasattr(response, "bloqueado_ate")
+    assert not hasattr(response, "atualizado_em")
+    assert "usuario_perfis" not in sql
+    assert "perfil_permissoes" not in sql
+    assert "permissoes" not in sql
+    assert "login_auditoria" not in sql
+    assert "insert into mod_auth.sessoes" not in sql
+    assert "delete" not in sql
+
+
 def test_service_blocks_and_unblocks_internal_user(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -760,3 +878,128 @@ def test_service_rejects_invalid_block_action_without_repository(
         auth_admin_user_service.unblock_internal_admin_user(usuario_id=0)
 
     assert calls == {"block": 0, "unblock": 0}
+
+
+def test_service_resets_internal_user_password_with_policy_hash_and_repository(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: dict[str, object] = {}
+
+    def fake_get_user_by_id(*, usuario_id: int) -> InternalAdminUserListItem:
+        calls["get_user"] = {"usuario_id": usuario_id}
+        return InternalAdminUserListItem(**password_status_row())
+
+    def fake_hash_password(password: str) -> str:
+        calls["hash_password"] = password
+        return NEW_PASSWORD_HASH
+
+    def fake_reset_internal_user_password(
+        **kwargs: object,
+    ) -> UpdatedInternalUserPasswordStatus:
+        calls["reset_internal_user_password"] = kwargs
+        return UpdatedInternalUserPasswordStatus(**password_status_row())
+
+    monkeypatch.setattr(
+        auth_admin_user_service,
+        "get_internal_admin_user_by_id",
+        fake_get_user_by_id,
+    )
+    monkeypatch.setattr(auth_admin_user_service, "hash_password", fake_hash_password)
+    monkeypatch.setattr(
+        auth_admin_user_service,
+        "reset_internal_user_password",
+        fake_reset_internal_user_password,
+    )
+
+    response = auth_admin_user_service.reset_internal_admin_user_password(
+        usuario_id=8,
+        nova_senha=NEW_RAW_PASSWORD,
+        confirmar_nova_senha=NEW_RAW_PASSWORD,
+    )
+
+    assert response.id == 8
+    assert calls == {
+        "get_user": {"usuario_id": 8},
+        "hash_password": NEW_RAW_PASSWORD,
+        "reset_internal_user_password": {
+            "usuario_id": 8,
+            "senha_hash": NEW_PASSWORD_HASH,
+        },
+    }
+    assert NEW_RAW_PASSWORD not in calls["reset_internal_user_password"].values()  # type: ignore[union-attr]
+
+
+def test_service_reset_password_returns_not_found_before_hash(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = {"hash": 0, "reset": 0}
+    monkeypatch.setattr(
+        auth_admin_user_service,
+        "get_internal_admin_user_by_id",
+        lambda **kwargs: None,
+    )
+    monkeypatch.setattr(
+        auth_admin_user_service,
+        "hash_password",
+        lambda password: calls.__setitem__("hash", 1) or NEW_PASSWORD_HASH,
+    )
+    monkeypatch.setattr(
+        auth_admin_user_service,
+        "reset_internal_user_password",
+        lambda **kwargs: calls.__setitem__("reset", 1),
+    )
+
+    with pytest.raises(InternalUserNotFoundError):
+        auth_admin_user_service.reset_internal_admin_user_password(
+            usuario_id=999,
+            nova_senha=NEW_RAW_PASSWORD,
+            confirmar_nova_senha=NEW_RAW_PASSWORD,
+        )
+
+    assert calls == {"hash": 0, "reset": 0}
+
+
+@pytest.mark.parametrize(
+    ("nova_senha", "confirmar_nova_senha"),
+    [
+        (NEW_RAW_PASSWORD, "outra-senha-ficticia-789"),
+        ("abc12", "abc12"),
+        ("abcdef", "abcdef"),
+        ("123456", "123456"),
+        ("usuario.exemplo", "usuario.exemplo"),
+        ("Usuario Exemplo", "Usuario Exemplo"),
+        ("senha123", "senha123"),
+    ],
+)
+def test_service_rejects_invalid_reset_password_without_hash_or_repository(
+    monkeypatch: pytest.MonkeyPatch,
+    nova_senha: str,
+    confirmar_nova_senha: str,
+) -> None:
+    calls = {"hash": 0, "reset": 0}
+    monkeypatch.setattr(
+        auth_admin_user_service,
+        "get_internal_admin_user_by_id",
+        lambda **kwargs: InternalAdminUserListItem(**password_status_row()),
+    )
+    monkeypatch.setattr(
+        auth_admin_user_service,
+        "hash_password",
+        lambda password: calls.__setitem__("hash", 1) or NEW_PASSWORD_HASH,
+    )
+    monkeypatch.setattr(
+        auth_admin_user_service,
+        "reset_internal_user_password",
+        lambda **kwargs: calls.__setitem__("reset", 1),
+    )
+
+    with pytest.raises(ValueError) as exc_info:
+        auth_admin_user_service.reset_internal_admin_user_password(
+            usuario_id=8,
+            nova_senha=nova_senha,
+            confirmar_nova_senha=confirmar_nova_senha,
+        )
+
+    assert calls == {"hash": 0, "reset": 0}
+    assert str(exc_info.value) == "password does not meet policy"
+    assert nova_senha not in str(exc_info.value)

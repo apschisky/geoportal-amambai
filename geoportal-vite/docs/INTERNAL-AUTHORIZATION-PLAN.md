@@ -186,7 +186,7 @@ O bloqueio usa somente `mod_auth.usuarios.bloqueado_ate`, configurando timestamp
 
 As respostas retornam o mesmo envelope sanitizado dos endpoints de usuario: `usuario.id`, `usuario.login`, `usuario.nome`, `usuario.email`, `usuario.ativo`, `usuario.bloqueado` e `usuario.criado_em`. A API nao retorna `bloqueado_ate`, senha, `senha_hash`, token, `token_hash`, cookie, `session_secret`, `DATABASE_URL`, SQL, role, GRANT, sessao, auditoria, `atualizado_em` ou `ultimo_login_em`.
 
-Esta implementacao nao altera senha, perfis ou permissoes, nao escreve em `login_auditoria`, nao envia e-mail, nao cria endpoint de reset de senha, nao cria endpoint de remocao de perfil, nao cria migration, nao altera schema, nao cria usuario/perfil/permissao/vinculo real, nao cria role/GRANT, nao altera producao, NSSM, `.env`, frontend ou tela. Proxima etapa operacional: validar em homologacao com `teste.criacao`, confirmando que usuario bloqueado nao autentica, sessoes ativas sao revogadas e o desbloqueio permite novo login quando a senha estiver valida.
+Esta implementacao nao altera senha, perfis ou permissoes, nao escreve em `login_auditoria`, nao envia e-mail, nao cria endpoint de remocao de perfil, nao cria migration, nao altera schema, nao cria usuario/perfil/permissao/vinculo real, nao cria role/GRANT, nao altera producao, NSSM, `.env`, frontend ou tela. A etapa posterior de reset administrativo foi implementada separadamente.
 
 ## Validacao Operacional: Bloqueio e Desbloqueio
 
@@ -237,6 +237,18 @@ Regras de seguranca: nao aceitar senha por query string ou path; nao logar senha
 Proximos passos operacionais (apos esta documentacao): 1. Implementar endpoint com Codex High seguindo este contrato tecnico. 2. Validar em homologacao usando `teste.criacao`: confirmar que senha antiga deixa de funcionar (401); confirmar que senha nova funciona (200); confirmar que sessoes antigas sao revogadas (401); confirmar que usuario bloqueado continua bloqueado apos reset. 3. Apos validacao, planejar o primeiro endpoint interno de negocio do modulo Iluminacao; manter como etapa separada.
 
 Resumo tecnico e impactos: Arquivos alterados nesta etapa: apenas documentacao Markdown. Codigo alterado: nenhum. Testes alterados: nenhum. Migrations criadas: nenhuma. Schema alterado: nenhum. Endpoint criado: nenhum. Endpoint mutavel criado: nenhum. Usuario/perfil/permissao/vinculo real criado: nenhum. Role/GRANT criado: nenhum. Impacto operacional: baixa. Confirmacao: nenhum dado sensivel foi incluido neste documento.
+
+## Implementacao: Reset Administrativo de Senha de Usuario Interno
+
+O endpoint `POST /api/internal/admin/users/{usuario_id}/reset-password` foi implementado como rota administrativa mutavel explicita. Ele fica sob `GEOPORTAL_INTERNAL_ROUTES_ENABLED`, exige sessao autenticada, `require_permission("admin.usuarios.redefinir_senha")` e header `X-Geoportal-Internal-Request: 1`.
+
+O payload aceita somente `nova_senha` e `confirmar_nova_senha`, rejeitando campos extras. Divergencia entre os campos, payload invalido ou senha fora da politica centralizada retornam 422 generico, sem expor o valor recebido. A politica reutilizada e a mesma da criacao administrativa: 6 a 128 caracteres apos `strip`, pelo menos uma letra e um numero, nao igual a login/nome e bloqueio de senhas comuns.
+
+O service busca o usuario por `id` para aplicar a politica com login/nome, gera novo hash Argon2id e chama repository parametrizado. O repository atualiza somente `mod_auth.usuarios.senha_hash` e `mod_auth.usuarios.atualizado_em`, revogando sessoes ativas com `UPDATE mod_auth.sessoes SET revogado_em = now() WHERE usuario_id = :usuario_id AND revogado_em IS NULL`. Nao ha `DELETE` fisico.
+
+O reset nao desbloqueia usuario, nao altera `ativo`, perfis, permissoes ou vinculos, nao cria sessao, nao envia e-mail e nao escreve em `login_auditoria`. A resposta 200 usa envelope `usuario` com apenas `id`, `login`, `nome`, `email`, `ativo`, `bloqueado` e `criado_em`; nao retorna senha, `nova_senha`, `confirmar_nova_senha`, `senha_hash`, `bloqueado_ate`, `atualizado_em`, `ultimo_login_em`, token, cookie, `session_secret`, `DATABASE_URL`, SQL, role, GRANT, sessao ou auditoria.
+
+Esta implementacao nao cria migration, nao altera schema, nao cria usuario/perfil/permissao/vinculo real, nao cria role/GRANT, nao altera producao, NSSM, `.env`, frontend ou tela. Proxima etapa operacional: validar em homologacao com `teste.criacao`, confirmando que senha antiga falha, senha nova autentica, sessoes antigas sao revogadas e usuario bloqueado continua bloqueado ate desbloqueio explicito.
 
 ## 1. Separacao publico/interno
 
