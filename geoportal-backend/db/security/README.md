@@ -266,6 +266,18 @@ Cenarios validados:
 - Resposta sanitizada retornando apenas `id`, `login`, `nome`, `email`, `ativo`, `bloqueado`, `criado_em`.
 - Nao retornou `bloqueado_ate`, `senha_hash`, token, `session_secret`, `DATABASE_URL`, SQL, role ou GRANT.
 
+## Planejamento: Reset Administrativo de Senha (Documental)
+
+O endpoint `POST /api/internal/admin/users/{usuario_id}/reset-password` sera implementado em etapa separada com Codex High como acao mutavel de seguranca sensivel. A role `geoportal_api_homolog` devera receber permissao minima para reset: `UPDATE` em `mod_auth.usuarios` (para `senha_hash` e `atualizado_em`) e `UPDATE` em `mod_auth.sessoes` (para revogacao via `revogado_em`).
+
+Matriz de privilegios planejada: `usuarios_select=t`, `usuarios_insert=t`, `usuarios_update=t` (ja existente do bloqueio), `usuarios_delete=f`; `sessoes_select=t`, `sessoes_insert=t`, `sessoes_update=t` (ja existente do bloqueio), `sessoes_delete=f`. Nenhum novo GRANT sera necessario alem do ja conferido para bloqueio/desbloqueio, uma vez que UPDATE ja esta presente em ambas as tabelas.
+
+Payload esperado: `nova_senha` e `confirmar_nova_senha` obrigatorios. O repositorio deve validar identidade, cumprir politica centralizada (6-128 caracteres, letra+numero, nao igual a login/nome, bloqueada se comum) e gerar hash Argon2id. Atualizar apenas `mod_auth.usuarios.senha_hash` e `mod_auth.usuarios.atualizado_em`, se aplicavel, usando bind parameters. Revogar sessoes ativas com `UPDATE mod_auth.sessoes SET revogado_em = now() WHERE usuario_id = :usuario_id AND revogado_em IS NULL`, sem DELETE.
+
+Resposta 200: usuario sanitizado com `id`, `login`, `nome`, `email`, `ativo`, `bloqueado`, `criado_em`, sem retornar `senha_hash`, `bloqueado_ate`, token, `session_secret`, `DATABASE_URL`, SQL, role, GRANT, sessao ou auditoria. Comportamentos: 401 sem sessao; 403 sem permissao/header; 404 usuario inexistente; 422 para senha invalida/fraca. Nao desbloquear usuario; nao alterar perfil/permissoes/ativo; nao criar sessao; nao enviar e-mail; nao escrever auditoria de login.
+
+Nesta etapa apenas documental, nenhum GRANT foi criado ou alterado. Matriz sera confirmada operacionalmente em homologacao apos implementacao. Producao, NSSM, `.env` versionado e frontend nao serao alterados.
+
    ## Bloqueio/Desbloqueio: implicações de privilégio (documental)
 
    - Operação esperada em ambiente futuro controlado:

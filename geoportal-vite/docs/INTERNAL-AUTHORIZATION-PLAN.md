@@ -220,6 +220,24 @@ Resultado final:
 - Variaveis temporarias foram limpas.
 - Producao, NSSM, `.env` versionado e frontend nao foram alterados.
 
+## Planejamento: Reset Administrativo de Senha de Usuario Interno
+
+Endpoint planejado: `POST /api/internal/admin/users/{usuario_id}/reset-password`
+
+Protecoes obrigatorias: feature flag `GEOPORTAL_INTERNAL_ROUTES_ENABLED`, sessao autenticada, `require_permission("admin.usuarios.redefinir_senha")`, header `X-Geoportal-Internal-Request: 1`.
+
+Payload planejado: `nova_senha` (obrigatorio), `confirmar_nova_senha` (obrigatorio). Nao aceitar senha por query string ou path parameter. Campos proibidos: `senha_hash`, `token`, `token_hash`, `cookie`, `session_secret`, `DATABASE_URL`, `role`, `GRANT`, `perfil`, `perfis`, `permissoes`, `ativo`, `bloqueado`, `bloqueado_ate`, campos de auditoria e campos de sessao.
+
+Comportamento planejado: 200 OK quando redefinida; 401 sem sessao; 403 sem permissao; 403 sem header mutavel; 404 usuario inexistente; 422 payload invalido ou senhas divergem. Gerar novo hash Argon2id, atualizar somente `mod_auth.usuarios.senha_hash` e `mod_auth.usuarios.atualizado_em`, revogar sessoes ativas atualizando `mod_auth.sessoes.revogado_em = now()` (sem DELETE fisico), nao desbloquear usuario, nao alterar perfil/permissoes/ativo, nao criar sessao, nao enviar e-mail, nao escrever auditoria de login.
+
+Resposta sanitizada (200): envelope `usuario` com `id`, `login`, `nome`, `email`, `ativo`, `bloqueado`, `criado_em` apenas. Proibido: `senha`, `nova_senha`, `confirmar_nova_senha`, `senha_hash`, `token`, `token_hash`, `cookie`, `session_secret`, `DATABASE_URL`, SQL, `role`, `GRANT`, sessao, auditoria, `bloqueado_ate`, `atualizado_em`, `ultimo_login_em`.
+
+Regras de seguranca: nao aceitar senha por query string ou path; nao logar senha; nao documentar senha real; usar politica de senha ja existente (6-128 caracteres, letra+numero, nao igual a login/nome, bloqueada se comum); usar bind parameters em SQL; manter feature flag fail-closed; nao criar migration/schema.
+
+Proximos passos operacionais (apos esta documentacao): 1. Implementar endpoint com Codex High seguindo este contrato tecnico. 2. Validar em homologacao usando `teste.criacao`: confirmar que senha antiga deixa de funcionar (401); confirmar que senha nova funciona (200); confirmar que sessoes antigas sao revogadas (401); confirmar que usuario bloqueado continua bloqueado apos reset. 3. Apos validacao, planejar o primeiro endpoint interno de negocio do modulo Iluminacao; manter como etapa separada.
+
+Resumo tecnico e impactos: Arquivos alterados nesta etapa: apenas documentacao Markdown. Codigo alterado: nenhum. Testes alterados: nenhum. Migrations criadas: nenhuma. Schema alterado: nenhum. Endpoint criado: nenhum. Endpoint mutavel criado: nenhum. Usuario/perfil/permissao/vinculo real criado: nenhum. Role/GRANT criado: nenhum. Impacto operacional: baixa. Confirmacao: nenhum dado sensivel foi incluido neste documento.
+
 ## 1. Separacao publico/interno
 
 - Endpoints publicos continuam em `/api/public/...`.
