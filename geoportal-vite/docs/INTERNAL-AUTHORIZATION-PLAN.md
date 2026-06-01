@@ -1,4 +1,4 @@
-# Plano de Autenticacao e Autorizacao Interna
+﻿# Plano de Autenticacao e Autorizacao Interna
 
 Este documento registra a arquitetura funcional de autorizacao do Geoportal Interno e o desenho conceitual dos endpoints internos protegidos do modulo de Iluminacao Publica. Ele nao cria codigo, migrations, endpoints, usuarios reais, perfis reais, permissoes reais, senhas, tokens ou configuracoes de ambiente.
 
