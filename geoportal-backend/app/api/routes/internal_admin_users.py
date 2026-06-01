@@ -10,18 +10,24 @@ from app.repositories.auth_admin_user_list_repository import (
     get_internal_admin_user_by_id,
     list_internal_admin_users,
 )
+from app.services.auth_admin_user_service import CreatedBasicInternalUser
 from app.services.auth_admin_user_service import InternalUserConflictError
+from app.services.auth_admin_user_service import InternalUserNotFoundError
 from app.services.auth_admin_user_service import InternalUserProfileInactiveConflictError
 from app.services.auth_admin_user_service import InternalUserProfileNotFoundError
 from app.services.auth_admin_user_service import AssignedInternalUserProfile
+from app.services.auth_admin_user_service import UpdatedInternalUserBlockStatus
 from app.services.auth_admin_user_service import assign_internal_admin_user_profile
+from app.services.auth_admin_user_service import block_internal_admin_user
 from app.services.auth_admin_user_service import create_basic_internal_admin_user
+from app.services.auth_admin_user_service import unblock_internal_admin_user
 from app.services.auth_current_session_service import AuthenticatedCurrentSession
 
 
 LIST_INTERNAL_USERS_PERMISSION = "admin.usuarios.ler"
 CREATE_INTERNAL_USERS_PERMISSION = "admin.usuarios.criar"
 ASSIGN_INTERNAL_USER_PROFILE_PERMISSION = "admin.usuarios.atribuir_perfis"
+BLOCK_INTERNAL_USERS_PERMISSION = "admin.usuarios.bloquear"
 INVALID_CREATE_USER_PAYLOAD_DETAIL = "Invalid payload"
 INVALID_ASSIGN_PROFILE_PAYLOAD_DETAIL = "Invalid payload"
 
@@ -123,7 +129,13 @@ class InternalUserProfileAssignmentEnvelope(BaseModel):
     vinculo: InternalUserProfileAssignmentResponse
 
 
-def _to_user_response(user: InternalAdminUserListItem) -> InternalAdminUserResponse:
+def _to_user_response(
+    user: (
+        InternalAdminUserListItem
+        | CreatedBasicInternalUser
+        | UpdatedInternalUserBlockStatus
+    ),
+) -> InternalAdminUserResponse:
     return InternalAdminUserResponse(
         id=user.id,
         login=user.login,
@@ -198,6 +210,60 @@ def create_user(
         raise HTTPException(
             status_code=422,
             detail=INVALID_CREATE_USER_PAYLOAD_DETAIL,
+        ) from exc
+
+    return InternalAdminUserDetailResponse(usuario=_to_user_response(user))
+
+
+@router.post(
+    "/users/{usuario_id}/block",
+    response_model=InternalAdminUserDetailResponse,
+)
+def block_user(
+    usuario_id: int,
+    _current_session: AuthenticatedCurrentSession = Depends(
+        require_permission(BLOCK_INTERNAL_USERS_PERMISSION)
+    ),
+    _internal_request: None = Depends(require_internal_mutating_request_header),
+) -> InternalAdminUserDetailResponse:
+    try:
+        user = block_internal_admin_user(usuario_id=usuario_id)
+    except InternalUserNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Not found",
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail="Invalid payload",
+        ) from exc
+
+    return InternalAdminUserDetailResponse(usuario=_to_user_response(user))
+
+
+@router.post(
+    "/users/{usuario_id}/unblock",
+    response_model=InternalAdminUserDetailResponse,
+)
+def unblock_user(
+    usuario_id: int,
+    _current_session: AuthenticatedCurrentSession = Depends(
+        require_permission(BLOCK_INTERNAL_USERS_PERMISSION)
+    ),
+    _internal_request: None = Depends(require_internal_mutating_request_header),
+) -> InternalAdminUserDetailResponse:
+    try:
+        user = unblock_internal_admin_user(usuario_id=usuario_id)
+    except InternalUserNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Not found",
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail="Invalid payload",
         ) from exc
 
     return InternalAdminUserDetailResponse(usuario=_to_user_response(user))

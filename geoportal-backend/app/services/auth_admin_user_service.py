@@ -1,12 +1,16 @@
 from app.repositories.auth_admin_user_repository import CreatedBasicInternalUser
 from app.repositories.auth_admin_user_repository import AssignedInternalUserProfile
 from app.repositories.auth_admin_user_repository import InternalUserConflictError
+from app.repositories.auth_admin_user_repository import InternalUserNotFoundError
 from app.repositories.auth_admin_user_repository import (
     InternalUserProfileInactiveConflictError,
 )
 from app.repositories.auth_admin_user_repository import InternalUserProfileNotFoundError
+from app.repositories.auth_admin_user_repository import UpdatedInternalUserBlockStatus
 from app.repositories.auth_admin_user_repository import assign_internal_user_profile
+from app.repositories.auth_admin_user_repository import block_internal_user
 from app.repositories.auth_admin_user_repository import create_basic_internal_user
+from app.repositories.auth_admin_user_repository import unblock_internal_user
 from app.security.passwords import hash_password
 from app.security.passwords import validate_initial_password_policy
 
@@ -65,11 +69,35 @@ def assign_internal_admin_user_profile(
     )
 
 
+def block_internal_admin_user(
+    *,
+    usuario_id: int,
+) -> UpdatedInternalUserBlockStatus:
+    if usuario_id <= 0:
+        raise ValueError("usuario_id must be positive")
+
+    return block_internal_user(usuario_id=usuario_id)
+
+
+def unblock_internal_admin_user(
+    *,
+    usuario_id: int,
+) -> UpdatedInternalUserBlockStatus:
+    if usuario_id <= 0:
+        raise ValueError("usuario_id must be positive")
+
+    return unblock_internal_user(usuario_id=usuario_id)
+
+
 __all__ = [
     "AssignedInternalUserProfile",
     "InternalUserConflictError",
+    "InternalUserNotFoundError",
     "InternalUserProfileInactiveConflictError",
     "InternalUserProfileNotFoundError",
+    "UpdatedInternalUserBlockStatus",
     "assign_internal_admin_user_profile",
+    "block_internal_admin_user",
     "create_basic_internal_admin_user",
+    "unblock_internal_admin_user",
 ]

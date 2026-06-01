@@ -22,6 +22,10 @@ INTERNAL_ADMIN_USER_DETAIL_ROUTE = "/api/internal/admin/users/{usuario_id}"
 INTERNAL_ADMIN_USER_DETAIL_PATH = "/api/internal/admin/users/7"
 INTERNAL_ADMIN_USER_PROFILES_ROUTE = "/api/internal/admin/users/{usuario_id}/profiles"
 INTERNAL_ADMIN_USER_PROFILES_PATH = "/api/internal/admin/users/7/profiles"
+INTERNAL_ADMIN_USER_BLOCK_ROUTE = "/api/internal/admin/users/{usuario_id}/block"
+INTERNAL_ADMIN_USER_BLOCK_PATH = "/api/internal/admin/users/7/block"
+INTERNAL_ADMIN_USER_UNBLOCK_ROUTE = "/api/internal/admin/users/{usuario_id}/unblock"
+INTERNAL_ADMIN_USER_UNBLOCK_PATH = "/api/internal/admin/users/7/unblock"
 EXPIRES_AT = datetime(2026, 5, 27, 13, 0, tzinfo=UTC)
 
 
@@ -74,6 +78,8 @@ def test_internal_smoke_route_is_absent_when_flag_is_not_enabled(
     assert INTERNAL_ADMIN_USERS_PATH not in route_paths(app)
     assert INTERNAL_ADMIN_USER_DETAIL_ROUTE not in route_paths(app)
     assert INTERNAL_ADMIN_USER_PROFILES_ROUTE not in route_paths(app)
+    assert INTERNAL_ADMIN_USER_BLOCK_ROUTE not in route_paths(app)
+    assert INTERNAL_ADMIN_USER_UNBLOCK_ROUTE not in route_paths(app)
 
 
 def test_internal_smoke_route_returns_404_when_flag_is_disabled(
@@ -95,6 +101,8 @@ def test_internal_smoke_route_returns_404_when_flag_is_disabled(
     assert client.post(INTERNAL_ADMIN_USERS_PATH, json={}).status_code == 404
     assert client.get(INTERNAL_ADMIN_USER_DETAIL_PATH).status_code == 404
     assert client.post(INTERNAL_ADMIN_USER_PROFILES_PATH, json={}).status_code == 404
+    assert client.post(INTERNAL_ADMIN_USER_BLOCK_PATH).status_code == 404
+    assert client.post(INTERNAL_ADMIN_USER_UNBLOCK_PATH).status_code == 404
 
 
 def test_internal_smoke_route_is_present_when_flag_is_enabled(
@@ -112,6 +120,8 @@ def test_internal_smoke_route_is_present_when_flag_is_enabled(
     assert INTERNAL_ADMIN_USERS_PATH in route_paths(app)
     assert INTERNAL_ADMIN_USER_DETAIL_ROUTE in route_paths(app)
     assert INTERNAL_ADMIN_USER_PROFILES_ROUTE in route_paths(app)
+    assert INTERNAL_ADMIN_USER_BLOCK_ROUTE in route_paths(app)
+    assert INTERNAL_ADMIN_USER_UNBLOCK_ROUTE in route_paths(app)
 
 
 def test_enabled_internal_smoke_route_without_auth_returns_generic_401(

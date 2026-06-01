@@ -178,6 +178,16 @@ Resumo técnico e impactos
 - Impacto operacional: baixa — documentação e plano de testes; implementação posterior exigirá revisões de role e GRANT em homologação controlada.
 - Confirmação: nenhum dado sensível foi incluído neste documento.
 
+## Implementacao: Bloqueio e Desbloqueio de Usuario Interno
+
+Os endpoints `POST /api/internal/admin/users/{usuario_id}/block` e `POST /api/internal/admin/users/{usuario_id}/unblock` foram implementados no backend como rotas administrativas mutaveis explicitas. Ambos ficam sob `GEOPORTAL_INTERNAL_ROUTES_ENABLED`, exigem sessao autenticada, `require_permission("admin.usuarios.bloquear")` e header `X-Geoportal-Internal-Request: 1`.
+
+O bloqueio usa somente `mod_auth.usuarios.bloqueado_ate`, configurando timestamp futuro suficiente para bloqueio administrativo, e revoga sessoes ativas do mesmo usuario com `UPDATE mod_auth.sessoes SET revogado_em = now() WHERE usuario_id = :usuario_id AND revogado_em IS NULL`. A revogacao e logica, sem `DELETE` fisico. O desbloqueio limpa `bloqueado_ate` e nao cria sessao automaticamente.
+
+As respostas retornam o mesmo envelope sanitizado dos endpoints de usuario: `usuario.id`, `usuario.login`, `usuario.nome`, `usuario.email`, `usuario.ativo`, `usuario.bloqueado` e `usuario.criado_em`. A API nao retorna `bloqueado_ate`, senha, `senha_hash`, token, `token_hash`, cookie, `session_secret`, `DATABASE_URL`, SQL, role, GRANT, sessao, auditoria, `atualizado_em` ou `ultimo_login_em`.
+
+Esta implementacao nao altera senha, perfis ou permissoes, nao escreve em `login_auditoria`, nao envia e-mail, nao cria endpoint de reset de senha, nao cria endpoint de remocao de perfil, nao cria migration, nao altera schema, nao cria usuario/perfil/permissao/vinculo real, nao cria role/GRANT, nao altera producao, NSSM, `.env`, frontend ou tela. Proxima etapa operacional: validar em homologacao com `teste.criacao`, confirmando que usuario bloqueado nao autentica, sessoes ativas sao revogadas e o desbloqueio permite novo login quando a senha estiver valida.
+
 ## 1. Separacao publico/interno
 
 - Endpoints publicos continuam em `/api/public/...`.

@@ -14,17 +14,22 @@ from app.main import app as main_app
 from app.repositories.auth_admin_user_list_repository import InternalAdminUserListItem
 from app.services.auth_admin_user_service import AssignedInternalUserProfile
 from app.services.auth_admin_user_service import InternalUserConflictError
+from app.services.auth_admin_user_service import InternalUserNotFoundError
 from app.services.auth_admin_user_service import InternalUserProfileInactiveConflictError
 from app.services.auth_admin_user_service import InternalUserProfileNotFoundError
+from app.services.auth_admin_user_service import UpdatedInternalUserBlockStatus
 from app.services.auth_current_session_service import AuthenticatedCurrentSession
 
 
 ADMIN_USERS_PATH = "/api/internal/admin/users"
 ADMIN_USER_DETAIL_PATH = "/api/internal/admin/users/7"
 ADMIN_USER_PROFILES_PATH = "/api/internal/admin/users/8/profiles"
+ADMIN_USER_BLOCK_PATH = "/api/internal/admin/users/8/block"
+ADMIN_USER_UNBLOCK_PATH = "/api/internal/admin/users/8/unblock"
 EXPECTED_PERMISSION = "admin.usuarios.ler"
 EXPECTED_CREATE_PERMISSION = "admin.usuarios.criar"
 EXPECTED_ASSIGN_PROFILE_PERMISSION = "admin.usuarios.atribuir_perfis"
+EXPECTED_BLOCK_PERMISSION = "admin.usuarios.bloquear"
 EXPIRES_AT = datetime(2030, 5, 27, 13, 0, tzinfo=UTC)
 CREATED_AT = datetime(2026, 5, 29, 9, 30, tzinfo=UTC)
 CREATE_PAYLOAD = {
@@ -94,6 +99,18 @@ def fake_profile_assignment(
         modulo=modulo,
         ativo=True,
         created=created,
+    )
+
+
+def fake_block_status(*, bloqueado: bool) -> UpdatedInternalUserBlockStatus:
+    return UpdatedInternalUserBlockStatus(
+        id=8,
+        login="usuario.exemplo",
+        nome="Usuario Exemplo",
+        email=None,
+        ativo=True,
+        bloqueado=bloqueado,
+        criado_em=CREATED_AT,
     )
 
 
@@ -257,12 +274,16 @@ def test_admin_users_router_uses_permission_without_hardcoded_login() -> None:
     assert ADMIN_USERS_PATH in route_paths
     assert "/api/internal/admin/users/{usuario_id}" in route_paths
     assert "/api/internal/admin/users/{usuario_id}/profiles" in route_paths
+    assert "/api/internal/admin/users/{usuario_id}/block" in route_paths
+    assert "/api/internal/admin/users/{usuario_id}/unblock" in route_paths
     assert 'require_permission(LIST_INTERNAL_USERS_PERMISSION)' in source
     assert 'require_permission(CREATE_INTERNAL_USERS_PERMISSION)' in source
     assert 'require_permission(ASSIGN_INTERNAL_USER_PROFILE_PERMISSION)' in source
+    assert 'require_permission(BLOCK_INTERNAL_USERS_PERMISSION)' in source
     assert EXPECTED_PERMISSION in source
     assert EXPECTED_CREATE_PERMISSION in source
     assert EXPECTED_ASSIGN_PROFILE_PERMISSION in source
+    assert EXPECTED_BLOCK_PERMISSION in source
     assert "require_internal_mutating_request_header" in source
     assert "admin.homologacao" not in source
     assert "login ==" not in source
@@ -772,6 +793,271 @@ def test_create_admin_user_response_does_not_expose_sensitive_fields(
         "sessao",
         "auditoria",
         "bloqueado_ate",
+    ):
+        assert forbidden not in response_text
+
+
+@pytest.mark.parametrize(
+    ("path", "attribute", "expected_blocked"),
+    [
+        (ADMIN_USER_BLOCK_PATH, "block_internal_admin_user", True),
+        (ADMIN_USER_UNBLOCK_PATH, "unblock_internal_admin_user", False),
+    ],
+)
+def test_block_actions_return_200_for_authenticated_user_with_permission_and_header(
+    monkeypatch: pytest.MonkeyPatch,
+    path: str,
+    attribute: str,
+    expected_blocked: bool,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    calls: dict[str, object] = {}
+
+    def fake_has_permission(usuario_id: int, permission_code: str) -> bool:
+        calls.update(
+            {
+                "usuario_id": usuario_id,
+                "permission_code": permission_code,
+            }
+        )
+        return permission_code == EXPECTED_BLOCK_PERMISSION
+
+    action_kwargs: dict[str, object] = {}
+
+    def fake_block_action(**kwargs: object) -> UpdatedInternalUserBlockStatus:
+        action_kwargs.update(kwargs)
+        return fake_block_status(bloqueado=expected_blocked)
+
+    monkeypatch.setattr(auth_dependencies, "has_permission", fake_has_permission)
+    monkeypatch.setattr(internal_admin_users, attribute, fake_block_action)
+    client = TestClient(app)
+
+    response = client.post(path, headers=mutating_headers())
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "usuario": {
+            "id": 8,
+            "login": "usuario.exemplo",
+            "nome": "Usuario Exemplo",
+            "email": None,
+            "ativo": True,
+            "bloqueado": expected_blocked,
+            "criado_em": "2026-05-29T09:30:00Z",
+        }
+    }
+    assert calls == {
+        "usuario_id": 7,
+        "permission_code": EXPECTED_BLOCK_PERMISSION,
+    }
+    assert action_kwargs == {"usuario_id": 8}
+
+
+@pytest.mark.parametrize("path", [ADMIN_USER_BLOCK_PATH, ADMIN_USER_UNBLOCK_PATH])
+def test_block_actions_return_401_without_valid_session(path: str) -> None:
+    app = build_isolated_app()
+
+    def fake_auth_failure() -> None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    app.dependency_overrides[get_current_authenticated_session] = fake_auth_failure
+    client = TestClient(app)
+
+    response = client.post(path, headers=mutating_headers())
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Not authenticated"}
+
+
+@pytest.mark.parametrize(
+    ("path", "attribute"),
+    [
+        (ADMIN_USER_BLOCK_PATH, "block_internal_admin_user"),
+        (ADMIN_USER_UNBLOCK_PATH, "unblock_internal_admin_user"),
+    ],
+)
+def test_block_actions_return_403_without_required_permission(
+    monkeypatch: pytest.MonkeyPatch,
+    path: str,
+    attribute: str,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: False,
+    )
+    monkeypatch.setattr(
+        internal_admin_users,
+        attribute,
+        lambda **kwargs: fake_block_status(bloqueado=True),
+    )
+    client = TestClient(app)
+
+    response = client.post(path, headers=mutating_headers())
+
+    assert response.status_code == 403
+    assert response.json() == {"detail": "Forbidden"}
+    assert EXPECTED_BLOCK_PERMISSION not in response.text
+    assert "usuario.exemplo" not in response.text
+
+
+@pytest.mark.parametrize("path", [ADMIN_USER_BLOCK_PATH, ADMIN_USER_UNBLOCK_PATH])
+def test_block_actions_require_internal_mutating_header(
+    monkeypatch: pytest.MonkeyPatch,
+    path: str,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+    client = TestClient(app)
+
+    response = client.post(path)
+
+    assert response.status_code == 403
+    assert response.json() == {"detail": "Invalid internal request"}
+
+
+@pytest.mark.parametrize(
+    ("path", "attribute"),
+    [
+        (ADMIN_USER_BLOCK_PATH, "block_internal_admin_user"),
+        (ADMIN_USER_UNBLOCK_PATH, "unblock_internal_admin_user"),
+    ],
+)
+def test_block_actions_return_404_when_user_does_not_exist(
+    monkeypatch: pytest.MonkeyPatch,
+    path: str,
+    attribute: str,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+
+    def fake_block_action(**kwargs: object) -> UpdatedInternalUserBlockStatus:
+        raise InternalUserNotFoundError("internal user was not found")
+
+    monkeypatch.setattr(internal_admin_users, attribute, fake_block_action)
+    client = TestClient(app)
+
+    response = client.post(path, headers=mutating_headers())
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Not found"}
+    assert "mod_auth" not in response.text
+
+
+@pytest.mark.parametrize(
+    ("path", "attribute"),
+    [
+        ("/api/internal/admin/users/0/block", "block_internal_admin_user"),
+        ("/api/internal/admin/users/0/unblock", "unblock_internal_admin_user"),
+    ],
+)
+def test_block_actions_return_422_for_invalid_user_id(
+    monkeypatch: pytest.MonkeyPatch,
+    path: str,
+    attribute: str,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+
+    def fake_block_action(**kwargs: object) -> UpdatedInternalUserBlockStatus:
+        raise ValueError("usuario_id must be positive")
+
+    monkeypatch.setattr(internal_admin_users, attribute, fake_block_action)
+    client = TestClient(app)
+
+    response = client.post(path, headers=mutating_headers())
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "Invalid payload"}
+
+
+@pytest.mark.parametrize(
+    ("path", "attribute", "expected_blocked"),
+    [
+        (ADMIN_USER_BLOCK_PATH, "block_internal_admin_user", True),
+        (ADMIN_USER_UNBLOCK_PATH, "unblock_internal_admin_user", False),
+    ],
+)
+def test_block_actions_response_does_not_expose_sensitive_fields(
+    monkeypatch: pytest.MonkeyPatch,
+    path: str,
+    attribute: str,
+    expected_blocked: bool,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+    monkeypatch.setattr(
+        internal_admin_users,
+        attribute,
+        lambda **kwargs: fake_block_status(bloqueado=expected_blocked),
+    )
+    client = TestClient(app)
+
+    response = client.post(path, headers=mutating_headers())
+
+    response_text = response.text
+    body = response.json()
+    assert response.status_code == 200
+    assert set(body["usuario"]) == {
+        "id",
+        "login",
+        "nome",
+        "email",
+        "ativo",
+        "bloqueado",
+        "criado_em",
+    }
+    for forbidden in (
+        "senha",
+        "senha_hash",
+        "token",
+        "token_hash",
+        "cookie",
+        "session_secret",
+        "DATABASE_URL",
+        "SQL",
+        "role",
+        "GRANT",
+        "sessao",
+        "auditoria",
+        "bloqueado_ate",
+        "atualizado_em",
+        "ultimo_login_em",
     ):
         assert forbidden not in response_text
 

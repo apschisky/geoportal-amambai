@@ -27,6 +27,17 @@ class CreatedBasicInternalUser:
 
 
 @dataclass(frozen=True)
+class UpdatedInternalUserBlockStatus:
+    id: int
+    login: str
+    nome: str
+    email: str | None
+    ativo: bool
+    bloqueado: bool
+    criado_em: datetime
+
+
+@dataclass(frozen=True)
 class AssignedInternalUserProfile:
     usuario_id: int
     perfil_id: int
@@ -36,6 +47,10 @@ class AssignedInternalUserProfile:
 
 
 class InternalUserConflictError(RuntimeError):
+    pass
+
+
+class InternalUserNotFoundError(RuntimeError):
     pass
 
 
@@ -264,6 +279,96 @@ def update_internal_user_password_by_login(
         row = connection.execute(statement, params).mappings().first()
 
     return row is not None
+
+
+def block_internal_user(
+    *,
+    usuario_id: int,
+    engine: Engine | None = None,
+) -> UpdatedInternalUserBlockStatus:
+    if usuario_id <= 0:
+        raise ValueError("usuario_id must be positive")
+
+    db_engine = engine or get_engine()
+
+    statement = text(
+        """
+        WITH updated_user AS (
+            UPDATE mod_auth.usuarios
+            SET bloqueado_ate = now() + (:block_days * interval '1 day')
+            WHERE id = :usuario_id
+            RETURNING
+                id,
+                login,
+                nome,
+                email,
+                ativo,
+                criado_em
+        ),
+        revoked_sessions AS (
+            UPDATE mod_auth.sessoes
+            SET revogado_em = now()
+            WHERE usuario_id = :usuario_id
+              AND revogado_em IS NULL
+            RETURNING id
+        )
+        SELECT
+            id,
+            login,
+            nome,
+            email,
+            ativo,
+            true AS bloqueado,
+            criado_em
+        FROM updated_user
+        """
+    )
+
+    with db_engine.begin() as connection:
+        row = connection.execute(
+            statement,
+            {"usuario_id": usuario_id, "block_days": 36500},
+        ).mappings().first()
+
+    if row is None:
+        raise InternalUserNotFoundError("internal user was not found")
+
+    return UpdatedInternalUserBlockStatus(**dict(row))
+
+
+def unblock_internal_user(
+    *,
+    usuario_id: int,
+    engine: Engine | None = None,
+) -> UpdatedInternalUserBlockStatus:
+    if usuario_id <= 0:
+        raise ValueError("usuario_id must be positive")
+
+    db_engine = engine or get_engine()
+
+    statement = text(
+        """
+        UPDATE mod_auth.usuarios
+        SET bloqueado_ate = NULL
+        WHERE id = :usuario_id
+        RETURNING
+            id,
+            login,
+            nome,
+            email,
+            ativo,
+            false AS bloqueado,
+            criado_em
+        """
+    )
+
+    with db_engine.begin() as connection:
+        row = connection.execute(statement, {"usuario_id": usuario_id}).mappings().first()
+
+    if row is None:
+        raise InternalUserNotFoundError("internal user was not found")
+
+    return UpdatedInternalUserBlockStatus(**dict(row))
 
 
 def _normalize_optional_module(modulo: str | None) -> str | None:

@@ -9,10 +9,14 @@ from app.repositories.auth_admin_user_repository import (
     AssignedInternalUserProfile,
     CreatedBasicInternalUser,
     InternalUserConflictError,
+    InternalUserNotFoundError,
     InternalUserProfileInactiveConflictError,
     InternalUserProfileNotFoundError,
+    UpdatedInternalUserBlockStatus,
     assign_internal_user_profile,
+    block_internal_user,
     create_basic_internal_user,
+    unblock_internal_user,
 )
 from app.services import auth_admin_user_service
 
@@ -139,6 +143,18 @@ def profile_assignment_row(
         "perfil_id": 3,
         "modulo": modulo,
         "ativo": ativo,
+    }
+
+
+def block_status_row(*, bloqueado: bool) -> dict[str, Any]:
+    return {
+        "id": 8,
+        "login": "usuario.exemplo",
+        "nome": "Usuario Exemplo",
+        "email": None,
+        "ativo": True,
+        "bloqueado": bloqueado,
+        "criado_em": CREATED_AT,
     }
 
 
@@ -580,3 +596,167 @@ def test_service_rejects_invalid_profile_assignment_without_repository(
         )
 
     assert calls == {"assign": 0}
+
+
+def test_block_internal_user_blocks_user_and_revokes_active_sessions() -> None:
+    engine = FakeEngine(block_status_row(bloqueado=True))
+
+    response = block_internal_user(usuario_id=8, engine=engine)
+
+    assert response == UpdatedInternalUserBlockStatus(
+        id=8,
+        login="usuario.exemplo",
+        nome="Usuario Exemplo",
+        email=None,
+        ativo=True,
+        bloqueado=True,
+        criado_em=CREATED_AT,
+    )
+    sql = sql_for(engine)
+    params = params_for(engine)
+    assert "UPDATE mod_auth.usuarios" in sql
+    assert "SET bloqueado_ate = now() + (:block_days * interval '1 day')" in sql
+    assert "UPDATE mod_auth.sessoes" in sql
+    assert "SET revogado_em = now()" in sql
+    assert "revogado_em IS NULL" in sql
+    assert "WHERE id = :usuario_id" in sql
+    assert params == {"usuario_id": 8, "block_days": 36500}
+    assert "usuario_id = 8" not in sql
+    assert "DELETE" not in sql.upper()
+
+
+def test_block_internal_user_is_idempotent_for_existing_block() -> None:
+    engine = FakeEngine(block_status_row(bloqueado=True))
+
+    response = block_internal_user(usuario_id=8, engine=engine)
+
+    assert response.bloqueado is True
+    assert "RETURNING" in sql_for(engine)
+
+
+def test_unblock_internal_user_unblocks_user_without_creating_session() -> None:
+    engine = FakeEngine(block_status_row(bloqueado=False))
+
+    response = unblock_internal_user(usuario_id=8, engine=engine)
+
+    assert response == UpdatedInternalUserBlockStatus(
+        id=8,
+        login="usuario.exemplo",
+        nome="Usuario Exemplo",
+        email=None,
+        ativo=True,
+        bloqueado=False,
+        criado_em=CREATED_AT,
+    )
+    sql = sql_for(engine)
+    params = params_for(engine)
+    assert "UPDATE mod_auth.usuarios" in sql
+    assert "SET bloqueado_ate = NULL" in sql
+    assert "WHERE id = :usuario_id" in sql
+    assert params == {"usuario_id": 8}
+    assert "INSERT INTO mod_auth.sessoes" not in sql
+    assert "CREATE" not in sql.upper()
+    assert "DELETE" not in sql.upper()
+
+
+def test_unblock_internal_user_is_idempotent_for_existing_unblock() -> None:
+    engine = FakeEngine(block_status_row(bloqueado=False))
+
+    response = unblock_internal_user(usuario_id=8, engine=engine)
+
+    assert response.bloqueado is False
+
+
+def test_block_and_unblock_return_not_found_for_missing_user() -> None:
+    for action in (block_internal_user, unblock_internal_user):
+        engine = FakeEngine()
+
+        with pytest.raises(InternalUserNotFoundError):
+            action(usuario_id=999, engine=engine)
+
+
+def test_block_and_unblock_reject_invalid_id_without_sql() -> None:
+    for action in (block_internal_user, unblock_internal_user):
+        engine = FakeEngine()
+
+        with pytest.raises(ValueError, match="usuario_id must be positive"):
+            action(usuario_id=0, engine=engine)
+
+        assert engine.connection.statement is None
+
+
+def test_block_and_unblock_do_not_touch_password_profiles_permissions_or_audit() -> None:
+    for action, row in (
+        (block_internal_user, block_status_row(bloqueado=True)),
+        (unblock_internal_user, block_status_row(bloqueado=False)),
+    ):
+        engine = FakeEngine(row)
+
+        response = action(usuario_id=8, engine=engine)
+
+        sql = sql_for(engine).lower()
+        assert not hasattr(response, "bloqueado_ate")
+        assert "senha_hash" not in sql
+        assert "usuario_perfis" not in sql
+        assert "perfil_permissoes" not in sql
+        assert "permissoes" not in sql
+        assert "login_auditoria" not in sql
+        assert "delete" not in sql
+
+
+def test_service_blocks_and_unblocks_internal_user(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[tuple[str, dict[str, object]]] = []
+
+    def fake_block_internal_user(**kwargs: object) -> UpdatedInternalUserBlockStatus:
+        calls.append(("block", kwargs))
+        return UpdatedInternalUserBlockStatus(**block_status_row(bloqueado=True))
+
+    def fake_unblock_internal_user(**kwargs: object) -> UpdatedInternalUserBlockStatus:
+        calls.append(("unblock", kwargs))
+        return UpdatedInternalUserBlockStatus(**block_status_row(bloqueado=False))
+
+    monkeypatch.setattr(
+        auth_admin_user_service,
+        "block_internal_user",
+        fake_block_internal_user,
+    )
+    monkeypatch.setattr(
+        auth_admin_user_service,
+        "unblock_internal_user",
+        fake_unblock_internal_user,
+    )
+
+    blocked = auth_admin_user_service.block_internal_admin_user(usuario_id=8)
+    unblocked = auth_admin_user_service.unblock_internal_admin_user(usuario_id=8)
+
+    assert blocked.bloqueado is True
+    assert unblocked.bloqueado is False
+    assert calls == [
+        ("block", {"usuario_id": 8}),
+        ("unblock", {"usuario_id": 8}),
+    ]
+
+
+def test_service_rejects_invalid_block_action_without_repository(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = {"block": 0, "unblock": 0}
+    monkeypatch.setattr(
+        auth_admin_user_service,
+        "block_internal_user",
+        lambda **kwargs: calls.__setitem__("block", 1),
+    )
+    monkeypatch.setattr(
+        auth_admin_user_service,
+        "unblock_internal_user",
+        lambda **kwargs: calls.__setitem__("unblock", 1),
+    )
+
+    with pytest.raises(ValueError, match="usuario_id must be positive"):
+        auth_admin_user_service.block_internal_admin_user(usuario_id=0)
+    with pytest.raises(ValueError, match="usuario_id must be positive"):
+        auth_admin_user_service.unblock_internal_admin_user(usuario_id=0)
+
+    assert calls == {"block": 0, "unblock": 0}
