@@ -118,6 +118,14 @@ A role PostgreSQL `geoportal_auth_admin_homolog` foi criada em homologacao com s
   - `/api/version` OK
   - Nenhuma endpoint interna criada nesta etapa
   - Nenhuma sessao ou token criado
+
+  ## Nota: Bloqueio/Desbloqueio de Usuário Interno (documental)
+
+  - Contrato resumido: `POST /api/internal/admin/users/{usuario_id}/block` e `POST /api/internal/admin/users/{usuario_id}/unblock` (documentação apenas nesta fase).
+  - Proteções: sessão autenticada + `require_permission("admin.usuarios.bloquear")` + header `X-Geoportal-Internal-Request: 1` + `GEOPORTAL_INTERNAL_ROUTES_ENABLED`.
+  - Persistência: usar `mod_auth.usuarios.bloqueado_ate` para registrar bloqueios; a API deve expor apenas o booleano derivado `bloqueado` (não retornar `bloqueado_ate`).
+  - Efeito: bloquear revoga sessões ativas via `UPDATE mod_auth.sessoes SET revogado_em = now()` (sem DELETE); desbloquear limpa `bloqueado_ate` e não cria sessão.
+  - Observação: esta nota é documental — não aplica migrations, roles, grants, código, testes ou mudanças em produção.
   - Nenhuma alteracao em `.env` ou migration
 - Producao nao foi alterada; todas as operacoes restritas a homologacao
 - Proxima etapa: nao ampliar `geoportal_auth_admin_homolog` automaticamente; planejar `geoportal_api_homolog` como futura role runtime da API interna em homologacao, com matriz minima documentada em `geoportal-backend/db/security/README.md`, sem criacao real nesta etapa

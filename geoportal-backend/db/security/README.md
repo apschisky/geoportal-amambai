@@ -238,6 +238,15 @@ A role `geoportal_auth_admin_homolog` foi criada em homologação com sucesso:
    - ✓ Health checks: `/api/health`, `/api/public/iluminacao/health`, `/api/version` OK
    - ✓ Nenhuma endpoint nova criada
    - ✓ Nenhuma sessão ou token criado
+
+   ## Bloqueio/Desbloqueio: implicações de privilégio (documental)
+
+   - Operação esperada em ambiente futuro controlado:
+      - `UPDATE mod_auth.usuarios SET bloqueado_ate = :ts WHERE id = :usuario_id` (para bloquear)
+      - `UPDATE mod_auth.usuarios SET bloqueado_ate = NULL WHERE id = :usuario_id` (para desbloquear)
+      - `UPDATE mod_auth.sessoes SET revogado_em = now() WHERE usuario_id = :usuario_id AND revogado_em IS NULL` (revogar sessões ativas sem DELETE)
+   - Privilegios necessários (planejar com menor privilégio): `UPDATE` restrito em `mod_auth.usuarios` para o campo `bloqueado_ate` e `UPDATE` em `mod_auth.sessoes` para `revogado_em` quando executar revogacao; `SELECT` conforme leitura existente.
+   - Observação operacional: **não** criar GRANTs ou roles automaticamente nesta etapa; qualquer concessão de WRITE/UPDATE deve ser executada e auditada manualmente em homologacao primeiro e validada antes de considerar produção.
    - ✓ Nenhuma mudança em `.env` ou migração
 8. **Estado de produção**: Não alterado. Todas as operações restritas a homologação.
 

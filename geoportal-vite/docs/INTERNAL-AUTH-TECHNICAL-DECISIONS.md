@@ -226,6 +226,14 @@ A validacao confirmou cookie HttpOnly, SameSite=Lax, Path `/api/internal`, sessa
 
 Atualizacao de identificador interno: o login passa a ser o identificador obrigatorio de autenticacao do Geoportal Interno. E-mail e opcional para cadastro e nao deve ser usado como chave obrigatoria de login, permissao ou autorizacao. A migration `0010_make_auth_user_email_optional.sql` foi criada para tornar `mod_auth.usuarios.email` nullable e manter unicidade de e-mail apenas quando informado. O script administrativo agora exige `--login` e `--nome`, aceita `--email` opcional, continua lendo senha somente via `getpass` e mantem `--dry-run` sem banco. Naquela etapa, nenhum usuario real, endpoint de login, cookie, CSRF, JWT, token real, sessao real ou segredo foi criado.
 
+## Decisão sobre Bloqueio/Desbloqueio de Usuário Interno
+
+- Endpoints preferidos (documental): `POST /api/internal/admin/users/{usuario_id}/block` e `POST /api/internal/admin/users/{usuario_id}/unblock` para contrato explícito.
+- Persistência: usar apenas `mod_auth.usuarios.bloqueado_ate` para registrar bloqueios; a API deve expor somente `bloqueado` booleano derivado (não retornar `bloqueado_ate`).
+- Efeito: bloquear revoga sessões ativas atualizando `mod_auth.sessoes.revogado_em = now()` (revogação lógica sem DELETE); desbloquear limpa `bloqueado_ate` e não cria sessão.
+- Proteções: exigir `GEOPORTAL_INTERNAL_ROUTES_ENABLED`, sessão autenticada, `require_permission("admin.usuarios.bloquear")` e header `X-Geoportal-Internal-Request: 1` para rotas mutáveis.
+- Observação: esta decisão é documental — não aplicar migrations, roles, grants, código ou alterações em produção nesta etapa.
+
 ## 4. Política inicial de senha
 
 Proposta inicial:

@@ -71,6 +71,113 @@ Validacao operacional de GET /api/internal/admin/profiles em homologacao: o comm
 
 Proximas etapas recomendadas: validar a listagem de perfis em homologacao; planejar bloqueio/desbloqueio de usuario; planejar reset de senha via endpoint; depois criar o primeiro endpoint interno de negocio do modulo Iluminacao; tela interna continua etapa posterior.
 
+## Plano: Bloqueio e Desbloqueio de Usuário Interno
+
+Resumo: documentar o contrato técnico e as regras de segurança antes de implementar os endpoints mutáveis de bloqueio e desbloqueio de usuário interno. Esta etapa é exclusivamente documental e não altera código, testes, migrations, schema, ambiente ou produção.
+
+Endpoints planejados
+
+- `POST /api/internal/admin/users/{usuario_id}/block` — bloquear usuário interno.
+- `POST /api/internal/admin/users/{usuario_id}/unblock` — desbloquear usuário interno.
+
+Proteções obrigatórias (ambos)
+
+- Requer sessão autenticada (dependência interna existente).
+- Requer `require_permission("admin.usuarios.bloquear")`.
+- Requer header `X-Geoportal-Internal-Request: 1` (proteção para rotas mutáveis).
+- Requer feature flag `GEOPORTAL_INTERNAL_ROUTES_ENABLED` ativa.
+
+Comportamento planejado — Bloquear
+
+- Respostas: `200 OK` quando o bloqueio for aplicado com sucesso.
+- `200 OK` idempotente se o usuário já estiver bloqueado.
+- `401` sem sessão autenticada; `403` sem permissão; `403` se header mutável ausente; `404` se `usuario_id` não existir; `422` para `usuario_id` inválido.
+- Impedir novos logins do usuário bloqueado (login falhará com 401 genérico).
+- Revogar sessões ativas do usuário bloqueado: atualizar `mod_auth.sessoes.revogado_em = now()` para as sessões ativas do `usuario_id` — revogação lógica, sem `DELETE` físico.
+- Não apagar o usuário; não alterar senha; não alterar perfis; não remover permissões; não criar sessão; não enviar e-mail.
+
+Comportamento planejado — Desbloquear
+
+- Respostas: `200 OK` quando o desbloqueio for aplicado com sucesso.
+- `200 OK` idempotente se o usuário já estiver desbloqueado.
+- `401` sem sessão; `403` sem permissão; `403` sem header mutável; `404` se usuário não existir; `422` para `usuario_id` inválido.
+- Permitir novos logins se a senha estiver válida e o usuário estiver `ativo` (ou seja, remover bloqueio lógico). Não criar sessão automaticamente.
+- Não alterar senha; não alterar perfis; não recriar permissões; não enviar e-mail.
+
+Campos de banco planejados
+
+- Usar somente colunas existentes em `mod_auth.usuarios` e `mod_auth.sessoes`.
+- Para persistência do bloqueio, usar a semântica já existente baseada em `mod_auth.usuarios.bloqueado_ate`.
+- A API deve retornar apenas o booleano derivado `bloqueado=true|false`; **não** retornar `bloqueado_ate` na resposta.
+- O bloqueio deve revogar sessões ativas em `mod_auth.sessoes` atualizando `revogado_em = now()` — revogação lógica sem `DELETE` físico.
+- O desbloqueio deve limpar `bloqueado_ate` conforme o padrão existente; desbloqueio não cria sessão automaticamente.
+- NÃO criar migration nesta etapa e NÃO alterar schema.
+
+Resposta sanitizada (envelope)
+
+Exemplo de resposta (bloqueado = true):
+
+{
+	"usuario": {
+		"id": 8,
+		"login": "teste.criacao",
+		"nome": "Usuario Teste Criacao",
+		"email": null,
+		"ativo": true,
+		"bloqueado": true,
+		"criado_em": "..."
+	}
+}
+
+Para desbloqueio, mesmo envelope com `"bloqueado": false`.
+
+Campos permitidos na resposta (somente estes):
+
+- `id`, `login`, `nome`, `email`, `ativo`, `bloqueado`, `criado_em`.
+
+Campos absolutamente proibidos na resposta (não expor):
+
+- `senha`, `senha_hash`, `token`, `token_hash`, `cookie`, `session_secret`, `DATABASE_URL`, `SQL`, `role`, `GRANT`, `sessao`, `auditoria`, `bloqueado_ate`, `atualizado_em`, `ultimo_login_em` e quaisquer segredos ou identificadores sensíveis.
+
+Observações de segurança e operacionais
+
+- Bloqueio deve revogar sessões ativas usando `revogado_em` para tornar sessões existentes inválidas imediatamente.
+- Não usar `DELETE` em `mod_auth.sessoes` nem excluir usuário.
+- Desbloqueio NÃO deve criar sessão automaticamente — o usuário deve autenticar (login) normalmente.
+- Nenhuma alteração de perfis, permissões ou senha deve ocorrer como efeito colateral destes endpoints.
+- Não enviar e-mails automáticos nesta etapa documental.
+
+Restrições de escopo desta etapa documental
+
+- Não implementar o código do endpoint (apenas documentação nesta etapa).
+- Não alterar Python, testes, migrations, schema, scripts PowerShell, `.env` versionado, produção, NSSM ou frontend.
+- Não criar usuários, perfis, permissões, vínculos, roles PostgreSQL ou GRANTs.
+- Não incluir dados sensíveis em qualquer arquivo de documentação.
+
+Próximos passos operacionais (após esta documentação)
+
+1. Implementar endpoints mutáveis com Codex High seguindo este contrato técnico.
+2. Validar em homologação usando o usuário `teste.criacao`:
+	 - confirmar que usuário bloqueado não consegue login;
+	 - confirmar que sessões ativas foram revogadas (`revogado_em` preenchido);
+	 - confirmar que desbloqueio permite login novamente quando senha válida;
+3. Após validação em homologação, planejar reset de senha via endpoint separado; mantê-lo também como etapa separada.
+
+Resumo técnico e impactos
+
+- Arquivos alterados nesta etapa: apenas documentação Markdown.
+- Código alterado: nenhum.
+- Testes alterados: nenhum.
+- Migrations criadas: nenhuma.
+- Schema alterado: nenhum.
+- Endpoint criado: nenhum (documentação apenas).
+- Endpoint mutável criado: nenhum.
+- Usuário/perfil/permissão/vínculo real criado: nenhum.
+- Role/GRANT criado: nenhum.
+- Impacto no schema: nenhum.
+- Impacto operacional: baixa — documentação e plano de testes; implementação posterior exigirá revisões de role e GRANT em homologação controlada.
+- Confirmação: nenhum dado sensível foi incluído neste documento.
+
 ## 1. Separacao publico/interno
 
 - Endpoints publicos continuam em `/api/public/...`.
