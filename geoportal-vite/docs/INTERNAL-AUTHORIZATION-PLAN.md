@@ -626,3 +626,8 @@ Nao havera copia cega dos dados de homologacao para producao. O que migra e codi
 - Ampliacão inadvertida de permissões de usuários técnicos de módulos específicos.
 - Falta de escalabilidade para múltiplos módulos.
 - Duplicação de lógica de autenticação/autorização entre módulos.
+## Decisao Operacional: Runtime Publico e Runtime Interno
+
+O primeiro endpoint interno de negocio (`GET /api/internal/iluminacao/solicitacoes`) deve operar no runtime interno, separado do runtime publico. `api_iluminacao_homolog` fica restrita aos endpoints publicos e nao recebe acesso a `mod_auth`; `geoportal_api_homolog` e usada no runtime interno, com permissoes minimas para autenticacao/autorizacao e leitura interna de Iluminacao.
+
+Essa separacao preserva menor privilegio, reduz superficie de ataque, evita ampliar a role publica e prepara a evolucao controlada de novos modulos internos. Detalhes: `INTERNAL-PUBLIC-RUNTIME-SEPARATION.md`.

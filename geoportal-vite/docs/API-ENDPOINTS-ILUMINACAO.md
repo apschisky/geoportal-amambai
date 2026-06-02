@@ -503,3 +503,8 @@ Este documento complementa:
 - prova de conceito FastAPI em homologacao;
 - validacao com setor responsavel;
 - desenho de telas do painel interno.
+## Decisao de Runtime para Endpoints Internos
+
+O endpoint `GET /api/internal/iluminacao/solicitacoes` deve rodar no runtime interno de homologacao com `geoportal_api_homolog`, nao no runtime publico com `api_iluminacao_homolog`. A role publica permanece dedicada a `/api/public/*` e nao deve receber acesso a `mod_auth`.
+
+A separacao entre runtime publico e runtime interno e decisao de seguranca e menor privilegio, nao um contorno temporario. O runtime interno ainda nao foi exposto publicamente, o NSSM interno ainda nao foi criado e os arquivos `.env` reais continuam fora do Git. Detalhes: `INTERNAL-PUBLIC-RUNTIME-SEPARATION.md`.

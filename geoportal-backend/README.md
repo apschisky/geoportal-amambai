@@ -503,3 +503,8 @@ O backend implementa tratamento global de erros de validacao para evitar expor d
 - Nao incluir senha, token, IP interno, usuario de banco ou dados reais.
 - Usar `.env.example` apenas como referencia segura.
 - Esta prova de conceito e local/homologacao e nao deve ser apontada para producao.
+## Decisao de Runtime Publico e Interno em Homologacao
+
+O primeiro endpoint interno de negocio (`GET /api/internal/iluminacao/solicitacoes`) validou a necessidade de separar o servico publico do servico interno. `GeoportalAPIHomologacao`, na porta 8000, usa `api_iluminacao_homolog` para `/api/public/*` e nao acessa `mod_auth`. O futuro `GeoportalAPIInternaHomologacao`, na porta 8002, usa `geoportal_api_homolog` para `/api/internal/*`, com rotas internas habilitadas e privilegios minimos ja validados.
+
+A API publica permanece isolada, a role publica nao deve receber `mod_auth`, os `.env` reais continuam fora do Git, e NSSM interno, proxy/Apache, tela interna e producao nao foram alterados. Detalhes: `../geoportal-vite/docs/INTERNAL-PUBLIC-RUNTIME-SEPARATION.md`.

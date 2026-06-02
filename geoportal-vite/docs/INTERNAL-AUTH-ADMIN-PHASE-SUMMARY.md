@@ -318,3 +318,8 @@ Regras operacionais (imediatas):
 - Não reiniciar serviços de produção ou alterar NSSM sem confirmação humana.
 
 Próxima etapa: abrir etapa separada "Ativação Controlada do Geoportal Interno em Produção" com checklist de backup, validação, bootstrap de perfis, permissões mínimas, plano de rollback e confirmação humana.
+## Decisao Arquitetural: Separacao de Runtime Publico e Interno
+
+A validacao do primeiro endpoint interno de negocio confirmou a decisao arquitetural de separar runtime publico e runtime interno. O runtime publico de homologacao continua usando `api_iluminacao_homolog`, voltado a `/api/public/*` e sem acesso a `mod_auth`; o runtime interno planejado usa `geoportal_api_homolog`, com `GEOPORTAL_INTERNAL_ROUTES_ENABLED=true`, acesso a `mod_auth` conforme matriz validada e leitura minima de `mod_iluminacao.solicitacoes` para a rota interna de Iluminacao.
+
+Essa separacao e uma decisao de seguranca e menor privilegio, nao um contorno temporario. A API publica permanece isolada, a role publica nao deve receber `mod_auth`, os arquivos `.env` reais continuam fora do Git e o NSSM interno, proxy/Apache e tela interna ainda nao foram criados. Detalhes: `INTERNAL-PUBLIC-RUNTIME-SEPARATION.md`.
