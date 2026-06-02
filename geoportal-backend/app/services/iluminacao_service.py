@@ -11,6 +11,7 @@ from app.schemas.iluminacao import (
     IluminacaoConsultaRequest,
     IluminacaoSolicitacaoHistoricoInternoResult,
     IluminacaoSolicitacaoInternaItem,
+    IluminacaoSolicitacaoObservacoesInternasResult,
     IluminacaoSolicitacaoCreate,
     IluminacaoSolicitacaoResponse,
     IluminacaoSolicitacoesInternasResult,
@@ -251,6 +252,35 @@ def listar_historico_solicitacao_interna(
                 SOLICITACAO_INTERNA_NOT_FOUND_MESSAGE
             )
         return iluminacao_repository.list_historico_solicitacao_interna(
+            solicitacao_id,
+            limit=limit,
+            offset=offset,
+        )
+    except SolicitacaoInternaNotFoundError:
+        raise
+    except (SQLAlchemyError, RuntimeError) as exc:
+        raise DatabaseUnavailableError(DATABASE_UNAVAILABLE_MESSAGE) from exc
+
+
+def listar_observacoes_solicitacao_interna(
+    solicitacao_id: int,
+    *,
+    limit: int = 50,
+    offset: int = 0,
+) -> IluminacaoSolicitacaoObservacoesInternasResult:
+    if solicitacao_id < 1:
+        raise ValueError("solicitacao_id must be greater than or equal to 1")
+    if limit < 1 or limit > 100:
+        raise ValueError("limit must be between 1 and 100")
+    if offset < 0:
+        raise ValueError("offset must be greater than or equal to 0")
+
+    try:
+        if not iluminacao_repository.solicitacao_interna_existe(solicitacao_id):
+            raise SolicitacaoInternaNotFoundError(
+                SOLICITACAO_INTERNA_NOT_FOUND_MESSAGE
+            )
+        return iluminacao_repository.list_observacoes_solicitacao_interna(
             solicitacao_id,
             limit=limit,
             offset=offset,

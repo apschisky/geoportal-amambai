@@ -13,6 +13,8 @@ from app.schemas.iluminacao import (
     IluminacaoSolicitacaoHistoricoInternoItem,
     IluminacaoSolicitacaoHistoricoInternoResult,
     IluminacaoSolicitacaoInternaItem,
+    IluminacaoSolicitacaoObservacaoInternaItem,
+    IluminacaoSolicitacaoObservacoesInternasResult,
     IluminacaoSolicitacoesInternasResult,
 )
 from app.schemas.iluminacao import TipoProblemaIluminacao
@@ -32,12 +34,21 @@ INTERNAL_SOLICITACAO_HISTORICO_ROUTE = (
 INTERNAL_SOLICITACAO_HISTORICO_PATH = (
     "/api/internal/iluminacao/solicitacoes/10/historico"
 )
+INTERNAL_SOLICITACAO_OBSERVACOES_ROUTE = (
+    "/api/internal/iluminacao/solicitacoes/{solicitacao_id}/observacoes"
+)
+INTERNAL_SOLICITACAO_OBSERVACOES_PATH = (
+    "/api/internal/iluminacao/solicitacoes/10/observacoes"
+)
 EXPECTED_PERMISSION = "iluminacao.solicitacoes.ler"
 EXPECTED_HISTORICO_PERMISSION = "iluminacao.solicitacoes.ver_historico"
+EXPECTED_OBSERVACOES_PERMISSION = "iluminacao.solicitacoes.ver_observacoes"
 EXPIRES_AT = datetime(2030, 5, 27, 13, 0, tzinfo=UTC)
 CREATED_AT = datetime(2026, 5, 20, 10, 30, tzinfo=UTC)
 UPDATED_AT = datetime(2026, 5, 21, 8, 15, tzinfo=UTC)
 HISTORICO_CREATED_AT = datetime(2026, 5, 20, 11, 30, tzinfo=UTC)
+OBSERVACAO_CREATED_AT = datetime(2026, 5, 20, 12, 30, tzinfo=UTC)
+OBSERVACAO_EDITED_AT = datetime(2026, 5, 20, 13, 30, tzinfo=UTC)
 
 
 def build_isolated_app() -> FastAPI:
@@ -93,6 +104,19 @@ def fake_historico_item() -> IluminacaoSolicitacaoHistoricoInternoItem:
         origem_acao="sistema",
         observacao_resumida="Solicitacao registrada.",
         criado_em=HISTORICO_CREATED_AT,
+    )
+
+
+def fake_observacao_item() -> IluminacaoSolicitacaoObservacaoInternaItem:
+    return IluminacaoSolicitacaoObservacaoInternaItem(
+        id=70,
+        solicitacao_id=10,
+        observacao="Equipe acionada.",
+        visibilidade="interna",
+        usuario_id="7",
+        usuario_nome="Administrador Interno",
+        criado_em=OBSERVACAO_CREATED_AT,
+        editado_em=OBSERVACAO_EDITED_AT,
     )
 
 
@@ -383,6 +407,118 @@ def test_internal_solicitacao_historico_returns_empty_list_when_no_history(
     }
 
 
+def test_internal_solicitacao_observacoes_returns_200_for_authenticated_user_with_permission(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    calls: dict[str, object] = {}
+
+    def fake_has_permission(usuario_id: int, permission_code: str) -> bool:
+        calls.update(
+            {
+                "usuario_id": usuario_id,
+                "permission_code": permission_code,
+            }
+        )
+        return True
+
+    service_calls: dict[str, object] = {}
+
+    def fake_listar_observacoes_solicitacao_interna(
+        solicitacao_id: int,
+        *,
+        limit: int,
+        offset: int,
+    ) -> IluminacaoSolicitacaoObservacoesInternasResult:
+        service_calls.update(
+            {
+                "solicitacao_id": solicitacao_id,
+                "limit": limit,
+                "offset": offset,
+            }
+        )
+        return IluminacaoSolicitacaoObservacoesInternasResult(
+            items=[fake_observacao_item()],
+            total=2,
+        )
+
+    monkeypatch.setattr(auth_dependencies, "has_permission", fake_has_permission)
+    monkeypatch.setattr(
+        internal_iluminacao,
+        "listar_observacoes_solicitacao_interna",
+        fake_listar_observacoes_solicitacao_interna,
+    )
+    client = TestClient(app)
+
+    response = client.get(
+        INTERNAL_SOLICITACAO_OBSERVACOES_PATH,
+        params={"limit": 25, "offset": 5},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "items": [
+            {
+                "id": 70,
+                "solicitacao_id": 10,
+                "observacao": "Equipe acionada.",
+                "visibilidade": "interna",
+                "usuario_id": "7",
+                "usuario_nome": "Administrador Interno",
+                "criado_em": "2026-05-20T12:30:00Z",
+                "editado_em": "2026-05-20T13:30:00Z",
+            }
+        ],
+        "limit": 25,
+        "offset": 5,
+        "total": 2,
+    }
+    assert calls == {
+        "usuario_id": 7,
+        "permission_code": EXPECTED_OBSERVACOES_PERMISSION,
+    }
+    assert service_calls == {
+        "solicitacao_id": 10,
+        "limit": 25,
+        "offset": 5,
+    }
+
+
+def test_internal_solicitacao_observacoes_returns_empty_list_when_no_observations(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+    monkeypatch.setattr(
+        internal_iluminacao,
+        "listar_observacoes_solicitacao_interna",
+        lambda solicitacao_id, *, limit, offset: (
+            IluminacaoSolicitacaoObservacoesInternasResult(items=[], total=0)
+        ),
+    )
+    client = TestClient(app)
+
+    response = client.get(INTERNAL_SOLICITACAO_OBSERVACOES_PATH)
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "items": [],
+        "limit": 50,
+        "offset": 0,
+        "total": 0,
+    }
+
+
 def test_internal_solicitacoes_returns_401_without_valid_session() -> None:
     app = build_isolated_app()
 
@@ -423,6 +559,21 @@ def test_internal_solicitacao_historico_returns_401_without_valid_session() -> N
     client = TestClient(app)
 
     response = client.get(INTERNAL_SOLICITACAO_HISTORICO_PATH)
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Not authenticated"}
+
+
+def test_internal_solicitacao_observacoes_returns_401_without_valid_session() -> None:
+    app = build_isolated_app()
+
+    def fake_auth_failure() -> None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    app.dependency_overrides[get_current_authenticated_session] = fake_auth_failure
+    client = TestClient(app)
+
+    response = client.get(INTERNAL_SOLICITACAO_OBSERVACOES_PATH)
 
     assert response.status_code == 401
     assert response.json() == {"detail": "Not authenticated"}
@@ -517,6 +668,38 @@ def test_internal_solicitacao_historico_returns_403_without_required_permission(
     assert "Solicitacao registrada" not in response.text
 
 
+def test_internal_solicitacao_observacoes_returns_403_without_required_permission(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: False,
+    )
+    monkeypatch.setattr(
+        internal_iluminacao,
+        "listar_observacoes_solicitacao_interna",
+        lambda solicitacao_id, *, limit, offset: (
+            IluminacaoSolicitacaoObservacoesInternasResult(
+                items=[fake_observacao_item()],
+                total=1,
+            )
+        ),
+    )
+    client = TestClient(app)
+
+    response = client.get(INTERNAL_SOLICITACAO_OBSERVACOES_PATH)
+
+    assert response.status_code == 403
+    assert response.json() == {"detail": "Forbidden"}
+    assert EXPECTED_OBSERVACOES_PERMISSION not in response.text
+    assert "Equipe acionada" not in response.text
+
+
 def test_get_internal_solicitacoes_does_not_require_mutating_header(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -597,6 +780,35 @@ def test_get_internal_solicitacao_historico_does_not_require_mutating_header(
     assert response.status_code == 200
 
 
+def test_get_internal_solicitacao_observacoes_does_not_require_mutating_header(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+    monkeypatch.setattr(
+        internal_iluminacao,
+        "listar_observacoes_solicitacao_interna",
+        lambda solicitacao_id, *, limit, offset: (
+            IluminacaoSolicitacaoObservacoesInternasResult(
+                items=[fake_observacao_item()],
+                total=1,
+            )
+        ),
+    )
+    client = TestClient(app)
+
+    response = client.get(INTERNAL_SOLICITACAO_OBSERVACOES_PATH)
+
+    assert response.status_code == 200
+
+
 def test_internal_solicitacao_detail_returns_404_when_not_found(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -660,6 +872,43 @@ def test_internal_solicitacao_historico_returns_404_when_solicitacao_not_found(
     client = TestClient(app)
 
     response = client.get(INTERNAL_SOLICITACAO_HISTORICO_PATH)
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Not found"}
+    assert "Solicitacao nao encontrada" not in response.text
+
+
+def test_internal_solicitacao_observacoes_returns_404_when_solicitacao_not_found(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+
+    def fail_not_found(
+        solicitacao_id: int,
+        *,
+        limit: int,
+        offset: int,
+    ) -> IluminacaoSolicitacaoObservacoesInternasResult:
+        raise internal_iluminacao.SolicitacaoInternaNotFoundError(
+            "Solicitacao nao encontrada."
+        )
+
+    monkeypatch.setattr(
+        internal_iluminacao,
+        "listar_observacoes_solicitacao_interna",
+        fail_not_found,
+    )
+    client = TestClient(app)
+
+    response = client.get(INTERNAL_SOLICITACAO_OBSERVACOES_PATH)
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Not found"}
@@ -798,6 +1047,52 @@ def test_internal_solicitacao_historico_database_error_is_sanitized(
         assert forbidden not in response.text
 
 
+def test_internal_solicitacao_observacoes_database_error_is_sanitized(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+
+    def fail_with_database_error(
+        solicitacao_id: int,
+        *,
+        limit: int,
+        offset: int,
+    ) -> IluminacaoSolicitacaoObservacoesInternasResult:
+        raise DatabaseUnavailableError(DATABASE_UNAVAILABLE_MESSAGE)
+
+    monkeypatch.setattr(
+        internal_iluminacao,
+        "listar_observacoes_solicitacao_interna",
+        fail_with_database_error,
+    )
+    client = TestClient(app)
+
+    response = client.get(INTERNAL_SOLICITACAO_OBSERVACOES_PATH)
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": DATABASE_UNAVAILABLE_MESSAGE}
+    for forbidden in (
+        "DATABASE_URL",
+        "db.internal",
+        "senha",
+        "token",
+        "cookie",
+        "role",
+        "GRANT",
+        "SELECT",
+        "traceback",
+    ):
+        assert forbidden not in response.text
+
+
 def test_internal_solicitacoes_validates_query_params(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -900,6 +1195,30 @@ def test_internal_solicitacao_historico_validates_query_params(
         (INTERNAL_SOLICITACAO_HISTORICO_PATH, {"limit": 0}),
         (INTERNAL_SOLICITACAO_HISTORICO_PATH, {"limit": 101}),
         (INTERNAL_SOLICITACAO_HISTORICO_PATH, {"offset": -1}),
+    ):
+        response = client.get(path, params=params)
+        assert response.status_code == 422
+
+
+def test_internal_solicitacao_observacoes_validates_query_params(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+    client = TestClient(app)
+
+    for path, params in (
+        ("/api/internal/iluminacao/solicitacoes/0/observacoes", {}),
+        (INTERNAL_SOLICITACAO_OBSERVACOES_PATH, {"limit": 0}),
+        (INTERNAL_SOLICITACAO_OBSERVACOES_PATH, {"limit": 101}),
+        (INTERNAL_SOLICITACAO_OBSERVACOES_PATH, {"offset": -1}),
     ):
         response = client.get(path, params=params)
         assert response.status_code == 422
@@ -1096,6 +1415,64 @@ def test_internal_solicitacao_historico_response_does_not_expose_sensitive_field
         assert forbidden not in response_text
 
 
+def test_internal_solicitacao_observacoes_response_does_not_expose_sensitive_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+    monkeypatch.setattr(
+        internal_iluminacao,
+        "listar_observacoes_solicitacao_interna",
+        lambda solicitacao_id, *, limit, offset: (
+            IluminacaoSolicitacaoObservacoesInternasResult(
+                items=[fake_observacao_item()],
+                total=1,
+            )
+        ),
+    )
+    client = TestClient(app)
+
+    response = client.get(INTERNAL_SOLICITACAO_OBSERVACOES_PATH)
+
+    assert response.status_code == 200
+    response_text = response.text
+    body = response.json()
+    assert set(body) == {"items", "limit", "offset", "total"}
+    assert body["total"] == 1
+    assert set(body["items"][0]) == {
+        "id",
+        "solicitacao_id",
+        "observacao",
+        "visibilidade",
+        "usuario_id",
+        "usuario_nome",
+        "criado_em",
+        "editado_em",
+    }
+    for forbidden in (
+        "senha_hash",
+        "token_hash",
+        "session_secret",
+        "DATABASE_URL",
+        "SQL",
+        "role",
+        "GRANT",
+        "cookie",
+        "deleted_at",
+        "deleted_reason",
+        "publica_futura",
+        "anexos",
+    ):
+        assert forbidden not in response_text
+
+
 def test_internal_iluminacao_router_uses_permission_without_hardcoded_login() -> None:
     source = inspect.getsource(internal_iluminacao)
     route_paths = {route.path for route in internal_iluminacao.router.routes}
@@ -1103,10 +1480,13 @@ def test_internal_iluminacao_router_uses_permission_without_hardcoded_login() ->
     assert INTERNAL_SOLICITACOES_PATH in route_paths
     assert INTERNAL_SOLICITACAO_DETAIL_ROUTE in route_paths
     assert INTERNAL_SOLICITACAO_HISTORICO_ROUTE in route_paths
+    assert INTERNAL_SOLICITACAO_OBSERVACOES_ROUTE in route_paths
     assert "require_permission(LIST_INTERNAL_ILUMINACAO_SOLICITACOES_PERMISSION)" in source
     assert "require_permission(LIST_INTERNAL_ILUMINACAO_HISTORICO_PERMISSION)" in source
+    assert "require_permission(LIST_INTERNAL_ILUMINACAO_OBSERVACOES_PERMISSION)" in source
     assert EXPECTED_PERMISSION in source
     assert EXPECTED_HISTORICO_PERMISSION in source
+    assert EXPECTED_OBSERVACOES_PERMISSION in source
     assert "admin.homologacao" not in source
     assert "login ==" not in source
     assert "require_internal_mutating_request_header" not in source

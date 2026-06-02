@@ -9,6 +9,8 @@ from app.schemas.iluminacao import (
     IluminacaoSolicitacaoHistoricoInternoItem,
     IluminacaoSolicitacaoHistoricoInternoResult,
     IluminacaoSolicitacaoInternaItem,
+    IluminacaoSolicitacaoObservacaoInternaItem,
+    IluminacaoSolicitacaoObservacoesInternasResult,
     IluminacaoSolicitacaoCreate,
     IluminacaoSolicitacaoResponse,
     IluminacaoSolicitacoesInternasResult,
@@ -459,6 +461,74 @@ def list_historico_solicitacao_interna(
     return IluminacaoSolicitacaoHistoricoInternoResult(
         items=[
             IluminacaoSolicitacaoHistoricoInternoItem.model_validate(dict(row))
+            for row in rows
+        ],
+        total=int(total_row["total"]),
+    )
+
+
+def list_observacoes_solicitacao_interna(
+    solicitacao_id: int,
+    *,
+    limit: int = 50,
+    offset: int = 0,
+    engine: Engine | None = None,
+) -> IluminacaoSolicitacaoObservacoesInternasResult:
+    if solicitacao_id < 1:
+        raise ValueError("solicitacao_id must be greater than or equal to 1")
+    if limit < 1 or limit > 100:
+        raise ValueError("limit must be between 1 and 100")
+    if offset < 0:
+        raise ValueError("offset must be greater than or equal to 0")
+
+    db_engine = engine or get_engine()
+
+    statement = text(
+        """
+        SELECT
+            id,
+            solicitacao_id,
+            observacao,
+            visibilidade,
+            usuario_id,
+            usuario_nome,
+            criado_em,
+            editado_em
+        FROM mod_iluminacao.solicitacoes_observacoes
+        WHERE solicitacao_id = :solicitacao_id
+          AND deleted_at IS NULL
+          AND visibilidade = 'interna'
+        ORDER BY criado_em ASC, id ASC
+        LIMIT :limit
+        OFFSET :offset
+        """
+    )
+    count_statement = text(
+        """
+        SELECT COUNT(*) AS total
+        FROM mod_iluminacao.solicitacoes_observacoes
+        WHERE solicitacao_id = :solicitacao_id
+          AND deleted_at IS NULL
+          AND visibilidade = 'interna'
+        """
+    )
+
+    params = {
+        "solicitacao_id": solicitacao_id,
+        "limit": limit,
+        "offset": offset,
+    }
+
+    with db_engine.begin() as connection:
+        rows = connection.execute(statement, params).mappings().all()
+        total_row = connection.execute(
+            count_statement,
+            {"solicitacao_id": solicitacao_id},
+        ).mappings().one()
+
+    return IluminacaoSolicitacaoObservacoesInternasResult(
+        items=[
+            IluminacaoSolicitacaoObservacaoInternaItem.model_validate(dict(row))
             for row in rows
         ],
         total=int(total_row["total"]),

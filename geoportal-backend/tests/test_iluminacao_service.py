@@ -9,6 +9,8 @@ from app.schemas.iluminacao import (
     IluminacaoSolicitacaoHistoricoInternoItem,
     IluminacaoSolicitacaoHistoricoInternoResult,
     IluminacaoSolicitacaoInternaItem,
+    IluminacaoSolicitacaoObservacaoInternaItem,
+    IluminacaoSolicitacaoObservacoesInternasResult,
     IluminacaoSolicitacaoCreate,
     IluminacaoSolicitacaoResponse,
     IluminacaoSolicitacoesInternasResult,
@@ -336,6 +338,21 @@ def historico_solicitacao_item() -> IluminacaoSolicitacaoHistoricoInternoItem:
             "origem_acao": "sistema",
             "observacao_resumida": "Solicitacao registrada.",
             "criado_em": datetime(2026, 5, 20, 11, 30),
+        }
+    )
+
+
+def observacao_solicitacao_item() -> IluminacaoSolicitacaoObservacaoInternaItem:
+    return IluminacaoSolicitacaoObservacaoInternaItem.model_validate(
+        {
+            "id": 70,
+            "solicitacao_id": 10,
+            "observacao": "Equipe acionada.",
+            "visibilidade": "interna",
+            "usuario_id": "7",
+            "usuario_nome": "Administrador Interno",
+            "criado_em": datetime(2026, 5, 20, 12, 30),
+            "editado_em": None,
         }
     )
 
@@ -785,6 +802,180 @@ def test_listar_historico_solicitacao_interna_converts_exists_error_to_safe_erro
 
     with pytest.raises(DatabaseUnavailableError) as exc_info:
         iluminacao_service.listar_historico_solicitacao_interna(10)
+
+    message = str(exc_info.value)
+    assert message == "Servico temporariamente indisponivel. Tente novamente mais tarde."
+    assert "DATABASE_URL" not in message
+    assert "db.internal" not in message
+    assert "senha" not in message.lower()
+    assert "SELECT" not in message
+
+
+def test_listar_observacoes_solicitacao_interna_returns_observations(
+    monkeypatch,
+) -> None:
+    calls: dict[str, object] = {}
+
+    def fake_list_observacoes_solicitacao_interna(
+        solicitacao_id: int,
+        *,
+        limit: int,
+        offset: int,
+    ) -> IluminacaoSolicitacaoObservacoesInternasResult:
+        calls.update(
+            {
+                "solicitacao_id": solicitacao_id,
+                "limit": limit,
+                "offset": offset,
+            }
+        )
+        return IluminacaoSolicitacaoObservacoesInternasResult(
+            items=[observacao_solicitacao_item()],
+            total=1,
+        )
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "solicitacao_interna_existe",
+        lambda solicitacao_id: True,
+    )
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "list_observacoes_solicitacao_interna",
+        fake_list_observacoes_solicitacao_interna,
+    )
+
+    response = iluminacao_service.listar_observacoes_solicitacao_interna(
+        10,
+        limit=25,
+        offset=5,
+    )
+
+    assert response.items[0].id == 70
+    assert response.items[0].visibilidade == "interna"
+    assert response.total == 1
+    assert calls == {
+        "solicitacao_id": 10,
+        "limit": 25,
+        "offset": 5,
+    }
+
+
+def test_listar_observacoes_solicitacao_interna_returns_empty_when_exists_without_observations(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "solicitacao_interna_existe",
+        lambda solicitacao_id: True,
+    )
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "list_observacoes_solicitacao_interna",
+        lambda solicitacao_id, *, limit, offset: (
+            IluminacaoSolicitacaoObservacoesInternasResult(items=[], total=0)
+        ),
+    )
+
+    response = iluminacao_service.listar_observacoes_solicitacao_interna(10)
+
+    assert response.items == []
+    assert response.total == 0
+
+
+def test_listar_observacoes_solicitacao_interna_raises_safe_not_found(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "solicitacao_interna_existe",
+        lambda solicitacao_id: False,
+    )
+
+    with pytest.raises(iluminacao_service.SolicitacaoInternaNotFoundError) as exc_info:
+        iluminacao_service.listar_observacoes_solicitacao_interna(999)
+
+    message = str(exc_info.value)
+    assert message == "Solicitacao nao encontrada."
+    assert "DATABASE_URL" not in message
+    assert "SELECT" not in message
+    assert "token" not in message
+
+
+def test_listar_observacoes_solicitacao_interna_rejects_invalid_params(
+    monkeypatch,
+) -> None:
+    def fail_if_called(*args: object, **kwargs: object) -> None:
+        raise AssertionError("repository should not be called")
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "solicitacao_interna_existe",
+        fail_if_called,
+    )
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "list_observacoes_solicitacao_interna",
+        fail_if_called,
+    )
+
+    for kwargs in (
+        {"solicitacao_id": 0, "limit": 50, "offset": 0},
+        {"solicitacao_id": 10, "limit": 0, "offset": 0},
+        {"solicitacao_id": 10, "limit": 101, "offset": 0},
+        {"solicitacao_id": 10, "limit": 50, "offset": -1},
+    ):
+        with pytest.raises(ValueError):
+            iluminacao_service.listar_observacoes_solicitacao_interna(**kwargs)
+
+
+def test_listar_observacoes_solicitacao_interna_converts_database_error_to_safe_error(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "solicitacao_interna_existe",
+        lambda solicitacao_id: True,
+    )
+
+    def fail_with_database_error(*args: object, **kwargs: object) -> None:
+        raise SQLAlchemyError(
+            "could not connect using DATABASE_URL on host db.internal:5432 SELECT"
+        )
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "list_observacoes_solicitacao_interna",
+        fail_with_database_error,
+    )
+
+    with pytest.raises(DatabaseUnavailableError) as exc_info:
+        iluminacao_service.listar_observacoes_solicitacao_interna(10)
+
+    message = str(exc_info.value)
+    assert message == "Servico temporariamente indisponivel. Tente novamente mais tarde."
+    assert "DATABASE_URL" not in message
+    assert "db.internal" not in message
+    assert "senha" not in message.lower()
+    assert "SELECT" not in message
+
+
+def test_listar_observacoes_solicitacao_interna_converts_exists_error_to_safe_error(
+    monkeypatch,
+) -> None:
+    def fail_with_database_error(*args: object, **kwargs: object) -> None:
+        raise SQLAlchemyError(
+            "could not connect using DATABASE_URL on host db.internal:5432 SELECT"
+        )
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "solicitacao_interna_existe",
+        fail_with_database_error,
+    )
+
+    with pytest.raises(DatabaseUnavailableError) as exc_info:
+        iluminacao_service.listar_observacoes_solicitacao_interna(10)
 
     message = str(exc_info.value)
     assert message == "Servico temporariamente indisponivel. Tente novamente mais tarde."

@@ -43,6 +43,12 @@ INTERNAL_ILUMINACAO_SOLICITACAO_HISTORICO_ROUTE = (
 INTERNAL_ILUMINACAO_SOLICITACAO_HISTORICO_PATH = (
     "/api/internal/iluminacao/solicitacoes/10/historico"
 )
+INTERNAL_ILUMINACAO_SOLICITACAO_OBSERVACOES_ROUTE = (
+    "/api/internal/iluminacao/solicitacoes/{solicitacao_id}/observacoes"
+)
+INTERNAL_ILUMINACAO_SOLICITACAO_OBSERVACOES_PATH = (
+    "/api/internal/iluminacao/solicitacoes/10/observacoes"
+)
 EXPIRES_AT = datetime(2026, 5, 27, 13, 0, tzinfo=UTC)
 
 
@@ -101,6 +107,7 @@ def test_internal_smoke_route_is_absent_when_flag_is_not_enabled(
     assert INTERNAL_ILUMINACAO_SOLICITACOES_PATH not in route_paths(app)
     assert INTERNAL_ILUMINACAO_SOLICITACAO_DETAIL_ROUTE not in route_paths(app)
     assert INTERNAL_ILUMINACAO_SOLICITACAO_HISTORICO_ROUTE not in route_paths(app)
+    assert INTERNAL_ILUMINACAO_SOLICITACAO_OBSERVACOES_ROUTE not in route_paths(app)
 
 
 def test_internal_smoke_route_returns_404_when_flag_is_disabled(
@@ -130,6 +137,10 @@ def test_internal_smoke_route_returns_404_when_flag_is_disabled(
     assert (
         client.get(INTERNAL_ILUMINACAO_SOLICITACAO_HISTORICO_PATH).status_code == 404
     )
+    assert (
+        client.get(INTERNAL_ILUMINACAO_SOLICITACAO_OBSERVACOES_PATH).status_code
+        == 404
+    )
 
 
 def test_internal_smoke_route_is_present_when_flag_is_enabled(
@@ -153,6 +164,7 @@ def test_internal_smoke_route_is_present_when_flag_is_enabled(
     assert INTERNAL_ILUMINACAO_SOLICITACOES_PATH in route_paths(app)
     assert INTERNAL_ILUMINACAO_SOLICITACAO_DETAIL_ROUTE in route_paths(app)
     assert INTERNAL_ILUMINACAO_SOLICITACAO_HISTORICO_ROUTE in route_paths(app)
+    assert INTERNAL_ILUMINACAO_SOLICITACAO_OBSERVACOES_ROUTE in route_paths(app)
 
 
 def test_enabled_internal_smoke_route_without_auth_returns_generic_401(

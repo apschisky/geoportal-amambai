@@ -9,6 +9,7 @@ from app.repositories.iluminacao_repository import (
     get_solicitacao_interna_por_id,
     get_solicitacao_publica_por_protocolo,
     list_historico_solicitacao_interna,
+    list_observacoes_solicitacao_interna,
     list_solicitacoes_internas,
     solicitacao_interna_existe,
 )
@@ -148,6 +149,19 @@ def historico_solicitacao_row() -> dict[str, Any]:
         "origem_acao": "sistema",
         "observacao_resumida": "Solicitacao registrada.",
         "criado_em": datetime(2026, 5, 20, 11, 30),
+    }
+
+
+def observacao_solicitacao_row() -> dict[str, Any]:
+    return {
+        "id": 70,
+        "solicitacao_id": 10,
+        "observacao": "Equipe acionada.",
+        "visibilidade": "interna",
+        "usuario_id": "7",
+        "usuario_nome": "Administrador Interno",
+        "criado_em": datetime(2026, 5, 20, 12, 30),
+        "editado_em": None,
     }
 
 
@@ -639,6 +653,100 @@ def test_list_historico_solicitacao_interna_rejects_invalid_params_without_sql()
     ):
         try:
             list_historico_solicitacao_interna(engine=engine, **kwargs)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("invalid params should be rejected")
+
+    assert engine.connection.statement is None
+
+
+def test_list_observacoes_solicitacao_interna_uses_explicit_columns_and_total() -> None:
+    engine = FakeEngine([observacao_solicitacao_row()])
+
+    response = list_observacoes_solicitacao_interna(
+        solicitacao_id=10,
+        limit=25,
+        offset=5,
+        engine=engine,
+    )
+
+    assert engine.connection.params_history[0] == {
+        "solicitacao_id": 10,
+        "limit": 25,
+        "offset": 5,
+    }
+    assert engine.connection.params_history[1] == {"solicitacao_id": 10}
+
+    sql = str(engine.connection.statements[0])
+    count_sql = str(engine.connection.statements[1])
+    select_clause = sql.split("FROM", maxsplit=1)[0]
+
+    assert "FROM mod_iluminacao.solicitacoes_observacoes" in sql
+    assert "WHERE solicitacao_id = :solicitacao_id" in sql
+    assert "deleted_at IS NULL" in sql
+    assert "visibilidade = 'interna'" in sql
+    assert "ORDER BY criado_em ASC, id ASC" in sql
+    assert "LIMIT :limit" in sql
+    assert "OFFSET :offset" in sql
+    assert "COUNT(*) AS total" in count_sql
+    assert "FROM mod_iluminacao.solicitacoes_observacoes" in count_sql
+    assert "WHERE solicitacao_id = :solicitacao_id" in count_sql
+    assert "deleted_at IS NULL" in count_sql
+    assert "visibilidade = 'interna'" in count_sql
+    assert "LIMIT :limit" not in count_sql
+    assert "OFFSET :offset" not in count_sql
+    assert "ORDER BY" not in count_sql
+    assert "SELECT *" not in sql.upper()
+    assert "id" in select_clause
+    assert "solicitacao_id" in select_clause
+    assert "observacao" in select_clause
+    assert "visibilidade" in select_clause
+    assert "usuario_id" in select_clause
+    assert "usuario_nome" in select_clause
+    assert "criado_em" in select_clause
+    assert "editado_em" in select_clause
+    assert "deleted_at" not in select_clause
+    assert "10" not in sql
+    assert "Equipe acionada" not in sql
+    assert "publica_futura" not in sql
+    assert response.total == 1
+    assert response.items[0].id == 70
+    assert response.items[0].solicitacao_id == 10
+    assert response.items[0].visibilidade == "interna"
+
+
+def test_list_observacoes_solicitacao_interna_returns_empty_result() -> None:
+    engine = FakeEngine([])
+
+    response = list_observacoes_solicitacao_interna(
+        solicitacao_id=10,
+        limit=50,
+        offset=0,
+        engine=engine,
+    )
+
+    assert response.items == []
+    assert response.total == 0
+    assert engine.connection.params_history[0] == {
+        "solicitacao_id": 10,
+        "limit": 50,
+        "offset": 0,
+    }
+    assert engine.connection.params_history[1] == {"solicitacao_id": 10}
+
+
+def test_list_observacoes_solicitacao_interna_rejects_invalid_params_without_sql() -> None:
+    engine = FakeEngine([observacao_solicitacao_row()])
+
+    for kwargs in (
+        {"solicitacao_id": 0, "limit": 50, "offset": 0},
+        {"solicitacao_id": 10, "limit": 0, "offset": 0},
+        {"solicitacao_id": 10, "limit": 101, "offset": 0},
+        {"solicitacao_id": 10, "limit": 50, "offset": -1},
+    ):
+        try:
+            list_observacoes_solicitacao_interna(engine=engine, **kwargs)
         except ValueError:
             pass
         else:

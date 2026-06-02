@@ -247,7 +247,7 @@ Erros: 401 sem sessao, 403 sem permissao, 422 para query invalida e 503 generico
 - Periodo invalido (`criado_de > criado_ate`) retornou status 422.
 - O filtro `poste_id` e opcional: sem ele, a listagem continua retornando solicitacoes com `poste_mapa` e futuras solicitacoes `ponto_manual`; com ele, a listagem restringe corretamente a um poste especifico.
 - Producao, proxy/Apache, frontend, migrations, schema, `.env`, NSSM, roles e GRANTs nao foram alterados nesta validacao.
-- Observacoes internas, anexos, filtro `localizacao_tipo` e alteracao de status ficam para etapas posteriores.
+- Leitura de observacoes internas, anexos, filtro `localizacao_tipo` e alteracao de status ficam para etapas posteriores.
 
 ### `GET /api/internal/iluminacao/solicitacoes/{id}`
 
@@ -268,7 +268,7 @@ Resposta:
 
 Erros: 401 sem sessao, 403 sem permissao, 404 generico quando a solicitacao nao existir, 422 para `id` invalido e 503 generico se o banco estiver indisponivel, sem expor SQL, traceback, host, role, segredo ou `DATABASE_URL`.
 
-Historico possui contrato proprio somente leitura descrito a seguir. Observacoes internas e anexos ficam para etapas posteriores com contratos, permissoes e auditoria proprios.
+Historico e observacoes internas possuem contratos proprios somente leitura descritos a seguir. Anexos ficam para etapa posterior com contrato, permissao e auditoria proprios.
 
 Diagnostico do schema interno confirmou que `mod_iluminacao.solicitacoes_historico` e `mod_iluminacao.solicitacoes_observacoes` ja suportam os proximos endpoints basicos sem nova migration. A ordem recomendada e implementar primeiro leitura de historico, depois leitura de observacoes internas, depois criacao de observacao interna com evento resumido no historico, e somente depois alteracao de status com auditoria obrigatoria.
 
@@ -317,7 +317,36 @@ Erros: 401 sem sessao, 403 sem permissao, 404 generico quando a solicitacao nao 
 - Em testes focados no servidor, houve uma falha inicial ambiental em `tests/test_internal_iluminacao_solicitacoes_router.py` porque o processo PowerShell herdou `GEOPORTAL_INTERNAL_ROUTES_ENABLED=true`; apos limpar apenas a variavel do processo atual, o arquivo passou com 28 passed.
 - Producao, producao interna, Apache/proxy, frontend/tela interna, migrations, schema, `.env` versionado e NSSM nao foram alterados nesta etapa, exceto restart controlado do servico interno de homologacao ja existente.
 - Nenhum endpoint mutavel, usuario novo, perfil novo, role nova ou GRANT adicional foi criado; a API publica permaneceu preservada.
-- Observacoes internas, criacao de observacao, anexos e alteracao de status com auditoria obrigatoria continuam em etapas posteriores.
+- Leitura de observacoes internas e etapa seguinte; criacao de observacao, anexos e alteracao de status com auditoria obrigatoria continuam em etapas posteriores.
+
+### `GET /api/internal/iluminacao/solicitacoes/{id}/observacoes`
+
+Finalidade: consultar observacoes internas registradas para uma solicitacao de Iluminacao Publica.
+
+Primeira versao implementada:
+
+- Rota interna somente leitura sob `GEOPORTAL_INTERNAL_ROUTES_ENABLED`.
+- Exige sessao autenticada e `require_permission("iluminacao.solicitacoes.ver_observacoes")`.
+- Nao reutiliza `iluminacao.solicitacoes.comentar`, pois comentario fica reservado para futuro `POST` de observacao.
+- Nao exige `X-Geoportal-Internal-Request`, por ser GET.
+- Path param: `id` inteiro positivo.
+- Query params: `limit` de 1 a 100 com padrao 50 e `offset` minimo 0 com padrao 0.
+- Antes de retornar observacoes, valida que a solicitacao existe em `mod_iluminacao.solicitacoes` e nao esta soft-deletada (`deleted_at IS NULL`).
+- Se a solicitacao nao existir ou estiver soft-deletada, retorna 404 generico.
+- Se a solicitacao existir sem observacoes internas, retorna 200 com `items=[]` e `total=0`.
+- A consulta usa `mod_iluminacao.solicitacoes_observacoes`, colunas explicitas, bind parameters, filtro `deleted_at IS NULL`, filtro `visibilidade = 'interna'`, `ORDER BY criado_em ASC, id ASC`, `COUNT(*)` para `total` e nao usa `SELECT *`.
+- `total` considera o mesmo `solicitacao_id`, `deleted_at IS NULL` e `visibilidade = 'interna'`, sem ser afetado por `limit` ou `offset`.
+- Observacoes com `visibilidade = 'publica_futura'` nao sao retornadas nesta versao.
+
+Resposta:
+
+- Envelope com `items`, `limit`, `offset` e `total`.
+- Cada item contem `id`, `solicitacao_id`, `observacao`, `visibilidade`, `usuario_id`, `usuario_nome`, `criado_em` e `editado_em`.
+- A resposta nao retorna `deleted_at`, `deleted_reason`, senha, token, cookie, hash, `session_secret`, SQL, role, GRANT, segredo ou `DATABASE_URL`.
+
+Erros: 401 sem sessao, 403 sem permissao, 404 generico quando a solicitacao nao existir, 422 para parametros invalidos e 503 generico se o banco estiver indisponivel, sem expor SQL, traceback, host, role, segredo ou `DATABASE_URL`.
+
+Esta etapa nao cria endpoint mutavel, migration, schema, usuario, perfil, permissao real no banco, role ou GRANT. A permissao real `iluminacao.solicitacoes.ver_observacoes` e eventuais GRANTs minimos devem ser tratados em etapa operacional propria de homologacao.
 
 ### `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`
 
@@ -472,6 +501,8 @@ Transicoes devem ser validadas pela API, nao apenas pelo front-end.
 | `POST /api/public/iluminacao/consulta` | Sim | Sim | Sim | Sim | Sim | Sim |
 | `GET /api/internal/iluminacao/solicitacoes` | Nao | Sim se acumulado com campo | Sim | Sim | Sim | Sim |
 | `GET /api/internal/iluminacao/solicitacoes/{id}` | Nao | Sim se acumulado com campo | Sim | Sim | Sim | Sim |
+| `GET /api/internal/iluminacao/solicitacoes/{id}/historico` | Nao | Sim se acumulado com campo | Sim | Sim | Sim | Sim |
+| `GET /api/internal/iluminacao/solicitacoes/{id}/observacoes` | Nao | Sim se acumulado com campo | Sim | Sim | Sim | Sim |
 | `PATCH /api/internal/iluminacao/solicitacoes/{id}/status` | Nao | Sim se acumulado com campo | Sim | Sim | Sim | Nao |
 | `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes` | Nao | Sim se acumulado com campo | Sim | Sim | Sim | Nao |
 | `POST /api/internal/iluminacao/solicitacoes/{id}/anexos` | Nao | Nao ou acumulado com campo | Sim | Sim | Sim | Nao |
@@ -486,6 +517,8 @@ Transicoes devem ser validadas pela API, nao apenas pelo front-end.
 | `POST /api/public/iluminacao/consulta` | Opcional | Consulta publica de protocolo, com confirmacao minima e cuidado para volume |
 | `GET /api/internal/iluminacao/solicitacoes` | Opcional | Consulta/listagem interna |
 | `GET /api/internal/iluminacao/solicitacoes/{id}` | Opcional | Visualizacao interna de detalhe |
+| `GET /api/internal/iluminacao/solicitacoes/{id}/historico` | Opcional | Consulta interna de historico |
+| `GET /api/internal/iluminacao/solicitacoes/{id}/observacoes` | Opcional | Consulta interna de observacoes internas |
 | `PATCH /api/internal/iluminacao/solicitacoes/{id}/status` | Sim | Alteracao de status |
 | `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes` | Sim | Inclusao de observacao |
 | `POST /api/internal/iluminacao/solicitacoes/{id}/anexos` | Sim | Upload de anexo |
@@ -582,7 +615,8 @@ Este documento complementa:
 - seguir `docs/ILUMINACAO-CONTROLLED-ACTIVATION-CHECKLIST.md` antes de qualquer ativacao publica;
 - `docs/SQL-MIGRATION-PLAN.md`;
 - historico interno ja implementado e validado em homologacao; manter validacao operacional documentada antes de uso por tela;
-- definir contrato seguro para leitura/criacao de observacoes internas;
+- leitura de observacoes internas implementada como contrato somente leitura; validar em homologacao antes de uso por tela;
+- definir contrato seguro para criacao de observacao interna;
 - planejar alteracao de status somente depois, com auditoria obrigatoria;
 - manter anexos e tela interna para etapas posteriores;
 - validacao com setor responsavel;
