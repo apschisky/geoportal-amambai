@@ -508,3 +508,11 @@ O backend implementa tratamento global de erros de validacao para evitar expor d
 O primeiro endpoint interno de negocio (`GET /api/internal/iluminacao/solicitacoes`) validou a necessidade de separar o servico publico do servico interno. `GeoportalAPIHomologacao`, na porta 8000, usa `api_iluminacao_homolog` para `/api/public/*` e nao acessa `mod_auth`. O futuro `GeoportalAPIInternaHomologacao`, na porta 8002, usa `geoportal_api_homolog` para `/api/internal/*`, com rotas internas habilitadas e privilegios minimos ja validados.
 
 A API publica permanece isolada, a role publica nao deve receber `mod_auth`, os `.env` reais continuam fora do Git, e NSSM interno, proxy/Apache, tela interna e producao nao foram alterados. Detalhes: `../geoportal-vite/docs/INTERNAL-PUBLIC-RUNTIME-SEPARATION.md`.
+
+## Validacao Operacional do Runtime Interno de Homologacao
+
+O servico NSSM `GeoportalAPIInternaHomologacao` foi criado e validado na porta `8002`, separado do runtime publico `GeoportalAPIHomologacao` na porta `8000`. O servico interno usa role `geoportal_api_homolog`, env real fora do Git, rotas internas habilitadas e `Start = SERVICE_AUTO_START`.
+
+O harness versionado reconhece `InternaHomologacao` e validou porta `8002`, `/api/health`, `/api/version` com `environment=homologacao` e `/api/internal/auth/me` sem sessao retornando 401. A validacao autenticada manual pelo servico confirmou login interno, `/api/internal/auth/me` autenticado, permissao `iluminacao.solicitacoes.ler` e retorno de itens reais em `GET /api/internal/iluminacao/solicitacoes?limit=10&offset=0`, sem documentar token.
+
+`api_iluminacao_homolog` continua sem acesso a `mod_auth`. `geoportal_api_homolog` possui apenas leitura minima em Iluminacao para esta etapa: `USAGE` no schema `mod_iluminacao` e `SELECT` em `mod_iluminacao.solicitacoes`, sem `INSERT`, `UPDATE` ou `DELETE` em `mod_iluminacao`. Producao, Apache/proxy, frontend, migrations, schema e `.env` versionado permanecem inalterados; o runtime interno ainda nao esta exposto publicamente. Uma porta como `8003` pode ser avaliada futuramente como candidata conceitual para producao interna, mas ainda nao foi criada, configurada ou ativada.

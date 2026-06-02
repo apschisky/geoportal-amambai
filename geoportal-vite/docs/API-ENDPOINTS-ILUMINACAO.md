@@ -507,4 +507,12 @@ Este documento complementa:
 
 O endpoint `GET /api/internal/iluminacao/solicitacoes` deve rodar no runtime interno de homologacao com `geoportal_api_homolog`, nao no runtime publico com `api_iluminacao_homolog`. A role publica permanece dedicada a `/api/public/*` e nao deve receber acesso a `mod_auth`.
 
-A separacao entre runtime publico e runtime interno e decisao de seguranca e menor privilegio, nao um contorno temporario. O runtime interno ainda nao foi exposto publicamente, o NSSM interno ainda nao foi criado e os arquivos `.env` reais continuam fora do Git. Detalhes: `INTERNAL-PUBLIC-RUNTIME-SEPARATION.md`.
+A separacao entre runtime publico e runtime interno e decisao de seguranca e menor privilegio, nao um contorno temporario. O runtime interno foi criado e validado em homologacao local, ainda nao foi exposto publicamente e os arquivos `.env` reais continuam fora do Git. Detalhes: `INTERNAL-PUBLIC-RUNTIME-SEPARATION.md`.
+
+## Validacao Operacional do Endpoint Interno
+
+O runtime interno de homologacao foi criado como `GeoportalAPIInternaHomologacao` na porta `8002`, com `Start = SERVICE_AUTO_START`, role `geoportal_api_homolog` e env real fora do Git. O harness `InternaHomologacao` validou `/api/health`, `/api/version` com `environment=homologacao` e `/api/internal/auth/me` sem sessao retornando 401.
+
+Em validacao autenticada manual pelo servico NSSM, o endpoint `GET /api/internal/iluminacao/solicitacoes?limit=10&offset=0` retornou itens reais apos login interno e confirmacao da permissao `iluminacao.solicitacoes.ler`, sem registrar token ou cookie real. `geoportal_api_homolog` possui somente `USAGE` no schema `mod_iluminacao` e `SELECT` em `mod_iluminacao.solicitacoes` para essa etapa; nao recebeu `INSERT`, `UPDATE` ou `DELETE` em `mod_iluminacao`.
+
+Producao, Apache/proxy, frontend, migrations, schema e `.env` versionado nao foram alterados. O runtime interno ainda nao esta exposto publicamente.

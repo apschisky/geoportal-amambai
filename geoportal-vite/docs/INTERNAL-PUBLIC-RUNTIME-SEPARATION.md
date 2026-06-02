@@ -49,7 +49,7 @@ Essa separacao e uma decisao de seguranca e escalabilidade, nao um contorno temp
 
 ### Runtime interno
 
-- Servico futuro: `GeoportalAPIInternaHomologacao`.
+- Servico NSSM criado: `GeoportalAPIInternaHomologacao`.
 - Porta: `8002`.
 - Script operacional criado no servidor: `run-homologacao-interna-service.ps1`.
 - Loader operacional criado no servidor: `load-homologacao-interna-env.ps1`.
@@ -57,6 +57,8 @@ Essa separacao e uma decisao de seguranca e escalabilidade, nao um contorno temp
 - Role de banco: `geoportal_api_homolog`.
 - Finalidade: `/api/internal/*`.
 - `GEOPORTAL_INTERNAL_ROUTES_ENABLED=true` no runtime interno.
+- `GEOPORTAL_INTERNAL_SESSION_COOKIE_SECURE=false` em homologacao local HTTP.
+- NSSM configurado com `Start = SERVICE_AUTO_START`.
 - Acesso a `mod_auth` conforme matriz ja validada.
 - Acesso adicional minimo a `mod_iluminacao.solicitacoes` somente para leitura do primeiro endpoint interno.
 
@@ -91,16 +93,43 @@ Validacoes operacionais ja realizadas:
 - `GET /api/internal/iluminacao/solicitacoes?limit=10&offset=0` funcionou na porta `8002`.
 - Foi observado que a sessao interna expira em aproximadamente 1 hora.
 
-Produção nao foi alterada. O servico NSSM interno ainda nao foi criado. Apache/proxy publico ainda nao foi alterado. Frontend/tela interna ainda nao foi criado.
+Producao nao foi alterada. Apache/proxy publico ainda nao foi alterado. Frontend/tela interna ainda nao foi criado. O runtime interno foi validado em homologacao local, mas ainda nao esta exposto publicamente.
+
+## Validacao Operacional do Runtime Interno de Homologacao
+
+O servico NSSM `GeoportalAPIInternaHomologacao` foi criado e configurado para o runtime interno de homologacao. A configuracao operacional usa `AppDirectory` apontando para o backend implantado no servidor, logs separados de stdout/stderr para o servico interno, rotacao de logs habilitada e `Start = SERVICE_AUTO_START`.
+
+O harness versionado `scripts/deploy/backend-restart-validate-service.ps1` reconhece o environment `InternaHomologacao`, com servico `GeoportalAPIInternaHomologacao`, porta `8002`, `ExpectedEnvironment=homologacao` e validacao de runtime interno. A validacao do harness para esse environment cobre `/api/health`, `/api/version` e `/api/internal/auth/me` sem sessao retornando 401; ela nao executa login para nao exigir senha, token ou cookie.
+
+Resultado operacional validado pelo harness em homologacao:
+
+- Porta `8002` encontrada no `netstat`.
+- `/api/health` retornou OK.
+- `/api/version` retornou `environment=homologacao`.
+- `/api/internal/auth/me` sem sessao retornou 401.
+- Resumo final do harness concluido com sucesso.
+
+Validacao autenticada manual pelo servico NSSM:
+
+- Login interno na porta `8002` funcionou com usuario administrativo de homologacao, sem registrar token na documentacao.
+- `/api/internal/auth/me` confirmou sessao autenticada.
+- A permissao `iluminacao.solicitacoes.ler` foi confirmada para o usuario administrativo.
+- `GET /api/internal/iluminacao/solicitacoes?limit=10&offset=0` retornou itens reais.
+
+Estado de seguranca apos a validacao:
+
+- `api_iluminacao_homolog` continua sem acesso a `mod_auth`.
+- `geoportal_api_homolog` possui acesso minimo adicional a `mod_iluminacao`: `USAGE` no schema `mod_iluminacao` e `SELECT` em `mod_iluminacao.solicitacoes`.
+- Nao foi concedido `INSERT`, `UPDATE` ou `DELETE` em `mod_iluminacao` para `geoportal_api_homolog` nesta etapa.
+- Producao, Apache/proxy, frontend, migrations, schema e arquivos `.env` versionados nao foram alterados.
+- Nenhum segredo, senha, token, cookie real, hash, `session_secret` real ou `DATABASE_URL` real foi documentado.
 
 ## Proximos Passos
 
-1. Criar o servico NSSM `GeoportalAPIInternaHomologacao`.
-2. Validar `/api/health`, `/api/version` e `/api/internal/auth/me` na porta `8002` via servico.
-3. Validar `GET /api/internal/iluminacao/solicitacoes` via servico.
-4. Documentar a validacao operacional.
-5. Somente depois planejar proxy/Apache e tela interna.
-6. Manter producao fail-closed ate etapa formal de ativacao controlada.
+1. Planejar proxy/Apache para o runtime interno somente em etapa separada e controlada.
+2. Planejar tela interna somente depois da exposicao controlada e revisada.
+3. Manter producao fail-closed ate etapa formal de ativacao controlada.
+4. Para futura producao interna, avaliar uma porta candidata conceitual como `8003`; essa porta ainda nao foi criada, configurada ou ativada.
 
 ## Confirmacoes de Escopo
 

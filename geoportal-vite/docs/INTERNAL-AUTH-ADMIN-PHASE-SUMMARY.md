@@ -323,3 +323,11 @@ Próxima etapa: abrir etapa separada "Ativação Controlada do Geoportal Interno
 A validacao do primeiro endpoint interno de negocio confirmou a decisao arquitetural de separar runtime publico e runtime interno. O runtime publico de homologacao continua usando `api_iluminacao_homolog`, voltado a `/api/public/*` e sem acesso a `mod_auth`; o runtime interno planejado usa `geoportal_api_homolog`, com `GEOPORTAL_INTERNAL_ROUTES_ENABLED=true`, acesso a `mod_auth` conforme matriz validada e leitura minima de `mod_iluminacao.solicitacoes` para a rota interna de Iluminacao.
 
 Essa separacao e uma decisao de seguranca e menor privilegio, nao um contorno temporario. A API publica permanece isolada, a role publica nao deve receber `mod_auth`, os arquivos `.env` reais continuam fora do Git e o NSSM interno, proxy/Apache e tela interna ainda nao foram criados. Detalhes: `INTERNAL-PUBLIC-RUNTIME-SEPARATION.md`.
+
+## Validacao Operacional do Runtime Interno de Homologacao
+
+O servico NSSM `GeoportalAPIInternaHomologacao` foi criado e validado em homologacao na porta `8002`, separado do runtime publico `GeoportalAPIHomologacao` na porta `8000`. O servico interno usa role `geoportal_api_homolog`, env real fora do Git, rotas internas habilitadas e `Start = SERVICE_AUTO_START`.
+
+O harness versionado ja reconhece `InternaHomologacao` e validou `/api/health`, `/api/version` com `environment=homologacao` e `/api/internal/auth/me` sem sessao retornando 401. A validacao autenticada manual confirmou login interno, `/api/internal/auth/me` autenticado, permissao `iluminacao.solicitacoes.ler` e retorno de itens reais em `GET /api/internal/iluminacao/solicitacoes?limit=10&offset=0`, sem documentar token.
+
+Producao, Apache/proxy, frontend, migrations, schema e `.env` versionado permanecem inalterados. O runtime interno ainda nao esta exposto publicamente. A futura producao interna podera avaliar porta candidata conceitual como `8003`, mas ela ainda nao foi criada, configurada ou ativada.
