@@ -124,11 +124,13 @@ As migrations internas planejadas para `mod_iluminacao.solicitacoes_historico` e
 
 As migrations internas `0004` e `0005` tambem foram aplicadas no banco ativo apos backup manual validado como legivel. As tabelas internas foram criadas, os indices foram validados, as FKs restritivas para `mod_iluminacao.solicitacoes(id)` foram confirmadas com `ON UPDATE RESTRICT` e `ON DELETE RESTRICT`, a API publica continuou saudavel e `/api/version` continuou retornando ambiente `producao`. As tabelas internas permaneceram vazias apos a criacao.
 
-O endpoint interno de leitura de historico ja consome `mod_iluminacao.solicitacoes_historico` em homologacao interna. Ainda nao ha endpoint de observacoes, endpoint mutavel de status nem tela interna consumindo essas tabelas. A proxima etapa tecnica e implementar leitura de observacoes internas antes de qualquer interface administrativa.
+O endpoint interno de leitura de historico ja consome `mod_iluminacao.solicitacoes_historico` em homologacao interna. O endpoint interno de leitura de observacoes ja consome `mod_iluminacao.solicitacoes_observacoes` em homologacao interna, filtrando `deleted_at IS NULL` e `visibilidade = 'interna'`. Ainda nao ha endpoint mutavel de criacao de observacao, endpoint mutavel de status nem tela interna consumindo essas tabelas.
 
-Diagnostico posterior confirmou que o schema atual de `solicitacoes_historico` e `solicitacoes_observacoes` e suficiente para leitura de historico, leitura/criacao de observacoes internas e futura alteracao de status com auditoria obrigatoria. Nao ha recomendacao de migration para os proximos endpoints basicos. Como nao existe trigger obrigando historico, qualquer operacao mutavel deve gravar o evento correspondente na mesma transacao. A ordem recomendada agora e: `GET observacoes`, depois `POST observacoes`, e somente depois `PATCH status`.
+Diagnostico posterior confirmou que o schema atual de `solicitacoes_historico` e `solicitacoes_observacoes` e suficiente para leitura de historico, leitura/criacao de observacoes internas e futura alteracao de status com auditoria obrigatoria. Nao ha recomendacao de migration para os proximos endpoints basicos. Como nao existe trigger obrigando historico, qualquer operacao mutavel deve gravar o evento correspondente na mesma transacao. A ordem recomendada agora e: `POST observacoes`, com INSERT em observacoes e INSERT em historico na mesma transacao, e somente depois `PATCH status`.
 
 Validacao operacional: o endpoint `GET /api/internal/iluminacao/solicitacoes/{id}/historico` foi implementado no commit `b68bc32` e validado no runtime interno de homologacao com sessao real, permissao `iluminacao.solicitacoes.ver_historico`, `SELECT` minimo em `mod_iluminacao.solicitacoes_historico` para `geoportal_api_homolog` e dado de homologacao/teste. O retorno `total=0` para a solicitacao de teste foi esperado porque ainda nao havia eventos historicos gravados. Producao, proxy, frontend, migrations, schema, `.env` versionado e endpoint mutavel permaneceram inalterados.
+
+Validacao operacional: o endpoint `GET /api/internal/iluminacao/solicitacoes/{id}/observacoes` foi implementado no commit `da236c4` e validado no runtime interno de homologacao com sessao real, permissao `iluminacao.solicitacoes.ver_observacoes`, `SELECT` minimo em `mod_iluminacao.solicitacoes_observacoes` para `geoportal_api_homolog` e dado de homologacao/teste. O retorno `total=0` para a solicitacao de teste foi esperado porque ainda nao havia observacoes internas gravadas. A permissao `iluminacao.solicitacoes.comentar` permaneceu reservada para futuro `POST observacao`. Producao, proxy, frontend, migrations, schema, `.env` versionado e endpoint mutavel permaneceram inalterados.
 
 ## 9. Interface interna
 
@@ -152,7 +154,7 @@ Fases sugeridas:
 2. Fase 2: modelo de dados de usuarios, perfis e sessoes, ou decisao tecnica equivalente.
 3. Fase 3: migrations de seguranca/autenticacao. Migrations de historico e observacoes ja aplicadas em homologacao e no banco ativo.
 4. Fase 4: implementacao de autenticacao no backend com testes.
-5. Fase 5: endpoints internos protegidos para historico, observacoes e status. Leitura de historico ja validada em homologacao; observacoes e status seguem etapas posteriores.
+5. Fase 5: endpoints internos protegidos para historico, observacoes e status. Leitura de historico e leitura de observacoes internas ja foram validadas em homologacao; criacao de observacao e status seguem etapas posteriores.
 6. Fase 6: tela interna minima consumindo endpoints protegidos.
 7. Fase 7: auditoria e revisao de seguranca antes de uso por equipe real.
 8. Fase 8: mapa interno, relatorios e indicadores.

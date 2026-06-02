@@ -348,6 +348,22 @@ Erros: 401 sem sessao, 403 sem permissao, 404 generico quando a solicitacao nao 
 
 Esta etapa nao cria endpoint mutavel, migration, schema, usuario, perfil, permissao real no banco, role ou GRANT. A permissao real `iluminacao.solicitacoes.ver_observacoes` e eventuais GRANTs minimos devem ser tratados em etapa operacional propria de homologacao.
 
+**Validacao operacional (observacoes internas de solicitacao)**
+
+- Commit: `da236c4` Adiciona observacoes internas de solicitacoes de iluminacao.
+- Testes locais antes do commit: `tests/test_internal_iluminacao_solicitacoes_router.py`: 37 passed; `tests/test_iluminacao_repository.py`: 21 passed; `tests/test_iluminacao_service.py`: 35 passed; `tests/test_iluminacao_public.py`: 37 passed; `tests/test_internal_routes_feature_flag.py`: 10 passed; suite completa: 559 passed. Houve 1 warning conhecido e nao bloqueante de depreciacao da constante HTTP 422.
+- Em homologacao, os testes focados passaram no servidor. Antes dos testes, foi removida apenas a variavel do processo atual `GEOPORTAL_INTERNAL_ROUTES_ENABLED` para evitar interferencia ambiental da flag herdada no PowerShell; isso nao alterou `.env`, NSSM ou configuracao permanente.
+- A permissao real `iluminacao.solicitacoes.ver_observacoes` foi criada com modulo `iluminacao`, chave `solicitacoes.ver_observacoes`, descricao segura e `ativo=true`, e vinculada ao perfil `administrador-interno-geoportal`.
+- A permissao `iluminacao.solicitacoes.comentar` permaneceu reservada para o futuro endpoint mutavel de criacao de observacao.
+- O unico GRANT aplicado nesta etapa foi `SELECT` minimo em `mod_iluminacao.solicitacoes_observacoes` para `geoportal_api_homolog`; a verificacao final confirmou `schema_usage=true`, `SELECT=true`, `INSERT=false`, `UPDATE=false` e `DELETE=false`.
+- O runtime interno `InternaHomologacao` foi reiniciado e validado pelo harness: porta `8002`, `/api/health` OK, `/api/version` com `environment=homologacao` e `/api/internal/auth/me` sem sessao retornando 401.
+- Login interno foi validado no runtime interno com usuario administrativo de homologacao, sem registrar token, senha ou cookie real; `/api/internal/auth/me` confirmou `iluminacao.solicitacoes.ver_observacoes=True`.
+- `GET http://127.0.0.1:8002/api/internal/iluminacao/solicitacoes/18/observacoes?limit=10&offset=0` retornou 200 OK com `limit=10`, `offset=0` e `total=0` para dado de homologacao/teste.
+- `total=0` foi comportamento esperado: a solicitacao de homologacao/teste existia, a sessao tinha permissao e o banco liberou SELECT, mas ainda nao havia observacoes internas gravadas em `mod_iluminacao.solicitacoes_observacoes` para essa solicitacao.
+- Producao, producao interna, Apache/proxy, frontend/tela interna, migrations, schema, `.env` versionado e NSSM nao foram alterados nesta etapa, exceto restart controlado do servico interno de homologacao ja existente.
+- Nenhum endpoint mutavel, usuario novo, perfil novo, role nova ou GRANT adicional foi criado; a API publica permaneceu preservada.
+- `POST observacao`, anexos e alteracao de status com auditoria obrigatoria continuam em etapas posteriores; a tela ainda nao deve comecar nesta etapa.
+
 ### `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`
 
 Finalidade: alterar status.
@@ -615,8 +631,8 @@ Este documento complementa:
 - seguir `docs/ILUMINACAO-CONTROLLED-ACTIVATION-CHECKLIST.md` antes de qualquer ativacao publica;
 - `docs/SQL-MIGRATION-PLAN.md`;
 - historico interno ja implementado e validado em homologacao; manter validacao operacional documentada antes de uso por tela;
-- leitura de observacoes internas implementada como contrato somente leitura; validar em homologacao antes de uso por tela;
-- definir contrato seguro para criacao de observacao interna;
+- leitura de observacoes internas implementada e validada em homologacao; manter validacao operacional documentada antes de uso por tela;
+- planejar e implementar `POST observacao interna` com INSERT em observacoes e INSERT em historico na mesma transacao;
 - planejar alteracao de status somente depois, com auditoria obrigatoria;
 - manter anexos e tela interna para etapas posteriores;
 - validacao com setor responsavel;

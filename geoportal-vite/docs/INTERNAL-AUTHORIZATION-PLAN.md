@@ -664,9 +664,9 @@ O schema atual e suficiente para `GET historico`, `GET observacoes internas`, `P
 
 Como nao existe trigger obrigando historico, o backend deve garantir transacao atomica para operacoes mutaveis. Para `POST observacao`, gravar a observacao e um evento resumido em `solicitacoes_historico`. Para `PATCH status`, atualizar `mod_iluminacao.solicitacoes` e inserir historico na mesma transacao. Antes de `PATCH status`, ainda devem ser definidos transicoes permitidas, regra de `finalizado_em`, observacao/motivo obrigatorio ou opcional e dados de usuario a gravar.
 
-Permissoes futuras recomendadas: `iluminacao.solicitacoes.ver_historico`, `iluminacao.solicitacoes.comentar` e `iluminacao.solicitacoes.atualizar_status`.
+Permissoes futuras/recentes recomendadas: `iluminacao.solicitacoes.ver_historico`, `iluminacao.solicitacoes.ver_observacoes`, `iluminacao.solicitacoes.comentar` e `iluminacao.solicitacoes.atualizar_status`. A permissao `iluminacao.solicitacoes.comentar` permanece reservada para o futuro endpoint mutavel de criacao de observacao.
 
-Ordem recomendada: `GET /api/internal/iluminacao/solicitacoes/{id}/historico`, `GET /api/internal/iluminacao/solicitacoes/{id}/observacoes`, `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes` e somente depois `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`.
+Ordem recomendada: `GET /api/internal/iluminacao/solicitacoes/{id}/historico` ja validado, `GET /api/internal/iluminacao/solicitacoes/{id}/observacoes` ja validado, `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes` e somente depois `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`.
 
 ## Validacao do Historico Interno de Iluminacao
 
@@ -680,4 +680,18 @@ O runtime interno `InternaHomologacao` foi reiniciado e validado pelo harness na
 
 A falha inicial de um teste focado no servidor foi ambiental: o processo PowerShell herdou `GEOPORTAL_INTERNAL_ROUTES_ENABLED=true`. Apos limpar apenas a variavel do processo atual, o teste passou com 28 passed.
 
-Producao, producao interna, Apache/proxy, frontend/tela interna, migrations, schema, `.env` versionado e NSSM nao foram alterados nesta etapa, exceto restart controlado do servico interno de homologacao ja existente. Observacoes internas, `POST observacao`, anexos e `PATCH status` permanecem etapas posteriores; a tela ainda nao deve comecar nesta etapa.
+Producao, producao interna, Apache/proxy, frontend/tela interna, migrations, schema, `.env` versionado e NSSM nao foram alterados nesta etapa, exceto restart controlado do servico interno de homologacao ja existente. Observacoes internas de leitura ja possuem endpoint proprio validado; `POST observacao`, anexos e `PATCH status` permanecem etapas posteriores; a tela ainda nao deve comecar nesta etapa.
+
+## Validacao das Observacoes Internas de Iluminacao
+
+O endpoint `GET /api/internal/iluminacao/solicitacoes/{id}/observacoes` foi implementado no commit `da236c4` e validado em homologacao interna. Ele e somente leitura, exige sessao interna, usa permissao propria `iluminacao.solicitacoes.ver_observacoes`, nao reutiliza `iluminacao.solicitacoes.comentar` e nao exige `X-Geoportal-Internal-Request`.
+
+Validacoes locais antes do commit: router 37 passed, repository 21 passed, service 35 passed, API publica 37 passed, feature flag 10 passed e suite completa 559 passed, com 1 warning conhecido e nao bloqueante de depreciacao da constante HTTP 422.
+
+Em homologacao, a permissao real foi criada com modulo `iluminacao`, chave `solicitacoes.ver_observacoes`, descricao segura e `ativo=true`, vinculada ao perfil `administrador-interno-geoportal`. A permissao `iluminacao.solicitacoes.comentar` ficou reservada para o futuro `POST observacao`. O unico GRANT aplicado nesta etapa foi `SELECT` minimo em `mod_iluminacao.solicitacoes_observacoes` para `geoportal_api_homolog`; a matriz final manteve `INSERT=false`, `UPDATE=false` e `DELETE=false`.
+
+O runtime interno `InternaHomologacao` foi reiniciado e validado pelo harness na porta `8002`. Login interno foi validado sem registrar token, `/api/internal/auth/me` confirmou `iluminacao.solicitacoes.ver_observacoes=True` e `GET /api/internal/iluminacao/solicitacoes/18/observacoes?limit=10&offset=0` retornou 200 OK com `total=0` para dado de homologacao/teste. Esse `total=0` foi esperado: a solicitacao existia, a sessao tinha permissao e o banco liberou leitura, mas ainda nao havia observacoes internas gravadas.
+
+Antes dos testes focados no servidor, foi removida apenas a variavel do processo atual `GEOPORTAL_INTERNAL_ROUTES_ENABLED` para evitar interferencia ambiental da flag herdada no PowerShell. Isso nao alterou `.env`, NSSM ou configuracao permanente.
+
+Producao, producao interna, Apache/proxy, frontend/tela interna, migrations, schema, `.env` versionado e NSSM nao foram alterados nesta etapa, exceto restart controlado do servico interno de homologacao ja existente. Nenhum endpoint mutavel, usuario novo, perfil novo, role nova ou GRANT adicional foi criado; a API publica permaneceu preservada.

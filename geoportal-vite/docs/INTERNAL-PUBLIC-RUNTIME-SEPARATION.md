@@ -121,6 +121,10 @@ Validacao autenticada manual pelo servico NSSM:
 - `GET /api/internal/iluminacao/solicitacoes/{id}/historico` foi implementado no commit `b68bc32` e validado no runtime interno com sessao real e permissao `iluminacao.solicitacoes.ver_historico`.
 - Para essa validacao, foi aplicado somente `SELECT` em `mod_iluminacao.solicitacoes_historico` para `geoportal_api_homolog`; `INSERT`, `UPDATE` e `DELETE` permaneceram falsos nessa tabela.
 - A chamada com dado de homologacao/teste `GET /api/internal/iluminacao/solicitacoes/18/historico?limit=10&offset=0` retornou 200 OK com `total=0`, comportamento esperado porque ainda nao havia eventos historicos gravados para a solicitacao.
+- `GET /api/internal/iluminacao/solicitacoes/{id}/observacoes` foi implementado no commit `da236c4` e validado no runtime interno com sessao real e permissao `iluminacao.solicitacoes.ver_observacoes`.
+- Para essa validacao, foi aplicado somente `SELECT` em `mod_iluminacao.solicitacoes_observacoes` para `geoportal_api_homolog`; `INSERT`, `UPDATE` e `DELETE` permaneceram falsos nessa tabela.
+- A chamada com dado de homologacao/teste `GET /api/internal/iluminacao/solicitacoes/18/observacoes?limit=10&offset=0` retornou 200 OK com `total=0`, comportamento esperado porque ainda nao havia observacoes internas gravadas para a solicitacao.
+- A permissao `iluminacao.solicitacoes.comentar` permaneceu reservada para o futuro endpoint mutavel de criacao de observacao.
 
 Estado de seguranca apos a validacao:
 
