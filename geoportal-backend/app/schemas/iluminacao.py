@@ -174,3 +174,30 @@ class IluminacaoSolicitacoesInternasResponse(BaseModel):
 class IluminacaoSolicitacoesInternasResult(BaseModel):
     items: list[IluminacaoSolicitacaoInternaItem]
     total: int
+
+
+class IluminacaoSolicitacaoHistoricoInternoItem(BaseModel):
+    id: int
+    solicitacao_id: int
+    acao: str
+    status_anterior: str | None = None
+    status_novo: str | None = None
+    prioridade_anterior: str | None = None
+    prioridade_nova: str | None = None
+    usuario_id: str | None = None
+    usuario_nome: str | None = None
+    origem_acao: str
+    observacao_resumida: str | None = None
+    criado_em: datetime
+
+
+class IluminacaoSolicitacaoHistoricoInternoResponse(BaseModel):
+    items: list[IluminacaoSolicitacaoHistoricoInternoItem]
+    limit: int
+    offset: int
+    total: int
+
+
+class IluminacaoSolicitacaoHistoricoInternoResult(BaseModel):
+    items: list[IluminacaoSolicitacaoHistoricoInternoItem]
+    total: int

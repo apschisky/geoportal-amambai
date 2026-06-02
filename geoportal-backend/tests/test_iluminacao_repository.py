@@ -8,7 +8,9 @@ from app.repositories.iluminacao_repository import (
     existe_solicitacao_ativa_para_poste,
     get_solicitacao_interna_por_id,
     get_solicitacao_publica_por_protocolo,
+    list_historico_solicitacao_interna,
     list_solicitacoes_internas,
+    solicitacao_interna_existe,
 )
 from app.schemas.iluminacao import IluminacaoSolicitacaoCreate
 from app.schemas.iluminacao import StatusSolicitacaoIluminacao
@@ -129,6 +131,23 @@ def internal_solicitacao_row() -> dict[str, Any]:
         "criado_em": datetime(2026, 5, 20, 10, 30),
         "atualizado_em": datetime(2026, 5, 21, 8, 15),
         "finalizado_em": None,
+    }
+
+
+def historico_solicitacao_row() -> dict[str, Any]:
+    return {
+        "id": 50,
+        "solicitacao_id": 10,
+        "acao": "criacao",
+        "status_anterior": None,
+        "status_novo": "aberta",
+        "prioridade_anterior": None,
+        "prioridade_nova": "normal",
+        "usuario_id": "7",
+        "usuario_nome": "Administrador Interno",
+        "origem_acao": "sistema",
+        "observacao_resumida": "Solicitacao registrada.",
+        "criado_em": datetime(2026, 5, 20, 11, 30),
     }
 
 
@@ -493,5 +512,136 @@ def test_get_solicitacao_interna_por_id_rejects_invalid_id_without_sql() -> None
         pass
     else:
         raise AssertionError("invalid solicitacao_id should be rejected")
+
+    assert engine.connection.statement is None
+
+
+def test_solicitacao_interna_existe_uses_bind_param_and_deleted_filter() -> None:
+    engine = FakeEngine({"existe": True})
+
+    response = solicitacao_interna_existe(solicitacao_id=10, engine=engine)
+
+    assert response is True
+    assert engine.connection.statement is not None
+    assert engine.connection.params == {"solicitacao_id": 10}
+
+    sql = str(engine.connection.statement)
+    assert "SELECT EXISTS" in sql
+    assert "FROM mod_iluminacao.solicitacoes" in sql
+    assert "WHERE id = :solicitacao_id" in sql
+    assert "deleted_at IS NULL" in sql
+    assert "SELECT *" not in sql.upper()
+    assert "10" not in sql
+
+
+def test_solicitacao_interna_existe_returns_false_when_not_found() -> None:
+    engine = FakeEngine({"existe": False})
+
+    response = solicitacao_interna_existe(solicitacao_id=999, engine=engine)
+
+    assert response is False
+    assert engine.connection.params == {"solicitacao_id": 999}
+
+
+def test_solicitacao_interna_existe_rejects_invalid_id_without_sql() -> None:
+    engine = FakeEngine({"existe": True})
+
+    try:
+        solicitacao_interna_existe(solicitacao_id=0, engine=engine)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("invalid solicitacao_id should be rejected")
+
+    assert engine.connection.statement is None
+
+
+def test_list_historico_solicitacao_interna_uses_explicit_columns_and_total() -> None:
+    engine = FakeEngine([historico_solicitacao_row()])
+
+    response = list_historico_solicitacao_interna(
+        solicitacao_id=10,
+        limit=25,
+        offset=5,
+        engine=engine,
+    )
+
+    assert engine.connection.params_history[0] == {
+        "solicitacao_id": 10,
+        "limit": 25,
+        "offset": 5,
+    }
+    assert engine.connection.params_history[1] == {"solicitacao_id": 10}
+
+    sql = str(engine.connection.statements[0])
+    count_sql = str(engine.connection.statements[1])
+    select_clause = sql.split("FROM", maxsplit=1)[0]
+
+    assert "FROM mod_iluminacao.solicitacoes_historico" in sql
+    assert "WHERE solicitacao_id = :solicitacao_id" in sql
+    assert "ORDER BY criado_em ASC, id ASC" in sql
+    assert "LIMIT :limit" in sql
+    assert "OFFSET :offset" in sql
+    assert "COUNT(*) AS total" in count_sql
+    assert "FROM mod_iluminacao.solicitacoes_historico" in count_sql
+    assert "WHERE solicitacao_id = :solicitacao_id" in count_sql
+    assert "LIMIT :limit" not in count_sql
+    assert "OFFSET :offset" not in count_sql
+    assert "ORDER BY" not in count_sql
+    assert "SELECT *" not in sql.upper()
+    assert "id" in select_clause
+    assert "solicitacao_id" in select_clause
+    assert "acao" in select_clause
+    assert "status_anterior" in select_clause
+    assert "status_novo" in select_clause
+    assert "prioridade_anterior" in select_clause
+    assert "prioridade_nova" in select_clause
+    assert "usuario_id" in select_clause
+    assert "usuario_nome" in select_clause
+    assert "origem_acao" in select_clause
+    assert "observacao_resumida" in select_clause
+    assert "criado_em" in select_clause
+    assert "10" not in sql
+    assert "Administrador Interno" not in sql
+    assert response.total == 1
+    assert response.items[0].id == 50
+    assert response.items[0].solicitacao_id == 10
+
+
+def test_list_historico_solicitacao_interna_returns_empty_result() -> None:
+    engine = FakeEngine([])
+
+    response = list_historico_solicitacao_interna(
+        solicitacao_id=10,
+        limit=50,
+        offset=0,
+        engine=engine,
+    )
+
+    assert response.items == []
+    assert response.total == 0
+    assert engine.connection.params_history[0] == {
+        "solicitacao_id": 10,
+        "limit": 50,
+        "offset": 0,
+    }
+    assert engine.connection.params_history[1] == {"solicitacao_id": 10}
+
+
+def test_list_historico_solicitacao_interna_rejects_invalid_params_without_sql() -> None:
+    engine = FakeEngine([historico_solicitacao_row()])
+
+    for kwargs in (
+        {"solicitacao_id": 0, "limit": 50, "offset": 0},
+        {"solicitacao_id": 10, "limit": 0, "offset": 0},
+        {"solicitacao_id": 10, "limit": 101, "offset": 0},
+        {"solicitacao_id": 10, "limit": 50, "offset": -1},
+    ):
+        try:
+            list_historico_solicitacao_interna(engine=engine, **kwargs)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("invalid params should be rejected")
 
     assert engine.connection.statement is None

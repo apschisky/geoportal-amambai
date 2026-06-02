@@ -6,6 +6,8 @@ from sqlalchemy.engine import Engine
 from app.core.database import get_engine
 from app.schemas.iluminacao import (
     IluminacaoConsultaRepositoryRecord,
+    IluminacaoSolicitacaoHistoricoInternoItem,
+    IluminacaoSolicitacaoHistoricoInternoResult,
     IluminacaoSolicitacaoInternaItem,
     IluminacaoSolicitacaoCreate,
     IluminacaoSolicitacaoResponse,
@@ -364,3 +366,100 @@ def get_solicitacao_interna_por_id(
         return None
 
     return IluminacaoSolicitacaoInternaItem.model_validate(dict(row))
+
+
+def solicitacao_interna_existe(
+    solicitacao_id: int,
+    engine: Engine | None = None,
+) -> bool:
+    if solicitacao_id < 1:
+        raise ValueError("solicitacao_id must be greater than or equal to 1")
+
+    db_engine = engine or get_engine()
+
+    statement = text(
+        """
+        SELECT EXISTS (
+            SELECT 1
+            FROM mod_iluminacao.solicitacoes
+            WHERE id = :solicitacao_id
+              AND deleted_at IS NULL
+        ) AS existe
+        """
+    )
+
+    with db_engine.begin() as connection:
+        row = connection.execute(
+            statement,
+            {"solicitacao_id": solicitacao_id},
+        ).mappings().one()
+
+    return bool(row["existe"])
+
+
+def list_historico_solicitacao_interna(
+    solicitacao_id: int,
+    *,
+    limit: int = 50,
+    offset: int = 0,
+    engine: Engine | None = None,
+) -> IluminacaoSolicitacaoHistoricoInternoResult:
+    if solicitacao_id < 1:
+        raise ValueError("solicitacao_id must be greater than or equal to 1")
+    if limit < 1 or limit > 100:
+        raise ValueError("limit must be between 1 and 100")
+    if offset < 0:
+        raise ValueError("offset must be greater than or equal to 0")
+
+    db_engine = engine or get_engine()
+
+    statement = text(
+        """
+        SELECT
+            id,
+            solicitacao_id,
+            acao,
+            status_anterior,
+            status_novo,
+            prioridade_anterior,
+            prioridade_nova,
+            usuario_id,
+            usuario_nome,
+            origem_acao,
+            observacao_resumida,
+            criado_em
+        FROM mod_iluminacao.solicitacoes_historico
+        WHERE solicitacao_id = :solicitacao_id
+        ORDER BY criado_em ASC, id ASC
+        LIMIT :limit
+        OFFSET :offset
+        """
+    )
+    count_statement = text(
+        """
+        SELECT COUNT(*) AS total
+        FROM mod_iluminacao.solicitacoes_historico
+        WHERE solicitacao_id = :solicitacao_id
+        """
+    )
+
+    params = {
+        "solicitacao_id": solicitacao_id,
+        "limit": limit,
+        "offset": offset,
+    }
+
+    with db_engine.begin() as connection:
+        rows = connection.execute(statement, params).mappings().all()
+        total_row = connection.execute(
+            count_statement,
+            {"solicitacao_id": solicitacao_id},
+        ).mappings().one()
+
+    return IluminacaoSolicitacaoHistoricoInternoResult(
+        items=[
+            IluminacaoSolicitacaoHistoricoInternoItem.model_validate(dict(row))
+            for row in rows
+        ],
+        total=int(total_row["total"]),
+    )

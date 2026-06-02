@@ -6,6 +6,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.schemas.iluminacao import (
     IluminacaoConsultaRepositoryRecord,
     IluminacaoConsultaRequest,
+    IluminacaoSolicitacaoHistoricoInternoItem,
+    IluminacaoSolicitacaoHistoricoInternoResult,
     IluminacaoSolicitacaoInternaItem,
     IluminacaoSolicitacaoCreate,
     IluminacaoSolicitacaoResponse,
@@ -319,6 +321,25 @@ def internal_solicitacao_item() -> IluminacaoSolicitacaoInternaItem:
     )
 
 
+def historico_solicitacao_item() -> IluminacaoSolicitacaoHistoricoInternoItem:
+    return IluminacaoSolicitacaoHistoricoInternoItem.model_validate(
+        {
+            "id": 50,
+            "solicitacao_id": 10,
+            "acao": "criacao",
+            "status_anterior": None,
+            "status_novo": "aberta",
+            "prioridade_anterior": None,
+            "prioridade_nova": "normal",
+            "usuario_id": "7",
+            "usuario_nome": "Administrador Interno",
+            "origem_acao": "sistema",
+            "observacao_resumida": "Solicitacao registrada.",
+            "criado_em": datetime(2026, 5, 20, 11, 30),
+        }
+    )
+
+
 def test_consultar_solicitacao_publica_returns_filtered_response(monkeypatch) -> None:
     monkeypatch.setattr(
         iluminacao_service.iluminacao_repository,
@@ -595,6 +616,175 @@ def test_obter_solicitacao_interna_por_id_converts_database_error_to_safe_error(
 
     with pytest.raises(DatabaseUnavailableError) as exc_info:
         iluminacao_service.obter_solicitacao_interna_por_id(10)
+
+    message = str(exc_info.value)
+    assert message == "Servico temporariamente indisponivel. Tente novamente mais tarde."
+    assert "DATABASE_URL" not in message
+    assert "db.internal" not in message
+    assert "senha" not in message.lower()
+    assert "SELECT" not in message
+
+
+def test_listar_historico_solicitacao_interna_returns_history(monkeypatch) -> None:
+    calls: dict[str, object] = {}
+
+    def fake_list_historico_solicitacao_interna(
+        solicitacao_id: int,
+        *,
+        limit: int,
+        offset: int,
+    ) -> IluminacaoSolicitacaoHistoricoInternoResult:
+        calls.update(
+            {
+                "solicitacao_id": solicitacao_id,
+                "limit": limit,
+                "offset": offset,
+            }
+        )
+        return IluminacaoSolicitacaoHistoricoInternoResult(
+            items=[historico_solicitacao_item()],
+            total=1,
+        )
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "solicitacao_interna_existe",
+        lambda solicitacao_id: True,
+    )
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "list_historico_solicitacao_interna",
+        fake_list_historico_solicitacao_interna,
+    )
+
+    response = iluminacao_service.listar_historico_solicitacao_interna(
+        10,
+        limit=25,
+        offset=5,
+    )
+
+    assert response.items[0].id == 50
+    assert response.total == 1
+    assert calls == {
+        "solicitacao_id": 10,
+        "limit": 25,
+        "offset": 5,
+    }
+
+
+def test_listar_historico_solicitacao_interna_returns_empty_when_exists_without_history(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "solicitacao_interna_existe",
+        lambda solicitacao_id: True,
+    )
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "list_historico_solicitacao_interna",
+        lambda solicitacao_id, *, limit, offset: (
+            IluminacaoSolicitacaoHistoricoInternoResult(items=[], total=0)
+        ),
+    )
+
+    response = iluminacao_service.listar_historico_solicitacao_interna(10)
+
+    assert response.items == []
+    assert response.total == 0
+
+
+def test_listar_historico_solicitacao_interna_raises_safe_not_found(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "solicitacao_interna_existe",
+        lambda solicitacao_id: False,
+    )
+
+    with pytest.raises(iluminacao_service.SolicitacaoInternaNotFoundError) as exc_info:
+        iluminacao_service.listar_historico_solicitacao_interna(999)
+
+    message = str(exc_info.value)
+    assert message == "Solicitacao nao encontrada."
+    assert "DATABASE_URL" not in message
+    assert "SELECT" not in message
+    assert "token" not in message
+
+
+def test_listar_historico_solicitacao_interna_rejects_invalid_params(monkeypatch) -> None:
+    def fail_if_called(*args: object, **kwargs: object) -> None:
+        raise AssertionError("repository should not be called")
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "solicitacao_interna_existe",
+        fail_if_called,
+    )
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "list_historico_solicitacao_interna",
+        fail_if_called,
+    )
+
+    for kwargs in (
+        {"solicitacao_id": 0, "limit": 50, "offset": 0},
+        {"solicitacao_id": 10, "limit": 0, "offset": 0},
+        {"solicitacao_id": 10, "limit": 101, "offset": 0},
+        {"solicitacao_id": 10, "limit": 50, "offset": -1},
+    ):
+        with pytest.raises(ValueError):
+            iluminacao_service.listar_historico_solicitacao_interna(**kwargs)
+
+
+def test_listar_historico_solicitacao_interna_converts_database_error_to_safe_error(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "solicitacao_interna_existe",
+        lambda solicitacao_id: True,
+    )
+
+    def fail_with_database_error(*args: object, **kwargs: object) -> None:
+        raise SQLAlchemyError(
+            "could not connect using DATABASE_URL on host db.internal:5432 SELECT"
+        )
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "list_historico_solicitacao_interna",
+        fail_with_database_error,
+    )
+
+    with pytest.raises(DatabaseUnavailableError) as exc_info:
+        iluminacao_service.listar_historico_solicitacao_interna(10)
+
+    message = str(exc_info.value)
+    assert message == "Servico temporariamente indisponivel. Tente novamente mais tarde."
+    assert "DATABASE_URL" not in message
+    assert "db.internal" not in message
+    assert "senha" not in message.lower()
+    assert "SELECT" not in message
+
+
+def test_listar_historico_solicitacao_interna_converts_exists_error_to_safe_error(
+    monkeypatch,
+) -> None:
+    def fail_with_database_error(*args: object, **kwargs: object) -> None:
+        raise SQLAlchemyError(
+            "could not connect using DATABASE_URL on host db.internal:5432 SELECT"
+        )
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "solicitacao_interna_existe",
+        fail_with_database_error,
+    )
+
+    with pytest.raises(DatabaseUnavailableError) as exc_info:
+        iluminacao_service.listar_historico_solicitacao_interna(10)
 
     message = str(exc_info.value)
     assert message == "Servico temporariamente indisponivel. Tente novamente mais tarde."

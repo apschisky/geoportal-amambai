@@ -247,7 +247,7 @@ Erros: 401 sem sessao, 403 sem permissao, 422 para query invalida e 503 generico
 - Periodo invalido (`criado_de > criado_ate`) retornou status 422.
 - O filtro `poste_id` e opcional: sem ele, a listagem continua retornando solicitacoes com `poste_mapa` e futuras solicitacoes `ponto_manual`; com ele, a listagem restringe corretamente a um poste especifico.
 - Producao, proxy/Apache, frontend, migrations, schema, `.env`, NSSM, roles e GRANTs nao foram alterados nesta validacao.
-- Historico, observacoes internas, anexos, filtro `localizacao_tipo` e alteracao de status ficam para etapas posteriores.
+- Observacoes internas, anexos, filtro `localizacao_tipo` e alteracao de status ficam para etapas posteriores.
 
 ### `GET /api/internal/iluminacao/solicitacoes/{id}`
 
@@ -268,7 +268,7 @@ Resposta:
 
 Erros: 401 sem sessao, 403 sem permissao, 404 generico quando a solicitacao nao existir, 422 para `id` invalido e 503 generico se o banco estiver indisponivel, sem expor SQL, traceback, host, role, segredo ou `DATABASE_URL`.
 
-Historico, observacoes internas e anexos ficam para etapas posteriores com contratos, permissoes e auditoria proprios.
+Historico possui contrato proprio somente leitura descrito a seguir. Observacoes internas e anexos ficam para etapas posteriores com contratos, permissoes e auditoria proprios.
 
 Diagnostico do schema interno confirmou que `mod_iluminacao.solicitacoes_historico` e `mod_iluminacao.solicitacoes_observacoes` ja suportam os proximos endpoints basicos sem nova migration. A ordem recomendada e implementar primeiro leitura de historico, depois leitura de observacoes internas, depois criacao de observacao interna com evento resumido no historico, e somente depois alteracao de status com auditoria obrigatoria.
 
@@ -278,6 +278,35 @@ Diagnostico do schema interno confirmou que `mod_iluminacao.solicitacoes_histori
 - Implementado como rota somente leitura que exige sessão interna e `require_permission("iluminacao.solicitacoes.ler")`, com `id` path param inteiro positivo, bind parameter, filtro `deleted_at IS NULL`, colunas explícitas (sem `SELECT *`) e coordenadas `latitude`/`longitude` em WGS84 via `ST_Transform(geom, 4326)`.
 - Testes locais focados: `tests/test_internal_iluminacao_solicitacoes_router.py`: 18 passed; `tests/test_iluminacao_repository.py`: 11 passed; `tests/test_iluminacao_service.py`: 22 passed; `tests/test_iluminacao_public.py`: 37 passed; `tests/test_internal_routes_feature_flag.py`: 10 passed. Suíte completa local: 517 passed.
 - Validação em homologação: código aplicado via `git pull`, testes focados acima passaram no servidor, runtime interno reiniciado e validado via `scripts/deploy/backend-restart-validate-service.ps1 -Environment InternaHomologacao -Restart -Validate`, porta 8002 confirmada, `/api/health` e `/api/version` OK, login interno validado, permissão `iluminacao.solicitacoes.ler` confirmada e `GET http://127.0.0.1:8002/api/internal/iluminacao/solicitacoes/18` retornou 200 OK com os campos esperados (dado de homologação/teste). 404 e 503 permanecem retornos sanitizados conforme contrato.
+
+### `GET /api/internal/iluminacao/solicitacoes/{id}/historico`
+
+Finalidade: consultar a linha do tempo operacional de uma solicitacao interna de Iluminacao Publica.
+
+Primeira versao implementada:
+
+- Rota interna somente leitura sob `GEOPORTAL_INTERNAL_ROUTES_ENABLED`.
+- Exige sessao autenticada e `require_permission("iluminacao.solicitacoes.ver_historico")`.
+- Nao reutiliza `iluminacao.solicitacoes.ler`, pois historico possui permissao propria.
+- Nao exige `X-Geoportal-Internal-Request`, por ser GET.
+- Path param: `id` inteiro positivo.
+- Query params: `limit` de 1 a 100 com padrao 50 e `offset` minimo 0 com padrao 0.
+- Antes de retornar eventos, valida que a solicitacao existe em `mod_iluminacao.solicitacoes` e nao esta soft-deletada (`deleted_at IS NULL`).
+- Se a solicitacao nao existir ou estiver soft-deletada, retorna 404 generico.
+- Se a solicitacao existir sem historico, retorna 200 com `items=[]` e `total=0`.
+- A consulta usa `mod_iluminacao.solicitacoes_historico`, colunas explicitas, bind parameters, `ORDER BY criado_em ASC, id ASC`, `COUNT(*)` para `total` e nao usa `SELECT *`.
+- `total` considera o mesmo `solicitacao_id` e nao e afetado por `limit` ou `offset`.
+
+Resposta:
+
+- Envelope com `items`, `limit`, `offset` e `total`.
+- Cada item contem `id`, `solicitacao_id`, `acao`, `status_anterior`, `status_novo`, `prioridade_anterior`, `prioridade_nova`, `usuario_id`, `usuario_nome`, `origem_acao`, `observacao_resumida` e `criado_em`.
+
+Erros: 401 sem sessao, 403 sem permissao, 404 generico quando a solicitacao nao existir, 422 para parametros invalidos e 503 generico se o banco estiver indisponivel, sem expor SQL, traceback, host, role, segredo ou `DATABASE_URL`.
+
+Esta etapa nao cria endpoint mutavel, migration, alteracao de schema, usuario, perfil, permissao real no banco, role, GRANT, frontend, proxy ou producao. A permissao real `iluminacao.solicitacoes.ver_historico` deve ser criada operacionalmente em homologacao antes da validacao real.
+
+Observacoes internas, criacao de observacao, anexos e alteracao de status com auditoria obrigatoria continuam em etapas posteriores.
 
 ### `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`
 
