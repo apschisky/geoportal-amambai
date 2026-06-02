@@ -2,7 +2,7 @@
 .SYNOPSIS
 Reinicia e valida servicos da Geoportal API sem executar deploy.
 .PARAMETER Environment
-Ambiente alvo. Valores permitidos: Homologacao ou Producao.
+Ambiente alvo. Valores permitidos: Homologacao, InternaHomologacao ou Producao.
 .PARAMETER Restart
 Quando informado, reinicia apenas o servico do ambiente selecionado.
 .PARAMETER Validate
@@ -15,7 +15,7 @@ Confirma reinicio de Producao sem prompt interativo.
 
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('Homologacao', 'Producao')]
+    [ValidateSet('Homologacao', 'InternaHomologacao', 'Producao')]
     [string]$Environment,
 
     [switch]$Restart,
@@ -40,6 +40,19 @@ function Get-EnvironmentConfig {
             Port = 8000
             ExpectedEnvironment = 'homologacao'
             PublicBaseUrl = $null
+            IsInternalRuntime = $false
+        }
+    }
+
+    if ($Name -eq 'InternaHomologacao') {
+        return [PSCustomObject]@{
+            Name = 'InternaHomologacao'
+            ServiceName = 'GeoportalAPIInternaHomologacao'
+            LocalBaseUrl = 'http://127.0.0.1:8002'
+            Port = 8002
+            ExpectedEnvironment = 'homologacao'
+            PublicBaseUrl = $null
+            IsInternalRuntime = $true
         }
     }
 
@@ -50,6 +63,7 @@ function Get-EnvironmentConfig {
         Port = 8001
         ExpectedEnvironment = 'producao'
         PublicBaseUrl = 'https://geoserver.amambai.ms.gov.br'
+        IsInternalRuntime = $false
     }
 }
 
@@ -76,8 +90,8 @@ function Test-ServicePort {
     )
 
     Write-Host "Validando porta local: $Port" -ForegroundColor Cyan
-    $matches = netstat -ano | Select-String -Pattern ":$Port\s"
-    if (-not $matches) {
+    $portMatches = netstat -ano | Select-String -Pattern ":$Port\s"
+    if (-not $portMatches) {
         Write-Host "Falha: porta $Port nao encontrada no netstat." -ForegroundColor Red
         return $false
     }
@@ -171,6 +185,38 @@ function Test-VersionEnvironment {
     return $true
 }
 
+function Test-UnauthorizedEndpoint {
+    param(
+        [string]$Url
+    )
+
+    Write-Host "Validando endpoint sem sessao: $Url" -ForegroundColor Cyan
+    try {
+        $response = Invoke-WebRequest -Uri $Url -TimeoutSec 15 -UseBasicParsing
+        Write-Host "Falha: status HTTP $($response.StatusCode); esperado 401." -ForegroundColor Red
+        return $false
+    }
+    catch {
+        $statusCode = $null
+        if ($null -ne $_.Exception.Response) {
+            $statusCode = $_.Exception.Response.StatusCode.value__
+        }
+
+        if ($statusCode -eq 401) {
+            Write-Host "OK: $Url retornou 401 sem sessao." -ForegroundColor Green
+            return $true
+        }
+
+        if ($null -eq $statusCode) {
+            Write-Host "Falha ao validar endpoint sem sessao: $($_.Exception.Message)" -ForegroundColor Red
+            return $false
+        }
+
+        Write-Host "Falha: status HTTP $statusCode; esperado 401." -ForegroundColor Red
+        return $false
+    }
+}
+
 function Test-LocalEndpoints {
     param(
         [object]$Config
@@ -182,8 +228,14 @@ function Test-LocalEndpoints {
 
     $allOk = $true
     $allOk = (Test-HealthStatus -Url "$($Config.LocalBaseUrl)/api/health") -and $allOk
-    $allOk = (Test-HealthStatus -Url "$($Config.LocalBaseUrl)/api/public/iluminacao/health") -and $allOk
     $allOk = (Test-VersionEnvironment -Url "$($Config.LocalBaseUrl)/api/version" -ExpectedEnvironment $Config.ExpectedEnvironment) -and $allOk
+
+    if ($Config.IsInternalRuntime) {
+        $allOk = (Test-UnauthorizedEndpoint -Url "$($Config.LocalBaseUrl)/api/internal/auth/me") -and $allOk
+    }
+    else {
+        $allOk = (Test-HealthStatus -Url "$($Config.LocalBaseUrl)/api/public/iluminacao/health") -and $allOk
+    }
 
     return $allOk
 }
