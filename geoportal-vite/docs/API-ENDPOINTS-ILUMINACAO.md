@@ -234,6 +234,21 @@ Fases futuras podem adicionar filtros por regiao, resumo por status e agregacoes
 
 Erros: 401 sem sessao, 403 sem permissao, 422 para query invalida e 503 generico se o banco estiver indisponivel, sem expor SQL, traceback, host, role, segredo ou `DATABASE_URL`.
 
+**Validacao operacional (filtros e paginacao da listagem interna)**
+
+- Commit: `4731edc` Aprimora filtros da listagem interna de iluminacao.
+- Testes locais antes do commit: `tests/test_internal_iluminacao_solicitacoes_router.py`: 19 passed; `tests/test_iluminacao_repository.py`: 12 passed; `tests/test_iluminacao_service.py`: 23 passed; `tests/test_iluminacao_public.py`: 37 passed; suite completa: 520 passed. Houve 1 warning de depreciacao relacionado a constante HTTP 422, sem impacto bloqueante.
+- Validacao em homologacao interna: codigo aplicado no servidor, testes focados passaram, runtime interno `InternaHomologacao` reiniciado e validado pelo harness com porta `8002`, `/api/health` OK, `/api/version` com `environment=homologacao` e `/api/internal/auth/me` sem sessao retornando 401.
+- Login interno foi validado no runtime interno com usuario administrativo de homologacao, sem registrar token, senha ou cookie real.
+- Listagem basica `GET /api/internal/iluminacao/solicitacoes?limit=5&offset=0` retornou `limit=5`, `offset=0` e `total=2`.
+- Filtro por protocolo com dado de homologacao/teste (`protocolo=IP-2026-000020`) retornou `total=1` e item de teste `id=18`.
+- Filtro por poste com dado de homologacao/teste (`poste_id=3638`) retornou `total=1` e item de teste `id=18`.
+- Combinacao `status=aberta` e `tipo_problema=lampada_apagada` retornou `total=2`.
+- Periodo invalido (`criado_de > criado_ate`) retornou status 422.
+- O filtro `poste_id` e opcional: sem ele, a listagem continua retornando solicitacoes com `poste_mapa` e futuras solicitacoes `ponto_manual`; com ele, a listagem restringe corretamente a um poste especifico.
+- Producao, proxy/Apache, frontend, migrations, schema, `.env`, NSSM, roles e GRANTs nao foram alterados nesta validacao.
+- Historico, observacoes internas, anexos, filtro `localizacao_tipo` e alteracao de status ficam para etapas posteriores.
+
 ### `GET /api/internal/iluminacao/solicitacoes/{id}`
 
 Finalidade: ver detalhe interno da solicitacao.
@@ -524,9 +539,13 @@ Este documento complementa:
 
 - seguir `docs/ILUMINACAO-CONTROLLED-ACTIVATION-CHECKLIST.md` antes de qualquer ativacao publica;
 - `docs/SQL-MIGRATION-PLAN.md`;
-- prova de conceito FastAPI em homologacao;
+- mapear e validar o schema existente de historico e observacoes internas antes de endpoint mutavel;
+- definir contrato seguro para leitura de historico;
+- definir contrato seguro para leitura/criacao de observacoes internas;
+- planejar alteracao de status somente depois, com auditoria obrigatoria;
+- manter anexos e tela interna para etapas posteriores;
 - validacao com setor responsavel;
-- desenho de telas do painel interno.
+- desenho de telas do painel interno somente depois dos contratos backend validados.
 ## Decisao de Runtime para Endpoints Internos
 
 O endpoint `GET /api/internal/iluminacao/solicitacoes` deve rodar no runtime interno de homologacao com `geoportal_api_homolog`, nao no runtime publico com `api_iluminacao_homolog`. A role publica permanece dedicada a `/api/public/*` e nao deve receber acesso a `mod_auth`.

@@ -4,6 +4,8 @@ Este documento registra a arquitetura funcional de autorizacao do Geoportal Inte
 
 Nota: o endpoint de detalhe `GET /api/internal/iluminacao/solicitacoes/{id}` foi implementado (commit `d198710`) e validado localmente e em homologacao; consulte `API-ENDPOINTS-ILUMINACAO.md` para resumo da validacao e resultados de teste.
 
+Nota operacional: a listagem interna `GET /api/internal/iluminacao/solicitacoes` foi aprimorada no commit `4731edc` com filtros por `protocolo`, `poste_id`, `tipo_problema`, `prioridade`, `criado_de`, `criado_ate` e campo `total` para paginacao. A validacao ocorreu em homologacao interna com sessao/permissao real, mantendo leitura somente, sem endpoint mutavel, sem migration, sem schema, sem producao, sem proxy e sem frontend.
+
 O modelo conceitual transversal de dados de autenticacao/autorizacao esta em `docs/INTERNAL-AUTH-DATA-MODEL.md`.
 
 A decisao tecnica de autenticacao interna e autorizacao deve ser alinhada com `docs/INTERNAL-AUTH-TECHNICAL-DECISIONS.md` antes de implementar endpoints.
@@ -641,3 +643,15 @@ O runtime interno de homologacao foi criado como servico NSSM `GeoportalAPIInter
 Em validacao autenticada manual pelo servico, o login interno funcionou sem registrar token na documentacao, `/api/internal/auth/me` confirmou sessao autenticada, `iluminacao.solicitacoes.ler` foi confirmada e `GET /api/internal/iluminacao/solicitacoes?limit=10&offset=0` retornou itens reais. `api_iluminacao_homolog` continua sem acesso a `mod_auth`; `geoportal_api_homolog` recebeu apenas `USAGE` no schema `mod_iluminacao` e `SELECT` em `mod_iluminacao.solicitacoes`, sem `INSERT`, `UPDATE` ou `DELETE` nessa etapa.
 
 Producao, Apache/proxy, frontend, migrations, schema, `.env` versionado e exposicao publica do runtime interno permanecem inalterados. Uma porta como `8003` pode ser avaliada futuramente como candidata conceitual para producao interna, mas ainda nao foi criada, configurada ou ativada.
+
+## Validacao da Listagem Interna de Iluminacao com Filtros
+
+O commit `4731edc` Aprimora filtros da listagem interna de iluminacao foi aplicado no servidor e validado no runtime interno de homologacao. A rota continua somente leitura, exige sessao interna e `require_permission("iluminacao.solicitacoes.ler")`, nao exige `X-Geoportal-Internal-Request`, filtra `deleted_at IS NULL`, usa colunas explicitas, bind parameters e coordenadas WGS84 via `ST_Transform(geom, 4326)`.
+
+Validacoes locais antes do commit: testes focados de router, repository, service e API publica passaram, e a suite completa registrou 520 passed, com 1 warning nao bloqueante de depreciacao da constante HTTP 422.
+
+Validacao operacional em homologacao: o harness `InternaHomologacao` confirmou porta `8002`, `/api/health`, `/api/version` com `environment=homologacao` e `/api/internal/auth/me` sem sessao retornando 401. A validacao autenticada confirmou login interno, permissao `iluminacao.solicitacoes.ler`, listagem basica com `limit=5`, `offset=0`, `total=2`, filtro por protocolo de homologacao/teste, filtro por `poste_id`, combinacao `status=aberta` com `tipo_problema=lampada_apagada` e periodo invalido retornando 422.
+
+O filtro `poste_id` permanece opcional e nao impede solicitacoes futuras por ponto manual. O filtro `localizacao_tipo` pode ser avaliado antes da tela para diferenciar `poste_mapa` e `ponto_manual`, mas nao foi implementado nesta etapa.
+
+Proximos passos tecnicos recomendados antes de endpoint mutavel e antes de frontend: mapear e validar o schema existente de historico e observacoes internas, decidir contratos seguros para leitura de historico e leitura/criacao de observacoes internas, e somente depois planejar alteracao de status com auditoria obrigatoria. Historico, observacoes internas, anexos e PATCH de status permanecem etapas posteriores.

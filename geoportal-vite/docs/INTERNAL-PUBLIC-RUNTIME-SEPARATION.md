@@ -90,9 +90,8 @@ Validacoes operacionais ja realizadas:
 - Foi aplicado em homologacao o acesso minimo de leitura para `geoportal_api_homolog` em `mod_iluminacao.solicitacoes`.
 - Nao foi concedido `INSERT`, `UPDATE` ou `DELETE` em `mod_iluminacao` para `geoportal_api_homolog` nesta etapa.
 - Nao foi concedido `mod_auth` para `api_iluminacao_homolog`.
-- `GET /api/internal/iluminacao/solicitacoes?limit=10&offset=0` funcionou na porta `8002`.
- - `GET /api/internal/iluminacao/solicitacoes?limit=10&offset=0` funcionou na porta `8002`.
- - O endpoint de detalhe `GET /api/internal/iluminacao/solicitacoes/{solicitacao_id}` foi implementado (commit `d198710`) e validado em homologacao; por exemplo, `GET http://127.0.0.1:8002/api/internal/iluminacao/solicitacoes/18` retornou `200 OK` com campos esperados (dado de homologacao/teste).
+- O endpoint de detalhe `GET /api/internal/iluminacao/solicitacoes/{solicitacao_id}` foi implementado (commit `d198710`) e validado em homologacao; por exemplo, `GET http://127.0.0.1:8002/api/internal/iluminacao/solicitacoes/18` retornou `200 OK` com campos esperados (dado de homologacao/teste).
+- A listagem interna foi aprimorada com filtros operacionais e `total` para paginacao (commit `4731edc`) e validada no runtime interno com dados de homologacao/teste, mantendo leitura protegida por `iluminacao.solicitacoes.ler`.
 - Foi observado que a sessao interna expira em aproximadamente 1 hora.
 
 Producao nao foi alterada. Apache/proxy publico ainda nao foi alterado. Frontend/tela interna ainda nao foi criado. O runtime interno foi validado em homologacao local, mas ainda nao esta exposto publicamente.
@@ -117,6 +116,8 @@ Validacao autenticada manual pelo servico NSSM:
 - `/api/internal/auth/me` confirmou sessao autenticada.
 - A permissao `iluminacao.solicitacoes.ler` foi confirmada para o usuario administrativo.
 - `GET /api/internal/iluminacao/solicitacoes?limit=10&offset=0` retornou itens reais.
+- `GET /api/internal/iluminacao/solicitacoes?limit=5&offset=0` retornou `total=2` e paginacao esperada.
+- Filtros por protocolo, poste, status/tipo de problema e periodo invalido foram validados com dados de homologacao/teste; periodo invalido retornou 422.
 
 Estado de seguranca apos a validacao:
 
