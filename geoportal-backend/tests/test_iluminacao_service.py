@@ -983,3 +983,124 @@ def test_listar_observacoes_solicitacao_interna_converts_exists_error_to_safe_er
     assert "db.internal" not in message
     assert "senha" not in message.lower()
     assert "SELECT" not in message
+
+
+def test_criar_observacao_solicitacao_interna_creates_normalized_observation(
+    monkeypatch,
+) -> None:
+    calls: dict[str, object] = {}
+
+    def fake_create_observacao_solicitacao_interna(
+        solicitacao_id: int,
+        *,
+        observacao: str,
+        usuario_id: str,
+        usuario_nome: str | None = None,
+    ) -> IluminacaoSolicitacaoObservacaoInternaItem:
+        calls.update(
+            {
+                "solicitacao_id": solicitacao_id,
+                "observacao": observacao,
+                "usuario_id": usuario_id,
+                "usuario_nome": usuario_nome,
+            }
+        )
+        return observacao_solicitacao_item()
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "create_observacao_solicitacao_interna",
+        fake_create_observacao_solicitacao_interna,
+    )
+
+    response = iluminacao_service.criar_observacao_solicitacao_interna(
+        10,
+        observacao="  Equipe acionada.  ",
+        usuario_id=7,
+        usuario_nome=None,
+    )
+
+    assert response.id == 70
+    assert response.visibilidade == "interna"
+    assert calls == {
+        "solicitacao_id": 10,
+        "observacao": "Equipe acionada.",
+        "usuario_id": "7",
+        "usuario_nome": None,
+    }
+
+
+def test_criar_observacao_solicitacao_interna_rejects_invalid_input(
+    monkeypatch,
+) -> None:
+    def fail_if_called(*args: object, **kwargs: object) -> None:
+        raise AssertionError("repository should not be called")
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "create_observacao_solicitacao_interna",
+        fail_if_called,
+    )
+
+    for kwargs in (
+        {"solicitacao_id": 0, "observacao": "Equipe acionada.", "usuario_id": 7},
+        {"solicitacao_id": 10, "observacao": "", "usuario_id": 7},
+        {"solicitacao_id": 10, "observacao": "  ", "usuario_id": 7},
+        {"solicitacao_id": 10, "observacao": " ab ", "usuario_id": 7},
+        {"solicitacao_id": 10, "observacao": "a" * 2001, "usuario_id": 7},
+        {"solicitacao_id": 10, "observacao": "Equipe acionada.", "usuario_id": 0},
+    ):
+        with pytest.raises(ValueError):
+            iluminacao_service.criar_observacao_solicitacao_interna(**kwargs)
+
+
+def test_criar_observacao_solicitacao_interna_raises_safe_not_found(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "create_observacao_solicitacao_interna",
+        lambda solicitacao_id, *, observacao, usuario_id, usuario_nome=None: None,
+    )
+
+    with pytest.raises(iluminacao_service.SolicitacaoInternaNotFoundError) as exc_info:
+        iluminacao_service.criar_observacao_solicitacao_interna(
+            999,
+            observacao="Equipe acionada.",
+            usuario_id=7,
+        )
+
+    message = str(exc_info.value)
+    assert message == "Solicitacao nao encontrada."
+    assert "DATABASE_URL" not in message
+    assert "SELECT" not in message
+    assert "token" not in message
+
+
+def test_criar_observacao_solicitacao_interna_converts_database_error_to_safe_error(
+    monkeypatch,
+) -> None:
+    def fail_with_database_error(*args: object, **kwargs: object) -> None:
+        raise SQLAlchemyError(
+            "could not connect using DATABASE_URL on host db.internal:5432 INSERT"
+        )
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "create_observacao_solicitacao_interna",
+        fail_with_database_error,
+    )
+
+    with pytest.raises(DatabaseUnavailableError) as exc_info:
+        iluminacao_service.criar_observacao_solicitacao_interna(
+            10,
+            observacao="Equipe acionada.",
+            usuario_id=7,
+        )
+
+    message = str(exc_info.value)
+    assert message == "Servico temporariamente indisponivel. Tente novamente mais tarde."
+    assert "DATABASE_URL" not in message
+    assert "db.internal" not in message
+    assert "senha" not in message.lower()
+    assert "INSERT" not in message

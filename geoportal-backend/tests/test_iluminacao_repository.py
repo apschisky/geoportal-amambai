@@ -4,6 +4,7 @@ from typing import Any
 from sqlalchemy.sql.elements import TextClause
 
 from app.repositories.iluminacao_repository import (
+    create_observacao_solicitacao_interna,
     create_solicitacao,
     existe_solicitacao_ativa_para_poste,
     get_solicitacao_interna_por_id,
@@ -89,6 +90,41 @@ class FakeEngine:
         self.connection = FakeConnection(row)
 
     def begin(self) -> FakeBegin:
+        return FakeBegin(self.connection)
+
+
+class FakeCreateObservacaoConnection(FakeConnection):
+    def __init__(self, *, exists: bool = True) -> None:
+        super().__init__(observacao_solicitacao_row())
+        self.exists = exists
+
+    def execute(self, statement: TextClause, params: dict[str, Any]) -> FakeResult:
+        self.statement = statement
+        self.params = params
+        self.statements.append(statement)
+        self.params_history.append(params)
+
+        sql = str(statement)
+        if "SELECT EXISTS" in sql:
+            return FakeResult({"existe": self.exists})
+        if "INSERT INTO mod_iluminacao.solicitacoes_observacoes" in sql:
+            row = observacao_solicitacao_row()
+            row["observacao"] = params["observacao"]
+            row["usuario_id"] = params["usuario_id"]
+            row["usuario_nome"] = params["usuario_nome"]
+            return FakeResult(row)
+        if "INSERT INTO mod_iluminacao.solicitacoes_historico" in sql:
+            return FakeResult({"id": 1})
+        raise AssertionError(f"unexpected SQL statement: {sql}")
+
+
+class FakeCreateObservacaoEngine:
+    def __init__(self, *, exists: bool = True) -> None:
+        self.connection = FakeCreateObservacaoConnection(exists=exists)
+        self.begin_count = 0
+
+    def begin(self) -> FakeBegin:
+        self.begin_count += 1
         return FakeBegin(self.connection)
 
 
@@ -752,4 +788,126 @@ def test_list_observacoes_solicitacao_interna_rejects_invalid_params_without_sql
         else:
             raise AssertionError("invalid params should be rejected")
 
+    assert engine.connection.statement is None
+
+
+def test_create_observacao_solicitacao_interna_uses_transaction_and_history() -> None:
+    engine = FakeCreateObservacaoEngine()
+
+    response = create_observacao_solicitacao_interna(
+        solicitacao_id=10,
+        observacao="  Equipe acionada.  ",
+        usuario_id="7",
+        usuario_nome=None,
+        engine=engine,
+    )
+
+    assert engine.begin_count == 1
+    assert len(engine.connection.statements) == 3
+    assert engine.connection.params_history[0] == {"solicitacao_id": 10}
+    assert engine.connection.params_history[1] == {
+        "solicitacao_id": 10,
+        "observacao": "Equipe acionada.",
+        "visibilidade": "interna",
+        "usuario_id": "7",
+        "usuario_nome": None,
+    }
+    assert engine.connection.params_history[2] == {
+        "solicitacao_id": 10,
+        "acao": "observacao_interna",
+        "usuario_id": "7",
+        "usuario_nome": None,
+        "origem_acao": "usuario_interno",
+        "observacao_resumida": "Equipe acionada.",
+    }
+
+    exists_sql = str(engine.connection.statements[0])
+    observacao_sql = str(engine.connection.statements[1])
+    historico_sql = str(engine.connection.statements[2])
+    assert "SELECT EXISTS" in exists_sql
+    assert "FROM mod_iluminacao.solicitacoes" in exists_sql
+    assert "WHERE id = :solicitacao_id" in exists_sql
+    assert "deleted_at IS NULL" in exists_sql
+    assert "INSERT INTO mod_iluminacao.solicitacoes_observacoes" in observacao_sql
+    assert "solicitacao_id" in observacao_sql
+    assert "observacao" in observacao_sql
+    assert "visibilidade" in observacao_sql
+    assert "usuario_id" in observacao_sql
+    assert "usuario_nome" in observacao_sql
+    assert "RETURNING" in observacao_sql
+    assert "deleted_at" not in observacao_sql.split("RETURNING", maxsplit=1)[1]
+    assert "INSERT INTO mod_iluminacao.solicitacoes_historico" in historico_sql
+    assert "acao" in historico_sql
+    assert "origem_acao" in historico_sql
+    assert "observacao_resumida" in historico_sql
+    assert "SELECT *" not in exists_sql.upper()
+    assert "SELECT *" not in observacao_sql.upper()
+    assert "SELECT *" not in historico_sql.upper()
+    combined_sql = (exists_sql + observacao_sql + historico_sql).upper()
+    assert "DELETE FROM" not in combined_sql
+    assert "UPDATE " not in combined_sql
+    assert "Equipe acionada" not in observacao_sql
+    assert "Equipe acionada" not in historico_sql
+    assert "observacao_interna" not in historico_sql
+    assert "usuario_interno" not in historico_sql
+    assert "publica_futura" not in observacao_sql
+    assert response is not None
+    assert response.observacao == "Equipe acionada."
+    assert response.visibilidade == "interna"
+    assert response.usuario_id == "7"
+
+
+def test_create_observacao_solicitacao_interna_truncates_historico_summary() -> None:
+    engine = FakeCreateObservacaoEngine()
+    observacao = "a" * 1500
+
+    response = create_observacao_solicitacao_interna(
+        solicitacao_id=10,
+        observacao=observacao,
+        usuario_id="7",
+        usuario_nome=" Administrador Interno ",
+        engine=engine,
+    )
+
+    assert response is not None
+    assert response.observacao == observacao
+    assert engine.connection.params_history[1]["usuario_nome"] == "Administrador Interno"
+    assert engine.connection.params_history[2]["usuario_nome"] == "Administrador Interno"
+    assert engine.connection.params_history[2]["observacao_resumida"] == "a" * 1000
+
+
+def test_create_observacao_solicitacao_interna_returns_none_when_not_found() -> None:
+    engine = FakeCreateObservacaoEngine(exists=False)
+
+    response = create_observacao_solicitacao_interna(
+        solicitacao_id=999,
+        observacao="Equipe acionada.",
+        usuario_id="7",
+        engine=engine,
+    )
+
+    assert response is None
+    assert engine.begin_count == 1
+    assert len(engine.connection.statements) == 1
+    assert engine.connection.params_history[0] == {"solicitacao_id": 999}
+
+
+def test_create_observacao_solicitacao_interna_rejects_invalid_input_without_sql() -> None:
+    engine = FakeCreateObservacaoEngine()
+
+    for kwargs in (
+        {"solicitacao_id": 0, "observacao": "Equipe acionada.", "usuario_id": "7"},
+        {"solicitacao_id": 10, "observacao": "", "usuario_id": "7"},
+        {"solicitacao_id": 10, "observacao": " ab ", "usuario_id": "7"},
+        {"solicitacao_id": 10, "observacao": "a" * 2001, "usuario_id": "7"},
+        {"solicitacao_id": 10, "observacao": "Equipe acionada.", "usuario_id": " "},
+    ):
+        try:
+            create_observacao_solicitacao_interna(engine=engine, **kwargs)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("invalid input should be rejected")
+
+    assert engine.begin_count == 0
     assert engine.connection.statement is None

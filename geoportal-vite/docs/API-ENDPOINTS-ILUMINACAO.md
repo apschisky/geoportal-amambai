@@ -389,22 +389,53 @@ Auditoria:
 
 ### `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes`
 
-Finalidade: adicionar observacao interna.
+Finalidade: adicionar observacao interna em uma solicitacao de Iluminacao Publica.
+
+Caracteristicas:
+
+- Endpoint interno mutavel.
+- Exige sessao autenticada.
+- Exige `require_permission("iluminacao.solicitacoes.comentar")`.
+- Exige header `X-Geoportal-Internal-Request: 1`.
+- Nao altera status, prioridade, finalizacao, anexos ou dados principais da solicitacao.
+- Nao cria endpoint de `PATCH status` nesta etapa.
 
 Payload:
 
-- `observacao`;
-- `visibilidade` interna/publica controlada, se aplicavel.
+- `observacao`: string obrigatoria, com trim seguro, minimo de 3 caracteres apos trim e maximo de 2000 caracteres.
 
-Permissao:
+Campos nao aceitos no payload nesta etapa:
 
-- `editar` ou `encaminhar`.
+- `visibilidade`;
+- `usuario_id`;
+- `usuario_nome`;
+- `criado_em`;
+- `editado_em`;
+- `deleted_at`;
+- qualquer campo de sessao, auditoria, token, senha, SQL, role, GRANT ou segredo.
 
-Auditoria:
+Persistencia:
 
-- registrar usuario;
-- registrar data/hora;
-- registrar conteudo resumido.
+- Insere em `mod_iluminacao.solicitacoes_observacoes`.
+- Define `visibilidade='interna'` no backend.
+- Preenche `usuario_id` a partir da sessao interna autenticada.
+- Preenche `usuario_nome` somente se estiver disponivel de forma segura no fluxo autenticado; caso contrario, pode ficar nulo.
+- Insere evento resumido em `mod_iluminacao.solicitacoes_historico` na mesma transacao.
+- Usa `acao='observacao_interna'` e `origem_acao='usuario_interno'`, valores permitidos pela migration de historico.
+- Trunca `observacao_resumida` para caber em `varchar(1000)`.
+- Se o INSERT no historico falhar, a observacao nao deve permanecer gravada.
+
+Resposta 201:
+
+- Retorna a observacao criada com `id`, `solicitacao_id`, `observacao`, `visibilidade`, `usuario_id`, `usuario_nome`, `criado_em` e `editado_em`.
+- Nao retorna `deleted_at`, SQL, traceback, host, role, GRANT, senha, token, cookie, hash, `session_secret` ou `DATABASE_URL`.
+
+Estado desta etapa:
+
+- Nao cria migration nem altera schema.
+- Nao cria permissao real no banco, usuario, perfil, role ou GRANT; esses passos ficam para validacao operacional em homologacao.
+- Nao altera producao, proxy, NSSM, `.env`, frontend ou API publica.
+- Anexos e `PATCH status` permanecem em etapas posteriores.
 
 ### `POST /api/internal/iluminacao/solicitacoes/{id}/anexos`
 

@@ -141,6 +141,13 @@ def test_internal_smoke_route_returns_404_when_flag_is_disabled(
         client.get(INTERNAL_ILUMINACAO_SOLICITACAO_OBSERVACOES_PATH).status_code
         == 404
     )
+    assert (
+        client.post(
+            INTERNAL_ILUMINACAO_SOLICITACAO_OBSERVACOES_PATH,
+            json={"observacao": "Equipe acionada."},
+        ).status_code
+        == 404
+    )
 
 
 def test_internal_smoke_route_is_present_when_flag_is_enabled(

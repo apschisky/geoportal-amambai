@@ -2,10 +2,13 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
+from app.dependencies.auth_dependencies import require_internal_mutating_request_header
 from app.dependencies.auth_dependencies import require_permission
 from app.schemas.iluminacao import (
     IluminacaoSolicitacaoHistoricoInternoResponse,
     IluminacaoSolicitacaoInternaItem,
+    IluminacaoSolicitacaoObservacaoInternaCreate,
+    IluminacaoSolicitacaoObservacaoInternaItem,
     IluminacaoSolicitacaoObservacoesInternasResponse,
     IluminacaoSolicitacoesInternasResponse,
     StatusSolicitacaoIluminacao,
@@ -13,6 +16,7 @@ from app.schemas.iluminacao import (
 )
 from app.services.auth_current_session_service import AuthenticatedCurrentSession
 from app.services.exceptions import DatabaseUnavailableError
+from app.services.iluminacao_service import criar_observacao_solicitacao_interna
 from app.services.iluminacao_service import listar_historico_solicitacao_interna
 from app.services.iluminacao_service import listar_observacoes_solicitacao_interna
 from app.services.iluminacao_service import listar_solicitacoes_internas
@@ -27,6 +31,7 @@ LIST_INTERNAL_ILUMINACAO_HISTORICO_PERMISSION = (
 LIST_INTERNAL_ILUMINACAO_OBSERVACOES_PERMISSION = (
     "iluminacao.solicitacoes.ver_observacoes"
 )
+CREATE_INTERNAL_ILUMINACAO_OBSERVACAO_PERMISSION = "iluminacao.solicitacoes.comentar"
 
 router = APIRouter(prefix="/api/internal/iluminacao", tags=["internal-iluminacao"])
 
@@ -186,3 +191,40 @@ def list_internal_solicitacao_observacoes(
         offset=offset,
         total=result.total,
     )
+
+
+@router.post(
+    "/solicitacoes/{solicitacao_id}/observacoes",
+    response_model=IluminacaoSolicitacaoObservacaoInternaItem,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_internal_solicitacao_observacao(
+    payload: IluminacaoSolicitacaoObservacaoInternaCreate,
+    solicitacao_id: int = Path(ge=1),
+    current_session: AuthenticatedCurrentSession = Depends(
+        require_permission(CREATE_INTERNAL_ILUMINACAO_OBSERVACAO_PERMISSION)
+    ),
+    _internal_request: None = Depends(require_internal_mutating_request_header),
+) -> IluminacaoSolicitacaoObservacaoInternaItem:
+    try:
+        return criar_observacao_solicitacao_interna(
+            solicitacao_id,
+            observacao=payload.observacao,
+            usuario_id=current_session.usuario_id,
+            usuario_nome=None,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid payload",
+        ) from exc
+    except SolicitacaoInternaNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Not found",
+        ) from exc
+    except DatabaseUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc

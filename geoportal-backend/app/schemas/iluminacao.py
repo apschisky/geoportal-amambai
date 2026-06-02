@@ -214,6 +214,19 @@ class IluminacaoSolicitacaoObservacaoInternaItem(BaseModel):
     editado_em: datetime | None = None
 
 
+class IluminacaoSolicitacaoObservacaoInternaCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    observacao: str = Field(min_length=3, max_length=2000)
+
+    @field_validator("observacao", mode="before")
+    @classmethod
+    def strip_observacao(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip()
+        return value
+
+
 class IluminacaoSolicitacaoObservacoesInternasResponse(BaseModel):
     items: list[IluminacaoSolicitacaoObservacaoInternaItem]
     limit: int

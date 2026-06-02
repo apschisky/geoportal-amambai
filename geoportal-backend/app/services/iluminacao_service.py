@@ -11,6 +11,7 @@ from app.schemas.iluminacao import (
     IluminacaoConsultaRequest,
     IluminacaoSolicitacaoHistoricoInternoResult,
     IluminacaoSolicitacaoInternaItem,
+    IluminacaoSolicitacaoObservacaoInternaItem,
     IluminacaoSolicitacaoObservacoesInternasResult,
     IluminacaoSolicitacaoCreate,
     IluminacaoSolicitacaoResponse,
@@ -289,3 +290,42 @@ def listar_observacoes_solicitacao_interna(
         raise
     except (SQLAlchemyError, RuntimeError) as exc:
         raise DatabaseUnavailableError(DATABASE_UNAVAILABLE_MESSAGE) from exc
+
+
+def _normalize_observacao_interna(observacao: str) -> str:
+    normalized = observacao.strip()
+    if len(normalized) < 3:
+        raise ValueError("observacao must have at least 3 characters")
+    if len(normalized) > 2000:
+        raise ValueError("observacao exceeds maximum length")
+    return normalized
+
+
+def criar_observacao_solicitacao_interna(
+    solicitacao_id: int,
+    *,
+    observacao: str,
+    usuario_id: int,
+    usuario_nome: str | None = None,
+) -> IluminacaoSolicitacaoObservacaoInternaItem:
+    if solicitacao_id < 1:
+        raise ValueError("solicitacao_id must be greater than or equal to 1")
+    if usuario_id < 1:
+        raise ValueError("usuario_id must be greater than or equal to 1")
+
+    observacao_normalizada = _normalize_observacao_interna(observacao)
+
+    try:
+        item = iluminacao_repository.create_observacao_solicitacao_interna(
+            solicitacao_id,
+            observacao=observacao_normalizada,
+            usuario_id=str(usuario_id),
+            usuario_nome=usuario_nome,
+        )
+    except (SQLAlchemyError, RuntimeError) as exc:
+        raise DatabaseUnavailableError(DATABASE_UNAVAILABLE_MESSAGE) from exc
+
+    if item is None:
+        raise SolicitacaoInternaNotFoundError(SOLICITACAO_INTERNA_NOT_FOUND_MESSAGE)
+
+    return item

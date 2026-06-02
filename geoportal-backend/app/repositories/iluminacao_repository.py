@@ -25,6 +25,26 @@ ACTIVE_SOLICITACAO_STATUSES = (
     "em_execucao",
     "aguardando_material",
 )
+OBSERVACAO_INTERNA_VISIBILIDADE = "interna"
+HISTORICO_ACAO_OBSERVACAO_INTERNA = "observacao_interna"
+HISTORICO_ORIGEM_USUARIO_INTERNO = "usuario_interno"
+HISTORICO_OBSERVACAO_RESUMIDA_MAX_LENGTH = 1000
+
+
+def _normalize_required_text(value: str, field_name: str, max_length: int) -> str:
+    normalized = value.strip()
+    if len(normalized) < 3:
+        raise ValueError(f"{field_name} must have at least 3 characters")
+    if len(normalized) > max_length:
+        raise ValueError(f"{field_name} exceeds maximum length")
+    return normalized
+
+
+def _normalize_optional_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip()
+    return normalized or None
 
 
 def existe_solicitacao_ativa_para_poste(
@@ -532,4 +552,131 @@ def list_observacoes_solicitacao_interna(
             for row in rows
         ],
         total=int(total_row["total"]),
+    )
+
+
+def create_observacao_solicitacao_interna(
+    solicitacao_id: int,
+    *,
+    observacao: str,
+    usuario_id: str,
+    usuario_nome: str | None = None,
+    engine: Engine | None = None,
+) -> IluminacaoSolicitacaoObservacaoInternaItem | None:
+    if solicitacao_id < 1:
+        raise ValueError("solicitacao_id must be greater than or equal to 1")
+
+    observacao_normalizada = _normalize_required_text(
+        observacao,
+        "observacao",
+        2000,
+    )
+    usuario_id_normalizado = usuario_id.strip()
+    if not usuario_id_normalizado:
+        raise ValueError("usuario_id must not be empty")
+    usuario_nome_normalizado = _normalize_optional_text(usuario_nome)
+    observacao_resumida = observacao_normalizada[
+        :HISTORICO_OBSERVACAO_RESUMIDA_MAX_LENGTH
+    ]
+
+    db_engine = engine or get_engine()
+
+    exists_statement = text(
+        """
+        SELECT EXISTS (
+            SELECT 1
+            FROM mod_iluminacao.solicitacoes
+            WHERE id = :solicitacao_id
+              AND deleted_at IS NULL
+        ) AS existe
+        """
+    )
+    observacao_statement = text(
+        """
+        INSERT INTO mod_iluminacao.solicitacoes_observacoes (
+            solicitacao_id,
+            observacao,
+            visibilidade,
+            usuario_id,
+            usuario_nome
+        )
+        VALUES (
+            :solicitacao_id,
+            :observacao,
+            :visibilidade,
+            :usuario_id,
+            :usuario_nome
+        )
+        RETURNING
+            id,
+            solicitacao_id,
+            observacao,
+            visibilidade,
+            usuario_id,
+            usuario_nome,
+            criado_em,
+            editado_em
+        """
+    )
+    historico_statement = text(
+        """
+        INSERT INTO mod_iluminacao.solicitacoes_historico (
+            solicitacao_id,
+            acao,
+            status_anterior,
+            status_novo,
+            prioridade_anterior,
+            prioridade_nova,
+            usuario_id,
+            usuario_nome,
+            origem_acao,
+            observacao_resumida
+        )
+        VALUES (
+            :solicitacao_id,
+            :acao,
+            NULL,
+            NULL,
+            NULL,
+            NULL,
+            :usuario_id,
+            :usuario_nome,
+            :origem_acao,
+            :observacao_resumida
+        )
+        """
+    )
+
+    with db_engine.begin() as connection:
+        exists_row = connection.execute(
+            exists_statement,
+            {"solicitacao_id": solicitacao_id},
+        ).mappings().one()
+        if not bool(exists_row["existe"]):
+            return None
+
+        observacao_row = connection.execute(
+            observacao_statement,
+            {
+                "solicitacao_id": solicitacao_id,
+                "observacao": observacao_normalizada,
+                "visibilidade": OBSERVACAO_INTERNA_VISIBILIDADE,
+                "usuario_id": usuario_id_normalizado,
+                "usuario_nome": usuario_nome_normalizado,
+            },
+        ).mappings().one()
+        connection.execute(
+            historico_statement,
+            {
+                "solicitacao_id": solicitacao_id,
+                "acao": HISTORICO_ACAO_OBSERVACAO_INTERNA,
+                "usuario_id": usuario_id_normalizado,
+                "usuario_nome": usuario_nome_normalizado,
+                "origem_acao": HISTORICO_ORIGEM_USUARIO_INTERNO,
+                "observacao_resumida": observacao_resumida,
+            },
+        )
+
+    return IluminacaoSolicitacaoObservacaoInternaItem.model_validate(
+        dict(observacao_row)
     )
