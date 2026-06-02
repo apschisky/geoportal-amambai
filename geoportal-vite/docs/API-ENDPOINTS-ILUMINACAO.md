@@ -227,16 +227,22 @@ Erros: 401 sem sessao, 403 sem permissao, 422 para query invalida e 503 generico
 
 Finalidade: ver detalhe interno da solicitacao.
 
-Permissao:
+Primeira versao implementada:
 
-- `visualizar`.
+- Rota interna somente leitura sob `GEOPORTAL_INTERNAL_ROUTES_ENABLED`.
+- Exige sessao autenticada e `require_permission("iluminacao.solicitacoes.ler")`.
+- Nao exige `X-Geoportal-Internal-Request`, por ser GET.
+- Path param: `id` inteiro positivo.
+- Filtra sempre `deleted_at IS NULL`, usa bind parameter para `id`, colunas explicitas e nao usa `SELECT *`.
+- Retorna coordenadas `latitude`/`longitude` em WGS84/EPSG:4326, calculadas a partir de `geom` com `ST_Transform(geom, 4326)`.
 
 Resposta:
 
-- dados completos permitidos ao perfil;
-- historico;
-- anexos autorizados;
-- dados pessoais somente para perfis autorizados.
+- item detalhado principal da solicitacao com `id`, `protocolo`, `origem`, `localizacao_tipo`, `poste_id`, `tipo_problema`, `descricao`, `observacoes_localizacao`, `ponto_referencia`, `poste_proximo_informado`, `nome_solicitante`, `contato_solicitante`, `status`, `prioridade`, `duplicidade_suspeita`, `latitude`, `longitude`, `criado_em`, `atualizado_em` e `finalizado_em`.
+
+Erros: 401 sem sessao, 403 sem permissao, 404 generico quando a solicitacao nao existir, 422 para `id` invalido e 503 generico se o banco estiver indisponivel, sem expor SQL, traceback, host, role, segredo ou `DATABASE_URL`.
+
+Historico, observacoes internas e anexos ficam para etapas posteriores com contratos, permissoes e auditoria proprios.
 
 ### `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`
 

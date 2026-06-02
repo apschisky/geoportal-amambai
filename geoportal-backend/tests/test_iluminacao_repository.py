@@ -6,6 +6,7 @@ from sqlalchemy.sql.elements import TextClause
 from app.repositories.iluminacao_repository import (
     create_solicitacao,
     existe_solicitacao_ativa_para_poste,
+    get_solicitacao_interna_por_id,
     get_solicitacao_publica_por_protocolo,
     list_solicitacoes_internas,
 )
@@ -337,5 +338,65 @@ def test_list_solicitacoes_internas_rejects_invalid_pagination_without_sql() -> 
             pass
         else:
             raise AssertionError("invalid pagination should be rejected")
+
+    assert engine.connection.statement is None
+
+
+def test_get_solicitacao_interna_por_id_uses_bind_param_and_postgis_transform() -> None:
+    engine = FakeEngine(internal_solicitacao_row())
+
+    response = get_solicitacao_interna_por_id(
+        solicitacao_id=10,
+        engine=engine,
+    )
+
+    assert engine.connection.statement is not None
+    assert engine.connection.params == {"solicitacao_id": 10}
+
+    sql = str(engine.connection.statement)
+    select_clause = sql.split("FROM", maxsplit=1)[0]
+    assert "FROM mod_iluminacao.solicitacoes" in sql
+    assert "WHERE id = :solicitacao_id" in sql
+    assert "deleted_at IS NULL" in sql
+    assert "ST_Y(ST_Transform(geom, 4326)) AS latitude" in sql
+    assert "ST_X(ST_Transform(geom, 4326)) AS longitude" in sql
+    assert "LIMIT 1" in sql
+    assert "SELECT *" not in sql.upper()
+    assert "id" in select_clause
+    assert "protocolo" in select_clause
+    assert "nome_solicitante" in select_clause
+    assert "contato_solicitante" in select_clause
+    assert "deleted_at" not in select_clause
+    assert "deleted_reason" not in select_clause
+    assert "10" not in sql
+    assert "POSTE-010" not in sql
+    assert response is not None
+    assert response.id == 10
+    assert response.protocolo == "IP-2026-000010"
+    assert response.latitude == -23.105
+    assert response.longitude == -55.225
+
+
+def test_get_solicitacao_interna_por_id_returns_none_when_not_found() -> None:
+    engine = FakeEngine(None)
+
+    response = get_solicitacao_interna_por_id(
+        solicitacao_id=999,
+        engine=engine,
+    )
+
+    assert response is None
+    assert engine.connection.params == {"solicitacao_id": 999}
+
+
+def test_get_solicitacao_interna_por_id_rejects_invalid_id_without_sql() -> None:
+    engine = FakeEngine(internal_solicitacao_row())
+
+    try:
+        get_solicitacao_interna_por_id(solicitacao_id=0, engine=engine)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("invalid solicitacao_id should be rejected")
 
     assert engine.connection.statement is None

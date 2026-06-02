@@ -508,3 +508,67 @@ def test_listar_solicitacoes_internas_converts_database_error_to_safe_error(
     assert "db.internal" not in message
     assert "senha" not in message.lower()
     assert "SELECT" not in message
+
+
+def test_obter_solicitacao_interna_por_id_returns_found_item(monkeypatch) -> None:
+    calls: dict[str, object] = {}
+
+    def fake_get_solicitacao_interna_por_id(
+        solicitacao_id: int,
+    ) -> IluminacaoSolicitacaoInternaItem:
+        calls["solicitacao_id"] = solicitacao_id
+        return internal_solicitacao_item()
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "get_solicitacao_interna_por_id",
+        fake_get_solicitacao_interna_por_id,
+    )
+
+    response = iluminacao_service.obter_solicitacao_interna_por_id(10)
+
+    assert response.id == 10
+    assert response.protocolo == "IP-2026-000010"
+    assert calls == {"solicitacao_id": 10}
+
+
+def test_obter_solicitacao_interna_por_id_raises_safe_not_found(monkeypatch) -> None:
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "get_solicitacao_interna_por_id",
+        lambda solicitacao_id: None,
+    )
+
+    with pytest.raises(iluminacao_service.SolicitacaoInternaNotFoundError) as exc_info:
+        iluminacao_service.obter_solicitacao_interna_por_id(999)
+
+    message = str(exc_info.value)
+    assert message == "Solicitacao nao encontrada."
+    assert "DATABASE_URL" not in message
+    assert "SELECT" not in message
+    assert "token" not in message
+
+
+def test_obter_solicitacao_interna_por_id_converts_database_error_to_safe_error(
+    monkeypatch,
+) -> None:
+    def fail_with_database_error(*args: object, **kwargs: object) -> None:
+        raise SQLAlchemyError(
+            "could not connect using DATABASE_URL on host db.internal:5432 SELECT"
+        )
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "get_solicitacao_interna_por_id",
+        fail_with_database_error,
+    )
+
+    with pytest.raises(DatabaseUnavailableError) as exc_info:
+        iluminacao_service.obter_solicitacao_interna_por_id(10)
+
+    message = str(exc_info.value)
+    assert message == "Servico temporariamente indisponivel. Tente novamente mais tarde."
+    assert "DATABASE_URL" not in message
+    assert "db.internal" not in message
+    assert "senha" not in message.lower()
+    assert "SELECT" not in message

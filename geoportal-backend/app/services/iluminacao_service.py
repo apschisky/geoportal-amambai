@@ -28,6 +28,13 @@ SOLICITACAO_DUPLICADA_ATIVA_MESSAGE = (
     "A equipe responsável já foi notificada."
 )
 
+SOLICITACAO_INTERNA_NOT_FOUND_MESSAGE = "Solicitacao nao encontrada."
+
+
+class SolicitacaoInternaNotFoundError(RuntimeError):
+    pass
+
+
 STATUS_PUBLICO_MAP = {
     "aberta": (
         "Aberta",
@@ -178,3 +185,22 @@ def listar_solicitacoes_internas(
         )
     except (SQLAlchemyError, RuntimeError) as exc:
         raise DatabaseUnavailableError(DATABASE_UNAVAILABLE_MESSAGE) from exc
+
+
+def obter_solicitacao_interna_por_id(
+    solicitacao_id: int,
+) -> IluminacaoSolicitacaoInternaItem:
+    if solicitacao_id < 1:
+        raise ValueError("solicitacao_id must be greater than or equal to 1")
+
+    try:
+        solicitacao = iluminacao_repository.get_solicitacao_interna_por_id(
+            solicitacao_id
+        )
+    except (SQLAlchemyError, RuntimeError) as exc:
+        raise DatabaseUnavailableError(DATABASE_UNAVAILABLE_MESSAGE) from exc
+
+    if solicitacao is None:
+        raise SolicitacaoInternaNotFoundError(SOLICITACAO_INTERNA_NOT_FOUND_MESSAGE)
+
+    return solicitacao

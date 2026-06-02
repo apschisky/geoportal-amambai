@@ -228,3 +228,54 @@ def list_solicitacoes_internas(
         IluminacaoSolicitacaoInternaItem.model_validate(dict(row))
         for row in rows
     ]
+
+
+def get_solicitacao_interna_por_id(
+    solicitacao_id: int,
+    engine: Engine | None = None,
+) -> IluminacaoSolicitacaoInternaItem | None:
+    if solicitacao_id < 1:
+        raise ValueError("solicitacao_id must be greater than or equal to 1")
+
+    db_engine = engine or get_engine()
+
+    statement = text(
+        """
+        SELECT
+            id,
+            protocolo,
+            origem,
+            localizacao_tipo,
+            poste_id,
+            tipo_problema,
+            descricao,
+            observacoes_localizacao,
+            ponto_referencia,
+            poste_proximo_informado,
+            nome_solicitante,
+            contato_solicitante,
+            status,
+            prioridade,
+            duplicidade_suspeita,
+            ST_Y(ST_Transform(geom, 4326)) AS latitude,
+            ST_X(ST_Transform(geom, 4326)) AS longitude,
+            criado_em,
+            atualizado_em,
+            finalizado_em
+        FROM mod_iluminacao.solicitacoes
+        WHERE id = :solicitacao_id
+          AND deleted_at IS NULL
+        LIMIT 1
+        """
+    )
+
+    with db_engine.begin() as connection:
+        row = connection.execute(
+            statement,
+            {"solicitacao_id": solicitacao_id},
+        ).mappings().first()
+
+    if row is None:
+        return None
+
+    return IluminacaoSolicitacaoInternaItem.model_validate(dict(row))
