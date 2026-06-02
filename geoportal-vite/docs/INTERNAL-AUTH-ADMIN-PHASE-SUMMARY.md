@@ -269,6 +269,14 @@ Permissões do módulo Iluminação (não criadas ainda):
    - Bootstrap de perfis/permissões em produção
    - Liberação da tela interna para usuários reais
 
+### Marco Atual do Modulo Iluminacao
+
+O modulo interno de Iluminacao ja possui, em homologacao interna, listagem, detalhe, leitura de historico, leitura de observacoes e criacao de observacao interna validadas. O primeiro endpoint mutavel do modulo, `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes`, foi implementado no commit `2b05e4a`, exige `iluminacao.solicitacoes.comentar`, exige `X-Geoportal-Internal-Request: 1` e grava observacao + evento de historico na mesma transacao.
+
+A validacao operacional confirmou, com dado de homologacao/teste, 201 Created no POST, `total=1` em `GET observacoes` e `total=1` em `GET historico`. O endpoint nao altera status, prioridade ou `finalizado_em`. Os GRANTs aplicados foram minimos para INSERT nas tabelas de observacoes/historico e USAGE nas sequences correspondentes, sem UPDATE ou DELETE.
+
+Proxima etapa tecnica recomendada: planejar o `PATCH status` antes de implementar, definindo transicoes permitidas, regra de `finalizado_em`, observacao/motivo obrigatorio ou opcional, auditoria obrigatoria e GRANTs minimos. Tela interna, anexos, proxy e producao interna permanecem etapas posteriores.
+
 ## 8. Consolidação desta Etapa
 
 Esta consolidação **não**:
@@ -340,7 +348,7 @@ O endpoint de leitura de historico foi implementado e validado em homologacao in
 
 A validacao autenticada no runtime interno confirmou a permissao em `/api/internal/auth/me` e retornou 200 OK para uma solicitacao de homologacao/teste com `total=0`, resultado esperado porque ainda nao havia eventos historicos gravados. Producao, proxy, frontend, migrations, schema, `.env` versionado e endpoint mutavel permaneceram inalterados. A proxima etapa tecnica recomendada e `GET observacoes internas`, seguida de `POST observacao interna`, e somente depois `PATCH status` com auditoria obrigatoria.
 
-O endpoint de leitura de observacoes internas foi implementado e validado em homologacao interna no commit `da236c4`: `GET /api/internal/iluminacao/solicitacoes/{id}/observacoes`, protegido por `iluminacao.solicitacoes.ver_observacoes`. A permissao real foi criada e vinculada ao perfil administrativo de homologacao; `iluminacao.solicitacoes.comentar` permaneceu reservada para o futuro `POST observacao`. O unico GRANT aplicado foi `SELECT` minimo em `mod_iluminacao.solicitacoes_observacoes` para `geoportal_api_homolog`, mantendo `INSERT=false`, `UPDATE=false` e `DELETE=false`.
+O endpoint de leitura de observacoes internas foi implementado e validado em homologacao interna no commit `da236c4`: `GET /api/internal/iluminacao/solicitacoes/{id}/observacoes`, protegido por `iluminacao.solicitacoes.ver_observacoes`. A permissao real foi criada e vinculada ao perfil administrativo de homologacao; naquela etapa, `iluminacao.solicitacoes.comentar` permaneceu reservada para o futuro `POST observacao`, posteriormente implementado e validado no commit `2b05e4a`. O unico GRANT aplicado foi `SELECT` minimo em `mod_iluminacao.solicitacoes_observacoes` para `geoportal_api_homolog`, mantendo `INSERT=false`, `UPDATE=false` e `DELETE=false`.
 
 A validacao autenticada no runtime interno confirmou a permissao em `/api/internal/auth/me` e retornou 200 OK para uma solicitacao de homologacao/teste com `total=0`, resultado esperado porque ainda nao havia observacoes internas gravadas. Producao, proxy, frontend, migrations, schema, `.env` versionado e endpoint mutavel permaneceram inalterados. A proxima etapa tecnica recomendada e `POST observacao interna`, com INSERT em observacoes e INSERT em historico na mesma transacao, e somente depois `PATCH status` com auditoria obrigatoria.
 

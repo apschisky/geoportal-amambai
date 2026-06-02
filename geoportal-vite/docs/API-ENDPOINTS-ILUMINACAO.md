@@ -327,7 +327,7 @@ Primeira versao implementada:
 
 - Rota interna somente leitura sob `GEOPORTAL_INTERNAL_ROUTES_ENABLED`.
 - Exige sessao autenticada e `require_permission("iluminacao.solicitacoes.ver_observacoes")`.
-- Nao reutiliza `iluminacao.solicitacoes.comentar`, pois comentario fica reservado para futuro `POST` de observacao.
+- Nao reutiliza `iluminacao.solicitacoes.comentar`, pois leitura e comentario usam permissoes separadas.
 - Nao exige `X-Geoportal-Internal-Request`, por ser GET.
 - Path param: `id` inteiro positivo.
 - Query params: `limit` de 1 a 100 com padrao 50 e `offset` minimo 0 com padrao 0.
@@ -354,7 +354,7 @@ Esta etapa nao cria endpoint mutavel, migration, schema, usuario, perfil, permis
 - Testes locais antes do commit: `tests/test_internal_iluminacao_solicitacoes_router.py`: 37 passed; `tests/test_iluminacao_repository.py`: 21 passed; `tests/test_iluminacao_service.py`: 35 passed; `tests/test_iluminacao_public.py`: 37 passed; `tests/test_internal_routes_feature_flag.py`: 10 passed; suite completa: 559 passed. Houve 1 warning conhecido e nao bloqueante de depreciacao da constante HTTP 422.
 - Em homologacao, os testes focados passaram no servidor. Antes dos testes, foi removida apenas a variavel do processo atual `GEOPORTAL_INTERNAL_ROUTES_ENABLED` para evitar interferencia ambiental da flag herdada no PowerShell; isso nao alterou `.env`, NSSM ou configuracao permanente.
 - A permissao real `iluminacao.solicitacoes.ver_observacoes` foi criada com modulo `iluminacao`, chave `solicitacoes.ver_observacoes`, descricao segura e `ativo=true`, e vinculada ao perfil `administrador-interno-geoportal`.
-- A permissao `iluminacao.solicitacoes.comentar` permaneceu reservada para o futuro endpoint mutavel de criacao de observacao.
+- Na etapa de leitura, a permissao `iluminacao.solicitacoes.comentar` permaneceu reservada para o endpoint mutavel de criacao de observacao, posteriormente implementado e validado no commit `2b05e4a`.
 - O unico GRANT aplicado nesta etapa foi `SELECT` minimo em `mod_iluminacao.solicitacoes_observacoes` para `geoportal_api_homolog`; a verificacao final confirmou `schema_usage=true`, `SELECT=true`, `INSERT=false`, `UPDATE=false` e `DELETE=false`.
 - O runtime interno `InternaHomologacao` foi reiniciado e validado pelo harness: porta `8002`, `/api/health` OK, `/api/version` com `environment=homologacao` e `/api/internal/auth/me` sem sessao retornando 401.
 - Login interno foi validado no runtime interno com usuario administrativo de homologacao, sem registrar token, senha ou cookie real; `/api/internal/auth/me` confirmou `iluminacao.solicitacoes.ver_observacoes=True`.
@@ -432,10 +432,27 @@ Resposta 201:
 
 Estado desta etapa:
 
-- Nao cria migration nem altera schema.
-- Nao cria permissao real no banco, usuario, perfil, role ou GRANT; esses passos ficam para validacao operacional em homologacao.
+- Nao criou migration nem alterou schema.
 - Nao altera producao, proxy, NSSM, `.env`, frontend ou API publica.
 - Anexos e `PATCH status` permanecem em etapas posteriores.
+
+**Validacao operacional (criacao de observacao interna)**
+
+- Commit: `2b05e4a` Adiciona criacao de observacoes internas de iluminacao.
+- Testes locais antes do commit: `tests/test_internal_iluminacao_solicitacoes_router.py`: 46 passed; `tests/test_iluminacao_repository.py`: 25 passed; `tests/test_iluminacao_service.py`: 39 passed; `tests/test_iluminacao_public.py`: 37 passed; `tests/test_internal_routes_feature_flag.py`: 10 passed; suite completa: 576 passed. Houve 1 warning conhecido e nao bloqueante de depreciacao da constante HTTP 422.
+- Em homologacao, os testes focados passaram no servidor. Antes dos testes, foi removida apenas a variavel do processo atual `GEOPORTAL_INTERNAL_ROUTES_ENABLED` para evitar interferencia ambiental da flag herdada no PowerShell; isso nao alterou `.env`, NSSM ou configuracao permanente.
+- A permissao real `iluminacao.solicitacoes.comentar` foi criada com modulo `iluminacao`, chave `solicitacoes.comentar`, descricao segura e `ativo=true`, e vinculada ao perfil `administrador-interno-geoportal`.
+- Antes dos novos GRANTs, `mod_iluminacao.solicitacoes_historico` e `mod_iluminacao.solicitacoes_observacoes` ja tinham `SELECT=true`, mas `INSERT=false`, `UPDATE=false`, `DELETE=false`; as sequences correspondentes ainda nao tinham `USAGE` para `geoportal_api_homolog`.
+- Os GRANTs aplicados foram minimos e restritos ao endpoint mutavel de observacao: `INSERT` em `mod_iluminacao.solicitacoes_observacoes`, `INSERT` em `mod_iluminacao.solicitacoes_historico`, `USAGE` na sequence `mod_iluminacao.solicitacoes_observacoes_id_seq` e `USAGE` na sequence `mod_iluminacao.solicitacoes_historico_id_seq`.
+- A matriz final manteve `SELECT=true`, `INSERT=true`, `UPDATE=false` e `DELETE=false` nas tabelas de historico e observacoes; nas duas sequences, `USAGE=true`, `SELECT=false` e `UPDATE=false`.
+- O runtime interno `InternaHomologacao` foi reiniciado e validado pelo harness: porta `8002`, `/api/health` OK, `/api/version` com `environment=homologacao` e `/api/internal/auth/me` sem sessao retornando 401.
+- Login interno foi validado no runtime interno com usuario administrativo de homologacao, sem registrar token, senha ou cookie real; `/api/internal/auth/me` confirmou `iluminacao.solicitacoes.comentar=True`.
+- `POST http://127.0.0.1:8002/api/internal/iluminacao/solicitacoes/18/observacoes`, com header `X-Geoportal-Internal-Request: 1`, retornou 201 Created para dado de homologacao/teste. A resposta retornou observacao `id=2`, `solicitacao_id=18`, `visibilidade=interna`, `usuario_id=7`, `usuario_nome` nulo e `editado_em` nulo.
+- `GET /api/internal/iluminacao/solicitacoes/18/observacoes?limit=10&offset=0` retornou 200 OK com `total=1` e confirmou a observacao criada.
+- `GET /api/internal/iluminacao/solicitacoes/18/historico?limit=10&offset=0` retornou 200 OK com `total=1` e confirmou evento correspondente com `acao=observacao_interna`, `origem_acao=usuario_interno`, `usuario_id=7` e `observacao_resumida` coerente.
+- A validacao confirmou o comportamento atomico esperado pela aplicacao: observacao e historico correspondente foram criados juntos.
+- O endpoint nao alterou status, prioridade ou `finalizado_em`, nao criou `PATCH status`, nao criou anexos e nao iniciou tela.
+- Producao, producao interna, Apache/proxy, frontend/tela interna, migrations, schema, `.env` versionado e NSSM nao foram alterados nesta etapa, exceto restart controlado do servico interno de homologacao ja existente.
 
 ### `POST /api/internal/iluminacao/solicitacoes/{id}/anexos`
 
@@ -663,8 +680,8 @@ Este documento complementa:
 - `docs/SQL-MIGRATION-PLAN.md`;
 - historico interno ja implementado e validado em homologacao; manter validacao operacional documentada antes de uso por tela;
 - leitura de observacoes internas implementada e validada em homologacao; manter validacao operacional documentada antes de uso por tela;
-- planejar e implementar `POST observacao interna` com INSERT em observacoes e INSERT em historico na mesma transacao;
-- planejar alteracao de status somente depois, com auditoria obrigatoria;
+- criacao de observacao interna implementada e validada em homologacao, com INSERT em observacoes e INSERT em historico na mesma transacao;
+- antes de implementar `PATCH status`, planejar transicoes permitidas, regra de `finalizado_em`, obrigatoriedade de observacao/motivo, contrato de auditoria e GRANTs minimos para `UPDATE` em `mod_iluminacao.solicitacoes` e `INSERT` em historico;
 - manter anexos e tela interna para etapas posteriores;
 - validacao com setor responsavel;
 - desenho de telas do painel interno somente depois dos contratos backend validados.

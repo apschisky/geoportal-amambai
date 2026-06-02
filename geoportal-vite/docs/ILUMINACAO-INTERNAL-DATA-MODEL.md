@@ -226,7 +226,7 @@ Ordem recomendada de implementacao:
 
 1. `GET /api/internal/iluminacao/solicitacoes/{id}/historico` - implementado e validado em homologacao interna no commit `b68bc32`.
 2. `GET /api/internal/iluminacao/solicitacoes/{id}/observacoes` - implementado e validado em homologacao interna no commit `da236c4`.
-3. `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes`.
+3. `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes` - implementado e validado em homologacao interna no commit `2b05e4a`.
 4. Somente depois, `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`.
 
 O GRANT operacional aplicado para o historico foi somente `SELECT` em `mod_iluminacao.solicitacoes_historico` para `geoportal_api_homolog`, mantendo `INSERT=false`, `UPDATE=false` e `DELETE=false`. GRANTs futuros devem continuar minimos e por etapa: `SELECT` para leitura de observacoes; `INSERT` e uso das sequences correspondentes para criacao de observacao e evento de historico; `UPDATE` em `mod_iluminacao.solicitacoes` apenas quando o endpoint de status for implementado.
@@ -241,11 +241,23 @@ A validacao operacional usou dado de homologacao/teste (`solicitacao_id=18`) e r
 
 O endpoint `GET /api/internal/iluminacao/solicitacoes/{id}/observacoes` foi publicado e validado em homologacao interna. Ele exige `iluminacao.solicitacoes.ver_observacoes`, nao reutiliza `iluminacao.solicitacoes.comentar`, valida a existencia da solicitacao com `deleted_at IS NULL`, consulta `mod_iluminacao.solicitacoes_observacoes` com colunas explicitas, bind parameters, filtro `deleted_at IS NULL`, filtro `visibilidade = 'interna'` e ordenacao `criado_em ASC, id ASC`, e retorna envelope com `items`, `limit`, `offset` e `total`.
 
-A permissao real `iluminacao.solicitacoes.ver_observacoes` foi criada em homologacao e vinculada ao perfil `administrador-interno-geoportal`. A permissao `iluminacao.solicitacoes.comentar` permaneceu reservada para o futuro endpoint mutavel de criacao de observacao.
+A permissao real `iluminacao.solicitacoes.ver_observacoes` foi criada em homologacao e vinculada ao perfil `administrador-interno-geoportal`. Na etapa de leitura, a permissao `iluminacao.solicitacoes.comentar` permaneceu reservada para o endpoint mutavel de criacao de observacao, posteriormente implementado e validado no commit `2b05e4a`.
 
 O unico GRANT aplicado nesta etapa foi `SELECT` minimo em `mod_iluminacao.solicitacoes_observacoes` para `geoportal_api_homolog`; a matriz final manteve `INSERT=false`, `UPDATE=false` e `DELETE=false`.
 
 A validacao operacional usou dado de homologacao/teste (`solicitacao_id=18`) e retornou 200 OK com `total=0`, comportamento esperado porque ainda nao havia observacoes internas gravadas para essa solicitacao. Essa validacao nao criou migration, nao alterou schema, nao criou endpoint mutavel, nao alterou producao, proxy, frontend ou `.env` versionado e nao registrou token, senha, cookie real, hash, `session_secret` real ou `DATABASE_URL` real.
+
+### Validacao do Endpoint de Criacao de Observacao Interna
+
+O endpoint `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes` foi publicado e validado em homologacao interna. Ele exige `iluminacao.solicitacoes.comentar`, header `X-Geoportal-Internal-Request: 1`, aceita somente `observacao` no body, define `visibilidade='interna'` no backend e usa o `usuario_id` da sessao interna autenticada.
+
+A implementacao confirmou os valores permitidos pela migration de historico: `acao='observacao_interna'` e `origem_acao='usuario_interno'`. A observacao em `mod_iluminacao.solicitacoes_observacoes` e o evento resumido em `mod_iluminacao.solicitacoes_historico` sao gravados na mesma transacao; se o INSERT no historico falhar, a observacao nao deve permanecer gravada.
+
+Em homologacao, a permissao real `iluminacao.solicitacoes.comentar` foi criada e vinculada ao perfil `administrador-interno-geoportal`. Os GRANTs aplicados foram apenas os minimos: `INSERT` nas tabelas de observacoes e historico e `USAGE` nas duas sequences correspondentes, mantendo `UPDATE=false`, `DELETE=false` nas tabelas e `SELECT=false`, `UPDATE=false` nas sequences.
+
+A validacao operacional usou dado de homologacao/teste (`solicitacao_id=18`): o POST retornou 201 Created, `GET observacoes` passou a retornar `total=1` e `GET historico` passou a retornar `total=1` com evento `observacao_interna`. Essa validacao confirmou a criacao atomica esperada pela aplicacao e nao alterou status, prioridade ou `finalizado_em`.
+
+Essa etapa nao criou migration, nao alterou schema, nao criou `PATCH status`, nao alterou producao, proxy, frontend ou `.env` versionado e nao registrou token, senha, cookie real, hash, `session_secret` real ou `DATABASE_URL` real.
 
 ## 8. Uso pelos endpoints internos
 
@@ -253,7 +265,7 @@ Endpoints internos futuros devem usar essas tabelas da seguinte forma:
 
 - `GET /api/internal/iluminacao/solicitacoes` lista solicitacoes com dados pessoais minimizados e filtros operacionais.
 - `PATCH /api/internal/iluminacao/solicitacoes/{id}/status` altera o estado atual e grava historico.
-- `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes` grava observacao e evento resumido no historico.
+- `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes` grava observacao e evento resumido no historico na mesma transacao; ja foi validado em homologacao interna.
 - `GET /api/internal/iluminacao/solicitacoes/{id}` pode retornar detalhe interno com historico e observacoes, respeitando permissao.
 - `GET /api/internal/iluminacao/solicitacoes/{id}/historico` retorna historico administrativo conforme perfil e ja foi validado com permissao propria em homologacao interna.
 - `GET /api/internal/iluminacao/solicitacoes/{id}/observacoes` retorna observacoes internas com `visibilidade = 'interna'` conforme perfil e ja foi validado com permissao propria em homologacao interna.

@@ -124,13 +124,17 @@ Validacao autenticada manual pelo servico NSSM:
 - `GET /api/internal/iluminacao/solicitacoes/{id}/observacoes` foi implementado no commit `da236c4` e validado no runtime interno com sessao real e permissao `iluminacao.solicitacoes.ver_observacoes`.
 - Para essa validacao, foi aplicado somente `SELECT` em `mod_iluminacao.solicitacoes_observacoes` para `geoportal_api_homolog`; `INSERT`, `UPDATE` e `DELETE` permaneceram falsos nessa tabela.
 - A chamada com dado de homologacao/teste `GET /api/internal/iluminacao/solicitacoes/18/observacoes?limit=10&offset=0` retornou 200 OK com `total=0`, comportamento esperado porque ainda nao havia observacoes internas gravadas para a solicitacao.
-- A permissao `iluminacao.solicitacoes.comentar` permaneceu reservada para o futuro endpoint mutavel de criacao de observacao.
+- `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes` foi implementado no commit `2b05e4a` e validado no runtime interno com sessao real, permissao `iluminacao.solicitacoes.comentar` e header `X-Geoportal-Internal-Request: 1`.
+- Para essa validacao, os GRANTs aplicados foram minimos: `INSERT` em `mod_iluminacao.solicitacoes_observacoes`, `INSERT` em `mod_iluminacao.solicitacoes_historico` e `USAGE` nas duas sequences correspondentes; `UPDATE` e `DELETE` permaneceram falsos nas tabelas.
+- A chamada com dado de homologacao/teste `POST http://127.0.0.1:8002/api/internal/iluminacao/solicitacoes/18/observacoes` retornou 201 Created. Depois, `GET observacoes` retornou `total=1` e `GET historico` retornou `total=1`, confirmando a observacao e o evento `observacao_interna` criados na mesma operacao.
+- O endpoint de observacao nao alterou status, prioridade ou `finalizado_em` e nao criou `PATCH status`.
 
 Estado de seguranca apos a validacao:
 
 - `api_iluminacao_homolog` continua sem acesso a `mod_auth`.
 - `geoportal_api_homolog` possui acesso minimo adicional a `mod_iluminacao`: `USAGE` no schema `mod_iluminacao` e `SELECT` em `mod_iluminacao.solicitacoes`.
-- Nao foi concedido `INSERT`, `UPDATE` ou `DELETE` em `mod_iluminacao` para `geoportal_api_homolog` nesta etapa.
+- Para leitura de solicitacoes, nao foi concedido `INSERT`, `UPDATE` ou `DELETE` em `mod_iluminacao.solicitacoes` para `geoportal_api_homolog` nesta etapa.
+- Para criacao de observacao interna, foram concedidos apenas `INSERT` nas tabelas de observacoes/historico e `USAGE` nas sequences correspondentes, sem `UPDATE` ou `DELETE`.
 - Producao, Apache/proxy, frontend, migrations, schema e arquivos `.env` versionados nao foram alterados.
 - Nenhum segredo, senha, token, cookie real, hash, `session_secret` real ou `DATABASE_URL` real foi documentado.
 

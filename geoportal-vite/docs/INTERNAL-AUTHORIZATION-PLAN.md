@@ -664,9 +664,9 @@ O schema atual e suficiente para `GET historico`, `GET observacoes internas`, `P
 
 Como nao existe trigger obrigando historico, o backend deve garantir transacao atomica para operacoes mutaveis. Para `POST observacao`, gravar a observacao e um evento resumido em `solicitacoes_historico`. Para `PATCH status`, atualizar `mod_iluminacao.solicitacoes` e inserir historico na mesma transacao. Antes de `PATCH status`, ainda devem ser definidos transicoes permitidas, regra de `finalizado_em`, observacao/motivo obrigatorio ou opcional e dados de usuario a gravar.
 
-Permissoes futuras/recentes recomendadas: `iluminacao.solicitacoes.ver_historico`, `iluminacao.solicitacoes.ver_observacoes`, `iluminacao.solicitacoes.comentar` e `iluminacao.solicitacoes.atualizar_status`. A permissao `iluminacao.solicitacoes.comentar` permanece reservada para o futuro endpoint mutavel de criacao de observacao.
+Permissoes futuras/recentes recomendadas: `iluminacao.solicitacoes.ver_historico`, `iluminacao.solicitacoes.ver_observacoes`, `iluminacao.solicitacoes.comentar` e `iluminacao.solicitacoes.atualizar_status`. A permissao `iluminacao.solicitacoes.comentar` ja foi usada no primeiro endpoint mutavel do modulo Iluminacao, `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes`, implementado e validado em homologacao interna no commit `2b05e4a`.
 
-Ordem recomendada: `GET /api/internal/iluminacao/solicitacoes/{id}/historico` ja validado, `GET /api/internal/iluminacao/solicitacoes/{id}/observacoes` ja validado, `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes` e somente depois `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`.
+Ordem recomendada: `GET /api/internal/iluminacao/solicitacoes/{id}/historico` ja validado, `GET /api/internal/iluminacao/solicitacoes/{id}/observacoes` ja validado, `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes` ja validado, e somente depois planejar e implementar `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`.
 
 ## Validacao do Historico Interno de Iluminacao
 
@@ -688,10 +688,24 @@ O endpoint `GET /api/internal/iluminacao/solicitacoes/{id}/observacoes` foi impl
 
 Validacoes locais antes do commit: router 37 passed, repository 21 passed, service 35 passed, API publica 37 passed, feature flag 10 passed e suite completa 559 passed, com 1 warning conhecido e nao bloqueante de depreciacao da constante HTTP 422.
 
-Em homologacao, a permissao real foi criada com modulo `iluminacao`, chave `solicitacoes.ver_observacoes`, descricao segura e `ativo=true`, vinculada ao perfil `administrador-interno-geoportal`. A permissao `iluminacao.solicitacoes.comentar` ficou reservada para o futuro `POST observacao`. O unico GRANT aplicado nesta etapa foi `SELECT` minimo em `mod_iluminacao.solicitacoes_observacoes` para `geoportal_api_homolog`; a matriz final manteve `INSERT=false`, `UPDATE=false` e `DELETE=false`.
+Em homologacao, a permissao real foi criada com modulo `iluminacao`, chave `solicitacoes.ver_observacoes`, descricao segura e `ativo=true`, vinculada ao perfil `administrador-interno-geoportal`. Na etapa de leitura, a permissao `iluminacao.solicitacoes.comentar` ficou reservada para o `POST observacao`, posteriormente implementado e validado no commit `2b05e4a`. O unico GRANT aplicado naquela etapa foi `SELECT` minimo em `mod_iluminacao.solicitacoes_observacoes` para `geoportal_api_homolog`; a matriz final manteve `INSERT=false`, `UPDATE=false` e `DELETE=false`.
 
 O runtime interno `InternaHomologacao` foi reiniciado e validado pelo harness na porta `8002`. Login interno foi validado sem registrar token, `/api/internal/auth/me` confirmou `iluminacao.solicitacoes.ver_observacoes=True` e `GET /api/internal/iluminacao/solicitacoes/18/observacoes?limit=10&offset=0` retornou 200 OK com `total=0` para dado de homologacao/teste. Esse `total=0` foi esperado: a solicitacao existia, a sessao tinha permissao e o banco liberou leitura, mas ainda nao havia observacoes internas gravadas.
 
 Antes dos testes focados no servidor, foi removida apenas a variavel do processo atual `GEOPORTAL_INTERNAL_ROUTES_ENABLED` para evitar interferencia ambiental da flag herdada no PowerShell. Isso nao alterou `.env`, NSSM ou configuracao permanente.
 
 Producao, producao interna, Apache/proxy, frontend/tela interna, migrations, schema, `.env` versionado e NSSM nao foram alterados nesta etapa, exceto restart controlado do servico interno de homologacao ja existente. Nenhum endpoint mutavel, usuario novo, perfil novo, role nova ou GRANT adicional foi criado; a API publica permaneceu preservada.
+
+## Validacao da Criacao de Observacao Interna de Iluminacao
+
+O endpoint `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes` foi implementado no commit `2b05e4a` e validado em homologacao interna como primeiro endpoint mutavel do modulo Iluminacao. Ele exige sessao interna, `require_permission("iluminacao.solicitacoes.comentar")` e header `X-Geoportal-Internal-Request: 1`.
+
+O body aceito contem apenas `observacao`. O backend aplica trim, exige minimo de 3 caracteres apos trim e maximo de 2000 caracteres, define `visibilidade='interna'`, usa `usuario_id` da sessao interna e permite `usuario_nome` nulo quando nao houver nome disponivel de forma segura. Campos extras como `visibilidade`, `usuario_id`, `usuario_nome`, `criado_em`, `editado_em` e `deleted_at` sao rejeitados.
+
+A operacao grava em `mod_iluminacao.solicitacoes_observacoes` e insere evento em `mod_iluminacao.solicitacoes_historico` na mesma transacao, usando `acao='observacao_interna'` e `origem_acao='usuario_interno'`, valores confirmados na migration de historico. A validacao operacional com dado de homologacao/teste (`solicitacao_id=18`) retornou 201 Created; em seguida, `GET observacoes` confirmou `total=1` e `GET historico` confirmou `total=1`, comprovando a trilha observacao + historico esperada pela aplicacao.
+
+Em homologacao, a permissao real `iluminacao.solicitacoes.comentar` foi criada e vinculada ao perfil `administrador-interno-geoportal`. Os GRANTs aplicados foram minimos: `INSERT` em `mod_iluminacao.solicitacoes_observacoes`, `INSERT` em `mod_iluminacao.solicitacoes_historico` e `USAGE` nas duas sequences correspondentes. A matriz final manteve `UPDATE=false`, `DELETE=false` nas tabelas e `SELECT=false`, `UPDATE=false` nas sequences.
+
+O endpoint nao altera status, prioridade ou `finalizado_em`, nao cria `PATCH status`, nao cria anexos e nao inicia tela. Producao, producao interna, proxy/Apache, frontend, migrations, schema, `.env` versionado e NSSM permaneceram inalterados, exceto restart controlado do servico interno de homologacao ja existente.
+
+Proxima etapa recomendada: antes de implementar `PATCH status`, documentar transicoes permitidas, regra de `finalizado_em`, observacao/motivo obrigatorio ou opcional, contrato de auditoria obrigatoria, permissao `iluminacao.solicitacoes.atualizar_status` e GRANTs minimos para `UPDATE` em `mod_iluminacao.solicitacoes` e INSERT em historico.
