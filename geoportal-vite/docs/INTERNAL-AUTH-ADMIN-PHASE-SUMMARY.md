@@ -330,4 +330,6 @@ O servico NSSM `GeoportalAPIInternaHomologacao` foi criado e validado em homolog
 
 O harness versionado ja reconhece `InternaHomologacao` e validou `/api/health`, `/api/version` com `environment=homologacao` e `/api/internal/auth/me` sem sessao retornando 401. A validacao autenticada manual confirmou login interno, `/api/internal/auth/me` autenticado, permissao `iluminacao.solicitacoes.ler` e retorno de itens reais em `GET /api/internal/iluminacao/solicitacoes?limit=10&offset=0`, sem documentar token.
 
+Adicionalmente, o endpoint de detalhe `GET /api/internal/iluminacao/solicitacoes/{solicitacao_id}` (commit `d198710`) foi implementado e validado: testes locais focados de router/repository/service/public e feature-flag passaram, a suíte completa local registrou 517 testes passing, e a validação em homologação confirmou `GET http://127.0.0.1:8002/api/internal/iluminacao/solicitacoes/18` retornando `200 OK` com campos esperados (dado de homologação/teste). Todos os retornos de erro seguem o contrato sanitizado (404/503 genéricos quando aplicável).
+
 Producao, Apache/proxy, frontend, migrations, schema e `.env` versionado permanecem inalterados. O runtime interno ainda nao esta exposto publicamente. A futura producao interna podera avaliar porta candidata conceitual como `8003`, mas ela ainda nao foi criada, configurada ou ativada.

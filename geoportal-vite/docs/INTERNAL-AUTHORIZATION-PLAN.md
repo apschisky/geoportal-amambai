@@ -2,6 +2,8 @@
 
 Este documento registra a arquitetura funcional de autorizacao do Geoportal Interno e o desenho conceitual dos endpoints internos protegidos do modulo de Iluminacao Publica. Ele nao cria codigo, migrations, endpoints, usuarios reais, perfis reais, permissoes reais, senhas, tokens ou configuracoes de ambiente.
 
+Nota: o endpoint de detalhe `GET /api/internal/iluminacao/solicitacoes/{id}` foi implementado (commit `d198710`) e validado localmente e em homologacao; consulte `API-ENDPOINTS-ILUMINACAO.md` para resumo da validacao e resultados de teste.
+
 O modelo conceitual transversal de dados de autenticacao/autorizacao esta em `docs/INTERNAL-AUTH-DATA-MODEL.md`.
 
 A decisao tecnica de autenticacao interna e autorizacao deve ser alinhada com `docs/INTERNAL-AUTH-TECHNICAL-DECISIONS.md` antes de implementar endpoints.

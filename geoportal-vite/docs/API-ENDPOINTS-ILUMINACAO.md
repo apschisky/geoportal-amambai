@@ -244,6 +244,13 @@ Erros: 401 sem sessao, 403 sem permissao, 404 generico quando a solicitacao nao 
 
 Historico, observacoes internas e anexos ficam para etapas posteriores com contratos, permissoes e auditoria proprios.
 
+**Validação operacional (detalhe de solicitação)**
+
+- Commit: `d198710` Adiciona detalhe interno de solicitacao de iluminacao.
+- Implementado como rota somente leitura que exige sessão interna e `require_permission("iluminacao.solicitacoes.ler")`, com `id` path param inteiro positivo, bind parameter, filtro `deleted_at IS NULL`, colunas explícitas (sem `SELECT *`) e coordenadas `latitude`/`longitude` em WGS84 via `ST_Transform(geom, 4326)`.
+- Testes locais focados: `tests/test_internal_iluminacao_solicitacoes_router.py`: 18 passed; `tests/test_iluminacao_repository.py`: 11 passed; `tests/test_iluminacao_service.py`: 22 passed; `tests/test_iluminacao_public.py`: 37 passed; `tests/test_internal_routes_feature_flag.py`: 10 passed. Suíte completa local: 517 passed.
+- Validação em homologação: código aplicado via `git pull`, testes focados acima passaram no servidor, runtime interno reiniciado e validado via `scripts/deploy/backend-restart-validate-service.ps1 -Environment InternaHomologacao -Restart -Validate`, porta 8002 confirmada, `/api/health` e `/api/version` OK, login interno validado, permissão `iluminacao.solicitacoes.ler` confirmada e `GET http://127.0.0.1:8002/api/internal/iluminacao/solicitacoes/18` retornou 200 OK com os campos esperados (dado de homologação/teste). 404 e 503 permanecem retornos sanitizados conforme contrato.
+
 ### `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`
 
 Finalidade: alterar status.

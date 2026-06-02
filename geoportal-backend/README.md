@@ -392,6 +392,7 @@ Endpoints internos de autenticacao existem apenas quando `GEOPORTAL_INTERNAL_ROU
 - `POST /api/internal/admin/users/{usuario_id}/unblock`
 - `POST /api/internal/admin/users/{usuario_id}/reset-password`
 - `GET /api/internal/iluminacao/solicitacoes`
+ - `GET /api/internal/iluminacao/solicitacoes/{solicitacao_id}`
 
 Essas rotas nao fazem parte da API publica e permanecem fora do app principal quando a feature flag esta desligada.
 

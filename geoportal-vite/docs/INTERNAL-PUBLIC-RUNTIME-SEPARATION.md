@@ -91,6 +91,8 @@ Validacoes operacionais ja realizadas:
 - Nao foi concedido `INSERT`, `UPDATE` ou `DELETE` em `mod_iluminacao` para `geoportal_api_homolog` nesta etapa.
 - Nao foi concedido `mod_auth` para `api_iluminacao_homolog`.
 - `GET /api/internal/iluminacao/solicitacoes?limit=10&offset=0` funcionou na porta `8002`.
+ - `GET /api/internal/iluminacao/solicitacoes?limit=10&offset=0` funcionou na porta `8002`.
+ - O endpoint de detalhe `GET /api/internal/iluminacao/solicitacoes/{solicitacao_id}` foi implementado (commit `d198710`) e validado em homologacao; por exemplo, `GET http://127.0.0.1:8002/api/internal/iluminacao/solicitacoes/18` retornou `200 OK` com campos esperados (dado de homologacao/teste).
 - Foi observado que a sessao interna expira em aproximadamente 1 hora.
 
 Producao nao foi alterada. Apache/proxy publico ainda nao foi alterado. Frontend/tela interna ainda nao foi criado. O runtime interno foi validado em homologacao local, mas ainda nao esta exposto publicamente.
