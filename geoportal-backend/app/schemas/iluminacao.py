@@ -168,3 +168,9 @@ class IluminacaoSolicitacoesInternasResponse(BaseModel):
     items: list[IluminacaoSolicitacaoInternaItem]
     limit: int
     offset: int
+    total: int
+
+
+class IluminacaoSolicitacoesInternasResult(BaseModel):
+    items: list[IluminacaoSolicitacaoInternaItem]
+    total: int

@@ -9,7 +9,9 @@ from app.schemas.iluminacao import (
     IluminacaoSolicitacaoInternaItem,
     IluminacaoSolicitacaoCreate,
     IluminacaoSolicitacaoResponse,
+    IluminacaoSolicitacoesInternasResult,
     StatusSolicitacaoIluminacao,
+    TipoProblemaIluminacao,
 )
 from app.services import iluminacao_service
 from app.services.exceptions import (
@@ -457,9 +459,14 @@ def test_listar_solicitacoes_internas_calls_repository_with_filters(
 ) -> None:
     calls: dict[str, object] = {}
 
-    def fake_list_solicitacoes_internas(**kwargs: object) -> list[IluminacaoSolicitacaoInternaItem]:
+    def fake_list_solicitacoes_internas(
+        **kwargs: object,
+    ) -> IluminacaoSolicitacoesInternasResult:
         calls.update(kwargs)
-        return [internal_solicitacao_item()]
+        return IluminacaoSolicitacoesInternasResult(
+            items=[internal_solicitacao_item()],
+            total=12,
+        )
 
     monkeypatch.setattr(
         iluminacao_service.iluminacao_repository,
@@ -469,13 +476,26 @@ def test_listar_solicitacoes_internas_calls_repository_with_filters(
 
     response = iluminacao_service.listar_solicitacoes_internas(
         status=StatusSolicitacaoIluminacao.aberta,
+        protocolo=" IP-2026 ",
+        poste_id=" POSTE-010 ",
+        tipo_problema=TipoProblemaIluminacao.lampada_apagada,
+        prioridade=" normal ",
+        criado_de=datetime(2026, 5, 1, 0, 0),
+        criado_ate=datetime(2026, 5, 31, 23, 59),
         limit=25,
         offset=5,
     )
 
-    assert response[0].protocolo == "IP-2026-000010"
+    assert response.items[0].protocolo == "IP-2026-000010"
+    assert response.total == 12
     assert calls == {
         "status": StatusSolicitacaoIluminacao.aberta,
+        "protocolo": "IP-2026",
+        "poste_id": "POSTE-010",
+        "tipo_problema": TipoProblemaIluminacao.lampada_apagada,
+        "prioridade": "normal",
+        "criado_de": datetime(2026, 5, 1, 0, 0),
+        "criado_ate": datetime(2026, 5, 31, 23, 59),
         "limit": 25,
         "offset": 5,
     }
@@ -508,6 +528,16 @@ def test_listar_solicitacoes_internas_converts_database_error_to_safe_error(
     assert "db.internal" not in message
     assert "senha" not in message.lower()
     assert "SELECT" not in message
+
+
+def test_listar_solicitacoes_internas_rejects_invalid_period() -> None:
+    with pytest.raises(ValueError) as exc_info:
+        iluminacao_service.listar_solicitacoes_internas(
+            criado_de=datetime(2026, 6, 1, 0, 0),
+            criado_ate=datetime(2026, 5, 1, 0, 0),
+        )
+
+    assert str(exc_info.value) == "criado_de must be less than or equal to criado_ate"
 
 
 def test_obter_solicitacao_interna_por_id_returns_found_item(monkeypatch) -> None:

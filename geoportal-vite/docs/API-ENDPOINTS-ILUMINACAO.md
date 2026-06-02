@@ -205,21 +205,32 @@ Validacao manual registrada:
 
 Finalidade: listar solicitacoes para painel interno.
 
-Primeira versao implementada:
+Versao atual implementada:
 
 - Rota interna somente leitura sob `GEOPORTAL_INTERNAL_ROUTES_ENABLED`.
 - Exige sessao autenticada e `require_permission("iluminacao.solicitacoes.ler")`.
 - Nao exige `X-Geoportal-Internal-Request`, por ser GET.
-- Query params: `status` opcional validado contra `StatusSolicitacaoIluminacao`, `limit` de 1 a 100 com padrao 50 e `offset` minimo 0 com padrao 0.
-- Retorna `items`, `limit` e `offset`.
+- Query params:
+  - `status` opcional validado contra `StatusSolicitacaoIluminacao`;
+  - `protocolo` opcional, busca parcial segura com bind parameter;
+  - `poste_id` opcional, busca parcial segura com bind parameter;
+  - `tipo_problema` opcional validado contra o enum do modulo;
+  - `prioridade` opcional, string limitada e usada com bind parameter;
+  - `criado_de` opcional para filtrar `criado_em >= criado_de`;
+  - `criado_ate` opcional para filtrar `criado_em <= criado_ate`;
+  - `limit` de 1 a 100 com padrao 50;
+  - `offset` minimo 0 com padrao 0.
+- Retorna `items`, `limit`, `offset` e `total`.
+- `total` considera os mesmos filtros da listagem e nao e afetado por `limit` ou `offset`.
 - Cada item retorna campos operacionais da solicitacao e coordenadas `latitude`/`longitude` em WGS84/EPSG:4326, calculadas a partir de `geom` com `ST_Transform(geom, 4326)`.
 - A consulta filtra sempre `deleted_at IS NULL`, usa colunas explicitas, bind parameters e nao usa `SELECT *`.
+- Periodo invalido, com `criado_de > criado_ate`, retorna `422` seguro.
 
 Campos retornados por item:
 
 - `id`, `protocolo`, `origem`, `localizacao_tipo`, `poste_id`, `tipo_problema`, `descricao`, `observacoes_localizacao`, `ponto_referencia`, `poste_proximo_informado`, `nome_solicitante`, `contato_solicitante`, `status`, `prioridade`, `duplicidade_suspeita`, `latitude`, `longitude`, `criado_em`, `atualizado_em`, `finalizado_em`.
 
-Fases futuras podem adicionar filtros por periodo, regiao, tipo de problema, prioridade, poste, protocolo, total de registros e resumo por status. Esses campos nao fazem parte da primeira versao para manter menor escopo e menor risco.
+Fases futuras podem adicionar filtros por regiao, resumo por status e agregacoes operacionais. Esses campos nao fazem parte desta versao para manter menor escopo e menor risco.
 
 Erros: 401 sem sessao, 403 sem permissao, 422 para query invalida e 503 generico se o banco estiver indisponivel, sem expor SQL, traceback, host, role, segredo ou `DATABASE_URL`.
 

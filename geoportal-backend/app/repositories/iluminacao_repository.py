@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
@@ -7,7 +9,9 @@ from app.schemas.iluminacao import (
     IluminacaoSolicitacaoInternaItem,
     IluminacaoSolicitacaoCreate,
     IluminacaoSolicitacaoResponse,
+    IluminacaoSolicitacoesInternasResult,
     StatusSolicitacaoIluminacao,
+    TipoProblemaIluminacao,
 )
 
 ACTIVE_SOLICITACAO_STATUSES = (
@@ -168,10 +172,16 @@ def get_solicitacao_publica_por_protocolo(
 def list_solicitacoes_internas(
     *,
     status: StatusSolicitacaoIluminacao | None = None,
+    protocolo: str | None = None,
+    poste_id: str | None = None,
+    tipo_problema: TipoProblemaIluminacao | None = None,
+    prioridade: str | None = None,
+    criado_de: datetime | None = None,
+    criado_ate: datetime | None = None,
     limit: int = 50,
     offset: int = 0,
     engine: Engine | None = None,
-) -> list[IluminacaoSolicitacaoInternaItem]:
+) -> IluminacaoSolicitacoesInternasResult:
     if limit < 1 or limit > 100:
         raise ValueError("limit must be between 1 and 100")
     if offset < 0:
@@ -179,6 +189,7 @@ def list_solicitacoes_internas(
 
     db_engine = engine or get_engine()
     status_value = status.value if status is not None else None
+    tipo_problema_value = tipo_problema.value if tipo_problema is not None else None
 
     statement = text(
         """
@@ -209,25 +220,99 @@ def list_solicitacoes_internas(
               CAST(:status AS varchar) IS NULL
               OR status = CAST(:status AS varchar)
           )
+          AND (
+              CAST(:protocolo AS varchar) IS NULL
+              OR protocolo ILIKE ('%' || CAST(:protocolo AS varchar) || '%')
+          )
+          AND (
+              CAST(:poste_id AS varchar) IS NULL
+              OR poste_id ILIKE ('%' || CAST(:poste_id AS varchar) || '%')
+          )
+          AND (
+              CAST(:tipo_problema AS varchar) IS NULL
+              OR tipo_problema = CAST(:tipo_problema AS varchar)
+          )
+          AND (
+              CAST(:prioridade AS varchar) IS NULL
+              OR prioridade = CAST(:prioridade AS varchar)
+          )
+          AND (
+              CAST(:criado_de AS timestamp) IS NULL
+              OR criado_em >= CAST(:criado_de AS timestamp)
+          )
+          AND (
+              CAST(:criado_ate AS timestamp) IS NULL
+              OR criado_em <= CAST(:criado_ate AS timestamp)
+          )
         ORDER BY criado_em DESC, id DESC
         LIMIT :limit
         OFFSET :offset
         """
     )
+    count_statement = text(
+        """
+        SELECT COUNT(*) AS total
+        FROM mod_iluminacao.solicitacoes
+        WHERE deleted_at IS NULL
+          AND (
+              CAST(:status AS varchar) IS NULL
+              OR status = CAST(:status AS varchar)
+          )
+          AND (
+              CAST(:protocolo AS varchar) IS NULL
+              OR protocolo ILIKE ('%' || CAST(:protocolo AS varchar) || '%')
+          )
+          AND (
+              CAST(:poste_id AS varchar) IS NULL
+              OR poste_id ILIKE ('%' || CAST(:poste_id AS varchar) || '%')
+          )
+          AND (
+              CAST(:tipo_problema AS varchar) IS NULL
+              OR tipo_problema = CAST(:tipo_problema AS varchar)
+          )
+          AND (
+              CAST(:prioridade AS varchar) IS NULL
+              OR prioridade = CAST(:prioridade AS varchar)
+          )
+          AND (
+              CAST(:criado_de AS timestamp) IS NULL
+              OR criado_em >= CAST(:criado_de AS timestamp)
+          )
+          AND (
+              CAST(:criado_ate AS timestamp) IS NULL
+              OR criado_em <= CAST(:criado_ate AS timestamp)
+          )
+        """
+    )
 
     params = {
         "status": status_value,
+        "protocolo": protocolo,
+        "poste_id": poste_id,
+        "tipo_problema": tipo_problema_value,
+        "prioridade": prioridade,
+        "criado_de": criado_de,
+        "criado_ate": criado_ate,
         "limit": limit,
         "offset": offset,
+    }
+    count_params = {
+        key: value
+        for key, value in params.items()
+        if key not in {"limit", "offset"}
     }
 
     with db_engine.begin() as connection:
         rows = connection.execute(statement, params).mappings().all()
+        total_row = connection.execute(count_statement, count_params).mappings().one()
 
-    return [
-        IluminacaoSolicitacaoInternaItem.model_validate(dict(row))
-        for row in rows
-    ]
+    return IluminacaoSolicitacoesInternasResult(
+        items=[
+            IluminacaoSolicitacaoInternaItem.model_validate(dict(row))
+            for row in rows
+        ],
+        total=int(total_row["total"]),
+    )
 
 
 def get_solicitacao_interna_por_id(

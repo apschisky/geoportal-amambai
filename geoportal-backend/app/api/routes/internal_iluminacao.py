@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
 from app.dependencies.auth_dependencies import require_permission
@@ -5,6 +7,7 @@ from app.schemas.iluminacao import (
     IluminacaoSolicitacaoInternaItem,
     IluminacaoSolicitacoesInternasResponse,
     StatusSolicitacaoIluminacao,
+    TipoProblemaIluminacao,
 )
 from app.services.auth_current_session_service import AuthenticatedCurrentSession
 from app.services.exceptions import DatabaseUnavailableError
@@ -24,6 +27,12 @@ def list_internal_solicitacoes(
         default=None,
         alias="status",
     ),
+    protocolo: str | None = Query(default=None, min_length=1, max_length=20),
+    poste_id: str | None = Query(default=None, min_length=1, max_length=80),
+    tipo_problema: TipoProblemaIluminacao | None = Query(default=None),
+    prioridade: str | None = Query(default=None, min_length=1, max_length=40),
+    criado_de: datetime | None = Query(default=None),
+    criado_ate: datetime | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     _current_session: AuthenticatedCurrentSession = Depends(
@@ -31,11 +40,22 @@ def list_internal_solicitacoes(
     ),
 ) -> IluminacaoSolicitacoesInternasResponse:
     try:
-        items = listar_solicitacoes_internas(
+        result = listar_solicitacoes_internas(
             status=status_filter,
+            protocolo=protocolo,
+            poste_id=poste_id,
+            tipo_problema=tipo_problema,
+            prioridade=prioridade,
+            criado_de=criado_de,
+            criado_ate=criado_ate,
             limit=limit,
             offset=offset,
         )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid query parameters",
+        ) from exc
     except DatabaseUnavailableError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -43,9 +63,10 @@ def list_internal_solicitacoes(
         ) from exc
 
     return IluminacaoSolicitacoesInternasResponse(
-        items=items,
+        items=result.items,
         limit=limit,
         offset=offset,
+        total=result.total,
     )
 
 

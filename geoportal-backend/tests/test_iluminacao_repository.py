@@ -12,6 +12,7 @@ from app.repositories.iluminacao_repository import (
 )
 from app.schemas.iluminacao import IluminacaoSolicitacaoCreate
 from app.schemas.iluminacao import StatusSolicitacaoIluminacao
+from app.schemas.iluminacao import TipoProblemaIluminacao
 
 DEFAULT_ROW = {
     "protocolo": "IP-2026-000001",
@@ -51,11 +52,18 @@ class FakeConnection:
     ) -> None:
         self.statement: TextClause | None = None
         self.params: dict[str, Any] | None = None
+        self.statements: list[TextClause] = []
+        self.params_history: list[dict[str, Any]] = []
         self.row = row
 
     def execute(self, statement: TextClause, params: dict[str, Any]) -> FakeResult:
         self.statement = statement
         self.params = params
+        self.statements.append(statement)
+        self.params_history.append(params)
+        if "COUNT(*) AS total" in str(statement):
+            row_count = len(self.row) if isinstance(self.row, list) else int(self.row is not None)
+            return FakeResult({"total": row_count})
         return FakeResult(self.row)
 
 
@@ -272,16 +280,35 @@ def test_list_solicitacoes_internas_uses_explicit_columns_and_postgis_transform(
     )
 
     assert engine.connection.statement is not None
-    assert engine.connection.params == {
+    assert engine.connection.params_history[0] == {
         "status": "aberta",
+        "protocolo": None,
+        "poste_id": None,
+        "tipo_problema": None,
+        "prioridade": None,
+        "criado_de": None,
+        "criado_ate": None,
         "limit": 25,
         "offset": 5,
     }
+    assert engine.connection.params_history[1] == {
+        "status": "aberta",
+        "protocolo": None,
+        "poste_id": None,
+        "tipo_problema": None,
+        "prioridade": None,
+        "criado_de": None,
+        "criado_ate": None,
+    }
 
-    sql = str(engine.connection.statement)
+    sql = str(engine.connection.statements[0])
+    count_sql = str(engine.connection.statements[1])
     select_clause = sql.split("FROM", maxsplit=1)[0]
     assert "FROM mod_iluminacao.solicitacoes" in sql
     assert "deleted_at IS NULL" in sql
+    assert "COUNT(*) AS total" in count_sql
+    assert "FROM mod_iluminacao.solicitacoes" in count_sql
+    assert "deleted_at IS NULL" in count_sql
     assert "ST_Y(ST_Transform(geom, 4326)) AS latitude" in sql
     assert "ST_X(ST_Transform(geom, 4326)) AS longitude" in sql
     assert "SELECT *" not in sql.upper()
@@ -294,14 +321,30 @@ def test_list_solicitacoes_internas_uses_explicit_columns_and_postgis_transform(
     assert ":status" in sql
     assert "CAST(:status AS varchar)" in sql
     assert "status = CAST(:status AS varchar)" in sql
+    assert ":protocolo" in sql
+    assert "protocolo ILIKE ('%' || CAST(:protocolo AS varchar) || '%')" in sql
+    assert ":poste_id" in sql
+    assert "poste_id ILIKE ('%' || CAST(:poste_id AS varchar) || '%')" in sql
+    assert ":tipo_problema" in sql
+    assert "tipo_problema = CAST(:tipo_problema AS varchar)" in sql
+    assert ":prioridade" in sql
+    assert "prioridade = CAST(:prioridade AS varchar)" in sql
+    assert ":criado_de" in sql
+    assert "criado_em >= CAST(:criado_de AS timestamp)" in sql
+    assert ":criado_ate" in sql
+    assert "criado_em <= CAST(:criado_ate AS timestamp)" in sql
     assert "LIMIT :limit" in sql
     assert "OFFSET :offset" in sql
     assert "ORDER BY criado_em DESC, id DESC" in sql
+    assert "LIMIT :limit" not in count_sql
+    assert "OFFSET :offset" not in count_sql
+    assert "ORDER BY" not in count_sql
     assert "aberta" not in sql
     assert "POSTE-010" not in sql
-    assert response[0].id == 10
-    assert response[0].latitude == -23.105
-    assert response[0].longitude == -55.225
+    assert response.items[0].id == 10
+    assert response.items[0].latitude == -23.105
+    assert response.items[0].longitude == -55.225
+    assert response.total == 1
 
 
 def test_list_solicitacoes_internas_allows_empty_status_filter_with_bind_param() -> None:
@@ -314,14 +357,66 @@ def test_list_solicitacoes_internas_allows_empty_status_filter_with_bind_param()
         engine=engine,
     )
 
-    assert response[0].protocolo == "IP-2026-000010"
-    assert engine.connection.params == {
+    assert response.items[0].protocolo == "IP-2026-000010"
+    assert engine.connection.params_history[0] == {
         "status": None,
+        "protocolo": None,
+        "poste_id": None,
+        "tipo_problema": None,
+        "prioridade": None,
+        "criado_de": None,
+        "criado_ate": None,
         "limit": 50,
         "offset": 0,
     }
-    sql = str(engine.connection.statement)
+    sql = str(engine.connection.statements[0])
     assert "CAST(:status AS varchar) IS NULL" in sql
+
+
+def test_list_solicitacoes_internas_filters_use_bind_params_without_interpolation() -> None:
+    created_from = datetime(2026, 5, 1, 0, 0)
+    created_to = datetime(2026, 5, 31, 23, 59)
+    engine = FakeEngine([internal_solicitacao_row()])
+
+    response = list_solicitacoes_internas(
+        status=StatusSolicitacaoIluminacao.em_triagem,
+        protocolo="IP-2026",
+        poste_id="POSTE-010",
+        tipo_problema=TipoProblemaIluminacao.lampada_apagada,
+        prioridade="alta",
+        criado_de=created_from,
+        criado_ate=created_to,
+        limit=10,
+        offset=20,
+        engine=engine,
+    )
+
+    sql = str(engine.connection.statements[0])
+    count_sql = str(engine.connection.statements[1])
+    assert response.total == 1
+    assert engine.connection.params_history[0] == {
+        "status": "em_triagem",
+        "protocolo": "IP-2026",
+        "poste_id": "POSTE-010",
+        "tipo_problema": "lampada_apagada",
+        "prioridade": "alta",
+        "criado_de": created_from,
+        "criado_ate": created_to,
+        "limit": 10,
+        "offset": 20,
+    }
+    assert engine.connection.params_history[1] == {
+        "status": "em_triagem",
+        "protocolo": "IP-2026",
+        "poste_id": "POSTE-010",
+        "tipo_problema": "lampada_apagada",
+        "prioridade": "alta",
+        "criado_de": created_from,
+        "criado_ate": created_to,
+    }
+    for value in ("IP-2026", "POSTE-010", "lampada_apagada", "alta", "em_triagem"):
+        assert value not in sql
+        assert value not in count_sql
 
 
 def test_list_solicitacoes_internas_rejects_invalid_pagination_without_sql() -> None:

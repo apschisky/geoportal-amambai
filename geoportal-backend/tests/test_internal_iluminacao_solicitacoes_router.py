@@ -9,7 +9,11 @@ from app.api.routes import internal_iluminacao
 from app.dependencies import auth_dependencies
 from app.dependencies.auth_dependencies import get_current_authenticated_session
 from app.main import app as main_app
-from app.schemas.iluminacao import IluminacaoSolicitacaoInternaItem
+from app.schemas.iluminacao import (
+    IluminacaoSolicitacaoInternaItem,
+    IluminacaoSolicitacoesInternasResult,
+)
+from app.schemas.iluminacao import TipoProblemaIluminacao
 from app.services.auth_current_session_service import AuthenticatedCurrentSession
 from app.services.exceptions import DatabaseUnavailableError
 from app.services.iluminacao_service import DATABASE_UNAVAILABLE_MESSAGE
@@ -91,9 +95,14 @@ def test_internal_solicitacoes_returns_200_for_authenticated_user_with_permissio
 
     service_calls: dict[str, object] = {}
 
-    def fake_listar_solicitacoes_internas(**kwargs: object) -> list[IluminacaoSolicitacaoInternaItem]:
+    def fake_listar_solicitacoes_internas(
+        **kwargs: object,
+    ) -> IluminacaoSolicitacoesInternasResult:
         service_calls.update(kwargs)
-        return [fake_solicitacao()]
+        return IluminacaoSolicitacoesInternasResult(
+            items=[fake_solicitacao()],
+            total=12,
+        )
 
     monkeypatch.setattr(auth_dependencies, "has_permission", fake_has_permission)
     monkeypatch.setattr(
@@ -105,7 +114,17 @@ def test_internal_solicitacoes_returns_200_for_authenticated_user_with_permissio
 
     response = client.get(
         INTERNAL_SOLICITACOES_PATH,
-        params={"status": "aberta", "limit": 25, "offset": 5},
+        params={
+            "status": "aberta",
+            "protocolo": "IP-2026",
+            "poste_id": "POSTE-010",
+            "tipo_problema": "lampada_apagada",
+            "prioridade": "normal",
+            "criado_de": "2026-05-01T00:00:00Z",
+            "criado_ate": "2026-05-31T23:59:00Z",
+            "limit": 25,
+            "offset": 5,
+        },
     )
 
     assert response.status_code == 200
@@ -136,6 +155,7 @@ def test_internal_solicitacoes_returns_200_for_authenticated_user_with_permissio
         ],
         "limit": 25,
         "offset": 5,
+        "total": 12,
     }
     assert calls == {
         "usuario_id": 7,
@@ -143,6 +163,12 @@ def test_internal_solicitacoes_returns_200_for_authenticated_user_with_permissio
     }
     assert service_calls == {
         "status": "aberta",
+        "protocolo": "IP-2026",
+        "poste_id": "POSTE-010",
+        "tipo_problema": TipoProblemaIluminacao.lampada_apagada,
+        "prioridade": "normal",
+        "criado_de": datetime(2026, 5, 1, 0, 0, tzinfo=UTC),
+        "criado_ate": datetime(2026, 5, 31, 23, 59, tzinfo=UTC),
         "limit": 25,
         "offset": 5,
     }
@@ -259,7 +285,10 @@ def test_internal_solicitacoes_returns_403_without_required_permission(
     monkeypatch.setattr(
         internal_iluminacao,
         "listar_solicitacoes_internas",
-        lambda **kwargs: [fake_solicitacao()],
+        lambda **kwargs: IluminacaoSolicitacoesInternasResult(
+            items=[fake_solicitacao()],
+            total=1,
+        ),
     )
     client = TestClient(app)
 
@@ -313,7 +342,10 @@ def test_get_internal_solicitacoes_does_not_require_mutating_header(
     monkeypatch.setattr(
         internal_iluminacao,
         "listar_solicitacoes_internas",
-        lambda **kwargs: [fake_solicitacao()],
+        lambda **kwargs: IluminacaoSolicitacoesInternasResult(
+            items=[fake_solicitacao()],
+            total=1,
+        ),
     )
     client = TestClient(app)
 
@@ -391,7 +423,9 @@ def test_internal_solicitacoes_database_error_is_sanitized(
         lambda usuario_id, permission_code: True,
     )
 
-    def fail_with_database_error(**kwargs: object) -> list[IluminacaoSolicitacaoInternaItem]:
+    def fail_with_database_error(
+        **kwargs: object,
+    ) -> IluminacaoSolicitacoesInternasResult:
         raise DatabaseUnavailableError(DATABASE_UNAVAILABLE_MESSAGE)
 
     monkeypatch.setattr(
@@ -478,12 +512,52 @@ def test_internal_solicitacoes_validates_query_params(
 
     for params in (
         {"status": "status_invalido"},
+        {"tipo_problema": "tipo_invalido"},
+        {"protocolo": ""},
+        {"poste_id": ""},
+        {"prioridade": ""},
         {"limit": 0},
         {"limit": 101},
         {"offset": -1},
     ):
         response = client.get(INTERNAL_SOLICITACOES_PATH, params=params)
         assert response.status_code == 422
+
+
+def test_internal_solicitacoes_rejects_invalid_period(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+
+    def fail_invalid_period(**kwargs: object) -> IluminacaoSolicitacoesInternasResult:
+        raise ValueError("criado_de must be less than or equal to criado_ate")
+
+    monkeypatch.setattr(
+        internal_iluminacao,
+        "listar_solicitacoes_internas",
+        fail_invalid_period,
+    )
+    client = TestClient(app)
+
+    response = client.get(
+        INTERNAL_SOLICITACOES_PATH,
+        params={
+            "criado_de": "2026-06-01T00:00:00Z",
+            "criado_ate": "2026-05-01T00:00:00Z",
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "Invalid query parameters"}
+    assert "criado_de" not in response.text
 
 
 def test_internal_solicitacao_detail_validates_positive_id(
@@ -520,7 +594,10 @@ def test_internal_solicitacoes_response_does_not_expose_sensitive_fields(
     monkeypatch.setattr(
         internal_iluminacao,
         "listar_solicitacoes_internas",
-        lambda **kwargs: [fake_solicitacao()],
+        lambda **kwargs: IluminacaoSolicitacoesInternasResult(
+            items=[fake_solicitacao()],
+            total=1,
+        ),
     )
     client = TestClient(app)
 
@@ -529,6 +606,8 @@ def test_internal_solicitacoes_response_does_not_expose_sensitive_fields(
     assert response.status_code == 200
     response_text = response.text
     body = response.json()
+    assert set(body) == {"items", "limit", "offset", "total"}
+    assert body["total"] == 1
     assert set(body["items"][0]) == {
         "id",
         "protocolo",

@@ -1,3 +1,4 @@
+from datetime import datetime
 import re
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -11,7 +12,9 @@ from app.schemas.iluminacao import (
     IluminacaoSolicitacaoInternaItem,
     IluminacaoSolicitacaoCreate,
     IluminacaoSolicitacaoResponse,
+    IluminacaoSolicitacoesInternasResult,
     StatusSolicitacaoIluminacao,
+    TipoProblemaIluminacao,
 )
 from app.services.exceptions import DatabaseUnavailableError, PublicConsultaNotFoundError
 from app.services.exceptions import SolicitacaoDuplicadaAtivaError
@@ -134,6 +137,13 @@ def _status_publico(status: str) -> tuple[str, str]:
     )
 
 
+def _normalize_optional_filter(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip()
+    return normalized or None
+
+
 def _build_public_consulta_response(
     record: IluminacaoConsultaRepositoryRecord,
 ) -> IluminacaoConsultaPublicResponse:
@@ -174,12 +184,27 @@ def consultar_solicitacao_publica(
 def listar_solicitacoes_internas(
     *,
     status: StatusSolicitacaoIluminacao | None = None,
+    protocolo: str | None = None,
+    poste_id: str | None = None,
+    tipo_problema: TipoProblemaIluminacao | None = None,
+    prioridade: str | None = None,
+    criado_de: datetime | None = None,
+    criado_ate: datetime | None = None,
     limit: int = 50,
     offset: int = 0,
-) -> list[IluminacaoSolicitacaoInternaItem]:
+) -> IluminacaoSolicitacoesInternasResult:
+    if criado_de is not None and criado_ate is not None and criado_de > criado_ate:
+        raise ValueError("criado_de must be less than or equal to criado_ate")
+
     try:
         return iluminacao_repository.list_solicitacoes_internas(
             status=status,
+            protocolo=_normalize_optional_filter(protocolo),
+            poste_id=_normalize_optional_filter(poste_id),
+            tipo_problema=tipo_problema,
+            prioridade=_normalize_optional_filter(prioridade),
+            criado_de=criado_de,
+            criado_ate=criado_ate,
             limit=limit,
             offset=offset,
         )
