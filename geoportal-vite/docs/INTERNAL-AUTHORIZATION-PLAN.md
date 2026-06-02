@@ -655,3 +655,15 @@ Validacao operacional em homologacao: o harness `InternaHomologacao` confirmou p
 O filtro `poste_id` permanece opcional e nao impede solicitacoes futuras por ponto manual. O filtro `localizacao_tipo` pode ser avaliado antes da tela para diferenciar `poste_mapa` e `ponto_manual`, mas nao foi implementado nesta etapa.
 
 Proximos passos tecnicos recomendados antes de endpoint mutavel e antes de frontend: mapear e validar o schema existente de historico e observacoes internas, decidir contratos seguros para leitura de historico e leitura/criacao de observacoes internas, e somente depois planejar alteracao de status com auditoria obrigatoria. Historico, observacoes internas, anexos e PATCH de status permanecem etapas posteriores.
+
+## Diagnostico de Historico e Observacoes Internas
+
+O diagnostico do schema confirmou que `mod_iluminacao.solicitacoes_historico` e `mod_iluminacao.solicitacoes_observacoes` ja existem por migrations `0004` e `0005`, com FKs restritivas para `mod_iluminacao.solicitacoes(id)`, indices operacionais e checks de valores. O historico nao possui `deleted_at`, preservando comportamento append-only. Observacoes possuem `deleted_at` para soft delete futuro e `visibilidade` limitada a `interna` e `publica_futura`.
+
+O schema atual e suficiente para `GET historico`, `GET observacoes internas`, `POST observacao interna` e futura `PATCH status` com auditoria obrigatoria. Nao se recomenda migration para os proximos endpoints basicos; migracao futura deve depender de decisao explicita por FK real com `mod_auth.usuarios`, IP/origem, equipe/setor, anexos ou trigger de auditoria.
+
+Como nao existe trigger obrigando historico, o backend deve garantir transacao atomica para operacoes mutaveis. Para `POST observacao`, gravar a observacao e um evento resumido em `solicitacoes_historico`. Para `PATCH status`, atualizar `mod_iluminacao.solicitacoes` e inserir historico na mesma transacao. Antes de `PATCH status`, ainda devem ser definidos transicoes permitidas, regra de `finalizado_em`, observacao/motivo obrigatorio ou opcional e dados de usuario a gravar.
+
+Permissoes futuras recomendadas: `iluminacao.solicitacoes.ver_historico`, `iluminacao.solicitacoes.comentar` e `iluminacao.solicitacoes.atualizar_status`.
+
+Ordem recomendada: `GET /api/internal/iluminacao/solicitacoes/{id}/historico`, `GET /api/internal/iluminacao/solicitacoes/{id}/observacoes`, `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes` e somente depois `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`.

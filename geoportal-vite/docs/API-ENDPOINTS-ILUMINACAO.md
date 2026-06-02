@@ -270,6 +270,8 @@ Erros: 401 sem sessao, 403 sem permissao, 404 generico quando a solicitacao nao 
 
 Historico, observacoes internas e anexos ficam para etapas posteriores com contratos, permissoes e auditoria proprios.
 
+Diagnostico do schema interno confirmou que `mod_iluminacao.solicitacoes_historico` e `mod_iluminacao.solicitacoes_observacoes` ja suportam os proximos endpoints basicos sem nova migration. A ordem recomendada e implementar primeiro leitura de historico, depois leitura de observacoes internas, depois criacao de observacao interna com evento resumido no historico, e somente depois alteracao de status com auditoria obrigatoria.
+
 **Validação operacional (detalhe de solicitação)**
 
 - Commit: `d198710` Adiciona detalhe interno de solicitacao de iluminacao.

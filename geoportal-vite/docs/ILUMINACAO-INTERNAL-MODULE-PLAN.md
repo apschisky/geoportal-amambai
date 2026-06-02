@@ -126,6 +126,8 @@ As migrations internas `0004` e `0005` tambem foram aplicadas no banco ativo apo
 
 Ainda nao ha endpoints internos nem tela interna consumindo essas tabelas. A proxima etapa tecnica e desenhar endpoints internos protegidos para status, historico e observacoes antes de qualquer interface administrativa.
 
+Diagnostico posterior confirmou que o schema atual de `solicitacoes_historico` e `solicitacoes_observacoes` e suficiente para leitura de historico, leitura/criacao de observacoes internas e futura alteracao de status com auditoria obrigatoria. Nao ha recomendacao de migration para os proximos endpoints basicos. Como nao existe trigger obrigando historico, qualquer operacao mutavel deve gravar o evento correspondente na mesma transacao. A ordem recomendada e: primeiro `GET historico`, depois `GET observacoes`, depois `POST observacoes`, e somente depois `PATCH status`.
+
 ## 9. Interface interna
 
 Componentes previstos para a interface interna:

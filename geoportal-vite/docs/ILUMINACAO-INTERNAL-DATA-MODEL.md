@@ -135,6 +135,102 @@ Registro de aplicacao no banco ativo: as migrations `0004` e `0005` foram aplica
 
 Ainda nao ha endpoints internos nem tela interna usando `solicitacoes_historico` ou `solicitacoes_observacoes`. A proxima etapa e desenhar endpoints internos protegidos para alteracao de status, consulta de historico e registro de observacoes.
 
+## 7.1 Diagnostico do Schema para Proximos Endpoints
+
+Diagnostico tecnico realizado apos a validacao da listagem interna com filtros e antes de qualquer endpoint mutavel ou tela interna.
+
+### `mod_iluminacao.solicitacoes_historico`
+
+Tabela criada pela migration `0004_create_iluminacao_solicitacoes_historico.sql`.
+
+Colunas existentes:
+
+- `id bigserial PRIMARY KEY`;
+- `solicitacao_id bigint NOT NULL`;
+- `acao varchar(40) NOT NULL`;
+- `status_anterior varchar(40) NULL`;
+- `status_novo varchar(40) NULL`;
+- `prioridade_anterior varchar(20) NULL`;
+- `prioridade_nova varchar(20) NULL`;
+- `usuario_id varchar(120) NULL`;
+- `usuario_nome varchar(180) NULL`;
+- `origem_acao varchar(40) NOT NULL DEFAULT 'sistema'`;
+- `observacao_resumida varchar(1000) NULL`;
+- `criado_em timestamptz NOT NULL DEFAULT now()`.
+
+Garantias existentes:
+
+- FK para `mod_iluminacao.solicitacoes(id)` com `ON UPDATE RESTRICT` e `ON DELETE RESTRICT`.
+- Checks para `acao`, `origem_acao`, status, prioridade e strings nao vazias.
+- Indices em `solicitacao_id`, `criado_em`, `acao`, `usuario_id` e `origem_acao`.
+- Nao possui `deleted_at`, coerente com historico append-only.
+
+### `mod_iluminacao.solicitacoes_observacoes`
+
+Tabela criada pela migration `0005_create_iluminacao_solicitacoes_observacoes.sql`.
+
+Colunas existentes:
+
+- `id bigserial PRIMARY KEY`;
+- `solicitacao_id bigint NOT NULL`;
+- `observacao varchar(2000) NOT NULL`;
+- `visibilidade varchar(30) NOT NULL DEFAULT 'interna'`;
+- `usuario_id varchar(120) NULL`;
+- `usuario_nome varchar(180) NULL`;
+- `criado_em timestamptz NOT NULL DEFAULT now()`;
+- `editado_em timestamptz NULL`;
+- `deleted_at timestamptz NULL`.
+
+Garantias existentes:
+
+- FK para `mod_iluminacao.solicitacoes(id)` com `ON UPDATE RESTRICT` e `ON DELETE RESTRICT`.
+- Check de `visibilidade` em `interna` e `publica_futura`.
+- Check minimo de observacao com `length(btrim(observacao)) >= 3`.
+- Checks de datas para `editado_em` e `deleted_at`.
+- Indices em `solicitacao_id`, `criado_em`, `usuario_id`, `visibilidade` e `deleted_at`.
+
+### Vinculo com Autenticacao
+
+Nao ha FK para `mod_auth.usuarios`. O schema usa `usuario_id` e `usuario_nome` como campos livres. Essa decisao preserva rastreabilidade operacional flexivel e evita acoplamento forte entre schemas, mas nao garante integridade referencial no banco.
+
+A aplicacao deve preencher `usuario_id` e, quando disponivel de forma segura, `usuario_nome` a partir da sessao interna autenticada. Se `usuario_nome` nao estiver disponivel no fluxo atual, a primeira implementacao deve registrar apenas `usuario_id` ou buscar nome/login por caminho controlado, sem hardcode de usuario.
+
+### Suficiencia do Schema Atual
+
+O schema atual e suficiente para os proximos endpoints basicos:
+
+- `GET /api/internal/iluminacao/solicitacoes/{id}/historico`;
+- `GET /api/internal/iluminacao/solicitacoes/{id}/observacoes`;
+- `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes`;
+- `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`, desde que a aplicacao grave historico obrigatorio na mesma transacao.
+
+Nao e recomendada migration para esses endpoints basicos. Migration futura deve ser considerada apenas se houver decisao explicita por FK real com `mod_auth.usuarios`, campos extras de IP/origem, equipe/setor, anexos ou auditoria obrigatoria via trigger.
+
+### Riscos e Controles
+
+- Nao existe trigger obrigando historico; a aplicacao deve garantir que acoes mutaveis gravem historico na mesma transacao.
+- Antes de `PATCH status`, ainda e necessario definir transicoes permitidas, regra de finalizacao e `finalizado_em`, observacao/motivo obrigatorio ou opcional, auditoria obrigatoria e dados de usuario a gravar.
+- Observacoes internas devem filtrar `deleted_at IS NULL` e usar `visibilidade = 'interna'` na primeira fase.
+- A visibilidade `publica_futura` continua reserva conceitual e nao autoriza exposicao automatica ao cidadao.
+- A API publica nao deve ser afetada se os proximos endpoints permanecerem em `/api/internal/*`, protegidos por feature flag, sessao interna e `require_permission`.
+
+### Permissoes e Ordem Recomendada
+
+Permissoes futuras recomendadas:
+
+- `iluminacao.solicitacoes.ver_historico`;
+- `iluminacao.solicitacoes.comentar`;
+- `iluminacao.solicitacoes.atualizar_status`.
+
+Ordem recomendada de implementacao:
+
+1. `GET /api/internal/iluminacao/solicitacoes/{id}/historico`.
+2. `GET /api/internal/iluminacao/solicitacoes/{id}/observacoes`.
+3. `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes`.
+4. Somente depois, `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`.
+
+GRANTs futuros devem ser minimos e por etapa: `SELECT` para leitura de historico/observacoes; `INSERT` e uso das sequences correspondentes para criacao de observacao e evento de historico; `UPDATE` em `mod_iluminacao.solicitacoes` apenas quando o endpoint de status for implementado.
+
 ## 8. Uso pelos endpoints internos
 
 Endpoints internos futuros devem usar essas tabelas da seguinte forma:
