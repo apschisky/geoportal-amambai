@@ -304,9 +304,20 @@ Resposta:
 
 Erros: 401 sem sessao, 403 sem permissao, 404 generico quando a solicitacao nao existir, 422 para parametros invalidos e 503 generico se o banco estiver indisponivel, sem expor SQL, traceback, host, role, segredo ou `DATABASE_URL`.
 
-Esta etapa nao cria endpoint mutavel, migration, alteracao de schema, usuario, perfil, permissao real no banco, role, GRANT, frontend, proxy ou producao. A permissao real `iluminacao.solicitacoes.ver_historico` deve ser criada operacionalmente em homologacao antes da validacao real.
+**Validacao operacional (historico interno de solicitacao)**
 
-Observacoes internas, criacao de observacao, anexos e alteracao de status com auditoria obrigatoria continuam em etapas posteriores.
+- Commit: `b68bc32` Adiciona historico interno de solicitacoes de iluminacao.
+- Testes locais antes do commit: `tests/test_internal_iluminacao_solicitacoes_router.py`: 28 passed; `tests/test_iluminacao_repository.py`: 18 passed; `tests/test_iluminacao_service.py`: 29 passed; `tests/test_iluminacao_public.py`: 37 passed; `tests/test_internal_routes_feature_flag.py`: 10 passed; suite completa: 541 passed. Houve 1 warning conhecido e nao bloqueante de depreciacao da constante HTTP 422.
+- Em homologacao, a permissao real `iluminacao.solicitacoes.ver_historico` foi criada com modulo `iluminacao`, chave `solicitacoes.ver_historico`, descricao segura e `ativo=true`, e vinculada ao perfil `administrador-interno-geoportal`.
+- O unico GRANT aplicado nesta etapa foi `SELECT` minimo em `mod_iluminacao.solicitacoes_historico` para `geoportal_api_homolog`; a verificacao final confirmou `schema_usage=true`, `SELECT=true`, `INSERT=false`, `UPDATE=false` e `DELETE=false`.
+- O runtime interno `InternaHomologacao` foi reiniciado e validado pelo harness: porta `8002`, `/api/health` OK, `/api/version` com `environment=homologacao` e `/api/internal/auth/me` sem sessao retornando 401.
+- Login interno foi validado no runtime interno com usuario administrativo de homologacao, sem registrar token, senha ou cookie real; `/api/internal/auth/me` confirmou `iluminacao.solicitacoes.ver_historico=True`.
+- `GET http://127.0.0.1:8002/api/internal/iluminacao/solicitacoes/18/historico?limit=10&offset=0` retornou 200 OK com `limit=10`, `offset=0` e `total=0` para dado de homologacao/teste.
+- `total=0` foi comportamento esperado: a solicitacao de homologacao/teste existia, a sessao tinha permissao e o banco liberou SELECT, mas ainda nao havia eventos gravados em `mod_iluminacao.solicitacoes_historico` para essa solicitacao.
+- Em testes focados no servidor, houve uma falha inicial ambiental em `tests/test_internal_iluminacao_solicitacoes_router.py` porque o processo PowerShell herdou `GEOPORTAL_INTERNAL_ROUTES_ENABLED=true`; apos limpar apenas a variavel do processo atual, o arquivo passou com 28 passed.
+- Producao, producao interna, Apache/proxy, frontend/tela interna, migrations, schema, `.env` versionado e NSSM nao foram alterados nesta etapa, exceto restart controlado do servico interno de homologacao ja existente.
+- Nenhum endpoint mutavel, usuario novo, perfil novo, role nova ou GRANT adicional foi criado; a API publica permaneceu preservada.
+- Observacoes internas, criacao de observacao, anexos e alteracao de status com auditoria obrigatoria continuam em etapas posteriores.
 
 ### `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`
 
@@ -570,8 +581,7 @@ Este documento complementa:
 
 - seguir `docs/ILUMINACAO-CONTROLLED-ACTIVATION-CHECKLIST.md` antes de qualquer ativacao publica;
 - `docs/SQL-MIGRATION-PLAN.md`;
-- mapear e validar o schema existente de historico e observacoes internas antes de endpoint mutavel;
-- definir contrato seguro para leitura de historico;
+- historico interno ja implementado e validado em homologacao; manter validacao operacional documentada antes de uso por tela;
 - definir contrato seguro para leitura/criacao de observacoes internas;
 - planejar alteracao de status somente depois, com auditoria obrigatoria;
 - manter anexos e tela interna para etapas posteriores;

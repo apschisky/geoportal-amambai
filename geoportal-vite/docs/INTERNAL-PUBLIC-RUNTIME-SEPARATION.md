@@ -118,6 +118,9 @@ Validacao autenticada manual pelo servico NSSM:
 - `GET /api/internal/iluminacao/solicitacoes?limit=10&offset=0` retornou itens reais.
 - `GET /api/internal/iluminacao/solicitacoes?limit=5&offset=0` retornou `total=2` e paginacao esperada.
 - Filtros por protocolo, poste, status/tipo de problema e periodo invalido foram validados com dados de homologacao/teste; periodo invalido retornou 422.
+- `GET /api/internal/iluminacao/solicitacoes/{id}/historico` foi implementado no commit `b68bc32` e validado no runtime interno com sessao real e permissao `iluminacao.solicitacoes.ver_historico`.
+- Para essa validacao, foi aplicado somente `SELECT` em `mod_iluminacao.solicitacoes_historico` para `geoportal_api_homolog`; `INSERT`, `UPDATE` e `DELETE` permaneceram falsos nessa tabela.
+- A chamada com dado de homologacao/teste `GET /api/internal/iluminacao/solicitacoes/18/historico?limit=10&offset=0` retornou 200 OK com `total=0`, comportamento esperado porque ainda nao havia eventos historicos gravados para a solicitacao.
 
 Estado de seguranca apos a validacao:
 

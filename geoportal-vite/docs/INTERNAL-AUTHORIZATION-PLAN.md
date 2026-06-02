@@ -667,3 +667,17 @@ Como nao existe trigger obrigando historico, o backend deve garantir transacao a
 Permissoes futuras recomendadas: `iluminacao.solicitacoes.ver_historico`, `iluminacao.solicitacoes.comentar` e `iluminacao.solicitacoes.atualizar_status`.
 
 Ordem recomendada: `GET /api/internal/iluminacao/solicitacoes/{id}/historico`, `GET /api/internal/iluminacao/solicitacoes/{id}/observacoes`, `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes` e somente depois `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`.
+
+## Validacao do Historico Interno de Iluminacao
+
+O endpoint `GET /api/internal/iluminacao/solicitacoes/{id}/historico` foi implementado no commit `b68bc32` e validado em homologacao interna. Ele e somente leitura, exige sessao interna, usa permissao propria `iluminacao.solicitacoes.ver_historico`, nao reutiliza `iluminacao.solicitacoes.ler` e nao exige `X-Geoportal-Internal-Request`.
+
+Validacoes locais antes do commit: router 28 passed, repository 18 passed, service 29 passed, API publica 37 passed, feature flag 10 passed e suite completa 541 passed, com 1 warning conhecido e nao bloqueante de depreciacao da constante HTTP 422.
+
+Em homologacao, a permissao real foi criada com modulo `iluminacao`, chave `solicitacoes.ver_historico`, descricao segura e `ativo=true`, vinculada ao perfil `administrador-interno-geoportal`. O unico GRANT aplicado nesta etapa foi `SELECT` minimo em `mod_iluminacao.solicitacoes_historico` para `geoportal_api_homolog`; a matriz final manteve `INSERT=false`, `UPDATE=false` e `DELETE=false`.
+
+O runtime interno `InternaHomologacao` foi reiniciado e validado pelo harness na porta `8002`. Login interno foi validado sem registrar token, `/api/internal/auth/me` confirmou `iluminacao.solicitacoes.ver_historico=True` e `GET /api/internal/iluminacao/solicitacoes/18/historico?limit=10&offset=0` retornou 200 OK com `total=0` para dado de homologacao/teste. Esse `total=0` foi esperado: a solicitacao existia, a sessao tinha permissao e o banco liberou leitura, mas ainda nao havia eventos historicos gravados.
+
+A falha inicial de um teste focado no servidor foi ambiental: o processo PowerShell herdou `GEOPORTAL_INTERNAL_ROUTES_ENABLED=true`. Apos limpar apenas a variavel do processo atual, o teste passou com 28 passed.
+
+Producao, producao interna, Apache/proxy, frontend/tela interna, migrations, schema, `.env` versionado e NSSM nao foram alterados nesta etapa, exceto restart controlado do servico interno de homologacao ja existente. Observacoes internas, `POST observacao`, anexos e `PATCH status` permanecem etapas posteriores; a tela ainda nao deve comecar nesta etapa.

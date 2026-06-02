@@ -224,12 +224,18 @@ Permissoes futuras recomendadas:
 
 Ordem recomendada de implementacao:
 
-1. `GET /api/internal/iluminacao/solicitacoes/{id}/historico`.
+1. `GET /api/internal/iluminacao/solicitacoes/{id}/historico` - implementado e validado em homologacao interna no commit `b68bc32`.
 2. `GET /api/internal/iluminacao/solicitacoes/{id}/observacoes`.
 3. `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes`.
 4. Somente depois, `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`.
 
-GRANTs futuros devem ser minimos e por etapa: `SELECT` para leitura de historico/observacoes; `INSERT` e uso das sequences correspondentes para criacao de observacao e evento de historico; `UPDATE` em `mod_iluminacao.solicitacoes` apenas quando o endpoint de status for implementado.
+O GRANT operacional aplicado para o historico foi somente `SELECT` em `mod_iluminacao.solicitacoes_historico` para `geoportal_api_homolog`, mantendo `INSERT=false`, `UPDATE=false` e `DELETE=false`. GRANTs futuros devem continuar minimos e por etapa: `SELECT` para leitura de observacoes; `INSERT` e uso das sequences correspondentes para criacao de observacao e evento de historico; `UPDATE` em `mod_iluminacao.solicitacoes` apenas quando o endpoint de status for implementado.
+
+### Validacao do Endpoint de Historico
+
+O endpoint `GET /api/internal/iluminacao/solicitacoes/{id}/historico` foi publicado e validado em homologacao interna. Ele exige `iluminacao.solicitacoes.ver_historico`, valida a existencia da solicitacao com `deleted_at IS NULL`, consulta `mod_iluminacao.solicitacoes_historico` com colunas explicitas, bind parameters e ordenacao `criado_em ASC, id ASC`, e retorna envelope com `items`, `limit`, `offset` e `total`.
+
+A validacao operacional usou dado de homologacao/teste (`solicitacao_id=18`) e retornou 200 OK com `total=0`, comportamento esperado porque ainda nao havia eventos historicos gravados para essa solicitacao. Essa validacao nao criou migration, nao alterou schema, nao criou endpoint mutavel, nao alterou producao, proxy, frontend ou `.env` versionado e nao registrou token, senha, cookie real, hash, `session_secret` real ou `DATABASE_URL` real.
 
 ## 8. Uso pelos endpoints internos
 
@@ -239,7 +245,7 @@ Endpoints internos futuros devem usar essas tabelas da seguinte forma:
 - `PATCH /api/internal/iluminacao/solicitacoes/{id}/status` altera o estado atual e grava historico.
 - `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes` grava observacao e evento resumido no historico.
 - `GET /api/internal/iluminacao/solicitacoes/{id}` pode retornar detalhe interno com historico e observacoes, respeitando permissao.
-- `GET /api/internal/iluminacao/solicitacoes/{id}/historico` retorna historico administrativo conforme perfil.
+- `GET /api/internal/iluminacao/solicitacoes/{id}/historico` retorna historico administrativo conforme perfil e ja foi validado com permissao propria em homologacao interna.
 - `GET /api/internal/iluminacao/estatisticas` retorna indicadores internos sem expor dados pessoais desnecessarios.
 - `GET /api/public/iluminacao/consulta` nao retorna historico interno nem observacoes internas.
 
