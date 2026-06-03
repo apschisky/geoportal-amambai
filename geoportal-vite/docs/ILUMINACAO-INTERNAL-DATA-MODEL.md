@@ -275,6 +275,12 @@ A implementacao trava a solicitacao com `deleted_at IS NULL` via `SELECT ... FOR
 
 Nao se recomenda migration nem trigger nesta etapa; a decisao incremental e manter a garantia no backend com testes de transacao atomica. GRANTs devem ser aplicados apenas na etapa operacional de homologacao, com `UPDATE` minimo em `mod_iluminacao.solicitacoes` e `INSERT` em historico, sem `DELETE` e sem `UPDATE` em historico.
 
+Validacao operacional posterior confirmou que o GRANT de homologacao foi ainda mais restrito: `UPDATE` por coluna somente em `status`, `atualizado_em` e `finalizado_em` para `geoportal_api_homolog`. A matriz confirmou `UPDATE=false` em `prioridade`, `protocolo`, `geom`, `deleted_at`, `deleted_reason`, `nome_solicitante` e `contato_solicitante`. Esse desenho reduz o risco de alteracao acidental de dados publicos ou sensiveis pelo runtime interno.
+
+Com dado de homologacao/teste, a validacao confirmou transicoes validas com historico, idempotencia sem novo historico, bloqueio de transicao invalida sem historico indevido, preenchimento de `finalizado_em` ao entrar em status terminal e bloqueio de saida de terminal pelo PATCH normal.
+
+Correcao ou reversao de status deve ser fluxo separado futuro, com justificativa obrigatoria, permissao especifica restrita e auditoria propria. Esse fluxo pode usar `origem_acao='ajuste_administrativo'` e/ou `acao='reabertura'` quando aplicavel, pois sao valores aceitos pela migration de historico, mas nao deve ser liberado pelo PATCH status normal.
+
 ## 8. Uso pelos endpoints internos
 
 Endpoints internos futuros devem usar essas tabelas da seguinte forma:

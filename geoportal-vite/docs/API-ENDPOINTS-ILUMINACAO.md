@@ -527,10 +527,40 @@ Estado da implementacao:
 
 Recomendacao:
 
-- Validar em homologacao interna somente depois de aplicar permissao real e GRANTs minimos operacionais.
+- Endpoint ja validado em homologacao interna com permissao real e GRANT minimo por coluna.
 - Nao criar migration nem trigger agora; transacao no backend com testes e suficiente para esta fase incremental.
 - Nao aplicar GRANTs fora da etapa operacional de homologacao posterior.
 - Producao, proxy, frontend e tela interna permanecem inalterados.
+
+**Validacao operacional (alteracao interna de status)**
+
+- Commit: `28f00dc` Adiciona alteracao interna de status de iluminacao.
+- Testes locais antes do commit: `tests/test_internal_iluminacao_solicitacoes_router.py`: 57 passed; `tests/test_iluminacao_repository.py`: 32 passed; `tests/test_iluminacao_service.py`: 46 passed; `tests/test_iluminacao_public.py`: 37 passed; `tests/test_internal_routes_feature_flag.py`: 10 passed; suite completa: 601 passed. Houve 1 warning conhecido e nao bloqueante de depreciacao da constante HTTP 422.
+- Em homologacao, o codigo foi aplicado via `git pull`, os testes focados passaram no servidor e a variavel do processo atual `GEOPORTAL_INTERNAL_ROUTES_ENABLED` foi removida antes dos testes para evitar interferencia ambiental da flag herdada no PowerShell. Isso nao alterou `.env`, NSSM ou configuracao permanente.
+- A permissao real `iluminacao.solicitacoes.atualizar_status` foi criada com modulo `iluminacao`, chave `solicitacoes.atualizar_status`, descricao segura e `ativo=true`, e vinculada ao perfil `administrador-interno-geoportal`. A verificacao confirmou a permissao `id=17` nesse perfil.
+- Antes do GRANT, `mod_iluminacao.solicitacoes` tinha `SELECT=true`, `INSERT=false`, `UPDATE=false` e `DELETE=false`; `mod_iluminacao.solicitacoes_historico` ja tinha `SELECT=true`, `INSERT=true`, `UPDATE=false` e `DELETE=false`.
+- O GRANT aplicado foi minimo e por coluna, mais restrito que UPDATE amplo na tabela: `UPDATE` apenas em `status`, `atualizado_em` e `finalizado_em` para `geoportal_api_homolog`.
+- A verificacao final confirmou `UPDATE=true` em `status`, `atualizado_em` e `finalizado_em`, e `UPDATE=false` em `prioridade`, `protocolo`, `geom`, `deleted_at`, `deleted_reason`, `nome_solicitante` e `contato_solicitante`. Esse resultado reduz o risco do `UPDATE` amplo em PostgreSQL, pois a role interna recebeu privilegio somente nas colunas que o backend deve alterar.
+- O runtime interno `InternaHomologacao` foi reiniciado e validado pelo harness: porta `8002`, `/api/health` OK, `/api/version` com `environment=homologacao` e `/api/internal/auth/me` sem sessao retornando 401.
+- Login interno foi validado no runtime interno com usuario administrativo de homologacao, sem registrar token, senha ou cookie real; `/api/internal/auth/me` confirmou `iluminacao.solicitacoes.atualizar_status=True`.
+- A validacao funcional usou a solicitacao `id=18`, protocolo `IP-2026-000020`, como dado de homologacao/teste.
+- Estado inicial: `status=aberta`, `prioridade=normal`, `finalizado_em` nulo e `atualizado_em=2026-05-21T10:14:24.404719-04:00`.
+- Transicao valida `aberta -> em_triagem`: retornou 200 OK, manteve `finalizado_em` nulo, atualizou `atualizado_em` para `2026-06-03T09:24:19.864153-04:00` e criou historico `alteracao_status` com `status_anterior=aberta`, `status_novo=em_triagem`, `usuario_id=7`, `origem_acao=usuario_interno` e observacao resumida coerente.
+- Idempotencia `em_triagem -> em_triagem`: retornou 200 OK, manteve `status`, `atualizado_em` e `finalizado_em`, e o total de historico continuou 2. Isso confirmou que status igual nao faz novo UPDATE e nao cria historico duplicado.
+- Transicao invalida `em_triagem -> aberta`: retornou 409 Conflict e o total de historico continuou 2, confirmando bloqueio sem historico indevido.
+- Nova transicao valida `em_triagem -> encaminhada`: retornou 200 OK, manteve `finalizado_em` nulo e o historico passou para total 3 com evento `alteracao_status`, `status_anterior=em_triagem`, `status_novo=encaminhada`, `usuario_id=7`, `origem_acao=usuario_interno` e observacao resumida coerente.
+- Transicao terminal `encaminhada -> nao_localizado`: retornou 200 OK, preencheu `finalizado_em`, manteve `prioridade=normal` e o detalhe confirmou `status=nao_localizado`, `finalizado_em=2026-06-03T09:37:55.853105-04:00` e `atualizado_em=2026-06-03T09:37:55.853105-04:00`. O historico passou para total 4 com evento `alteracao_status`, `status_anterior=encaminhada`, `status_novo=nao_localizado`, `usuario_id=7`, `origem_acao=usuario_interno` e observacao resumida coerente.
+- Saida de terminal `nao_localizado -> em_execucao`: retornou 409 Conflict e o total de historico continuou 4, confirmando que status terminal nao sai pelo PATCH normal e nao cria historico indevido.
+- A validacao confirmou o comportamento atomico esperado pela aplicacao: UPDATE de status e INSERT em historico caminham juntos, sem alteracao de prioridade, dados publicos, geometria, dados do solicitante, `deleted_at` ou `deleted_reason`.
+- Producao, producao interna, Apache/proxy, frontend/tela interna, migrations, schema, `.env` versionado e NSSM nao foram alterados nesta etapa, exceto restart controlado do servico interno de homologacao ja existente. Nenhum endpoint de reabertura/correcao, endpoint de anexos, usuario novo, perfil novo ou role nova foi criado; a API publica permaneceu preservada.
+
+**Decisao futura: correcao/reversao de status**
+
+- Correcao ou reversao de status por erro operacional nao entra no `PATCH status` normal.
+- Esse fluxo deve ser separado, muito controlado, com justificativa obrigatoria e permissao especifica diferente de `iluminacao.solicitacoes.atualizar_status`.
+- A permissao deve ser restrita a poucos perfis autorizados, nao a todos os perfis que operam o fluxo normal.
+- Deve ter auditoria propria no historico e, conforme contrato futuro, pode usar `origem_acao='ajuste_administrativo'` e/ou `acao='reabertura'` quando aplicavel, sempre respeitando os valores permitidos pela migration.
+- Esse fluxo deve ser documentado e implementado em etapa separada. Nao liberar reabertura no PATCH normal e nao permitir que a tela futura replique a regra livremente; a regra deve permanecer no backend.
 
 ### `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes`
 
