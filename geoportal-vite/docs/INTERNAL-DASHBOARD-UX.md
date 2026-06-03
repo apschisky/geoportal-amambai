@@ -456,7 +456,21 @@ Tratamento recomendado por HTTP:
 - `503`: exibir indisponibilidade temporaria, sem SQL, stack trace, host, role, segredo ou `DATABASE_URL`.
 - Erro de rede: informar falha temporaria de conexao com o servico interno.
 
-Resposta conceitual minima esperada, sem dados reais:
+Contrato real usado pela primeira integracao da shell, sem dados reais nesta documentacao:
+
+```json
+{
+  "authenticated": true,
+  "usuario_id": 1,
+  "permissoes": [
+    "iluminacao.solicitacoes.ler"
+  ]
+}
+```
+
+A shell deve validar esse contrato real e nao deve esperar `usuario.nome`, `usuario.login`, `sessao.expira_em` ou `modulos`, porque esses campos ainda nao fazem parte de `GET /api/internal/auth/me`.
+
+Resposta conceitual futura, se o backend evoluir o contrato em etapa propria:
 
 ```json
 {

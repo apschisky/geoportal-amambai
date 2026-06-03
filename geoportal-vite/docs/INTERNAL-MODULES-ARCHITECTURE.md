@@ -192,7 +192,21 @@ Tratamento recomendado de respostas:
 - `503`: informar indisponibilidade temporaria sem SQL, stack trace, host, role ou segredo.
 - Erro de rede: informar falha temporaria de conexao com o servico interno.
 
-Exemplo conceitual de resposta para orientar o frontend, sem dados reais:
+Contrato real atual para a primeira integracao da shell, sem dados reais nesta documentacao:
+
+```json
+{
+  "authenticated": true,
+  "usuario_id": 1,
+  "permissoes": [
+    "iluminacao.solicitacoes.ler"
+  ]
+}
+```
+
+Campos como `usuario.nome`, `usuario.login`, `sessao.expira_em` e `modulos` podem ser avaliados futuramente, mas nao devem ser esperados pela shell enquanto nao fizerem parte do endpoint real.
+
+Exemplo conceitual de resposta futura para orientar evolucoes do frontend:
 
 ```json
 {

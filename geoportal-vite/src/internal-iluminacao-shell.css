@@ -111,6 +111,34 @@ textarea:disabled {
   line-height: 1.45;
 }
 
+.internal-session-box small {
+  display: inline-block;
+  margin-top: 10px;
+  color: #63727a;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.internal-session-box.is-checking {
+  border-color: #9db7c8;
+  background: #f3f8fb;
+}
+
+.internal-session-box.is-success {
+  border-color: #9ac1a4;
+  background: #f2faf4;
+}
+
+.internal-session-box.is-warning {
+  border-color: #d8c06d;
+  background: #fff8df;
+}
+
+.internal-session-box.is-danger {
+  border-color: #df9e9a;
+  background: #fff4f2;
+}
+
 .internal-alert {
   margin-bottom: 18px;
   padding: 14px 16px;
@@ -119,6 +147,24 @@ textarea:disabled {
   background: #fff8df;
   color: #4c421f;
   line-height: 1.45;
+}
+
+.internal-alert.is-checking {
+  border-color: #9db7c8;
+  background: #f3f8fb;
+  color: #28495d;
+}
+
+.internal-alert.is-success {
+  border-color: #9ac1a4;
+  background: #f2faf4;
+  color: #285b3d;
+}
+
+.internal-alert.is-danger {
+  border-color: #df9e9a;
+  background: #fff4f2;
+  color: #75322c;
 }
 
 .internal-shell-layout {
@@ -191,6 +237,17 @@ textarea:disabled {
   background: #eef8f2;
 }
 
+.internal-module-button.is-denied,
+.internal-module-button.is-restricted {
+  border-color: #d7c3c0;
+  background: #fbf5f4;
+}
+
+.internal-module-button.is-checking {
+  border-color: #b8ccd8;
+  background: #f4f8fb;
+}
+
 .internal-module-button strong,
 .internal-module-button small,
 .internal-module-button em {
@@ -220,6 +277,12 @@ textarea:disabled {
   color: #2f6847;
 }
 
+.internal-module-button.is-denied em,
+.internal-module-button.is-restricted em {
+  background: #f0dddd;
+  color: #8a3f39;
+}
+
 .internal-content {
   display: grid;
   gap: 18px;
@@ -227,6 +290,7 @@ textarea:disabled {
 
 .internal-hero-panel,
 .internal-summary,
+.internal-auth-panel,
 .internal-module-workspace,
 .internal-states {
   padding: 16px;
@@ -267,6 +331,12 @@ textarea:disabled {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
+}
+
+.internal-auth-grid {
+  display: grid;
+  grid-template-columns: 0.9fr 1fr 1fr;
+  gap: 14px;
 }
 
 .internal-summary-card,
@@ -352,6 +422,21 @@ textarea:disabled {
   font-weight: 700;
 }
 
+.internal-secondary-action {
+  width: 100%;
+  min-height: 40px;
+  margin-top: 14px;
+  border: 1px solid #7da08b;
+  border-radius: 6px;
+  background: #eef8f2;
+  color: #2f6847;
+  font-weight: 800;
+}
+
+.internal-secondary-action:hover {
+  background: #e1f1e7;
+}
+
 .internal-main-panel {
   padding: 16px;
 }
@@ -431,6 +516,50 @@ textarea:disabled {
   color: #5c6b74;
 }
 
+.internal-capability-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.internal-capability {
+  min-height: 68px;
+  padding: 10px;
+  border: 1px solid #d2dcdf;
+  border-radius: 8px;
+  background: #f8fafb;
+}
+
+.internal-capability strong,
+.internal-capability small {
+  display: block;
+}
+
+.internal-capability small {
+  margin-top: 5px;
+  color: #65747c;
+  font-size: 0.78rem;
+}
+
+.internal-capability.is-allowed {
+  border-color: #a4c9ae;
+  background: #f1faf3;
+}
+
+.internal-capability.is-allowed small {
+  color: #2f6847;
+}
+
+.internal-permission-list {
+  max-height: 190px;
+  margin: 0;
+  padding-left: 20px;
+  overflow: auto;
+  color: #4d5d65;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
 .internal-card textarea {
   min-height: 92px;
   resize: vertical;
@@ -454,6 +583,12 @@ textarea:disabled {
 .internal-state-card {
   min-height: 142px;
   padding: 14px;
+}
+
+.internal-state-card.is-current {
+  border-color: #7da08b;
+  background: #f2faf4;
+  box-shadow: inset 0 0 0 2px rgba(125, 160, 139, 0.18);
 }
 
 .internal-state-card h3 {
@@ -486,7 +621,8 @@ textarea:disabled {
 
 @media (max-width: 1180px) {
   .internal-summary-grid,
-  .internal-state-grid {
+  .internal-state-grid,
+  .internal-auth-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -513,6 +649,7 @@ textarea:disabled {
 
   .internal-shell-layout,
   .internal-workspace,
+  .internal-auth-grid,
   .internal-detail-grid,
   .internal-next {
     grid-template-columns: 1fr;
