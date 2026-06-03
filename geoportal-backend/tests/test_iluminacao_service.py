@@ -13,6 +13,7 @@ from app.schemas.iluminacao import (
     IluminacaoSolicitacaoObservacoesInternasResult,
     IluminacaoSolicitacaoCreate,
     IluminacaoSolicitacaoResponse,
+    IluminacaoSolicitacaoStatusInternaItem,
     IluminacaoSolicitacoesInternasResult,
     StatusSolicitacaoIluminacao,
     TipoProblemaIluminacao,
@@ -353,6 +354,23 @@ def observacao_solicitacao_item() -> IluminacaoSolicitacaoObservacaoInternaItem:
             "usuario_nome": "Administrador Interno",
             "criado_em": datetime(2026, 5, 20, 12, 30),
             "editado_em": None,
+        }
+    )
+
+
+def status_solicitacao_item(
+    status: str = "em_execucao",
+) -> IluminacaoSolicitacaoStatusInternaItem:
+    return IluminacaoSolicitacaoStatusInternaItem.model_validate(
+        {
+            "id": 10,
+            "status": status,
+            "atualizado_em": datetime(2026, 5, 21, 8, 15),
+            "finalizado_em": (
+                datetime(2026, 5, 21, 9, 30)
+                if status in iluminacao_service.TERMINAL_STATUS_SOLICITACAO
+                else None
+            ),
         }
     )
 
@@ -1104,3 +1122,235 @@ def test_criar_observacao_solicitacao_interna_converts_database_error_to_safe_er
     assert "db.internal" not in message
     assert "senha" not in message.lower()
     assert "INSERT" not in message
+
+
+def test_atualizar_status_solicitacao_interna_updates_valid_transition(
+    monkeypatch,
+) -> None:
+    calls: dict[str, object] = {}
+
+    def fake_update_status_solicitacao_interna(
+        solicitacao_id: int,
+        *,
+        status_novo: str,
+        allowed_current_statuses: set[str],
+        is_terminal_status: bool,
+        observacao_resumida: str,
+        usuario_id: str,
+        usuario_nome: str | None = None,
+    ) -> object:
+        calls.update(
+            {
+                "solicitacao_id": solicitacao_id,
+                "status_novo": status_novo,
+                "allowed_current_statuses": allowed_current_statuses,
+                "is_terminal_status": is_terminal_status,
+                "observacao_resumida": observacao_resumida,
+                "usuario_id": usuario_id,
+                "usuario_nome": usuario_nome,
+            }
+        )
+        return iluminacao_service.iluminacao_repository.UpdateStatusSolicitacaoInternaResult(
+            outcome=iluminacao_service.iluminacao_repository.STATUS_UPDATE_OUTCOME_UPDATED,
+            solicitacao=status_solicitacao_item(status_novo),
+        )
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "update_status_solicitacao_interna",
+        fake_update_status_solicitacao_interna,
+    )
+
+    response = iluminacao_service.atualizar_status_solicitacao_interna(
+        10,
+        status=StatusSolicitacaoIluminacao.em_execucao,
+        observacao="  Equipe iniciou atendimento.  ",
+        usuario_id=7,
+        usuario_nome=None,
+    )
+
+    assert response.status == "em_execucao"
+    assert response.finalizado_em is None
+    assert calls == {
+        "solicitacao_id": 10,
+        "status_novo": "em_execucao",
+        "allowed_current_statuses": {"encaminhada", "aguardando_material"},
+        "is_terminal_status": False,
+        "observacao_resumida": "Equipe iniciou atendimento.",
+        "usuario_id": "7",
+        "usuario_nome": None,
+    }
+
+
+def test_atualizar_status_solicitacao_interna_marks_terminal_status(
+    monkeypatch,
+) -> None:
+    calls: dict[str, object] = {}
+
+    def fake_update_status_solicitacao_interna(
+        *args: object,
+        **kwargs: object,
+    ) -> object:
+        calls.update(kwargs)
+        calls["solicitacao_id"] = args[0]
+        return iluminacao_service.iluminacao_repository.UpdateStatusSolicitacaoInternaResult(
+            outcome=iluminacao_service.iluminacao_repository.STATUS_UPDATE_OUTCOME_UPDATED,
+            solicitacao=status_solicitacao_item("resolvida"),
+        )
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "update_status_solicitacao_interna",
+        fake_update_status_solicitacao_interna,
+    )
+
+    response = iluminacao_service.atualizar_status_solicitacao_interna(
+        10,
+        status="resolvida",
+        observacao="Atendimento concluido.",
+        usuario_id=7,
+    )
+
+    assert response.status == "resolvida"
+    assert response.finalizado_em == datetime(2026, 5, 21, 9, 30)
+    assert calls["allowed_current_statuses"] == {"em_execucao"}
+    assert calls["is_terminal_status"] is True
+
+
+def test_atualizar_status_solicitacao_interna_allows_idempotent_status(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "update_status_solicitacao_interna",
+        lambda *args, **kwargs: (
+            iluminacao_service.iluminacao_repository.UpdateStatusSolicitacaoInternaResult(
+                outcome=iluminacao_service.iluminacao_repository.STATUS_UPDATE_OUTCOME_IDEMPOTENT,
+                solicitacao=status_solicitacao_item("aberta"),
+            )
+        ),
+    )
+
+    response = iluminacao_service.atualizar_status_solicitacao_interna(
+        10,
+        status="aberta",
+        observacao="Reenvio idempotente.",
+        usuario_id=7,
+    )
+
+    assert response.status == "aberta"
+
+
+def test_atualizar_status_solicitacao_interna_raises_safe_not_found(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "update_status_solicitacao_interna",
+        lambda *args, **kwargs: (
+            iluminacao_service.iluminacao_repository.UpdateStatusSolicitacaoInternaResult(
+                outcome=iluminacao_service.iluminacao_repository.STATUS_UPDATE_OUTCOME_NOT_FOUND
+            )
+        ),
+    )
+
+    with pytest.raises(iluminacao_service.SolicitacaoInternaNotFoundError) as exc_info:
+        iluminacao_service.atualizar_status_solicitacao_interna(
+            999,
+            status="em_execucao",
+            observacao="Equipe iniciou atendimento.",
+            usuario_id=7,
+        )
+
+    message = str(exc_info.value)
+    assert message == "Solicitacao nao encontrada."
+    assert "DATABASE_URL" not in message
+    assert "SELECT" not in message
+
+
+def test_atualizar_status_solicitacao_interna_rejects_invalid_transition(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "update_status_solicitacao_interna",
+        lambda *args, **kwargs: (
+            iluminacao_service.iluminacao_repository.UpdateStatusSolicitacaoInternaResult(
+                outcome=(
+                    iluminacao_service.iluminacao_repository
+                    .STATUS_UPDATE_OUTCOME_INVALID_TRANSITION
+                )
+            )
+        ),
+    )
+
+    with pytest.raises(
+        iluminacao_service.SolicitacaoInternaStatusTransitionError
+    ) as exc_info:
+        iluminacao_service.atualizar_status_solicitacao_interna(
+            10,
+            status="aberta",
+            observacao="Tentativa de reabertura.",
+            usuario_id=7,
+        )
+
+    assert str(exc_info.value) == "Transicao de status invalida."
+
+
+def test_atualizar_status_solicitacao_interna_rejects_invalid_input(
+    monkeypatch,
+) -> None:
+    def fail_if_called(*args: object, **kwargs: object) -> None:
+        raise AssertionError("repository should not be called")
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "update_status_solicitacao_interna",
+        fail_if_called,
+    )
+
+    for kwargs in (
+        {"solicitacao_id": 0, "status": "em_execucao", "observacao": "Ok.", "usuario_id": 7},
+        {"solicitacao_id": 10, "status": "rejeitada", "observacao": "Ok.", "usuario_id": 7},
+        {"solicitacao_id": 10, "status": "em_execucao", "observacao": "", "usuario_id": 7},
+        {"solicitacao_id": 10, "status": "em_execucao", "observacao": " ab ", "usuario_id": 7},
+        {
+            "solicitacao_id": 10,
+            "status": "em_execucao",
+            "observacao": "a" * 1001,
+            "usuario_id": 7,
+        },
+        {"solicitacao_id": 10, "status": "em_execucao", "observacao": "Ok.", "usuario_id": 0},
+    ):
+        with pytest.raises(ValueError):
+            iluminacao_service.atualizar_status_solicitacao_interna(**kwargs)
+
+
+def test_atualizar_status_solicitacao_interna_converts_database_error_to_safe_error(
+    monkeypatch,
+) -> None:
+    def fail_with_database_error(*args: object, **kwargs: object) -> None:
+        raise SQLAlchemyError(
+            "could not connect using DATABASE_URL on host db.internal:5432 UPDATE"
+        )
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "update_status_solicitacao_interna",
+        fail_with_database_error,
+    )
+
+    with pytest.raises(DatabaseUnavailableError) as exc_info:
+        iluminacao_service.atualizar_status_solicitacao_interna(
+            10,
+            status="em_execucao",
+            observacao="Equipe iniciou atendimento.",
+            usuario_id=7,
+        )
+
+    message = str(exc_info.value)
+    assert message == "Servico temporariamente indisponivel. Tente novamente mais tarde."
+    assert "DATABASE_URL" not in message
+    assert "db.internal" not in message
+    assert "senha" not in message.lower()
+    assert "UPDATE" not in message

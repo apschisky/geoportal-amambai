@@ -13,6 +13,7 @@ from app.repositories.iluminacao_repository import (
     list_observacoes_solicitacao_interna,
     list_solicitacoes_internas,
     solicitacao_interna_existe,
+    update_status_solicitacao_interna,
 )
 from app.schemas.iluminacao import IluminacaoSolicitacaoCreate
 from app.schemas.iluminacao import StatusSolicitacaoIluminacao
@@ -128,6 +129,72 @@ class FakeCreateObservacaoEngine:
         return FakeBegin(self.connection)
 
 
+class FakeUpdateStatusConnection(FakeConnection):
+    def __init__(
+        self,
+        *,
+        current_status: str | None = "encaminhada",
+        fail_history: bool = False,
+    ) -> None:
+        super().__init__(status_solicitacao_row(status=current_status or "encaminhada"))
+        self.current_status = current_status
+        self.fail_history = fail_history
+
+    def execute(self, statement: TextClause, params: dict[str, Any]) -> FakeResult:
+        self.statement = statement
+        self.params = params
+        self.statements.append(statement)
+        self.params_history.append(params)
+
+        sql = str(statement)
+        if "FOR UPDATE" in sql:
+            if self.current_status is None:
+                return FakeResult(None)
+            return FakeResult(status_solicitacao_row(status=self.current_status))
+        if "UPDATE mod_iluminacao.solicitacoes" in sql:
+            return FakeResult(
+                status_solicitacao_row(
+                    status=params["status_novo"],
+                    finalizado=params["is_terminal_status"],
+                )
+            )
+        if "INSERT INTO mod_iluminacao.solicitacoes_historico" in sql:
+            if self.fail_history:
+                raise RuntimeError("history insert failed with SQL details")
+            return FakeResult({"id": 1})
+        raise AssertionError(f"unexpected SQL statement: {sql}")
+
+
+class FakeUpdateStatusBegin(FakeBegin):
+    def __init__(self, connection: FakeUpdateStatusConnection) -> None:
+        super().__init__(connection)
+        self.rolled_back = False
+
+    def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
+        self.rolled_back = exc_type is not None
+        return None
+
+
+class FakeUpdateStatusEngine:
+    def __init__(
+        self,
+        *,
+        current_status: str | None = "encaminhada",
+        fail_history: bool = False,
+    ) -> None:
+        self.connection = FakeUpdateStatusConnection(
+            current_status=current_status,
+            fail_history=fail_history,
+        )
+        self.begin_count = 0
+        self.begin_context: FakeUpdateStatusBegin | None = None
+
+    def begin(self) -> FakeUpdateStatusBegin:
+        self.begin_count += 1
+        self.begin_context = FakeUpdateStatusBegin(self.connection)
+        return self.begin_context
+
+
 def valid_solicitacao() -> IluminacaoSolicitacaoCreate:
     return IluminacaoSolicitacaoCreate.model_validate(
         {
@@ -198,6 +265,19 @@ def observacao_solicitacao_row() -> dict[str, Any]:
         "usuario_nome": "Administrador Interno",
         "criado_em": datetime(2026, 5, 20, 12, 30),
         "editado_em": None,
+    }
+
+
+def status_solicitacao_row(
+    status: str = "em_execucao",
+    *,
+    finalizado: bool = False,
+) -> dict[str, Any]:
+    return {
+        "id": 10,
+        "status": status,
+        "atualizado_em": datetime(2026, 5, 21, 8, 15),
+        "finalizado_em": datetime(2026, 5, 21, 9, 30) if finalizado else None,
     }
 
 
@@ -904,6 +984,241 @@ def test_create_observacao_solicitacao_interna_rejects_invalid_input_without_sql
     ):
         try:
             create_observacao_solicitacao_interna(engine=engine, **kwargs)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("invalid input should be rejected")
+
+    assert engine.begin_count == 0
+    assert engine.connection.statement is None
+
+
+def test_update_status_solicitacao_interna_uses_transaction_update_and_history() -> None:
+    engine = FakeUpdateStatusEngine(current_status="encaminhada")
+
+    result = update_status_solicitacao_interna(
+        solicitacao_id=10,
+        status_novo="em_execucao",
+        allowed_current_statuses={"encaminhada", "aguardando_material"},
+        is_terminal_status=False,
+        observacao_resumida="Equipe iniciou atendimento.",
+        usuario_id="7",
+        usuario_nome=None,
+        engine=engine,
+    )
+
+    assert engine.begin_count == 1
+    assert len(engine.connection.statements) == 3
+    assert engine.connection.params_history[0] == {"solicitacao_id": 10}
+    assert engine.connection.params_history[1] == {
+        "solicitacao_id": 10,
+        "status_novo": "em_execucao",
+        "is_terminal_status": False,
+    }
+    assert engine.connection.params_history[2] == {
+        "solicitacao_id": 10,
+        "acao": "alteracao_status",
+        "status_anterior": "encaminhada",
+        "status_novo": "em_execucao",
+        "usuario_id": "7",
+        "usuario_nome": None,
+        "origem_acao": "usuario_interno",
+        "observacao_resumida": "Equipe iniciou atendimento.",
+    }
+
+    select_sql = str(engine.connection.statements[0])
+    update_sql = str(engine.connection.statements[1])
+    historico_sql = str(engine.connection.statements[2])
+    update_set_clause = update_sql.split("WHERE", maxsplit=1)[0]
+    combined_sql = (select_sql + update_sql + historico_sql).upper()
+
+    assert "FROM mod_iluminacao.solicitacoes" in select_sql
+    assert "WHERE id = :solicitacao_id" in select_sql
+    assert "deleted_at IS NULL" in select_sql
+    assert "FOR UPDATE" in select_sql
+    assert "UPDATE mod_iluminacao.solicitacoes" in update_sql
+    assert "status = :status_novo" in update_sql
+    assert "atualizado_em = now()" in update_sql
+    assert "finalizado_em = CASE" in update_sql
+    assert "RETURNING" in update_sql
+    assert "INSERT INTO mod_iluminacao.solicitacoes_historico" in historico_sql
+    assert "status_anterior" in historico_sql
+    assert "status_novo" in historico_sql
+    assert "prioridade_anterior" in historico_sql
+    assert "prioridade_nova" in historico_sql
+    assert "observacao_resumida" in historico_sql
+    assert "SELECT *" not in combined_sql
+    assert "DELETE FROM" not in combined_sql
+    for forbidden in (
+        "protocolo",
+        "origem",
+        "localizacao_tipo",
+        "poste_id",
+        "geom",
+        "tipo_problema",
+        "descricao",
+        "nome_solicitante",
+        "contato_solicitante",
+        "prioridade =",
+        "duplicidade_suspeita",
+        "deleted_reason",
+    ):
+        assert forbidden not in update_set_clause
+    for value in (
+        "Equipe iniciou atendimento",
+        "em_execucao",
+        "encaminhada",
+        "alteracao_status",
+        "usuario_interno",
+    ):
+        assert value not in update_sql
+        assert value not in historico_sql
+    assert result.outcome == "updated"
+    assert result.solicitacao is not None
+    assert result.solicitacao.status == "em_execucao"
+    assert result.solicitacao.finalizado_em is None
+
+
+def test_update_status_solicitacao_interna_sets_finalizado_for_terminal_status() -> None:
+    engine = FakeUpdateStatusEngine(current_status="em_execucao")
+
+    result = update_status_solicitacao_interna(
+        solicitacao_id=10,
+        status_novo="resolvida",
+        allowed_current_statuses={"em_execucao"},
+        is_terminal_status=True,
+        observacao_resumida="Atendimento concluido.",
+        usuario_id="7",
+        engine=engine,
+    )
+
+    assert result.outcome == "updated"
+    assert result.solicitacao is not None
+    assert result.solicitacao.status == "resolvida"
+    assert result.solicitacao.finalizado_em == datetime(2026, 5, 21, 9, 30)
+    assert engine.connection.params_history[1]["is_terminal_status"] is True
+
+
+def test_update_status_solicitacao_interna_is_idempotent_without_update_or_history() -> None:
+    engine = FakeUpdateStatusEngine(current_status="aberta")
+
+    result = update_status_solicitacao_interna(
+        solicitacao_id=10,
+        status_novo="aberta",
+        allowed_current_statuses=set(),
+        is_terminal_status=False,
+        observacao_resumida="Reenvio idempotente.",
+        usuario_id="7",
+        engine=engine,
+    )
+
+    assert result.outcome == "idempotent"
+    assert result.solicitacao is not None
+    assert result.solicitacao.status == "aberta"
+    assert len(engine.connection.statements) == 1
+    assert "FOR UPDATE" in str(engine.connection.statements[0])
+
+
+def test_update_status_solicitacao_interna_returns_invalid_transition_without_update() -> None:
+    engine = FakeUpdateStatusEngine(current_status="resolvida")
+
+    result = update_status_solicitacao_interna(
+        solicitacao_id=10,
+        status_novo="em_execucao",
+        allowed_current_statuses={"encaminhada", "aguardando_material"},
+        is_terminal_status=False,
+        observacao_resumida="Tentativa de reabertura.",
+        usuario_id="7",
+        engine=engine,
+    )
+
+    assert result.outcome == "invalid_transition"
+    assert result.status_atual == "resolvida"
+    assert result.solicitacao is None
+    assert len(engine.connection.statements) == 1
+
+
+def test_update_status_solicitacao_interna_returns_not_found_without_update() -> None:
+    engine = FakeUpdateStatusEngine(current_status=None)
+
+    result = update_status_solicitacao_interna(
+        solicitacao_id=999,
+        status_novo="em_execucao",
+        allowed_current_statuses={"encaminhada"},
+        is_terminal_status=False,
+        observacao_resumida="Equipe iniciou atendimento.",
+        usuario_id="7",
+        engine=engine,
+    )
+
+    assert result.outcome == "not_found"
+    assert result.solicitacao is None
+    assert len(engine.connection.statements) == 1
+
+
+def test_update_status_solicitacao_interna_rolls_back_when_history_fails() -> None:
+    engine = FakeUpdateStatusEngine(current_status="encaminhada", fail_history=True)
+
+    try:
+        update_status_solicitacao_interna(
+            solicitacao_id=10,
+            status_novo="em_execucao",
+            allowed_current_statuses={"encaminhada"},
+            is_terminal_status=False,
+            observacao_resumida="Equipe iniciou atendimento.",
+            usuario_id="7",
+            engine=engine,
+        )
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("history failure should propagate to trigger rollback")
+
+    assert engine.begin_count == 1
+    assert engine.begin_context is not None
+    assert engine.begin_context.rolled_back is True
+    assert len(engine.connection.statements) == 3
+
+
+def test_update_status_solicitacao_interna_rejects_invalid_input_without_sql() -> None:
+    engine = FakeUpdateStatusEngine()
+
+    for kwargs in (
+        {
+            "solicitacao_id": 0,
+            "status_novo": "em_execucao",
+            "allowed_current_statuses": {"encaminhada"},
+            "is_terminal_status": False,
+            "observacao_resumida": "Equipe iniciou atendimento.",
+            "usuario_id": "7",
+        },
+        {
+            "solicitacao_id": 10,
+            "status_novo": "em_execucao",
+            "allowed_current_statuses": {"encaminhada"},
+            "is_terminal_status": False,
+            "observacao_resumida": " ab ",
+            "usuario_id": "7",
+        },
+        {
+            "solicitacao_id": 10,
+            "status_novo": "em_execucao",
+            "allowed_current_statuses": {"encaminhada"},
+            "is_terminal_status": False,
+            "observacao_resumida": "a" * 1001,
+            "usuario_id": "7",
+        },
+        {
+            "solicitacao_id": 10,
+            "status_novo": "em_execucao",
+            "allowed_current_statuses": {"encaminhada"},
+            "is_terminal_status": False,
+            "observacao_resumida": "Equipe iniciou atendimento.",
+            "usuario_id": " ",
+        },
+    ):
+        try:
+            update_status_solicitacao_interna(engine=engine, **kwargs)
         except ValueError:
             pass
         else:

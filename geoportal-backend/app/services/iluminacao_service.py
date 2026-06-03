@@ -15,6 +15,7 @@ from app.schemas.iluminacao import (
     IluminacaoSolicitacaoObservacoesInternasResult,
     IluminacaoSolicitacaoCreate,
     IluminacaoSolicitacaoResponse,
+    IluminacaoSolicitacaoStatusInternaItem,
     IluminacaoSolicitacoesInternasResult,
     StatusSolicitacaoIluminacao,
     TipoProblemaIluminacao,
@@ -35,9 +36,40 @@ SOLICITACAO_DUPLICADA_ATIVA_MESSAGE = (
 )
 
 SOLICITACAO_INTERNA_NOT_FOUND_MESSAGE = "Solicitacao nao encontrada."
+SOLICITACAO_STATUS_TRANSITION_INVALID_MESSAGE = "Transicao de status invalida."
+
+ALLOWED_STATUS_TRANSITIONS: dict[str, set[str]] = {
+    "aberta": {"em_triagem", "cancelada", "indeferida"},
+    "em_triagem": {
+        "encaminhada",
+        "aguardando_material",
+        "nao_localizado",
+        "cancelada",
+        "indeferida",
+    },
+    "encaminhada": {
+        "em_execucao",
+        "aguardando_material",
+        "nao_localizado",
+        "cancelada",
+    },
+    "em_execucao": {"aguardando_material", "resolvida", "nao_localizado"},
+    "aguardando_material": {"encaminhada", "em_execucao", "cancelada"},
+}
+TERMINAL_STATUS_SOLICITACAO = {
+    "resolvida",
+    "cancelada",
+    "indeferida",
+    "nao_localizado",
+}
+VALID_STATUS_SOLICITACAO = {status.value for status in StatusSolicitacaoIluminacao}
 
 
 class SolicitacaoInternaNotFoundError(RuntimeError):
+    pass
+
+
+class SolicitacaoInternaStatusTransitionError(RuntimeError):
     pass
 
 
@@ -301,6 +333,36 @@ def _normalize_observacao_interna(observacao: str) -> str:
     return normalized
 
 
+def _normalize_status_update_observacao(observacao: str) -> str:
+    normalized = observacao.strip()
+    if len(normalized) < 3:
+        raise ValueError("observacao must have at least 3 characters")
+    if len(normalized) > 1000:
+        raise ValueError("observacao exceeds maximum length")
+    return normalized
+
+
+def _normalize_status_solicitacao(
+    status: StatusSolicitacaoIluminacao | str,
+) -> str:
+    status_value = status.value if isinstance(status, StatusSolicitacaoIluminacao) else status
+    if status_value not in VALID_STATUS_SOLICITACAO:
+        raise ValueError("status is invalid")
+    return status_value
+
+
+def _allowed_current_statuses_for(target_status: str) -> set[str]:
+    return {
+        current_status
+        for current_status, target_statuses in ALLOWED_STATUS_TRANSITIONS.items()
+        if target_status in target_statuses
+    }
+
+
+def _is_terminal_status(status: str) -> bool:
+    return status in TERMINAL_STATUS_SOLICITACAO
+
+
 def criar_observacao_solicitacao_interna(
     solicitacao_id: int,
     *,
@@ -329,3 +391,46 @@ def criar_observacao_solicitacao_interna(
         raise SolicitacaoInternaNotFoundError(SOLICITACAO_INTERNA_NOT_FOUND_MESSAGE)
 
     return item
+
+
+def atualizar_status_solicitacao_interna(
+    solicitacao_id: int,
+    *,
+    status: StatusSolicitacaoIluminacao | str,
+    observacao: str,
+    usuario_id: int,
+    usuario_nome: str | None = None,
+) -> IluminacaoSolicitacaoStatusInternaItem:
+    if solicitacao_id < 1:
+        raise ValueError("solicitacao_id must be greater than or equal to 1")
+    if usuario_id < 1:
+        raise ValueError("usuario_id must be greater than or equal to 1")
+
+    status_novo = _normalize_status_solicitacao(status)
+    observacao_normalizada = _normalize_status_update_observacao(observacao)
+
+    try:
+        result = iluminacao_repository.update_status_solicitacao_interna(
+            solicitacao_id,
+            status_novo=status_novo,
+            allowed_current_statuses=_allowed_current_statuses_for(status_novo),
+            is_terminal_status=_is_terminal_status(status_novo),
+            observacao_resumida=observacao_normalizada,
+            usuario_id=str(usuario_id),
+            usuario_nome=usuario_nome,
+        )
+    except (SQLAlchemyError, RuntimeError) as exc:
+        raise DatabaseUnavailableError(DATABASE_UNAVAILABLE_MESSAGE) from exc
+
+    if result.outcome == iluminacao_repository.STATUS_UPDATE_OUTCOME_NOT_FOUND:
+        raise SolicitacaoInternaNotFoundError(SOLICITACAO_INTERNA_NOT_FOUND_MESSAGE)
+
+    if result.outcome == iluminacao_repository.STATUS_UPDATE_OUTCOME_INVALID_TRANSITION:
+        raise SolicitacaoInternaStatusTransitionError(
+            SOLICITACAO_STATUS_TRANSITION_INVALID_MESSAGE
+        )
+
+    if result.solicitacao is None:
+        raise DatabaseUnavailableError(DATABASE_UNAVAILABLE_MESSAGE)
+
+    return result.solicitacao

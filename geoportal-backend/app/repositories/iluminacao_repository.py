@@ -1,4 +1,5 @@
 from datetime import datetime
+from dataclasses import dataclass
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -13,6 +14,7 @@ from app.schemas.iluminacao import (
     IluminacaoSolicitacaoObservacoesInternasResult,
     IluminacaoSolicitacaoCreate,
     IluminacaoSolicitacaoResponse,
+    IluminacaoSolicitacaoStatusInternaItem,
     IluminacaoSolicitacoesInternasResult,
     StatusSolicitacaoIluminacao,
     TipoProblemaIluminacao,
@@ -27,8 +29,20 @@ ACTIVE_SOLICITACAO_STATUSES = (
 )
 OBSERVACAO_INTERNA_VISIBILIDADE = "interna"
 HISTORICO_ACAO_OBSERVACAO_INTERNA = "observacao_interna"
+HISTORICO_ACAO_ALTERACAO_STATUS = "alteracao_status"
 HISTORICO_ORIGEM_USUARIO_INTERNO = "usuario_interno"
 HISTORICO_OBSERVACAO_RESUMIDA_MAX_LENGTH = 1000
+STATUS_UPDATE_OUTCOME_UPDATED = "updated"
+STATUS_UPDATE_OUTCOME_IDEMPOTENT = "idempotent"
+STATUS_UPDATE_OUTCOME_NOT_FOUND = "not_found"
+STATUS_UPDATE_OUTCOME_INVALID_TRANSITION = "invalid_transition"
+
+
+@dataclass(frozen=True)
+class UpdateStatusSolicitacaoInternaResult:
+    outcome: str
+    solicitacao: IluminacaoSolicitacaoStatusInternaItem | None = None
+    status_atual: str | None = None
 
 
 def _normalize_required_text(value: str, field_name: str, max_length: int) -> str:
@@ -679,4 +693,151 @@ def create_observacao_solicitacao_interna(
 
     return IluminacaoSolicitacaoObservacaoInternaItem.model_validate(
         dict(observacao_row)
+    )
+
+
+def update_status_solicitacao_interna(
+    solicitacao_id: int,
+    *,
+    status_novo: str,
+    allowed_current_statuses: set[str],
+    is_terminal_status: bool,
+    observacao_resumida: str,
+    usuario_id: str,
+    usuario_nome: str | None = None,
+    engine: Engine | None = None,
+) -> UpdateStatusSolicitacaoInternaResult:
+    if solicitacao_id < 1:
+        raise ValueError("solicitacao_id must be greater than or equal to 1")
+
+    status_novo_normalizado = _normalize_required_text(status_novo, "status", 40)
+    observacao_normalizada = _normalize_required_text(
+        observacao_resumida,
+        "observacao_resumida",
+        HISTORICO_OBSERVACAO_RESUMIDA_MAX_LENGTH,
+    )
+    usuario_id_normalizado = usuario_id.strip()
+    if not usuario_id_normalizado:
+        raise ValueError("usuario_id must not be empty")
+    usuario_nome_normalizado = _normalize_optional_text(usuario_nome)
+
+    db_engine = engine or get_engine()
+
+    select_statement = text(
+        """
+        SELECT
+            id,
+            status,
+            atualizado_em,
+            finalizado_em
+        FROM mod_iluminacao.solicitacoes
+        WHERE id = :solicitacao_id
+          AND deleted_at IS NULL
+        FOR UPDATE
+        """
+    )
+    update_statement = text(
+        """
+        UPDATE mod_iluminacao.solicitacoes
+        SET
+            status = :status_novo,
+            atualizado_em = now(),
+            finalizado_em = CASE
+                WHEN :is_terminal_status THEN now()
+                ELSE NULL
+            END
+        WHERE id = :solicitacao_id
+          AND deleted_at IS NULL
+        RETURNING
+            id,
+            status,
+            atualizado_em,
+            finalizado_em
+        """
+    )
+    historico_statement = text(
+        """
+        INSERT INTO mod_iluminacao.solicitacoes_historico (
+            solicitacao_id,
+            acao,
+            status_anterior,
+            status_novo,
+            prioridade_anterior,
+            prioridade_nova,
+            usuario_id,
+            usuario_nome,
+            origem_acao,
+            observacao_resumida
+        )
+        VALUES (
+            :solicitacao_id,
+            :acao,
+            :status_anterior,
+            :status_novo,
+            NULL,
+            NULL,
+            :usuario_id,
+            :usuario_nome,
+            :origem_acao,
+            :observacao_resumida
+        )
+        """
+    )
+
+    with db_engine.begin() as connection:
+        current_row = connection.execute(
+            select_statement,
+            {"solicitacao_id": solicitacao_id},
+        ).mappings().first()
+
+        if current_row is None:
+            return UpdateStatusSolicitacaoInternaResult(
+                outcome=STATUS_UPDATE_OUTCOME_NOT_FOUND
+            )
+
+        status_atual = str(current_row["status"])
+        if status_atual == status_novo_normalizado:
+            return UpdateStatusSolicitacaoInternaResult(
+                outcome=STATUS_UPDATE_OUTCOME_IDEMPOTENT,
+                solicitacao=IluminacaoSolicitacaoStatusInternaItem.model_validate(
+                    dict(current_row)
+                ),
+                status_atual=status_atual,
+            )
+
+        if status_atual not in allowed_current_statuses:
+            return UpdateStatusSolicitacaoInternaResult(
+                outcome=STATUS_UPDATE_OUTCOME_INVALID_TRANSITION,
+                status_atual=status_atual,
+            )
+
+        updated_row = connection.execute(
+            update_statement,
+            {
+                "solicitacao_id": solicitacao_id,
+                "status_novo": status_novo_normalizado,
+                "is_terminal_status": is_terminal_status,
+            },
+        ).mappings().one()
+
+        connection.execute(
+            historico_statement,
+            {
+                "solicitacao_id": solicitacao_id,
+                "acao": HISTORICO_ACAO_ALTERACAO_STATUS,
+                "status_anterior": status_atual,
+                "status_novo": status_novo_normalizado,
+                "usuario_id": usuario_id_normalizado,
+                "usuario_nome": usuario_nome_normalizado,
+                "origem_acao": HISTORICO_ORIGEM_USUARIO_INTERNO,
+                "observacao_resumida": observacao_normalizada,
+            },
+        )
+
+    return UpdateStatusSolicitacaoInternaResult(
+        outcome=STATUS_UPDATE_OUTCOME_UPDATED,
+        solicitacao=IluminacaoSolicitacaoStatusInternaItem.model_validate(
+            dict(updated_row)
+        ),
+        status_atual=status_atual,
     )

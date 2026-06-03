@@ -237,3 +237,28 @@ class IluminacaoSolicitacaoObservacoesInternasResponse(BaseModel):
 class IluminacaoSolicitacaoObservacoesInternasResult(BaseModel):
     items: list[IluminacaoSolicitacaoObservacaoInternaItem]
     total: int
+
+
+class IluminacaoSolicitacaoStatusInternaUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: StatusSolicitacaoIluminacao
+    observacao: str = Field(min_length=3, max_length=1000)
+
+    @field_validator("observacao", mode="before")
+    @classmethod
+    def strip_observacao(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip()
+        return value
+
+
+class IluminacaoSolicitacaoStatusInternaItem(BaseModel):
+    id: int
+    status: str
+    atualizado_em: datetime
+    finalizado_em: datetime | None = None
+
+
+class IluminacaoSolicitacaoStatusInternaResponse(BaseModel):
+    solicitacao: IluminacaoSolicitacaoStatusInternaItem

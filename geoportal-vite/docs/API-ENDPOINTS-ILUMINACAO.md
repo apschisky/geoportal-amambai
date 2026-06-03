@@ -368,7 +368,7 @@ Esta etapa nao cria endpoint mutavel, migration, schema, usuario, perfil, permis
 
 Finalidade: alterar o status operacional de uma solicitacao interna de Iluminacao Publica, com auditoria obrigatoria em historico.
 
-Estado: contrato planejado. Endpoint ainda nao implementado.
+Estado: implementado no backend nesta etapa, seguindo o contrato planejado. A validacao operacional em homologacao, criacao de permissao real e GRANTs minimos permanecem etapas manuais posteriores.
 
 Caracteristicas:
 
@@ -516,11 +516,20 @@ Testes obrigatorios futuros:
 - Repository: `SELECT ... FOR UPDATE`, bind parameters, sem `SELECT *`, `UPDATE` apenas de `status`, `atualizado_em` e `finalizado_em`, INSERT de historico na mesma transacao, atomicidade quando historico falha, sem DELETE e sem alteracao de dados publicos.
 - Regressao: API publica preservada, feature flag interna fail-closed, GETs internos existentes e POST observacao interna continuando verdes.
 
+Estado da implementacao:
+
+- Endpoint criado como `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`.
+- Usa `require_permission("iluminacao.solicitacoes.atualizar_status")`.
+- Usa `require_internal_mutating_request_header` para exigir `X-Geoportal-Internal-Request: 1`.
+- Implementa matriz conservadora de transicoes, status terminal, regra de `finalizado_em`, idempotencia para status igual e auditoria em historico na mesma transacao.
+- Nao cria reabertura, anexos, migration, schema, permissao real, role ou GRANT.
+- Nao altera API publica, producao, proxy, NSSM, `.env` ou frontend.
+
 Recomendacao:
 
-- Implementar `PATCH status` somente depois deste contrato documentado.
+- Validar em homologacao interna somente depois de aplicar permissao real e GRANTs minimos operacionais.
 - Nao criar migration nem trigger agora; transacao no backend com testes e suficiente para esta fase incremental.
-- Nao aplicar GRANTs agora; aplicar somente na etapa operacional de homologacao posterior.
+- Nao aplicar GRANTs fora da etapa operacional de homologacao posterior.
 - Producao, proxy, frontend e tela interna permanecem inalterados.
 
 ### `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes`
