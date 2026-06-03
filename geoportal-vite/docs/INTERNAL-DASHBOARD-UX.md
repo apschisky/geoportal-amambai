@@ -423,9 +423,9 @@ Registro de implementacao visual: a Fase 2A evoluiu a shell em `/interno/` para 
 
 ## 12.4. Contrato planejado de sessao e permissoes da shell `/interno/`
 
-Esta etapa e apenas documental. A shell `/interno/` nao deve consumir `/api/internal` agora, nao deve chamar `/api/internal/auth/me`, nao deve implementar login real, nao deve manipular cookie ou token real, nao deve usar `localStorage` ou `sessionStorage` para token e nao deve executar `POST` ou `PATCH`.
+O contrato desta secao foi usado na primeira integracao real da shell `/interno/` com autenticacao no commit `a6849dd`. A integracao ficou limitada a `GET /api/internal/auth/me`, sem implementar login real, sem chamar `/api/internal/auth/login`, sem manipular token manualmente, sem usar `localStorage` ou `sessionStorage` para token e sem executar `POST` ou `PATCH`.
 
-A proxima integracao real recomendada deve ser limitada a verificar sessao existente com `GET /api/internal/auth/me`. Essa chamada deve acontecer antes de listagem real, detalhe real, observacoes, alteracao de status, dashboard, mapa operacional, proxy, producao interna ou botao de login no Geoportal publico.
+A verificacao de sessao existente com `GET /api/internal/auth/me` deve continuar sendo a unica chamada real da shell ate a validacao ponta a ponta em ambiente controlado. Listagem real, detalhe real, observacoes, alteracao de status, dashboard, mapa operacional, proxy, producao interna e botao de login no Geoportal publico permanecem fora desta etapa.
 
 Objetivos do `GET /api/internal/auth/me` para a shell:
 
@@ -524,7 +524,40 @@ Riscos e controles:
 - CSRF em mutaveis futuros com cookie: exigir protecao apropriada antes de `POST` ou `PATCH`.
 - Sessao expirada confusa: usar estado visual claro e retorno seguro ao futuro login.
 
-Proxima fase recomendada: implementar, em etapa separada e controlada, somente a integracao de `GET /api/internal/auth/me` para atualizar o estado visual de sessao, montar menu por permissoes retornadas e tratar `401`, `403`, `429`, `503` e erro de rede. Essa fase ainda nao deve implementar login real novo, listagem de solicitacoes, observacoes, alteracao de status, dashboard, mapa operacional, proxy, producao interna ou botao publico de login.
+## 12.5. Validacao operacional da integracao `GET /api/internal/auth/me`
+
+A shell interna `/interno/` implementada no commit `a6849dd` chama somente `GET /api/internal/auth/me`, usa `credentials: "include"` e valida o contrato real do backend: `authenticated`, `usuario_id` e `permissoes`. Ela nao implementa login, nao chama `/api/internal/auth/login`, nao armazena token, nao usa `localStorage` ou `sessionStorage` para token, nao executa `POST` ou `PATCH`, nao carrega listagem, dashboard ou mapa e preserva o Geoportal publico.
+
+Validacao frontend local em desenvolvimento:
+
+- em `npm run dev`, a pagina `/interno/` tentou `GET /api/internal/auth/me`;
+- como o Vite local nao possui backend/proxy interno ativo, a chamada retornou `404`;
+- esse `404` local e esperado nesse ambiente e confirma que a shell tentou a rota correta;
+- no DevTools/Network foi confirmado que nao houve chamada para `/api/internal/auth/login`, endpoints de Iluminacao, `POST` ou `PATCH`.
+
+Validacao backend no servidor de homologacao interna:
+
+- codigo atualizado no servidor em `C:\apps\geoportal-api\backend\geoportal-amambai`;
+- branch `main` alinhada com `origin/main`, working tree limpo e commit atual `a6849dd`;
+- servico `GeoportalAPIInternaHomologacao` reiniciado e validado na porta `8002`;
+- `/api/health` retornou OK;
+- `/api/version` retornou OK com `environment=homologacao`;
+- `/api/internal/auth/me` sem sessao retornou `401 Unauthorized` com corpo vazio.
+
+Conclusoes da validacao:
+
+- o backend interno de homologacao esta saudavel;
+- o endpoint `/api/internal/auth/me` existe e esta protegido;
+- sem sessao, o endpoint retorna `401`, como esperado;
+- a shell local chama a rota correta;
+- o `404` local no Vite e esperado enquanto nao houver proxy/backend interno local;
+- ainda falta validacao ponta a ponta da shell em ambiente que consiga alcancar o backend interno real;
+- Apache/proxy publico e producao permanecem inalterados;
+- nao se deve avancar para listagem de solicitacoes antes da validacao ponta a ponta de sessao.
+
+Situacao operacional atual: o runtime `GeoportalAPIInternaHomologacao` esta ativo no servidor, mas escuta somente em `127.0.0.1:8002`. A partir do PC de desenvolvimento, o servidor responde ping, mas a porta `8002` nao aceita conexao TCP direta. Isso e positivo para menor exposicao de rede e reforca que a validacao ponta a ponta da shell deve ser planejada, nao improvisada.
+
+Proxima decisao tecnica recomendada: planejar um ambiente controlado para validar `/interno/` contra `/api/internal/auth/me` real, mantendo `8002` restrita a loopback e preferindo proxy interno de homologacao no Apache com rota controlada. Essa etapa deve ter backup da configuracao, rollback, validacao do Geoportal publico e confirmacao de que nao ha `/api/internal/auth/login`, `POST`, `PATCH`, login, listagem ou endpoints de negocio nessa validacao. Nao expor producao publica e nao inserir botao publico de login.
 
 ## 13. Relacao com documentos existentes
 

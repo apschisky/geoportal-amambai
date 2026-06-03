@@ -94,7 +94,7 @@ Validacoes operacionais ja realizadas:
 - A listagem interna foi aprimorada com filtros operacionais e `total` para paginacao (commit `4731edc`) e validada no runtime interno com dados de homologacao/teste, mantendo leitura protegida por `iluminacao.solicitacoes.ler`.
 - Foi observado que a sessao interna expira em aproximadamente 1 hora.
 
-Producao nao foi alterada. Apache/proxy publico ainda nao foi alterado. Frontend/tela interna ainda nao foi criado. O runtime interno foi validado em homologacao local, mas ainda nao esta exposto publicamente.
+Producao nao foi alterada. Apache/proxy publico ainda nao foi alterado. O runtime interno foi validado em homologacao local, mas ainda nao esta exposto publicamente. A shell frontend interna ja existe em `/interno/` para desenvolvimento/homologacao, porem ainda nao possui proxy publico nem producao interna.
 
 ## Validacao Operacional do Runtime Interno de Homologacao
 
@@ -132,6 +132,117 @@ Validacao autenticada manual pelo servico NSSM:
 - Para essa validacao, o GRANT foi por coluna: `UPDATE` somente em `status`, `atualizado_em` e `finalizado_em` de `mod_iluminacao.solicitacoes` para `geoportal_api_homolog`. A verificacao confirmou `UPDATE=false` em prioridade, protocolo, geometria, soft delete e dados do solicitante.
 - Com dado de homologacao/teste, foram confirmados: transicao valida com historico `alteracao_status`, idempotencia sem novo historico, transicao invalida com 409 sem historico indevido, preenchimento de `finalizado_em` em status terminal e bloqueio de saida de terminal pelo PATCH normal.
 - Correcao/reversao de status nao deve usar o PATCH normal; deve ser fluxo futuro separado, com justificativa obrigatoria, permissao especifica restrita e auditoria propria.
+- A integracao inicial da shell `/interno/` com `GET /api/internal/auth/me` foi implementada no commit `a6849dd`. Em validacao frontend local, a shell chamou a rota correta e recebeu `404` no Vite sem proxy/backend interno, comportamento esperado para esse ambiente; no DevTools/Network nao houve chamada para `/api/internal/auth/login`, endpoints de Iluminacao, `POST` ou `PATCH`.
+- No servidor de homologacao interna, o codigo foi atualizado no caminho `C:\apps\geoportal-api\backend\geoportal-amambai`, a branch `main` ficou alinhada com `origin/main`, o working tree estava limpo e o commit atual era `a6849dd`. O servico `GeoportalAPIInternaHomologacao` foi reiniciado e validado na porta `8002`; `/api/health` retornou OK, `/api/version` retornou `environment=homologacao` e `/api/internal/auth/me` sem sessao retornou `401 Unauthorized` com corpo vazio.
+- Essa validacao confirma que o backend interno esta saudavel, que `/api/internal/auth/me` existe e permanece protegido, e que ainda falta uma validacao ponta a ponta da shell em ambiente que consiga alcancar o backend interno real. Nao alterar Apache/proxy publico nem avancar para listagem interna antes dessa validacao controlada.
+- A validacao de bind no servidor confirmou `TCP 127.0.0.1:8002 ... LISTENING`, ou seja, o runtime interno esta ativo apenas em loopback no servidor e nao esta exposto diretamente na interface de rede `10.0.0.109`.
+- A partir do PC de desenvolvimento `10.0.0.215`, `Test-NetConnection 10.0.0.109 -Port 8002` confirmou alcance de rede ao servidor (`PingSucceeded=True`), mas falha de conexao TCP na porta (`TcpTestSucceeded=False`). Chamadas diretas para `http://10.0.0.109:8002/api/health`, `/api/version` e `/api/internal/auth/me` nao obtiveram resposta HTTP.
+- Essa restricao e positiva do ponto de vista de seguranca: a porta `8002` nao deve ser aberta diretamente na rede sem planejamento, justificativa, escopo de homologacao e rollback.
+
+## Planejamento para Proxy Interno Controlado
+
+A validacao ponta a ponta da shell `/interno/` contra o backend interno real deve preservar a decisao de manter `GeoportalAPIInternaHomologacao` restrito a `127.0.0.1:8002`. A porta `8002` nao deve ser aberta diretamente na rede interna como primeira escolha; o caminho preferencial e um proxy interno controlado, planejado antes de qualquer alteracao operacional.
+
+O proxy interno deve permitir validar somente:
+
+- `/interno/`;
+- `GET /api/internal/auth/me`;
+- resposta `401` sem sessao;
+- resposta `200` com sessao valida em etapa posterior;
+- menu derivado das permissoes retornadas.
+
+Nesta primeira validacao da shell, o proxy interno nao deve liberar `POST`, `PATCH`, listagem de solicitacoes, dashboard, mapa, endpoint de login novo, botao publico de login ou publicacao da area interna para o publico. API publica, Geoportal publico e producao interna permanecem fora do escopo.
+
+### Opcao A - proxy interno de homologacao no Apache com rota controlada
+
+Exemplo conceitual:
+
+- `/interno/` servido pelo build frontend interno;
+- `/api/internal/` encaminhado para `http://127.0.0.1:8002/api/internal/`;
+- `/api/health` e `/api/version`, se necessarios para validacao, encaminhados de forma controlada;
+- nenhuma exposicao direta de `8002` na rede.
+
+Pros:
+
+- aproxima a arquitetura real futura;
+- mantem o backend interno restrito ao localhost;
+- permite testar a shell com rota relativa `/api/internal/auth/me`;
+- evita expor a porta interna.
+
+Contras:
+
+- exige alteracao em Apache/proxy;
+- exige backup da configuracao;
+- exige plano de rollback;
+- exige cuidado para nao afetar o Geoportal publico.
+
+Esta e a opcao recomendada para a proxima etapa de homologacao, desde que seja executada em tarefa operacional propria, com validacao e rollback documentados.
+
+### Opcao B - VirtualHost ou subdominio interno futuro
+
+Exemplo conceitual:
+
+- `interno.geoportal.amambai.ms.gov.br`, ou rota equivalente restrita a rede interna;
+- proxy para frontend interno e API interna.
+
+Pros:
+
+- separacao clara entre publico e interno;
+- boa base para evolucao futura multi-modulo;
+- facilita politicas de seguranca, logs e segmentacao.
+
+Contras:
+
+- exige DNS, certificado e configuracao adicional;
+- pode ser cedo para a validacao minima da shell.
+
+Esta opcao deve permanecer como evolucao futura se a validacao minima indicar necessidade de separacao operacional maior.
+
+### Opcao C - rota `/interno/` no mesmo dominio do Geoportal, ainda em homologacao controlada
+
+Pros:
+
+- simples para usuarios internos no futuro;
+- aproveita host existente;
+- reduz complexidade inicial.
+
+Contras:
+
+- exige muito cuidado para nao expor prematuramente a area interna;
+- pode tornar a area interna mais visivel;
+- requer autenticacao, autorizacao, logs e rollback validados antes de qualquer producao.
+
+Esta opcao pode ser util para uma fase futura, mas nao deve publicar a area interna no Geoportal publico sem decisao posterior.
+
+### Itens obrigatorios para futura implementacao operacional
+
+Antes de qualquer alteracao em Apache/proxy, a tarefa operacional deve registrar:
+
+- backup obrigatorio do arquivo de configuracao do Apache;
+- identificacao clara dos arquivos Apache envolvidos, quando conhecidos;
+- validacao de sintaxe do Apache antes de reiniciar ou recarregar;
+- plano de rollback com restauracao do arquivo anterior, reinicio/reload do Apache e validacao do Geoportal publico;
+- validacao de que o Geoportal publico abre, camadas publicas continuam funcionando e busca publica permanece operacional;
+- validacao de que `/interno/` abre apenas no ambiente planejado;
+- validacao de que `/api/internal/auth/me` retorna `401` sem sessao;
+- verificacao de que nao ha chamada para `/api/internal/auth/login`;
+- verificacao de que nao ha `POST` nem `PATCH`;
+- logs limitados a status e eventos necessarios, sem token, cookie, senha, hash, `session_secret` ou `DATABASE_URL`;
+- confirmacao de que o backend interno permanece em `127.0.0.1`;
+- confirmacao de que `8002` nao foi liberada no firewall;
+- confirmacao de que nao ha exposicao de dados pessoais indevidos;
+- confirmacao de que nenhuma acao mutavel foi habilitada.
+
+Criterios de aceite da etapa operacional futura:
+
+- API publica preservada;
+- shell interna valida `401` sem sessao;
+- tela nao quebra em erro;
+- nenhum endpoint mutavel chamado;
+- sem alteracao de banco, migration, schema ou `.env`;
+- sem abertura direta da porta `8002` na rede.
+
+Recomendacao: manter `GeoportalAPIInternaHomologacao` em `127.0.0.1:8002`, planejar proxy interno controlado em homologacao, nao mexer no Geoportal publico nesta etapa, nao inserir botao publico de login e nao tratar abertura direta de `8002` como arquitetura definitiva.
 
 Estado de seguranca apos a validacao:
 

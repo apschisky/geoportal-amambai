@@ -236,6 +236,8 @@ Mapeamentos conceituais:
 - Permissao administrativa como `admin.usuarios.ler` pode permitir exibir Administracao do Sistema, sempre respeitando o backend.
 - Permissoes futuras de dashboard ou indicadores podem permitir cards de resumo sem conceder acoes operacionais.
 
+Validacao operacional registrada: a shell `/interno/` passou a consultar somente `GET /api/internal/auth/me` no commit `a6849dd`, usando o contrato real `authenticated`, `usuario_id` e `permissoes`. Em desenvolvimento local, sem proxy/backend interno ativo no Vite, a rota retornou `404`, comportamento esperado para esse ambiente. No backend interno de homologacao em `127.0.0.1:8002`, o mesmo endpoint sem sessao retornou `401 Unauthorized`, confirmando que a rota existe e permanece protegida. A porta `8002` esta restrita a loopback no servidor e nao responde diretamente ao PC de desenvolvimento pela rede, o que reduz exposicao. A validacao ponta a ponta da shell contra o backend interno real deve ser planejada com proxy interno controlado, preferencialmente em homologacao, antes de carregar listagem ou acoes de negocio.
+
 ## 8. Auditoria
 
 Modulos internos devem registrar:
