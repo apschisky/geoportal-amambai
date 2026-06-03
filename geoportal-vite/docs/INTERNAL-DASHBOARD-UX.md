@@ -8,6 +8,55 @@ Planejar a experiencia do futuro painel interno dos modulos municipais, com foco
 
 O objetivo e garantir que novas funcionalidades internas sejam criadas de forma paralela, segura e reversivel, sem quebrar mapa, camadas, busca, popups, rotas, medicao, geolocalizacao, impressao, mobile ou barra publica do Geoportal atual.
 
+## 1.1. Recorte da Primeira Tela Interna Minima
+
+Esta etapa e exclusivamente documental/estrategica. Nao implementa codigo, frontend, endpoint, migration, schema, proxy, producao interna, `.env`, NSSM, usuario, perfil, permissao real, role ou GRANT.
+
+A primeira tela interna minima do modulo de Iluminacao Publica deve ser planejada inicialmente para homologacao, consumindo o runtime interno `GeoportalAPIInternaHomologacao` em `127.0.0.1:8002`, sem exposicao publica e sem producao interna. Apache/proxy publico, Geoportal publico e API publica permanecem inalterados.
+
+A tela minima deve consumir somente endpoints internos ja implementados, testados, aplicados em homologacao interna e documentados:
+
+- `GET /api/internal/iluminacao/solicitacoes`;
+- `GET /api/internal/iluminacao/solicitacoes/{id}`;
+- `GET /api/internal/iluminacao/solicitacoes/{id}/historico`;
+- `GET /api/internal/iluminacao/solicitacoes/{id}/observacoes`;
+- `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes`;
+- `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`.
+
+Funcionalidades planejadas para a primeira tela minima:
+
+- login interno usando o fluxo de autenticacao ja existente;
+- listagem de solicitacoes;
+- filtros basicos por protocolo, status, tipo, prioridade, poste e periodo;
+- detalhe da solicitacao;
+- historico interno somente leitura;
+- observacoes internas com leitura e criacao;
+- alteracao normal de status usando o `PATCH` ja existente;
+- tratamento seguro de erros;
+- mensagens amigaveis para carregamento, vazio, sem permissao, sessao expirada, falha tecnica e operacao concluida;
+- preservacao da API publica.
+
+A primeira versao nao deve incluir:
+
+- correcao/reversao administrativa de status;
+- saida de status terminal;
+- anexos;
+- upload de foto;
+- dashboard;
+- estatisticas;
+- gestao de usuarios;
+- gestao de permissoes;
+- edicao de dados pessoais;
+- exclusao ou soft delete;
+- nova rota no Apache/proxy;
+- producao interna.
+
+A decisao de excluir dashboard, estatisticas e anexos da primeira tela minima reduz escopo, evita criacao de novos endpoints e preserva a validacao incremental ja feita no backend. O mapa operacional completo permanece objetivo futuro; se a primeira tela exibir coordenadas ou uma visualizacao simples, ela deve usar apenas latitude/longitude ja retornadas pelos endpoints existentes e nao deve bloquear o aceite minimo.
+
+Correcao ou reversao administrativa de status sera fluxo futuro separado, muito controlado, com justificativa obrigatoria, permissao especifica restrita a poucos perfis autorizados, auditoria propria e regra no backend. Essa regra nao deve ser duplicada livremente no frontend. O frontend pode orientar a UX, ocultar acoes e explicar transicoes permitidas, mas a validacao real permanece na API.
+
+Anexos, upload de fotos, dashboard, estatisticas, proxy/Apache e producao interna ficam para etapas posteriores, com contrato, permissoes, GRANTs e validacoes proprias.
+
 ## 2. Principio de nao interrupcao
 
 - O Geoportal publico deve continuar online.
@@ -73,6 +122,7 @@ Homologacao deve ser usada antes de qualquer alteracao em producao.
 - Em execucao.
 - Vencidas.
 - Finalizadas no periodo.
+- Fica fora da primeira tela minima; entra em etapa futura de dashboard/indicadores.
 
 ### Lista de solicitacoes
 
@@ -92,7 +142,7 @@ Homologacao deve ser usada antes de qualquer alteracao em producao.
 - Cores por status.
 - Visualizacao de postes/solicitacoes em diferentes estados.
 - Sem dados pessoais no mapa publico.
-- Decisao inicial: o mapa operacional e essencial desde o inicio.
+- Para a primeira tela minima, o mapa operacional completo nao e requisito obrigatorio. Uma visualizacao simples pode ser avaliada se consumir apenas latitude/longitude ja retornadas pelos endpoints existentes, sem novo endpoint e sem exposicao publica.
 
 ### Detalhe da solicitacao
 
@@ -103,15 +153,18 @@ Homologacao deve ser usada antes de qualquer alteracao em producao.
 - Descricao.
 - Status.
 - Historico.
-- Anexos.
+- Observacoes internas.
 - Acoes permitidas conforme perfil.
+- Anexos ficam para etapa posterior.
 
 ### Alteracao de status
 
 - Status novo.
-- Observacao obrigatoria em certas transicoes.
+- Observacao obrigatoria em qualquer alteracao de status normal.
 - Confirmacao antes de finalizar/cancelar.
 - Auditoria obrigatoria.
+- A primeira tela deve usar apenas o `PATCH /api/internal/iluminacao/solicitacoes/{id}/status` normal ja existente.
+- Correcao/reversao administrativa e saida de status terminal nao entram no fluxo normal.
 
 ### Anexos
 
@@ -119,6 +172,7 @@ Homologacao deve ser usada antes de qualquer alteracao em producao.
 - Foto antes/depois.
 - Restricao de tipo/tamanho.
 - Visualizacao apenas para perfis autorizados.
+- Fora da primeira tela minima.
 
 ### Indicadores
 
@@ -129,6 +183,7 @@ Homologacao deve ser usada antes de qualquer alteracao em producao.
 - Atrasadas, com alerta inicial para mais de 15 dias paradas.
 - Finalizadas no periodo.
 - Periodo de analise mais usado: semanal.
+- Fora da primeira tela minima.
 
 ## 7. Permissoes por tela
 
@@ -220,6 +275,34 @@ Este documento nao implementa configuracao. Ele apenas registra decisoes futuras
 - [ ] API desenhada.
 - [ ] Rollback planejado.
 - [ ] Fallback definido.
+
+## 12.1. Sequencia Sugerida para a Primeira Tela Minima
+
+1. Revisar documentacao e validar o recorte funcional com o setor.
+2. Desenhar wireframe simples da listagem, detalhe e acoes permitidas.
+3. Criar estrutura minima da rota/tela interna em homologacao, sem expor publicamente.
+4. Implementar cliente de API interno sem segredo no frontend.
+5. Implementar listagem e filtros por protocolo, status, tipo, prioridade, poste e periodo.
+6. Implementar detalhe da solicitacao.
+7. Implementar historico interno e observacoes internas em leitura.
+8. Implementar criacao de observacao interna.
+9. Implementar alteracao normal de status com o PATCH existente.
+10. Executar build/testes do frontend e validar que a API publica continua saudavel.
+11. Validar manualmente no runtime interno de homologacao.
+12. Somente depois avaliar proxy/Apache e producao interna em etapa separada.
+
+## 12.2. Criterios de Aceite da Primeira Tela Minima
+
+- API publica preservada.
+- Rotas internas consumidas apenas com sessao e permissoes adequadas.
+- Nenhum token, cookie, segredo, senha, hash, `session_secret` ou `DATABASE_URL` exposto no frontend.
+- Erros tecnicos tratados com mensagens sanitizadas e amigaveis.
+- Nenhuma alteracao de producao, Apache/proxy, migrations, schema, `.env` ou NSSM.
+- Acoes mutaveis respeitam permissao e header mutavel conforme contrato do backend.
+- Historico interno e observacoes internas nao aparecem em consulta publica.
+- Correcao/reversao administrativa de status nao esta disponivel na tela minima.
+- Saida de status terminal permanece bloqueada pelo backend.
+- Anexos, dashboard, estatisticas, gestao administrativa e producao interna permanecem fora do escopo.
 
 ## 13. Relacao com documentos existentes
 

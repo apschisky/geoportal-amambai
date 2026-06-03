@@ -161,7 +161,7 @@ Fases sugeridas:
 3. Fase 3: migrations de seguranca/autenticacao. Migrations de historico e observacoes ja aplicadas em homologacao e no banco ativo.
 4. Fase 4: implementacao de autenticacao no backend com testes.
 5. Fase 5: endpoints internos protegidos para historico, observacoes e status. Leitura de historico, leitura de observacoes internas, criacao de observacao interna e alteracao de status ja foram validadas em homologacao interna.
-6. Fase 6: tela interna minima consumindo endpoints protegidos.
+6. Fase 6: planejar e implementar tela interna minima em homologacao, consumindo apenas endpoints internos ja validados; sem dashboard, anexos, correcao/reversao administrativa, proxy ou producao interna nesta primeira versao.
 7. Fase 7: auditoria e revisao de seguranca antes de uso por equipe real.
 8. Fase 8: mapa interno, relatorios e indicadores.
 
