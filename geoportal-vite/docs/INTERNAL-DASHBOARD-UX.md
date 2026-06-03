@@ -419,6 +419,8 @@ Antes de integrar login real ou listagem real, recomenda-se evoluir a shell para
 - estados visuais de autenticacao e permissao;
 - sem API real, sem `POST`, sem `PATCH` e sem acoes mutaveis nessa etapa visual.
 
+Registro de implementacao visual: a Fase 2A evoluiu a shell em `/interno/` para representar o `Geoportal Interno` como portal unico multi-modulo, com Iluminacao Publica como modulo ativo, menu planejado de modulos, placeholders de resumo inicial e estados visuais de autenticacao/permissao. A shell continua sem API real, sem login real, sem cookie/token, sem `POST`, sem `PATCH`, sem dados reais e sem alterar o Geoportal publico.
+
 ## 13. Relacao com documentos existentes
 
 Este documento complementa:
