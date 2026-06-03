@@ -156,6 +156,72 @@ Visao inicial:
 - Politica de senha.
 - Avaliacao futura de 2FA para perfis sensiveis.
 
+## 7.1. Contrato de sessao e permissoes para o portal interno
+
+A primeira integracao real da shell `/interno/` com autenticacao deve ser somente verificacao de sessao existente, antes de listagem, dashboard, mapa ou qualquer acao operacional. O endpoint de referencia para essa etapa e `GET /api/internal/auth/me`, ja existente no backend interno.
+
+Essa chamada deve permitir ao frontend descobrir apenas:
+
+- se ha sessao valida;
+- dados minimos do usuario autenticado;
+- permissoes efetivas;
+- modulos acessiveis;
+- perfil ou papeis somente quando forem necessarios para a experiencia de uso.
+
+O menu do portal interno deve ser derivado das permissoes e modulos retornados pelo backend. Esconder menu, botao ou tela no frontend melhora a experiencia, mas nao concede acesso e nao substitui `require_permission(...)` nem outras validacoes do backend.
+
+A estrategia preferencial para navegador continua sendo sessao opaca no backend, transportada por cookie seguro, alinhada com os documentos de autenticacao interna: `HttpOnly`, `Secure` conforme ambiente e obrigatorio em producao, `SameSite` adequado, expiracao, logout/revogacao e token bruto nunca persistido no banco. O backend deve manter apenas hash ou representacao segura da sessao. O frontend nao deve guardar token em `localStorage` ou `sessionStorage`.
+
+Enquanto a etapa for apenas `GET /api/internal/auth/me`, nao deve haver `POST`, `PATCH`, login real novo, armazenamento de token, dashboard, mapa operacional, proxy interno, producao interna ou botao publico de login. Acoes mutaveis futuras, quando usarem cookie, devem manter protecao CSRF ou mecanismo equivalente, incluindo o header interno mutavel ja adotado para rotas sensiveis.
+
+Estados de sessao recomendados para o portal:
+
+- `checking_session`: verificando sessao;
+- `unauthenticated`: sem sessao valida;
+- `authenticated`: sessao valida e permissoes carregadas;
+- `forbidden`: autenticado, mas sem permissao para o modulo ou recurso;
+- `expired`: sessao expirada ou invalida;
+- `technical_error`: erro tecnico seguro, sem detalhes internos.
+
+Tratamento recomendado de respostas:
+
+- `200`: usar permissoes efetivas para montar menu e modulos.
+- `401`: exibir estado de login necessario, sem revelar a causa.
+- `403`: exibir acesso negado para recurso ou modulo.
+- `429`: informar excesso temporario de tentativas, se aplicavel.
+- `503`: informar indisponibilidade temporaria sem SQL, stack trace, host, role ou segredo.
+- Erro de rede: informar falha temporaria de conexao com o servico interno.
+
+Exemplo conceitual de resposta para orientar o frontend, sem dados reais:
+
+```json
+{
+  "usuario": {
+    "id": "identificador seguro",
+    "login": "login do usuario",
+    "nome": "nome exibivel, se permitido"
+  },
+  "sessao": {
+    "expira_em": "timestamp"
+  },
+  "permissoes": [
+    "iluminacao.solicitacoes.ler"
+  ],
+  "modulos": [
+    {
+      "chave": "iluminacao",
+      "nome": "Iluminacao Publica"
+    }
+  ]
+}
+```
+
+Mapeamentos conceituais:
+
+- `iluminacao.solicitacoes.ler` permite exibir o modulo Iluminacao Publica.
+- Permissao administrativa como `admin.usuarios.ler` pode permitir exibir Administracao do Sistema, sempre respeitando o backend.
+- Permissoes futuras de dashboard ou indicadores podem permitir cards de resumo sem conceder acoes operacionais.
+
 ## 8. Auditoria
 
 Modulos internos devem registrar:

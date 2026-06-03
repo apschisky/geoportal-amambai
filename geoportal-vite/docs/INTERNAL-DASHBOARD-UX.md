@@ -421,6 +421,97 @@ Antes de integrar login real ou listagem real, recomenda-se evoluir a shell para
 
 Registro de implementacao visual: a Fase 2A evoluiu a shell em `/interno/` para representar o `Geoportal Interno` como portal unico multi-modulo, com Iluminacao Publica como modulo ativo, menu planejado de modulos, placeholders de resumo inicial e estados visuais de autenticacao/permissao. A shell continua sem API real, sem login real, sem cookie/token, sem `POST`, sem `PATCH`, sem dados reais e sem alterar o Geoportal publico.
 
+## 12.4. Contrato planejado de sessao e permissoes da shell `/interno/`
+
+Esta etapa e apenas documental. A shell `/interno/` nao deve consumir `/api/internal` agora, nao deve chamar `/api/internal/auth/me`, nao deve implementar login real, nao deve manipular cookie ou token real, nao deve usar `localStorage` ou `sessionStorage` para token e nao deve executar `POST` ou `PATCH`.
+
+A proxima integracao real recomendada deve ser limitada a verificar sessao existente com `GET /api/internal/auth/me`. Essa chamada deve acontecer antes de listagem real, detalhe real, observacoes, alteracao de status, dashboard, mapa operacional, proxy, producao interna ou botao de login no Geoportal publico.
+
+Objetivos do `GET /api/internal/auth/me` para a shell:
+
+- descobrir se existe sessao valida;
+- carregar dados minimos do usuario autenticado;
+- carregar permissoes efetivas;
+- carregar modulos acessiveis;
+- apoiar estados visuais de sessao e permissao;
+- montar menu interno por permissao retornada pelo backend.
+
+O frontend pode ocultar menus e botoes conforme permissao, mas a autorizacao real permanece no backend. Qualquer rota interna de negocio deve continuar validando sessao, feature flag e `require_permission(...)` no backend, independentemente do que a shell renderizar.
+
+Estados recomendados para a interface:
+
+- `checking_session`: exibido enquanto a sessao esta sendo verificada.
+- `unauthenticated`: usado quando nao ha sessao valida ou a sessao nao pode ser confirmada.
+- `authenticated`: usado quando a sessao e valida e as permissoes foram carregadas.
+- `forbidden`: usado quando o usuario esta autenticado, mas nao possui permissao para o modulo ou recurso.
+- `expired`: usado quando a sessao expirou ou foi invalidada.
+- `technical_error`: usado para erro tecnico seguro, sem detalhes internos.
+
+Tratamento recomendado por HTTP:
+
+- `200`: sessao valida; montar menu e modulos com base nas permissoes retornadas.
+- `401`: exibir necessidade de login, sem revelar motivo especifico.
+- `403`: exibir acesso negado para modulo ou recurso.
+- `429`: exibir mensagem temporaria de excesso de tentativas, se aplicavel.
+- `503`: exibir indisponibilidade temporaria, sem SQL, stack trace, host, role, segredo ou `DATABASE_URL`.
+- Erro de rede: informar falha temporaria de conexao com o servico interno.
+
+Resposta conceitual minima esperada, sem dados reais:
+
+```json
+{
+  "usuario": {
+    "id": "identificador seguro",
+    "login": "login do usuario",
+    "nome": "nome exibivel, se permitido"
+  },
+  "sessao": {
+    "expira_em": "timestamp"
+  },
+  "permissoes": [
+    "iluminacao.solicitacoes.ler"
+  ],
+  "modulos": [
+    {
+      "chave": "iluminacao",
+      "nome": "Iluminacao Publica"
+    }
+  ]
+}
+```
+
+Regras de seguranca para a futura implementacao:
+
+- preferir sessao opaca no backend transportada por cookie `HttpOnly`;
+- usar `Secure` conforme ambiente e obrigatorio em producao;
+- usar `SameSite` adequado;
+- manter expiracao, logout e revogacao;
+- nunca persistir token bruto no banco;
+- nunca registrar token bruto, cookie, hash, senha, `session_secret` ou `DATABASE_URL`;
+- nunca guardar token em `localStorage` ou `sessionStorage`;
+- considerar protecao CSRF ou mecanismo equivalente para acoes mutaveis futuras com cookie;
+- manter `X-Geoportal-Internal-Request: 1` nas rotas mutaveis internas conforme contrato do backend.
+
+Mapeamento inicial de permissoes para UX:
+
+- `iluminacao.solicitacoes.ler` permite exibir o modulo Iluminacao Publica.
+- Permissoes como `iluminacao.solicitacoes.ver_historico`, `iluminacao.solicitacoes.ver_observacoes`, `iluminacao.solicitacoes.comentar` e `iluminacao.solicitacoes.atualizar_status` devem controlar botoes e secoes futuras dentro do modulo, mas o backend continua sendo a autoridade.
+- Permissoes administrativas como `admin.usuarios.ler` podem exibir Administracao do Sistema, se a etapa de UX decidir mostrar esse modulo.
+- Permissoes futuras de dashboard/indicadores podem habilitar cards de resumo sem conceder acoes operacionais.
+
+Riscos e controles:
+
+- Token em `localStorage` ou `sessionStorage`: evitar armazenamento de token no frontend.
+- Frontend virar autoridade de permissao: backend deve validar sempre.
+- Menu ou botao visivel indevidamente: backend deve bloquear acesso indevido mesmo que o frontend erre.
+- Vazamento tecnico em erro: mensagens devem ser sanitizadas.
+- Mistura entre runtime publico e interno: manter separacao publico/interno ja documentada.
+- Login no Geoportal publico cedo demais: deixar botao publico de login para etapa futura, depois de proxy, producao interna, logs e rollback.
+- CSRF em mutaveis futuros com cookie: exigir protecao apropriada antes de `POST` ou `PATCH`.
+- Sessao expirada confusa: usar estado visual claro e retorno seguro ao futuro login.
+
+Proxima fase recomendada: implementar, em etapa separada e controlada, somente a integracao de `GET /api/internal/auth/me` para atualizar o estado visual de sessao, montar menu por permissoes retornadas e tratar `401`, `403`, `429`, `503` e erro de rede. Essa fase ainda nao deve implementar login real novo, listagem de solicitacoes, observacoes, alteracao de status, dashboard, mapa operacional, proxy, producao interna ou botao publico de login.
+
 ## 13. Relacao com documentos existentes
 
 Este documento complementa:
