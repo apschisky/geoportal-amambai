@@ -259,6 +259,22 @@ A validacao operacional usou dado de homologacao/teste (`solicitacao_id=18`): o 
 
 Essa etapa nao criou migration, nao alterou schema, nao criou `PATCH status`, nao alterou producao, proxy, frontend ou `.env` versionado e nao registrou token, senha, cookie real, hash, `session_secret` real ou `DATABASE_URL` real.
 
+### Contrato Planejado do PATCH Status
+
+O schema atual suporta o futuro `PATCH /api/internal/iluminacao/solicitacoes/{id}/status` sem nova migration, desde que a aplicacao mantenha auditoria obrigatoria em `mod_iluminacao.solicitacoes_historico` na mesma transacao do `UPDATE`.
+
+Status reais permitidos por `mod_iluminacao.solicitacoes.status` e tambem aceitos nos campos `status_anterior` e `status_novo` do historico: `aberta`, `em_triagem`, `encaminhada`, `em_execucao`, `aguardando_material`, `nao_localizado`, `resolvida`, `indeferida` e `cancelada`. O valor interno correto para rejeicao administrativa e `indeferida`; `rejeitada` deve ser apenas rotulo visual futuro, se a tela optar por esse texto.
+
+Para a primeira versao, a matriz deve ser conservadora: `aberta` para `em_triagem`, `cancelada` ou `indeferida`; `em_triagem` para `encaminhada`, `aguardando_material`, `nao_localizado`, `cancelada` ou `indeferida`; `encaminhada` para `em_execucao`, `aguardando_material`, `nao_localizado` ou `cancelada`; `em_execucao` para `aguardando_material`, `resolvida` ou `nao_localizado`; `aguardando_material` para `encaminhada`, `em_execucao` ou `cancelada`. `resolvida`, `cancelada`, `indeferida` e `nao_localizado` sao terminais nesta versao e nao devem ser reabertos por esse endpoint.
+
+`finalizado_em` deve ser preenchido com `now()` ao entrar em status terminal e permanecer `NULL` para status nao terminais. Como a saida de status terminal sera proibida nesta primeira versao, o endpoint nao deve limpar `finalizado_em`.
+
+A auditoria deve usar `acao='alteracao_status'` e `origem_acao='usuario_interno'`, ambos permitidos pela migration de historico. O evento deve gravar `status_anterior`, `status_novo`, `usuario_id` da sessao interna, `usuario_nome` somente quando disponivel com seguranca, `observacao_resumida` obrigatoria com ate 1000 caracteres, e deixar `prioridade_anterior` e `prioridade_nova` nulos.
+
+A implementacao futura deve travar a solicitacao com `deleted_at IS NULL`, preferencialmente via `SELECT ... FOR UPDATE`, atualizar somente `status`, `atualizado_em` e `finalizado_em`, e inserir historico na mesma conexao/transacao. Se o historico falhar, o UPDATE nao deve permanecer. O endpoint nao deve alterar prioridade, dados publicos, geometria, dados do solicitante, `deleted_at` ou `deleted_reason`.
+
+Nao se recomenda migration nem trigger nesta etapa; a decisao incremental e manter a garantia no backend com testes de transacao atomica. GRANTs futuros devem ser aplicados apenas apos implementacao e testes em homologacao, com `UPDATE` minimo em `mod_iluminacao.solicitacoes` e `INSERT` em historico, sem `DELETE` e sem `UPDATE` em historico.
+
 ## 8. Uso pelos endpoints internos
 
 Endpoints internos futuros devem usar essas tabelas da seguinte forma:

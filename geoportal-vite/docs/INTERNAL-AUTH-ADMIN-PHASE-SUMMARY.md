@@ -275,7 +275,7 @@ O modulo interno de Iluminacao ja possui, em homologacao interna, listagem, deta
 
 A validacao operacional confirmou, com dado de homologacao/teste, 201 Created no POST, `total=1` em `GET observacoes` e `total=1` em `GET historico`. O endpoint nao altera status, prioridade ou `finalizado_em`. Os GRANTs aplicados foram minimos para INSERT nas tabelas de observacoes/historico e USAGE nas sequences correspondentes, sem UPDATE ou DELETE.
 
-Proxima etapa tecnica recomendada: planejar o `PATCH status` antes de implementar, definindo transicoes permitidas, regra de `finalizado_em`, observacao/motivo obrigatorio ou opcional, auditoria obrigatoria e GRANTs minimos. Tela interna, anexos, proxy e producao interna permanecem etapas posteriores.
+O contrato planejado do futuro `PATCH status` foi documentado antes da implementacao, com permissao `iluminacao.solicitacoes.atualizar_status`, header mutavel, payload restrito a `status` e `observacao`, matriz conservadora de transicoes, regra de `finalizado_em`, auditoria obrigatoria em historico e GRANTs minimos futuros. O endpoint ainda nao foi implementado. Tela interna, anexos, proxy e producao interna permanecem etapas posteriores.
 
 ## 8. Consolidação desta Etapa
 

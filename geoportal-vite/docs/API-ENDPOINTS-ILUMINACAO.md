@@ -366,26 +366,162 @@ Esta etapa nao cria endpoint mutavel, migration, schema, usuario, perfil, permis
 
 ### `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`
 
-Finalidade: alterar status.
+Finalidade: alterar o status operacional de uma solicitacao interna de Iluminacao Publica, com auditoria obrigatoria em historico.
+
+Estado: contrato planejado. Endpoint ainda nao implementado.
+
+Caracteristicas:
+
+- Endpoint interno mutavel.
+- Exige sessao interna autenticada.
+- Exige `require_permission("iluminacao.solicitacoes.atualizar_status")`.
+- Exige header `X-Geoportal-Internal-Request: 1`.
+- Deve permanecer sob `GEOPORTAL_INTERNAL_ROUTES_ENABLED`.
+- Nao altera API publica, frontend, proxy, producao, migrations ou schema.
 
 Payload:
 
-- `status_novo`;
-- `observacao`;
-- `responsavel` ou `equipe` opcional.
+```json
+{
+  "status": "em_execucao",
+  "observacao": "Equipe iniciou atendimento."
+}
+```
 
-Permissao:
+Campos permitidos no payload:
 
-- `alterar_status`.
+- `status`;
+- `observacao`.
 
-Auditoria:
+Campos proibidos no payload:
 
-- status anterior;
-- status novo;
-- usuario;
-- data/hora;
-- observacao;
-- IP/origem.
+- `status_anterior`;
+- `usuario_id`;
+- `usuario_nome`;
+- `finalizado_em`;
+- `criado_em`;
+- `atualizado_em`;
+- `protocolo`;
+- `prioridade`;
+- campos de sessao;
+- campos de auditoria;
+- SQL, role, GRANT, token, senha, cookie, segredo ou qualquer campo extra.
+
+Validacao:
+
+- `status` deve ser um dos valores reais aceitos por `mod_iluminacao.solicitacoes.status`: `aberta`, `em_triagem`, `encaminhada`, `em_execucao`, `aguardando_material`, `nao_localizado`, `resolvida`, `indeferida` ou `cancelada`.
+- Nao usar `rejeitada` como valor interno; a migration usa `indeferida`. A tela futura pode exibir "Rejeitada" apenas como rotulo visual mapeado para `indeferida`.
+- `observacao` e obrigatoria para qualquer alteracao de status.
+- `observacao` deve receber trim seguro, ter minimo de 3 caracteres apos trim e maximo de 1000 caracteres, compativel com `solicitacoes_historico.observacao_resumida varchar(1000)`.
+- Texto maior deve ser registrado pelo endpoint de observacao interna ja existente, nao pelo `PATCH status`.
+
+Matriz conservadora de transicoes da primeira versao:
+
+- `aberta` pode ir para `em_triagem`, `cancelada` ou `indeferida`.
+- `em_triagem` pode ir para `encaminhada`, `aguardando_material`, `nao_localizado`, `cancelada` ou `indeferida`.
+- `encaminhada` pode ir para `em_execucao`, `aguardando_material`, `nao_localizado` ou `cancelada`.
+- `em_execucao` pode ir para `aguardando_material`, `resolvida` ou `nao_localizado`.
+- `aguardando_material` pode ir para `encaminhada`, `em_execucao` ou `cancelada`.
+
+Status terminais na primeira versao:
+
+- `resolvida`;
+- `cancelada`;
+- `indeferida`;
+- `nao_localizado`.
+
+Regras de transicao:
+
+- Status terminal nao deve sair para outro status nesta primeira versao.
+- Reabertura ou correcao administrativa deve ficar para fluxo separado futuro, com decisao explicita.
+- Se futuramente houver reabertura, avaliar `acao='reabertura'` e/ou `origem_acao='ajuste_administrativo'`, valores ja aceitos pelo historico, mas fora da primeira implementacao.
+- Se o novo status for igual ao atual, retornar `200 OK` idempotente sem novo `UPDATE` e sem novo historico.
+
+Regra de `finalizado_em`:
+
+- Ao entrar em `resolvida`, `cancelada`, `indeferida` ou `nao_localizado`, preencher `finalizado_em = now()`.
+- Para status nao terminais, manter `finalizado_em = NULL`.
+- Nao limpar `finalizado_em` nesta primeira versao, porque saida de status terminal sera proibida.
+
+Auditoria obrigatoria:
+
+- Inserir evento em `mod_iluminacao.solicitacoes_historico` na mesma transacao do `UPDATE`.
+- Usar `acao='alteracao_status'`, valor permitido pela migration de historico.
+- Usar `origem_acao='usuario_interno'`, valor permitido pela migration de historico.
+- Gravar `status_anterior` e `status_novo`.
+- Gravar `prioridade_anterior=NULL` e `prioridade_nova=NULL`.
+- Gravar `usuario_id` da sessao interna autenticada.
+- Gravar `usuario_nome` somente se disponivel de forma segura; caso contrario, pode ficar nulo.
+- Gravar `observacao_resumida` com a observacao obrigatoria normalizada.
+- Usar default do banco para `criado_em`.
+
+Transacao obrigatoria futura:
+
+1. Buscar solicitacao com `deleted_at IS NULL`.
+2. Travar a linha, preferencialmente com `SELECT ... FOR UPDATE`.
+3. Validar a transicao com base no status atual.
+4. Se o status for igual, retornar 200 idempotente sem `UPDATE` e sem historico.
+5. Fazer `UPDATE` somente de `status`, `atualizado_em` e `finalizado_em`.
+6. Inserir historico.
+7. Se o INSERT no historico falhar, o UPDATE nao deve permanecer.
+8. Se o UPDATE falhar, o historico nao deve ser gravado.
+
+Campos que nao devem ser alterados:
+
+- `protocolo`, `origem`, `localizacao_tipo`, `poste_id`, `geom`, `tipo_problema`, `descricao`, `observacoes_localizacao`, `ponto_referencia`, `poste_proximo_informado`, `nome_solicitante`, `contato_solicitante`, `prioridade`, `duplicidade_suspeita`, `deleted_at` e `deleted_reason`.
+
+Resposta recomendada:
+
+- `200 OK`.
+- Retornar resumo atualizado, sem historico junto.
+
+```json
+{
+  "solicitacao": {
+    "id": 18,
+    "status": "em_execucao",
+    "atualizado_em": "...",
+    "finalizado_em": null
+  }
+}
+```
+
+Erros recomendados:
+
+- `401` sem sessao.
+- `403` sem permissao.
+- `403` quando faltar ou for invalido o header `X-Geoportal-Internal-Request`.
+- `404` quando a solicitacao nao existir ou estiver soft-deletada.
+- `409 Conflict` para transicao invalida, pois o payload e sintaticamente valido, mas conflita com o estado atual.
+- `422` para payload invalido.
+- `503` para erro de banco sanitizado, sem SQL, traceback, host, role, senha, token, cookie, hash, `session_secret` ou `DATABASE_URL`.
+
+Permissoes e GRANTs futuros:
+
+- Permissao de aplicacao: `iluminacao.solicitacoes.atualizar_status`.
+- GRANTs devem ser aplicados somente na etapa operacional de homologacao apos implementacao e testes.
+- Minimo previsto para `geoportal_api_homolog`: `SELECT` e `UPDATE` em `mod_iluminacao.solicitacoes`, `INSERT` em `mod_iluminacao.solicitacoes_historico` e `USAGE` na sequence de historico se ainda necessario.
+- Nao conceder `DELETE`, `UPDATE` em historico, `INSERT/UPDATE` em observacoes por causa deste endpoint nem `UPDATE` em sequence.
+
+Riscos registrados:
+
+- `GRANT UPDATE` em PostgreSQL tende a ser amplo por tabela, salvo uso de privilegios por coluna ou RLS; compensar com backend parametrizado, testes de campos alterados, runtime interno separado e validacao operacional.
+- Nao ha trigger obrigando historico; a atomicidade deve ser garantida pela aplicacao nesta fase incremental.
+- Reabertura de status terminal, inconsistencia entre status e `finalizado_em`, regra duplicada no frontend e uso acidental de `rejeitada` em vez de `indeferida` devem ser evitados por contrato e testes.
+
+Testes obrigatorios futuros:
+
+- Router: sucesso em transicao valida, idempotencia de status igual, 401 sem sessao, 403 sem permissao, 403 sem header mutavel, 404 para solicitacao inexistente ou soft-deletada, 409 para transicao invalida, 422 para payload/status/observacao/campos extras invalidos, 503 sanitizado, permissao `iluminacao.solicitacoes.atualizar_status` e ausencia de login hardcoded.
+- Service: matriz de transicoes, status terminal, `finalizado_em`, rejeicao de saida de terminal, normalizacao da observacao, erro seguro e preservacao de prioridade/dados publicos.
+- Repository: `SELECT ... FOR UPDATE`, bind parameters, sem `SELECT *`, `UPDATE` apenas de `status`, `atualizado_em` e `finalizado_em`, INSERT de historico na mesma transacao, atomicidade quando historico falha, sem DELETE e sem alteracao de dados publicos.
+- Regressao: API publica preservada, feature flag interna fail-closed, GETs internos existentes e POST observacao interna continuando verdes.
+
+Recomendacao:
+
+- Implementar `PATCH status` somente depois deste contrato documentado.
+- Nao criar migration nem trigger agora; transacao no backend com testes e suficiente para esta fase incremental.
+- Nao aplicar GRANTs agora; aplicar somente na etapa operacional de homologacao posterior.
+- Producao, proxy, frontend e tela interna permanecem inalterados.
 
 ### `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes`
 
