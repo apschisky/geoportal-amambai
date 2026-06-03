@@ -140,6 +140,8 @@ Validacao operacional: o endpoint `PATCH /api/internal/iluminacao/solicitacoes/{
 
 ## 9. Interface interna
 
+Iluminacao Publica deve ser o primeiro modulo dentro de um portal interno unico multi-modulo. A interface propria do modulo deve existir dentro do layout comum do Geoportal Interno, com menu por permissoes e separacao da area publica.
+
 Componentes previstos para a interface interna:
 
 - painel de listagem;
@@ -152,6 +154,8 @@ Componentes previstos para a interface interna:
 
 A interface deve priorizar uso operacional repetido: informacao densa, clara, filtravel e sem elementos decorativos excessivos.
 
+Mapa operacional, dashboard e indicadores consolidados continuam como evolucao futura. Para Iluminacao, o mapa interno devera mostrar postes e solicitacoes por status, permitir detalhe operacional conforme permissao e, quando aprovado, oferecer rota ate o poste. Essa evolucao nao faz parte da shell inicial nem da proxima integracao minima.
+
 ## 10. Roadmap
 
 Fases sugeridas:
@@ -161,7 +165,7 @@ Fases sugeridas:
 3. Fase 3: migrations de seguranca/autenticacao. Migrations de historico e observacoes ja aplicadas em homologacao e no banco ativo.
 4. Fase 4: implementacao de autenticacao no backend com testes.
 5. Fase 5: endpoints internos protegidos para historico, observacoes e status. Leitura de historico, leitura de observacoes internas, criacao de observacao interna e alteracao de status ja foram validadas em homologacao interna.
-6. Fase 6: criar e validar a shell inicial da tela interna minima em homologacao. A shell em `/interno/` ja foi criada como entrada multi-page do Vite, sem consumir API interna, sem login real, sem cookie/token real, sem `POST`, sem `PATCH`, sem dados reais, sem dashboard, anexos, correcao/reversao administrativa, proxy ou producao interna. A proxima subfase deve integrar login/sessao ou listagem interna de forma incremental, ainda sem acoes mutaveis.
+6. Fase 6: criar e validar a shell inicial da tela interna minima em homologacao. A shell em `/interno/` ja foi criada como entrada multi-page do Vite, sem consumir API interna, sem login real, sem cookie/token real, sem `POST`, sem `PATCH`, sem dados reais, sem dashboard, anexos, correcao/reversao administrativa, proxy ou producao interna. A proxima subfase recomendada e evoluir visualmente a shell para portal interno multi-modulo, com `Geoportal Interno` como titulo geral, Iluminacao Publica como modulo ativo e menu de modulos planejados, ainda sem API real e sem acoes mutaveis.
 7. Fase 7: auditoria e revisao de seguranca antes de uso por equipe real.
 8. Fase 8: mapa interno, relatorios e indicadores.
 

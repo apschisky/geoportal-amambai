@@ -54,6 +54,9 @@ O Geoportal publico deve continuar sendo a base de consulta, mapa, camadas publi
 ### Ambiente interno
 
 - Login.
+- Portal unico multi-modulo.
+- Layout comum com topo, menu, area de conteudo e identificacao de ambiente.
+- Menu dinamico por permissoes efetivas do usuario autenticado.
 - Paineis por modulo.
 - Gestao de solicitacoes.
 - Atualizacao de status.
@@ -61,6 +64,41 @@ O Geoportal publico deve continuar sendo a base de consulta, mapa, camadas publi
 - Historico.
 - Relatorios.
 - Trilhas de auditoria.
+
+## 3.1. Decisao Arquitetural: Portal Interno Unico Multi-Modulo
+
+O Geoportal Interno deve evoluir como um portal unico multi-modulo, e nao como telas internas isoladas por secretaria ou por servico. Iluminacao Publica e o primeiro modulo interno, mas a estrutura deve preparar a entrada futura de Alvaras, Viabilidade, Meio Ambiente, Limpeza de Lotes e outros servicos municipais.
+
+O portal interno deve ter layout comum, com topo, menu, area de conteudo e identificacao clara de ambiente. Cada modulo pode ter suas proprias telas, filtros, detalhes e acoes, mas deve operar dentro do mesmo portal interno e da mesma base transversal de autenticacao, autorizacao e auditoria.
+
+O menu de modulos deve ser montado conforme as permissoes efetivas do usuario autenticado. Um usuario pode ter acesso a apenas um modulo, a varios modulos ou a areas administrativas especificas. Perfis de leitura geral, como prefeito, gestor geral ou equivalentes, devem poder visualizar resumos e dados estrategicos dos modulos permitidos sem receber permissoes operacionais desnecessarias.
+
+A administracao do sistema deve ser uma area propria e restrita a perfis autorizados. Ela nao deve ser confundida com modulos operacionais, e tambem deve obedecer ao mesmo principio: o frontend pode ocultar menus e botoes, mas a autorizacao real permanece no backend.
+
+A area interna deve continuar separada da area publica. O Geoportal publico permanece como experiencia aberta ao cidadao; o portal interno depende de login, permissao, runtime interno e validacao de backend.
+
+## 3.2. Tela Inicial, Resumos e Indicadores
+
+Apos o login, o usuario podera cair em uma tela inicial do Geoportal Interno. Essa tela deve exibir cards ou resumos apenas dos modulos aos quais o usuario tem permissao.
+
+Exemplos de resumo por modulo:
+
+- Iluminacao Publica: chamados abertos, em triagem, encaminhados, em execucao, aguardando material, resolvidos, cancelados, pendentes ou atrasados.
+- Alvaras, Viabilidade, Meio Ambiente, Limpeza de Lotes e outros modulos futuros: indicadores equivalentes, definidos conforme a regra de negocio de cada modulo.
+
+Para administradores ou gestores gerais, o painel podera consolidar indicadores de todos os modulos permitidos. Para usuarios operacionais, o painel deve mostrar somente o modulo ou os modulos permitidos, sem expor dados ou acoes fora de sua funcao.
+
+Dashboard, resumos, estatisticas e endpoints agregados sao evolucao futura. Eles nao fazem parte da shell inicial em `/interno/` nem da proxima integracao minima, e nao devem ser criados sem contrato, permissao, revisao de seguranca e validacao de menor privilegio.
+
+## 3.3. Mapas Operacionais Internos
+
+Alguns modulos exigirao mapa operacional interno. Iluminacao Publica e um caso essencial: o mapa futuro deve exibir postes e solicitacoes por status, com cores por fase, e permitir que o clique em poste ou solicitacao abra detalhe operacional conforme permissao.
+
+No modulo de Iluminacao, a tela futura pode oferecer botao para tracar rota pelo Google Maps ate o poste, facilitando a equipe de manutencao. Essa funcionalidade deve usar dados permitidos ao usuario interno e nao deve expor dados pessoais indevidos.
+
+O mapa interno nao deve depender de dados publicos sensiveis sem revisao. Se exigir endpoint novo, camada interna, GeoServer interno ou view controlada, isso deve ser planejado em etapa propria, com contrato, permissao, GRANTs minimos, testes e revisao de seguranca.
+
+O mapa operacional nao faz parte da primeira tela minima ja implementada. A ordem recomendada e validar primeiro estrutura de portal, login/sessao, listagem e detalhe antes de evoluir para mapa interno.
 
 ## 4. Separacao publico x interno
 
@@ -176,6 +214,16 @@ O modulo piloto deve validar a arquitetura antes de expandir para alvaras, viabi
 6. Historico e auditado.
 7. Cidadao consulta andamento quando aplicavel.
 8. Geoportal exibe dados agregados ou status publico controlado, quando permitido.
+
+## 11.1. Riscos e Controles do Portal Interno
+
+- Nao confiar no frontend como autoridade de permissao.
+- Nao expor modulo interno no Geoportal publico antes de autenticacao, autorizacao, proxy e producao interna estarem planejados.
+- Nao exibir dados pessoais em dashboard ou mapa sem necessidade operacional.
+- Nao misturar dados publicos e internos.
+- Nao criar endpoints de estatisticas ou mapa sem contrato, permissao, auditoria e revisao de seguranca.
+- Preservar o Geoportal publico: mapa, camadas, busca, popups, rotas, medicao, geolocalizacao, impressao, mobile e barra publica.
+- Manter evolucao incremental, revisavel e reversivel.
 
 ## 12. Homologacao e publicacao
 

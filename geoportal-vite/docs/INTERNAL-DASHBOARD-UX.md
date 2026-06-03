@@ -4,9 +4,27 @@ Este documento define o fluxo de uso, telas conceituais e estrategia de implanta
 
 ## 1. Objetivo
 
-Planejar a experiencia do futuro painel interno dos modulos municipais, com foco inicial no modulo de Iluminacao Publica / Manutencao de Postes.
+Planejar a experiencia do futuro portal interno multi-modulo dos servicos municipais, com foco inicial no modulo de Iluminacao Publica / Manutencao de Postes.
 
 O objetivo e garantir que novas funcionalidades internas sejam criadas de forma paralela, segura e reversivel, sem quebrar mapa, camadas, busca, popups, rotas, medicao, geolocalizacao, impressao, mobile ou barra publica do Geoportal atual.
+
+## 1.0. Decisao de UX: Portal Unico Multi-Modulo
+
+O Geoportal Interno deve evoluir como portal unico multi-modulo. A shell inicial em `/interno/` nasceu visualmente focada em Iluminacao Publica porque esse e o primeiro modulo interno, mas a evolucao recomendada e transformar a tela em uma base comum do `Geoportal Interno`, com Iluminacao Publica como modulo ativo.
+
+O layout comum deve prever:
+
+- topo com nome do Geoportal Interno e identificacao de ambiente;
+- menu lateral ou superior com modulos permitidos ao usuario;
+- area de conteudo para o modulo ativo;
+- estados de autenticacao, sessao expirada, sem permissao, carregamento, vazio e erro seguro;
+- separacao clara entre area publica e area interna.
+
+O menu deve ser montado conforme permissoes efetivas do usuario autenticado. O frontend pode esconder modulos, menus e botoes para melhorar a experiencia, mas a autorizacao real deve permanecer no backend.
+
+Perfis de leitura geral, como prefeito, gestor geral ou equivalentes, devem poder acessar resumos e indicadores dos modulos permitidos sem receber permissoes operacionais desnecessarias. Usuarios operacionais devem ver apenas o modulo ou os modulos autorizados. A administracao do sistema deve ser area propria, restrita a perfis autorizados.
+
+Dashboard, mapa operacional, endpoints de estatisticas, endpoints de mapa, proxy, producao interna e botao publico de login sao etapas futuras. Esta decisao e apenas documental e nao cria codigo, endpoint, permissao real, proxy ou producao interna.
 
 ## 1.1. Recorte da Primeira Tela Interna Minima
 
@@ -123,6 +141,8 @@ Homologacao deve ser usada antes de qualquer alteracao em producao.
 - Vencidas.
 - Finalizadas no periodo.
 - Fica fora da primeira tela minima; entra em etapa futura de dashboard/indicadores.
+- A tela inicial futura do portal deve mostrar cards apenas dos modulos permitidos ao usuario.
+- Gestores gerais podem ter resumo consolidado de varios modulos, preferencialmente em modo leitura.
 
 ### Lista de solicitacoes
 
@@ -143,6 +163,10 @@ Homologacao deve ser usada antes de qualquer alteracao em producao.
 - Visualizacao de postes/solicitacoes em diferentes estados.
 - Sem dados pessoais no mapa publico.
 - Para a primeira tela minima, o mapa operacional completo nao e requisito obrigatorio. Uma visualizacao simples pode ser avaliada se consumir apenas latitude/longitude ja retornadas pelos endpoints existentes, sem novo endpoint e sem exposicao publica.
+- Para Iluminacao, o mapa interno futuro deve exibir postes e solicitacoes por status, com cores por fase.
+- Clique em poste ou solicitacao deve abrir detalhe operacional conforme permissao.
+- A tela futura pode oferecer rota pelo Google Maps ate o poste, sem expor dados pessoais indevidos.
+- Se o mapa exigir endpoint novo, camada interna, GeoServer interno ou view controlada, isso deve ser planejado em etapa propria.
 
 ### Detalhe da solicitacao
 
@@ -261,6 +285,9 @@ Este documento nao implementa configuracao. Ele apenas registra decisoes futuras
 - Falta de rollback.
 - Falta de homologacao.
 - Misturar fluxo publico com fluxo interno cedo demais.
+- Confiar no frontend como autoridade de permissao.
+- Expor dados pessoais em dashboard ou mapa sem necessidade operacional.
+- Criar endpoints de estatisticas ou mapa sem contrato, permissao, auditoria e revisao de seguranca.
 
 ## 12. Criterios para avancar para implementacao
 
@@ -382,6 +409,15 @@ Validacao pratica registrada em desenvolvimento local:
 - nenhuma acao real foi executada pela shell interna.
 
 Proxima fase recomendada: integrar de forma incremental login/sessao ou listagem interna, ainda sem acoes mutaveis, conforme decisao posterior. `POST` observacao e `PATCH` status devem continuar desabilitados na tela ate a fase especifica de integracao autenticada e validada.
+
+Antes de integrar login real ou listagem real, recomenda-se evoluir a shell para representar visualmente o portal interno multi-modulo:
+
+- titulo geral `Geoportal Interno`;
+- Iluminacao Publica como modulo ativo;
+- menu com modulos planejados, como Iluminacao, Alvaras, Viabilidade, Meio Ambiente e Limpeza de Lotes;
+- placeholders de resumo inicial e modulos futuros;
+- estados visuais de autenticacao e permissao;
+- sem API real, sem `POST`, sem `PATCH` e sem acoes mutaveis nessa etapa visual.
 
 ## 13. Relacao com documentos existentes
 
