@@ -304,6 +304,85 @@ Este documento nao implementa configuracao. Ele apenas registra decisoes futuras
 - Saida de status terminal permanece bloqueada pelo backend.
 - Anexos, dashboard, estatisticas, gestao administrativa e producao interna permanecem fora do escopo.
 
+## 12.3. Checklist Local da Shell Inicial em `/interno/`
+
+A Fase 1 criou uma shell frontend isolada da primeira tela interna minima em `/interno/`, com entrada multi-page no Vite. Esta shell e apenas estrutural: nao consome API interna, nao implementa login real, nao manipula cookie ou token, nao executa `POST` ou `PATCH` e nao carrega dados reais.
+
+Arquivos da shell:
+
+- `geoportal-vite/interno/index.html`;
+- `geoportal-vite/src/internal-iluminacao-shell.js`;
+- `geoportal-vite/src/internal-iluminacao-shell.css`.
+
+Validacao local sugerida:
+
+1. Entrar no diretorio do frontend:
+
+```powershell
+cd "C:\Users\COMPRAS\OneDrive\Documentos\Anderson\Pos Geo\TCC\geoportal_site\30-05-25\geoportal-vite"
+```
+
+2. Rodar build e preview:
+
+```powershell
+npm.cmd run build
+npm.cmd run preview
+```
+
+3. Abrir o Geoportal publico no preview:
+
+```text
+http://localhost:4173/
+```
+
+4. Abrir a tela interna:
+
+```text
+http://localhost:4173/interno/
+```
+
+5. Validar que a tela interna exibe:
+
+- titulo `Geoportal Interno - Iluminacao Publica`;
+- aviso de homologacao;
+- login apenas como placeholder/desabilitado;
+- filtros desabilitados;
+- listagem sem dados reais;
+- placeholders de detalhe, historico, observacoes e alteracao de status;
+- aviso de que nenhuma acao real e executada nesta fase.
+
+6. Validar no DevTools/Network que nao ha chamadas para:
+
+- `/api/internal`;
+- `/api/internal/auth/me`;
+- `/api/internal/iluminacao/solicitacoes`;
+- endpoints `POST` ou `PATCH`.
+
+7. Validar que o Geoportal publico continua funcionando:
+
+- mapa carrega;
+- camadas continuam disponiveis;
+- busca, painel de camadas e barra publica nao foram alterados;
+- nao ha redirecionamento indevido para `/interno/`.
+
+8. Registrar que login real, sessao, cookies, API interna, `POST` observacao e `PATCH` status ficam para fases posteriores.
+
+Validacao pratica registrada em desenvolvimento local:
+
+- `http://localhost:5195/interno/` abriu corretamente sem exigir `/interno/index.html`;
+- `http://localhost:5195/interno/index.html` tambem abriu corretamente;
+- a tela exibiu a shell `Geoportal Interno - Iluminacao Publica`, aviso de homologacao e placeholders de login, filtros, listagem, detalhe, historico, observacoes e alteracao de status;
+- nao houve login real, consumo de API interna, cookie/token real, `POST` ou `PATCH`;
+- no DevTools/Network, a shell carregou apenas recursos estaticos do Vite, como `interno/`, client de desenvolvimento, `internal-iluminacao-shell.js`, `env.mjs`, `internal-iluminacao-shell.css`, websocket de HMR e assets inline;
+- o `101 websocket` e esperado no `npm run dev`, por causa do hot reload do Vite;
+- respostas `304` sao esperadas por cache/revalidacao de arquivos estaticos;
+- nao houve chamada para `/api/internal`, `/api/internal/auth/me`, `/api/internal/iluminacao/solicitacoes` ou endpoints `POST`/`PATCH`;
+- o Geoportal publico abriu normalmente em desenvolvimento, com mapa, camadas, busca, painel e barra publica preservados;
+- o fluxo publico de solicitacao de Iluminacao abriu o formulario, mas o pedido nao foi finalizado para evitar criar registro real, ja que o fluxo publico esta em producao;
+- nenhuma acao real foi executada pela shell interna.
+
+Proxima fase recomendada: integrar de forma incremental login/sessao ou listagem interna, ainda sem acoes mutaveis, conforme decisao posterior. `POST` observacao e `PATCH` status devem continuar desabilitados na tela ate a fase especifica de integracao autenticada e validada.
+
 ## 13. Relacao com documentos existentes
 
 Este documento complementa:
