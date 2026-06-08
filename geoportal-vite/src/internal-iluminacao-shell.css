@@ -807,6 +807,57 @@ textarea:disabled {
   color: #5d6c74;
 }
 
+.internal-history-card {
+  grid-column: 1 / -1;
+}
+
+.internal-history-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.internal-history-event {
+  margin: 0 0 12px;
+  border: 1px solid #d8e2e5;
+  border-radius: 8px;
+  background: #fbfcfd;
+  padding: 12px;
+}
+
+.internal-history-event::marker {
+  color: #6f9b5d;
+  font-weight: 800;
+}
+
+.internal-history-event-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.internal-history-event-header strong {
+  color: #24343d;
+  text-transform: capitalize;
+}
+
+.internal-history-event-header time {
+  color: #60717a;
+  font-size: 0.84rem;
+  white-space: nowrap;
+}
+
+.internal-history-note {
+  margin: 10px 0 0;
+  border-left: 3px solid #d8c06d;
+  padding-left: 10px;
+  color: #5d5536;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
 .internal-state-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -889,6 +940,11 @@ textarea:disabled {
   }
 
   .internal-detail-card-header {
+    display: grid;
+  }
+
+  .internal-history-heading,
+  .internal-history-event-header {
     display: grid;
   }
 

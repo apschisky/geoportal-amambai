@@ -4,6 +4,7 @@ const AUTH_ME_ENDPOINT = '/api/internal/auth/me';
 const AUTH_LOGIN_ENDPOINT = '/api/internal/auth/login';
 const INTERNAL_SOLICITACOES_ENDPOINT = '/api/internal/iluminacao/solicitacoes';
 const SOLICITACOES_PAGE_SIZE = 20;
+const HISTORICO_PAGE_SIZE = 20;
 
 const SESSION_STATES = {
   checking_session: {
@@ -201,7 +202,8 @@ const nextSteps = [
   'Validar login visual minimo com cookie HttpOnly e /api/internal/auth/me.',
   'Validar listagem interna somente leitura apos login, sessao e permissao confirmados.',
   'Validar detalhe somente leitura por selecao explicita da tabela.',
-  'Conectar historico e observacoes em fases separadas.',
+  'Validar historico somente leitura por botao explicito no detalhe.',
+  'Conectar observacoes em fase separada.',
   'Habilitar POST/PATCH apenas em fases autenticadas e testadas.',
   'Planejar dashboard, mapa operacional e proxy separadamente.'
 ];
@@ -209,7 +211,7 @@ const nextSteps = [
 const outOfScope = [
   'logout completo',
   'token manual, localStorage ou sessionStorage',
-  'historico e observacoes de Iluminacao',
+  'observacoes reais de Iluminacao',
   'POST/PATCH de Iluminacao ou qualquer acao operacional',
   'dashboard, estatisticas e mapa operacional',
   'proxy, Apache ou producao interna'
@@ -228,14 +230,31 @@ function createSolicitacoesState(overrides = {}) {
   };
 }
 
+function createHistoricoState(overrides = {}) {
+  return {
+    status: 'idle',
+    items: [],
+    total: 0,
+    limit: HISTORICO_PAGE_SIZE,
+    offset: 0,
+    statusCode: null,
+    message: 'Historico carregado somente sob demanda.',
+    ...overrides
+  };
+}
+
 function createDetalheState(overrides = {}) {
+  const historico = createHistoricoState(overrides.historico || {});
+
   return {
     status: 'idle',
     item: null,
     solicitacaoId: null,
     statusCode: null,
     message: 'Selecione uma solicitacao na tabela para carregar o detalhe somente leitura.',
-    ...overrides
+    historico,
+    ...overrides,
+    historico
   };
 }
 
@@ -376,6 +395,36 @@ function isValidSolicitacaoDetailPayload(payload) {
   );
 }
 
+function isValidHistoricoPayload(payload) {
+  return Boolean(
+    payload
+      && typeof payload === 'object'
+      && Array.isArray(payload.items)
+      && Number.isInteger(payload.limit)
+      && Number.isInteger(payload.offset)
+      && Number.isInteger(payload.total)
+  );
+}
+
+function isValidHistoricoEventPayload(payload) {
+  return Boolean(
+    payload
+      && typeof payload === 'object'
+      && Number.isInteger(payload.id)
+      && Number.isInteger(payload.solicitacao_id)
+      && typeof payload.acao === 'string'
+      && isOptionalText(payload.status_anterior)
+      && isOptionalText(payload.status_novo)
+      && isOptionalText(payload.prioridade_anterior)
+      && isOptionalText(payload.prioridade_nova)
+      && isOptionalText(payload.usuario_id)
+      && isOptionalText(payload.usuario_nome)
+      && typeof payload.origem_acao === 'string'
+      && isOptionalText(payload.observacao_resumida)
+      && typeof payload.criado_em === 'string'
+  );
+}
+
 function safeText(value, fallback = 'Nao informado') {
   if (value === null || value === undefined) {
     return fallback;
@@ -448,6 +497,30 @@ function toDisplaySolicitacaoDetail(item) {
   };
 }
 
+function formatEventLabel(value) {
+  return safeText(value).replaceAll('_', ' ');
+}
+
+function toDisplayHistoricoEvent(event) {
+  const safeEvent = event && typeof event === 'object' ? event : {};
+  const usuarioNome = safeText(safeEvent.usuario_nome, '');
+  const usuarioId = safeText(safeEvent.usuario_id, '');
+  const usuario = usuarioNome || (usuarioId ? `Usuario interno #${usuarioId}` : 'Nao informado');
+
+  return {
+    id: Number.isInteger(safeEvent.id) ? safeEvent.id : null,
+    criadoEm: formatDateTime(safeEvent.criado_em),
+    acao: formatEventLabel(safeEvent.acao),
+    statusAnterior: safeText(safeEvent.status_anterior, 'Sem status anterior'),
+    statusNovo: safeText(safeEvent.status_novo, 'Sem novo status'),
+    prioridadeAnterior: safeText(safeEvent.prioridade_anterior, 'Sem prioridade anterior'),
+    prioridadeNova: safeText(safeEvent.prioridade_nova, 'Sem nova prioridade'),
+    origemAcao: formatEventLabel(safeEvent.origem_acao),
+    observacaoResumida: safeText(safeEvent.observacao_resumida, ''),
+    usuario
+  };
+}
+
 function buildSolicitacoesUrl(offset = 0) {
   const params = new URLSearchParams({
     limit: String(SOLICITACOES_PAGE_SIZE),
@@ -461,9 +534,23 @@ function buildSolicitacaoDetailUrl(solicitacaoId) {
   return `${INTERNAL_SOLICITACOES_ENDPOINT}/${encodeURIComponent(String(solicitacaoId))}`;
 }
 
+function buildSolicitacaoHistoricoUrl(solicitacaoId, offset = 0) {
+  const params = new URLSearchParams({
+    limit: String(HISTORICO_PAGE_SIZE),
+    offset: String(Math.max(0, offset))
+  });
+
+  return `${buildSolicitacaoDetailUrl(solicitacaoId)}/historico?${params.toString()}`;
+}
+
 function canListSolicitacoes(state) {
   return state.sessionState === 'authenticated'
     && hasPermission(state, PERMISSIONS.iluminacaoRead);
+}
+
+function canViewHistorico(state) {
+  return state.sessionState === 'authenticated'
+    && hasPermission(state, PERMISSIONS.iluminacaoHistory);
 }
 
 function getModuleView(module, state) {
@@ -842,7 +929,131 @@ function renderDetailDefinitionList(items) {
   `;
 }
 
-function renderSolicitacaoDetailLoaded(detail) {
+function renderHistoricoItems(items) {
+  return items
+    .map((event) => `
+      <li class="internal-history-event">
+        <div class="internal-history-event-header">
+          <strong>${escapeHtml(event.acao)}</strong>
+          <time>${escapeHtml(event.criadoEm)}</time>
+        </div>
+        <dl>
+          <div>
+            <dt>Origem</dt>
+            <dd>${escapeHtml(event.origemAcao)}</dd>
+          </div>
+          <div>
+            <dt>Usuario</dt>
+            <dd>${escapeHtml(event.usuario)}</dd>
+          </div>
+          <div>
+            <dt>Status</dt>
+            <dd>${escapeHtml(event.statusAnterior)} -> ${escapeHtml(event.statusNovo)}</dd>
+          </div>
+          <div>
+            <dt>Prioridade</dt>
+            <dd>${escapeHtml(event.prioridadeAnterior)} -> ${escapeHtml(event.prioridadeNova)}</dd>
+          </div>
+        </dl>
+        ${event.observacaoResumida
+          ? `<p class="internal-history-note">${escapeHtml(event.observacaoResumida)}</p>`
+          : ''}
+      </li>
+    `)
+    .join('');
+}
+
+function renderHistoricoPanel(state, detail) {
+  const historico = detail.historico || createHistoricoState();
+  const hasLoadedDetail = detail.status === 'loaded' && detail.item;
+  const hasHistoryPermission = canViewHistorico(state);
+  const isLoading = historico.status === 'loading';
+  const previousOffset = Math.max(0, historico.offset - HISTORICO_PAGE_SIZE);
+  const nextOffset = historico.offset + historico.limit;
+  const hasPrevious = hasLoadedDetail && hasHistoryPermission && historico.offset > 0 && !isLoading;
+  const hasNext = hasLoadedDetail && hasHistoryPermission && nextOffset < historico.total && !isLoading;
+  const canLoad = hasLoadedDetail && hasHistoryPermission && !isLoading;
+
+  if (!hasHistoryPermission) {
+    return `
+      <article class="internal-card internal-history-card">
+        <h3>Historico</h3>
+        <p>Historico indisponivel para este perfil.</p>
+        <p class="internal-muted-note">
+          A permissao iluminacao.solicitacoes.ver_historico e exigida pelo backend.
+        </p>
+      </article>
+    `;
+  }
+
+  const statusText = historico.statusCode
+    ? `HTTP ${historico.statusCode}`
+    : `${historico.total} evento(s)`;
+
+  return `
+    <article class="internal-card internal-history-card">
+      <div class="internal-history-heading">
+        <div>
+          <h3>Historico</h3>
+          <p>Timeline somente leitura, carregada apenas por botao explicito.</p>
+        </div>
+        <span class="internal-pill">GET sob demanda</span>
+      </div>
+
+      <div class="internal-list-toolbar" aria-label="Controles do historico">
+        <div>
+          <strong>${escapeHtml(statusText)}</strong>
+          <span>limit ${escapeHtml(historico.limit)} / offset ${escapeHtml(historico.offset)}</span>
+        </div>
+        <div class="internal-list-actions">
+          <button
+            type="button"
+            class="internal-secondary-action"
+            data-action="previous-historico"
+            data-offset="${escapeHtml(previousOffset)}"
+            ${hasPrevious ? '' : 'disabled'}
+          >
+            Pagina anterior
+          </button>
+          <button
+            type="button"
+            class="internal-secondary-action"
+            data-action="load-historico"
+            data-offset="${escapeHtml(historico.offset)}"
+            ${canLoad ? '' : 'disabled'}
+          >
+            ${historico.status === 'idle' ? 'Ver historico' : 'Atualizar historico'}
+          </button>
+          <button
+            type="button"
+            class="internal-secondary-action"
+            data-action="next-historico"
+            data-offset="${escapeHtml(nextOffset)}"
+            ${hasNext ? '' : 'disabled'}
+          >
+            Proxima pagina
+          </button>
+        </div>
+      </div>
+
+      <p class="internal-list-message" role="status">
+        ${escapeHtml(historico.message)}
+      </p>
+
+      ${historico.status === 'loading'
+        ? '<div class="internal-table-empty">Carregando historico somente leitura...</div>'
+        : ''}
+      ${historico.status === 'empty'
+        ? '<div class="internal-table-empty">Nenhum evento de historico encontrado.</div>'
+        : ''}
+      ${historico.status === 'ready'
+        ? `<ol class="internal-timeline">${renderHistoricoItems(historico.items)}</ol>`
+        : ''}
+    </article>
+  `;
+}
+
+function renderSolicitacaoDetailLoaded(state, detail) {
   const item = detail.item;
 
   return `
@@ -918,11 +1129,12 @@ function renderSolicitacaoDetailLoaded(detail) {
         <section class="internal-detail-section" aria-label="Acoes futuras indisponiveis">
           <h4>Acoes futuras</h4>
           <p>
-            Historico, observacoes internas e alteracao de status continuam fora desta fase e nao sao chamados pela shell.
+            Observacoes internas e alteracao de status continuam fora desta fase e nao sao chamados pela shell.
           </p>
         </section>
       </div>
     </article>
+    ${renderHistoricoPanel(state, detail)}
   `;
 }
 
@@ -930,7 +1142,7 @@ function renderSolicitacaoDetailPanel(state) {
   const detail = state.detalhe || createDetalheState();
 
   if (detail.status === 'loaded' && detail.item) {
-    return renderSolicitacaoDetailLoaded(detail);
+    return renderSolicitacaoDetailLoaded(state, detail);
   }
 
   const statusMessages = {
@@ -989,7 +1201,7 @@ function renderSolicitacaoDetailPanel(state) {
         </div>
         <div>
           <dt>Restricoes</dt>
-          <dd>Sem historico, observacoes, POST, PATCH, coordenadas ou JSON bruto.</dd>
+          <dd>Sem observacoes, POST, PATCH, coordenadas ou JSON bruto.</dd>
         </div>
       </dl>
     </article>
@@ -1078,7 +1290,7 @@ function renderInternalIluminacaoShell(root, state) {
           <p class="internal-kicker">Homologacao / Integracao de sessao</p>
           <h1 id="internal-page-title">Geoportal Interno</h1>
           <p class="internal-subtitle">
-            Portal municipal multi-modulo. Esta fase usa sessao interna e listagem somente leitura de Iluminacao.
+            Portal municipal multi-modulo. Esta fase usa sessao interna, listagem, detalhe e historico somente leitura de Iluminacao.
           </p>
         </div>
         ${renderSessionBox(state)}
@@ -1113,6 +1325,7 @@ function renderInternalIluminacaoShell(root, state) {
               <span>GET /auth/me</span>
               <span>GET solicitacoes</span>
               <span>GET detalhe</span>
+              <span>GET historico</span>
               <span>Credentials include</span>
               <span>Cookie HttpOnly</span>
               <span>Sem POST/PATCH</span>
@@ -1173,7 +1386,7 @@ function renderInternalIluminacaoShell(root, state) {
           <section class="internal-module-workspace" aria-labelledby="module-workspace-title">
             <div class="internal-section-heading">
               <h2 id="module-workspace-title">Operacao planejada de Iluminacao</h2>
-              <p>A listagem e o detalhe sao somente leitura. Historico, observacoes e status continuam desabilitados.</p>
+              <p>A listagem, o detalhe e o historico sao somente leitura. Observacoes e status continuam desabilitados.</p>
             </div>
 
             <div class="internal-workspace">
@@ -1253,16 +1466,6 @@ function renderInternalIluminacaoShell(root, state) {
 
               <div class="internal-detail-grid">
                 ${renderSolicitacaoDetailPanel(state)}
-
-                <article class="internal-card">
-                  <h3>Historico</h3>
-                  <p>
-                    Leitura futura dos eventos auditados. A consulta publica nao deve exibir historico interno.
-                  </p>
-                  <ol class="internal-timeline">
-                    <li>Eventos aparecerao aqui apos integracao autenticada posterior.</li>
-                  </ol>
-                </article>
 
                 <article class="internal-card">
                   <h3>Observacoes internas</h3>
@@ -1583,6 +1786,101 @@ async function fetchSolicitacaoDetail(solicitacaoId) {
   });
 }
 
+async function fetchSolicitacaoHistorico(solicitacaoId, offset = 0) {
+  const response = await fetch(buildSolicitacaoHistoricoUrl(solicitacaoId, offset), {
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json'
+    }
+  });
+
+  if (response.status === 401) {
+    return createHistoricoState({
+      status: 'expired',
+      offset,
+      statusCode: response.status,
+      message: 'Sessao ausente ou expirada ao consultar o historico. Faca login novamente.'
+    });
+  }
+
+  if (response.status === 403) {
+    return createHistoricoState({
+      status: 'forbidden',
+      offset,
+      statusCode: response.status,
+      message: 'Sem permissao para visualizar o historico desta solicitacao.'
+    });
+  }
+
+  if (response.status === 404) {
+    return createHistoricoState({
+      status: 'not_found',
+      offset,
+      statusCode: response.status,
+      message: 'Solicitacao nao encontrada ou removida logicamente.'
+    });
+  }
+
+  if (response.status === 422) {
+    return createHistoricoState({
+      status: 'error',
+      offset,
+      statusCode: response.status,
+      message: 'Identificador ou paginacao de historico invalidos.'
+    });
+  }
+
+  if (response.status === 503) {
+    return createHistoricoState({
+      status: 'error',
+      offset,
+      statusCode: response.status,
+      message: 'Servico interno temporariamente indisponivel para carregar o historico.'
+    });
+  }
+
+  if (!response.ok) {
+    return createHistoricoState({
+      status: 'error',
+      offset,
+      statusCode: response.status,
+      message: 'Nao foi possivel carregar o historico neste momento.'
+    });
+  }
+
+  const payload = await response.json();
+
+  if (
+    !isValidHistoricoPayload(payload)
+    || !payload.items.every(isValidHistoricoEventPayload)
+  ) {
+    return createHistoricoState({
+      status: 'error',
+      offset,
+      statusCode: response.status,
+      message: 'Resposta de historico em formato inesperado.'
+    });
+  }
+
+  const safeLimit = Math.max(1, Math.min(100, payload.limit));
+  const safeOffset = Math.max(0, payload.offset);
+  const safeTotal = Math.max(0, payload.total);
+  const items = payload.items.map(toDisplayHistoricoEvent);
+
+  return createHistoricoState({
+    status: items.length > 0 ? 'ready' : 'empty',
+    items,
+    total: safeTotal,
+    limit: safeLimit,
+    offset: safeOffset,
+    statusCode: response.status,
+    message: items.length > 0
+      ? 'Historico somente leitura carregado em ordem cronologica.'
+      : 'Nenhum evento de historico encontrado para esta pagina.'
+  });
+}
+
 async function loadSolicitacoes(root, state, offset = 0) {
   if (!canListSolicitacoes(state)) {
     renderApp(root, {
@@ -1707,6 +2005,98 @@ async function loadSolicitacaoDetail(root, state, solicitacaoId) {
         solicitacaoId,
         message: 'Falha temporaria de conexao com o servico interno de detalhe.'
       })
+    });
+  }
+}
+
+async function loadSolicitacaoHistorico(root, state, offset = 0) {
+  const detail = state.detalhe || createDetalheState();
+  const solicitacaoId = detail.item && Number.isInteger(detail.item.id)
+    ? detail.item.id
+    : detail.solicitacaoId;
+
+  if (!canViewHistorico(state)) {
+    renderApp(root, {
+      ...state,
+      detalhe: {
+        ...detail,
+        historico: createHistoricoState({
+          status: 'forbidden',
+          statusCode: state.sessionState === 'authenticated' ? 403 : null,
+          message: state.sessionState === 'authenticated'
+            ? 'Historico indisponivel para este perfil.'
+            : 'O historico nao foi chamado porque a sessao ainda nao foi autenticada.'
+        })
+      }
+    });
+    return;
+  }
+
+  if (detail.status !== 'loaded' || !Number.isInteger(solicitacaoId) || solicitacaoId < 1) {
+    renderApp(root, {
+      ...state,
+      detalhe: {
+        ...detail,
+        historico: createHistoricoState({
+          status: 'error',
+          statusCode: 422,
+          message: 'Selecione uma solicitacao valida antes de carregar o historico.'
+        })
+      }
+    });
+    return;
+  }
+
+  const loadingDetail = {
+    ...detail,
+    historico: createHistoricoState({
+      status: 'loading',
+      offset,
+      message: 'Carregando historico somente leitura com limit=20 e offset seguro.'
+    })
+  };
+  const loadingState = {
+    ...state,
+    detalhe: loadingDetail
+  };
+
+  renderApp(root, loadingState);
+
+  try {
+    const historico = await fetchSolicitacaoHistorico(solicitacaoId, offset);
+
+    if (historico.status === 'expired') {
+      renderApp(root, createSessionState({
+        sessionState: 'unauthenticated',
+        statusCode: 401,
+        message: 'Sessao expirada ao tentar carregar o historico. Faca login novamente.',
+        hasChecked: true,
+        detalhe: {
+          ...loadingDetail,
+          historico
+        }
+      }));
+      return;
+    }
+
+    renderApp(root, {
+      ...loadingState,
+      detalhe: {
+        ...loadingDetail,
+        historico
+      }
+    });
+  } catch {
+    renderApp(root, {
+      ...state,
+      detalhe: {
+        ...detail,
+        historico: createHistoricoState({
+          status: 'error',
+          offset,
+          message: 'Falha temporaria de conexao com o servico interno de historico.'
+        })
+      }
     });
   }
 }
@@ -1919,6 +2309,19 @@ if (root) {
       && target.matches('[data-action="clear-solicitacao-detail"]')
     ) {
       clearSolicitacaoDetail(root, currentState);
+      return;
+    }
+
+    if (
+      target instanceof HTMLElement
+      && target.matches('[data-action="load-historico"], [data-action="previous-historico"], [data-action="next-historico"]')
+    ) {
+      const requestedOffset = Number.parseInt(target.dataset.offset || '0', 10);
+      const safeOffset = Number.isInteger(requestedOffset) && requestedOffset >= 0
+        ? requestedOffset
+        : 0;
+
+      loadSolicitacaoHistorico(root, currentState, safeOffset);
     }
   });
 
