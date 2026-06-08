@@ -811,6 +811,10 @@ textarea:disabled {
   grid-column: 1 / -1;
 }
 
+.internal-observations-card {
+  grid-column: 1 / -1;
+}
+
 .internal-history-heading {
   display: flex;
   align-items: flex-start;
@@ -856,6 +860,29 @@ textarea:disabled {
   color: #5d5536;
   font-size: 0.9rem;
   line-height: 1.45;
+}
+
+.internal-observations-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.internal-observation-card {
+  border: 1px solid #d8e2e5;
+  border-radius: 8px;
+  background: #fbfcfd;
+  padding: 12px;
+}
+
+.internal-observation-text {
+  margin: 12px 0 0;
+  border-left: 3px solid #7da08b;
+  padding-left: 10px;
+  color: #4f6068;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .internal-state-grid {
