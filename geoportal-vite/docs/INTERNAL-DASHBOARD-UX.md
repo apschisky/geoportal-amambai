@@ -578,6 +578,8 @@ Decisao sobre login visual:
 - o Geoportal publico nao deve manipular token, cookie, senha ou estado de sessao interna diretamente;
 - popup de login na tela publica pode ser reavaliado futuramente apenas como decisao de UX, mas nao deve ser a primeira implementacao.
 
+Registro de implementacao: a fase de login visual minimo em `/interno/` implementa formulario interno somente quando `/api/internal/auth/me` retorna `401`. O submit chama apenas `POST /api/internal/auth/login` com `credentials: "include"`, ignora o corpo da resposta de login, nao usa token, nao grava `localStorage` ou `sessionStorage`, limpa o campo de senha apos a tentativa e confirma a autenticacao chamando novamente `/api/internal/auth/me`. A shell continua sem listagem, dashboard, mapa, observacoes, alteracao de status, logout completo ou `POST`/`PATCH` de Iluminacao.
+
 ## 13. Relacao com documentos existentes
 
 Este documento complementa:

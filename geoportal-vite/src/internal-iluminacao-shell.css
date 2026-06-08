@@ -36,6 +36,7 @@ textarea:disabled {
 
 .internal-topbar,
 .internal-alert,
+.internal-login-panel,
 .internal-shell-layout,
 .internal-footer {
   width: min(1400px, 100%);
@@ -175,11 +176,91 @@ textarea:disabled {
 }
 
 .internal-sidebar,
+.internal-login-panel,
 .internal-content > section,
 .internal-next article {
   border: 1px solid #c9d4d8;
   border-radius: 8px;
   background: #ffffff;
+}
+
+.internal-login-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(280px, 420px);
+  gap: 18px;
+  align-items: start;
+  margin-bottom: 18px;
+  padding: 16px;
+}
+
+.internal-login-panel h2 {
+  margin: 0;
+  color: #17252d;
+  letter-spacing: 0;
+}
+
+.internal-login-panel p {
+  color: #5a6870;
+  line-height: 1.5;
+}
+
+.internal-login-form {
+  display: grid;
+  gap: 12px;
+}
+
+.internal-login-form label {
+  display: grid;
+  gap: 6px;
+  color: #33434c;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.internal-login-form input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #b8c7cd;
+  border-radius: 6px;
+  background: #fbfcfd;
+  color: #1f2d34;
+  padding: 9px 11px;
+}
+
+.internal-login-form input:focus {
+  outline: 3px solid rgba(93, 136, 111, 0.24);
+  border-color: #6f9b5d;
+}
+
+.internal-login-message {
+  min-height: 22px;
+  margin: 0;
+  color: #4c5d65;
+  font-size: 0.88rem;
+}
+
+.internal-login-message.is-error {
+  color: #8a3f39;
+  font-weight: 800;
+}
+
+.internal-login-form button {
+  min-height: 42px;
+  border: 1px solid #5e8b69;
+  border-radius: 6px;
+  background: #2f6847;
+  color: #ffffff;
+  font-weight: 900;
+}
+
+.internal-login-form button:hover:not(:disabled) {
+  background: #28583c;
+}
+
+.internal-login-form button:disabled {
+  border-color: #a8b8b0;
+  background: #dfe8e2;
+  color: #66746c;
 }
 
 .internal-sidebar {
@@ -649,6 +730,7 @@ textarea:disabled {
 
   .internal-shell-layout,
   .internal-workspace,
+  .internal-login-panel,
   .internal-auth-grid,
   .internal-detail-grid,
   .internal-next {

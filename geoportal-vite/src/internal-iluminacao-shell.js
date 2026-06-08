@@ -1,6 +1,7 @@
 import './internal-iluminacao-shell.css';
 
 const AUTH_ME_ENDPOINT = '/api/internal/auth/me';
+const AUTH_LOGIN_ENDPOINT = '/api/internal/auth/login';
 
 const SESSION_STATES = {
   checking_session: {
@@ -12,7 +13,7 @@ const SESSION_STATES = {
   unauthenticated: {
     label: 'Nao autenticado',
     title: 'Login interno necessario',
-    text: 'Nao foi confirmada uma sessao interna valida. O login real fica para uma fase propria.',
+    text: 'Nao foi confirmada uma sessao interna valida. Use o formulario interno para autenticar em homologacao.',
     tone: 'neutral'
   },
   authenticated: {
@@ -151,7 +152,7 @@ const authStates = [
   {
     key: 'unauthenticated',
     title: 'Nao autenticado',
-    text: 'Orienta login interno futuro sem criar formulario ou chamar /login.'
+    text: 'Mostra formulario interno minimo e chama apenas POST /api/internal/auth/login.'
   },
   {
     key: 'authenticated',
@@ -195,20 +196,18 @@ const futureCapabilities = [
 ];
 
 const nextSteps = [
-  'Manter esta fase restrita a leitura de /api/internal/auth/me.',
-  'Integrar listagem interna somente depois de sessao/permissao validada.',
+  'Validar login visual minimo com cookie HttpOnly e /api/internal/auth/me.',
+  'Integrar listagem interna somente depois de login, sessao e permissao validados.',
   'Conectar detalhe, historico e observacoes em fases separadas.',
   'Habilitar POST/PATCH apenas em fases autenticadas e testadas.',
   'Planejar dashboard, mapa operacional e proxy separadamente.'
 ];
 
 const outOfScope = [
-  'login real ou formulario de login',
-  'logout',
+  'logout completo',
   'token manual, localStorage ou sessionStorage',
-  'chamadas para /api/internal/auth/login',
   'chamadas para /api/internal/iluminacao/solicitacoes',
-  'POST, PATCH ou qualquer acao mutavel',
+  'POST/PATCH de Iluminacao ou qualquer acao operacional',
   'dashboard, estatisticas e mapa operacional',
   'proxy, Apache ou producao interna'
 ];
@@ -219,8 +218,26 @@ const initialSessionState = {
   permissions: [],
   statusCode: null,
   message: 'Verificando sessao interna existente.',
-  hasChecked: false
+  hasChecked: false,
+  loginStatus: 'idle',
+  loginMessage: '',
+  loginValue: ''
 };
+
+function createSessionState(overrides = {}) {
+  return {
+    sessionState: 'checking_session',
+    usuarioId: null,
+    permissions: [],
+    statusCode: null,
+    message: 'Verificando sessao interna existente.',
+    hasChecked: false,
+    loginStatus: 'idle',
+    loginMessage: '',
+    loginValue: '',
+    ...overrides
+  };
+}
 
 function escapeHtml(value) {
   return String(value)
@@ -434,6 +451,58 @@ function renderLoadedPermissions(state) {
   `;
 }
 
+function renderLoginPanel(state) {
+  if (state.sessionState !== 'unauthenticated') {
+    return '';
+  }
+
+  const isSubmitting = state.loginStatus === 'submitting';
+  const statusClass = state.loginStatus === 'error' ? ' is-error' : '';
+  const message = state.loginMessage
+    || 'Informe suas credenciais internas de homologacao. O token retornado pelo backend sera ignorado pela shell.';
+
+  return `
+    <section class="internal-login-panel" aria-labelledby="internal-login-title">
+      <div>
+        <p class="internal-kicker">Area restrita</p>
+        <h2 id="internal-login-title">Login interno</h2>
+        <p>
+          O Geoportal publico permanece separado. Esta autenticacao acontece apenas dentro da shell interna.
+        </p>
+      </div>
+      <form class="internal-login-form" data-internal-login-form>
+        <label>
+          Login
+          <input
+            name="login"
+            type="text"
+            autocomplete="username"
+            value="${escapeHtml(state.loginValue || '')}"
+            required
+            ${isSubmitting ? 'disabled' : ''}
+          />
+        </label>
+        <label>
+          Senha
+          <input
+            name="senha"
+            type="password"
+            autocomplete="current-password"
+            required
+            ${isSubmitting ? 'disabled' : ''}
+          />
+        </label>
+        <p class="internal-login-message${statusClass}" role="status">
+          ${escapeHtml(message)}
+        </p>
+        <button type="submit" ${isSubmitting ? 'disabled' : ''}>
+          ${isSubmitting ? 'Entrando...' : 'Entrar'}
+        </button>
+      </form>
+    </section>
+  `;
+}
+
 function renderSessionBox(state) {
   const stateInfo = SESSION_STATES[state.sessionState] || SESSION_STATES.technical_error;
   const userText = state.sessionState === 'authenticated'
@@ -473,6 +542,8 @@ function renderInternalIluminacaoShell(root, state) {
         ${escapeHtml(stateInfo.text)}
       </section>
 
+      ${renderLoginPanel(state)}
+
       <div class="internal-shell-layout">
         <aside class="internal-sidebar" aria-label="Menu de modulos por permissao">
           <div class="internal-sidebar-heading">
@@ -494,7 +565,7 @@ function renderInternalIluminacaoShell(root, state) {
             <div class="internal-safety-list" aria-label="Controles mantidos nesta fase">
               <span>GET /auth/me</span>
               <span>Credentials include</span>
-              <span>Sem /login</span>
+              <span>Cookie HttpOnly</span>
               <span>Sem POST/PATCH</span>
             </div>
           </section>
@@ -714,92 +785,78 @@ async function fetchCurrentSession() {
   });
 
   if (response.status === 401) {
-    return {
+    return createSessionState({
       sessionState: 'unauthenticated',
-      usuarioId: null,
-      permissions: [],
       statusCode: response.status,
-      message: 'Sessao ausente, expirada ou invalida. Login interno sera tratado em fase propria.',
+      message: 'Sessao ausente, expirada ou invalida. Login interno disponivel nesta shell.',
       hasChecked: true
-    };
+    });
   }
 
   if (response.status === 403) {
-    return {
+    return createSessionState({
       sessionState: 'forbidden',
-      usuarioId: null,
-      permissions: [],
       statusCode: response.status,
       message: 'Acesso negado pelo backend para a verificacao de sessao.',
       hasChecked: true
-    };
+    });
   }
 
   if (response.status === 429) {
-    return {
+    return createSessionState({
       sessionState: 'technical_error',
-      usuarioId: null,
-      permissions: [],
       statusCode: response.status,
       message: 'Muitas tentativas em pouco tempo. Aguarde antes de tentar novamente.',
       hasChecked: true
-    };
+    });
   }
 
   if (response.status === 503) {
-    return {
+    return createSessionState({
       sessionState: 'technical_error',
-      usuarioId: null,
-      permissions: [],
       statusCode: response.status,
       message: 'Servico interno temporariamente indisponivel.',
       hasChecked: true
-    };
+    });
   }
 
   if (!response.ok) {
-    return {
+    return createSessionState({
       sessionState: 'technical_error',
-      usuarioId: null,
-      permissions: [],
       statusCode: response.status,
       message: 'Nao foi possivel verificar a sessao interna neste momento.',
       hasChecked: true
-    };
+    });
   }
 
   const payload = await response.json();
 
   if (!isValidMePayload(payload)) {
-    return {
+    return createSessionState({
       sessionState: 'technical_error',
-      usuarioId: null,
-      permissions: [],
       statusCode: response.status,
       message: 'Resposta de sessao em formato inesperado.',
       hasChecked: true
-    };
+    });
   }
 
   if (payload.authenticated !== true) {
-    return {
+    return createSessionState({
       sessionState: 'unauthenticated',
-      usuarioId: null,
-      permissions: [],
       statusCode: response.status,
       message: 'Sessao interna nao autenticada.',
       hasChecked: true
-    };
+    });
   }
 
-  return {
+  return createSessionState({
     sessionState: 'authenticated',
     usuarioId: payload.usuario_id,
     permissions: normalizePermissions(payload.permissoes),
     statusCode: response.status,
     message: 'Sessao interna confirmada por /api/internal/auth/me.',
     hasChecked: true
-  };
+  });
 }
 
 async function verifySession(root) {
@@ -809,14 +866,141 @@ async function verifySession(root) {
     const nextState = await fetchCurrentSession();
     renderInternalIluminacaoShell(root, nextState);
   } catch {
-    renderInternalIluminacaoShell(root, {
+    renderInternalIluminacaoShell(root, createSessionState({
       sessionState: 'technical_error',
-      usuarioId: null,
-      permissions: [],
-      statusCode: null,
       message: 'Nao foi possivel conectar ao servico interno. Isso pode ocorrer em desenvolvimento sem backend/proxy ativo.',
       hasChecked: true
+    }));
+  }
+}
+
+async function submitLogin(root, form) {
+  const formData = new FormData(form);
+  const login = String(formData.get('login') || '').trim();
+  const senha = String(formData.get('senha') || '');
+  const passwordInput = form.elements.senha;
+
+  if (!login || !senha) {
+    if (passwordInput instanceof HTMLInputElement) {
+      passwordInput.value = '';
+    }
+
+    renderInternalIluminacaoShell(root, createSessionState({
+      sessionState: 'unauthenticated',
+      statusCode: null,
+      message: 'Preencha login e senha para continuar.',
+      hasChecked: true,
+      loginStatus: 'error',
+      loginMessage: 'Preencha login e senha.',
+      loginValue: login
+    }));
+    return;
+  }
+
+  renderInternalIluminacaoShell(root, createSessionState({
+    sessionState: 'unauthenticated',
+    statusCode: null,
+    message: 'Enviando credenciais ao endpoint interno de login.',
+    hasChecked: true,
+    loginStatus: 'submitting',
+    loginMessage: 'Validando credenciais internas...',
+    loginValue: login
+  }));
+
+  try {
+    const response = await fetch(AUTH_LOGIN_ENDPOINT, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        login,
+        senha
+      })
     });
+
+    if (response.ok) {
+      const confirmedState = await fetchCurrentSession();
+
+      if (confirmedState.sessionState === 'authenticated') {
+        renderInternalIluminacaoShell(root, confirmedState);
+        return;
+      }
+
+      renderInternalIluminacaoShell(root, {
+        ...confirmedState,
+        sessionState: 'unauthenticated',
+        loginStatus: 'error',
+        loginMessage: 'Login aceito, mas a sessao nao foi confirmada. Tente novamente.',
+        loginValue: login
+      });
+      return;
+    }
+
+    if (response.status === 401) {
+      renderInternalIluminacaoShell(root, createSessionState({
+        sessionState: 'unauthenticated',
+        statusCode: response.status,
+        message: 'Credenciais nao autenticadas pelo backend.',
+        hasChecked: true,
+        loginStatus: 'error',
+        loginMessage: 'Login ou senha invalidos.',
+        loginValue: login
+      }));
+      return;
+    }
+
+    if (response.status === 429) {
+      renderInternalIluminacaoShell(root, createSessionState({
+        sessionState: 'unauthenticated',
+        statusCode: response.status,
+        message: 'Muitas tentativas de login em pouco tempo.',
+        hasChecked: true,
+        loginStatus: 'error',
+        loginMessage: 'Muitas tentativas. Aguarde antes de tentar novamente.',
+        loginValue: login
+      }));
+      return;
+    }
+
+    if (response.status === 503) {
+      renderInternalIluminacaoShell(root, createSessionState({
+        sessionState: 'technical_error',
+        statusCode: response.status,
+        message: 'Servico interno temporariamente indisponivel.',
+        hasChecked: true,
+        loginStatus: 'error',
+        loginMessage: 'Servico temporariamente indisponivel.',
+        loginValue: login
+      }));
+      return;
+    }
+
+    renderInternalIluminacaoShell(root, createSessionState({
+      sessionState: 'technical_error',
+      statusCode: response.status,
+      message: 'Nao foi possivel concluir o login interno.',
+      hasChecked: true,
+      loginStatus: 'error',
+      loginMessage: 'Nao foi possivel entrar agora.',
+      loginValue: login
+    }));
+  } catch {
+    renderInternalIluminacaoShell(root, createSessionState({
+      sessionState: 'technical_error',
+      statusCode: null,
+      message: 'Nao foi possivel conectar ao servico interno de autenticacao.',
+      hasChecked: true,
+      loginStatus: 'error',
+      loginMessage: 'Servico interno indisponivel no momento.',
+      loginValue: login
+    }));
+  } finally {
+    if (passwordInput instanceof HTMLInputElement) {
+      passwordInput.value = '';
+    }
   }
 }
 
@@ -833,6 +1017,18 @@ if (root) {
       && target.matches('[data-action="check-session"]')
     ) {
       verifySession(root);
+    }
+  });
+
+  root.addEventListener('submit', (event) => {
+    const target = event.target;
+
+    if (
+      target instanceof HTMLFormElement
+      && target.matches('[data-internal-login-form]')
+    ) {
+      event.preventDefault();
+      submitLogin(root, target);
     }
   });
 }
