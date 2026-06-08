@@ -580,6 +580,8 @@ Decisao sobre login visual:
 
 Registro de implementacao: a fase de login visual minimo em `/interno/` implementa formulario interno somente quando `/api/internal/auth/me` retorna `401`. O submit chama apenas `POST /api/internal/auth/login` com `credentials: "include"`, ignora o corpo da resposta de login, nao usa token, nao grava `localStorage` ou `sessionStorage`, limpa o campo de senha apos a tentativa e confirma a autenticacao chamando novamente `/api/internal/auth/me`. A shell continua sem listagem, dashboard, mapa, observacoes, alteracao de status, logout completo ou `POST`/`PATCH` de Iluminacao.
 
+Hardening visual posterior: a shell deixa de exibir a lista completa de strings tecnicas de permissoes retornadas por `/me`. As permissoes continuam sendo usadas internamente para derivar menu, modulos e capacidades visuais, mas a interface comum mostra apenas resumo seguro: sessao autenticada, usuario interno, quantidade de permissoes carregadas, modulos permitidos e aviso de que a autorizacao real permanece no backend.
+
 ## 13. Relacao com documentos existentes
 
 Este documento complementa:

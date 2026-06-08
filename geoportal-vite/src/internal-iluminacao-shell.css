@@ -631,14 +631,35 @@ textarea:disabled {
   color: #2f6847;
 }
 
-.internal-permission-list {
-  max-height: 190px;
+.internal-safe-summary {
+  display: grid;
+  gap: 10px;
   margin: 0;
-  padding-left: 20px;
-  overflow: auto;
-  color: #4d5d65;
-  line-height: 1.55;
-  overflow-wrap: anywhere;
+}
+
+.internal-safe-summary div {
+  display: grid;
+  gap: 3px;
+  padding: 10px 0;
+  border-top: 1px solid #e4eaed;
+}
+
+.internal-safe-summary dt {
+  color: #42525b;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.internal-safe-summary dd {
+  margin: 0;
+  color: #5c6b74;
+}
+
+.internal-muted-note {
+  margin: 14px 0 0;
+  color: #687880;
+  font-size: 0.88rem;
+  line-height: 1.45;
 }
 
 .internal-card textarea {

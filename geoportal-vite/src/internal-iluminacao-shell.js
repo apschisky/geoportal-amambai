@@ -256,6 +256,22 @@ function hasAnyPermission(state, permissions) {
   return permissions.some((permission) => hasPermission(state, permission));
 }
 
+function getAllowedModules(state) {
+  if (state.sessionState !== 'authenticated') {
+    return [];
+  }
+
+  return plannedModules
+    .filter((module) => {
+      if (module.kind === 'permission' || module.kind === 'admin') {
+        return hasAnyPermission(state, module.permissions);
+      }
+
+      return false;
+    })
+    .map((module) => module.name);
+}
+
 function normalizePermission(permission) {
   return permission.trim().toLowerCase();
 }
@@ -435,19 +451,43 @@ function renderCapabilityIndicators(state) {
     .join('');
 }
 
-function renderLoadedPermissions(state) {
+function renderPermissionSummary(state) {
   if (state.sessionState !== 'authenticated') {
-    return '<p>Permissoes ainda nao carregadas.</p>';
+    return `
+      <p>Permissoes ainda nao carregadas.</p>
+      <p class="internal-muted-note">
+        A lista tecnica completa nao e exibida na interface comum.
+      </p>
+    `;
   }
 
-  if (state.permissions.length === 0) {
-    return '<p>Sessao autenticada sem permissoes efetivas retornadas.</p>';
-  }
+  const allowedModules = getAllowedModules(state);
+  const modulesText = allowedModules.length > 0
+    ? allowedModules.join(', ')
+    : 'Nenhum modulo operacional permitido';
 
   return `
-    <ul class="internal-permission-list">
-      ${state.permissions.map((permission) => `<li>${escapeHtml(permission)}</li>`).join('')}
-    </ul>
+    <dl class="internal-safe-summary">
+      <div>
+        <dt>Sessao</dt>
+        <dd>Autenticada</dd>
+      </div>
+      <div>
+        <dt>Usuario</dt>
+        <dd>#${escapeHtml(state.usuarioId)}</dd>
+      </div>
+      <div>
+        <dt>Permissoes carregadas</dt>
+        <dd>${escapeHtml(state.permissions.length)}</dd>
+      </div>
+      <div>
+        <dt>Modulos permitidos</dt>
+        <dd>${escapeHtml(modulesText)}</dd>
+      </div>
+    </dl>
+    <p class="internal-muted-note">
+      A interface usa permissoes apenas para orientar a navegacao. A autorizacao real continua no backend.
+    </p>
   `;
 }
 
@@ -614,9 +654,9 @@ function renderInternalIluminacaoShell(root, state) {
                 </div>
               </article>
 
-              <article class="internal-card internal-permissions-card">
-                <h3>Permissoes retornadas</h3>
-                ${renderLoadedPermissions(state)}
+              <article class="internal-card">
+                <h3>Resumo seguro</h3>
+                ${renderPermissionSummary(state)}
               </article>
             </div>
           </section>
