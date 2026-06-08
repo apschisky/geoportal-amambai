@@ -156,6 +156,8 @@ A interface deve priorizar uso operacional repetido: informacao densa, clara, fi
 
 Mapa operacional, dashboard e indicadores consolidados continuam como evolucao futura. Para Iluminacao, o mapa interno devera mostrar postes e solicitacoes por status, permitir detalhe operacional conforme permissao e, quando aprovado, oferecer rota ate o poste. Essa evolucao nao faz parte da shell inicial nem da proxima integracao minima.
 
+Marco da shell interna: a listagem somente leitura foi integrada no commit `a6269d2`. A shell `/interno/` chama `GET /api/internal/iluminacao/solicitacoes?limit=20&offset=0` apenas depois de sessao autenticada, `/me` valido e permissao `iluminacao.solicitacoes.ler`. A tabela inicial mostra somente campos minimos nao pessoais e mantem ocultos nome, contato, descricao, observacoes de localizacao, ponto de referencia, poste proximo informado, latitude e longitude. Detalhe, historico, observacoes, alteracao de status, dashboard real, mapa operacional e anexos permanecem fora desta fase.
+
 ## 10. Roadmap
 
 Fases sugeridas:
@@ -165,7 +167,7 @@ Fases sugeridas:
 3. Fase 3: migrations de seguranca/autenticacao. Migrations de historico e observacoes ja aplicadas em homologacao e no banco ativo.
 4. Fase 4: implementacao de autenticacao no backend com testes.
 5. Fase 5: endpoints internos protegidos para historico, observacoes e status. Leitura de historico, leitura de observacoes internas, criacao de observacao interna e alteracao de status ja foram validadas em homologacao interna.
-6. Fase 6: criar e validar a shell inicial da tela interna minima em homologacao. A shell em `/interno/` ja foi criada como entrada multi-page do Vite e evoluida visualmente para portal interno multi-modulo, com `Geoportal Interno` como titulo geral, Iluminacao Publica como modulo ativo, menu de modulos planejados, placeholders de resumo e estados visuais de autenticacao/permissao. A shell permanece sem consumir API interna, sem login real, sem cookie/token real, sem `POST`, sem `PATCH`, sem dados reais, sem dashboard real, anexos, correcao/reversao administrativa, proxy ou producao interna. A proxima subfase deve integrar login/sessao ou listagem interna de forma incremental, ainda sem acoes mutaveis.
+6. Fase 6: criar e validar a shell inicial da tela interna minima em homologacao. A shell em `/interno/` ja foi criada como entrada multi-page do Vite, evoluida para portal interno multi-modulo, integrada ao login visual minimo e integrada a listagem somente leitura de Iluminacao. Ela usa cookie HttpOnly, ignora token retornado no corpo do login, nao grava token em `localStorage` ou `sessionStorage`, libera visualmente Iluminacao por `iluminacao.solicitacoes.ler` e chama somente `GET /api/internal/iluminacao/solicitacoes?limit=20&offset=0` apos sessao e permissao confirmadas. A shell continua sem detalhe, historico, observacoes, alteracao de status, dashboard real, mapa operacional, anexos, correcao/reversao administrativa ou `POST`/`PATCH` de Iluminacao. A proxima subfase recomendada e inventariar o contrato do detalhe somente leitura antes de implementar qualquer painel de detalhe.
 7. Fase 7: auditoria e revisao de seguranca antes de uso por equipe real.
 8. Fase 8: mapa interno, relatorios e indicadores.
 
