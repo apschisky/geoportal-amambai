@@ -275,6 +275,65 @@ Roteiro manual futuro para proxy interno controlado:
 
 O servico `PEMHTTPD-x64` deve ser tratado como duplicidade operacional a investigar. Nao parar nem desabilitar antes de inventariar portas, logs, dependencias e finalidade. Se nao houver dependencia, qualquer mudanca de `StartMode` deve ocorrer somente em etapa propria, com backup, janela de manutencao e rollback.
 
+## 6.2. Inventário de Serviços Apache Auxiliares
+
+Descoberta em validação operacional: servidor de homologação executa um segundo serviço Apache denominado `PEMHTTPD-x64`, que não atende as portas públicas (`80` / `443`) e portanto não interfere com o Geoportal público. Este serviço foi inventariado para registro e futura avaliação de segurança operacional.
+
+**Nenhuma alteração operacional foi realizada nesta etapa. O serviço permanece no seu estado atual (Running, Auto) e não deve ser parado, desabilitado ou modificado sem planejamento e validação separada.**
+
+Inventário operacional do serviço `PEMHTTPD-x64`:
+
+**Serviço:**
+- Nome: `PEMHTTPD-x64`
+- Estado: `Running`
+- StartMode: `Auto`
+- PID: `3772`
+- Executável: `C:\Users\Anderson\OneDrive\Documentos\postgres_pref\apache\bin\httpd.exe`
+
+**Porta e Conectividade:**
+- Escuta: `TCP 0.0.0.0:5435` (todas as interfaces, porta `5435`)
+- Acessível via localhost: `http://127.0.0.1:5435/` retorna `HTTP 200 OK`
+- Acessível via rede interna: `http://10.0.0.109:5435/` (confirmado do PC `10.0.0.215`) retorna `HTTP 200 OK`
+- Conteúdo HTTP: página padrão da EnterpriseDB com texto "Server is up and running."
+
+**Configuração:**
+- `ServerRoot`: `C:/Users/Anderson/OneDrive/Documentos/postgres_pref/apache`
+- `DocumentRoot`: `C:/Users/Anderson/OneDrive/Documentos/postgres_pref/apache/www`
+- `ServerName`: `localhost:5435`
+- `Listen 0.0.0.0:5435` (vinculado a todas as interfaces)
+- Sintaxe: `httpd -t` retornou `Syntax OK`
+
+**Logs:**
+- Diretório: `C:\Users\Anderson\OneDrive\Documentos\postgres_pref\apache\logs`
+- Arquivos observados: `access.log`, `error.log`, `httpd.pid`, `install.log`
+
+**Análise e Contexto:**
+
+1. O `PEMHTTPD-x64` não é parte do Geoportal público (que usa `Apache2.4` nas portas `80`/`443`).
+2. O executável e `DocumentRoot` residem em `postgres_pref`, sugerindo origem em ambiente EnterpriseDB/PostgreSQL local.
+3. Servidor está saudável (responde HTTP 200, sintaxe válida, logs presentes).
+4. A porta `5435` está exposta para toda a rede interna (`0.0.0.0:5435`), permitindo acesso remoto.
+
+**Recomendações Futuras (não aplicadas nesta etapa):**
+
+Estas ações devem ser executadas somente em planejamento operacional separado, com backup, rollback e validação:
+
+1. **Investigação de dependências:** Confirmar se o `PEMHTTPD-x64` é necessário para EnterpriseDB, PEM (PostgreSQL Enterprise Manager) ou outras ferramentas críticas do servidor.
+   - Consultores: verificar logs em `C:\Users\Anderson\OneDrive\Documentos\postgres_pref\apache\logs\` para padrões de uso.
+   - Comunicar com administrador PostgreSQL/EnterpriseDB antes de qualquer mudança.
+
+2. **Avaliação de acesso remoto:** Se ninguém acessa `http://10.0.0.109:5435/` pela rede interna, considerar restrição futura.
+   - Opção 1: Modificar `Listen 0.0.0.0:5435` para `Listen 127.0.0.1:5435` (apenas localhost).
+   - Opção 2: Implementar firewall (Windows Firewall ou rede) bloqueando porta `5435` de acesso remoto.
+   - Qualquer alteração exige validação posterior do PostgreSQL/EnterpriseDB.
+
+3. **Revisão de StartMode:** Se comprovadamente não utilizado, considerar alterar de `Auto` para `Manual` em etapa futura (jamais `Disabled` sem confirmação).
+   - Janela de manutenção deve incluir reboot de validação e verificação de logs.
+
+4. **Documentação contínua:** Registrar qualquer achado de acesso remoto a `5435` em logs operacionais para decisão futura.
+
+**Conclusão para esta etapa:** Serviço inventariado e registrado. Geoportal público permanece isolado e não é impactado pelo `PEMHTTPD-x64`. Nenhuma decisão operacional foi tomada.
+
 ## 7. Relacao com login e painel interno
 
 Login e painel interno devem vir depois da estabilizacao da API publica no servidor.
