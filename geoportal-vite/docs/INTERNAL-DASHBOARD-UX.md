@@ -559,6 +559,8 @@ Situacao operacional atual: o runtime `GeoportalAPIInternaHomologacao` esta ativ
 
 Proxima decisao tecnica recomendada: planejar um ambiente controlado para validar `/interno/` contra `/api/internal/auth/me` real, mantendo `8002` restrita a loopback e preferindo proxy interno de homologacao no Apache com rota controlada. Essa etapa deve ter backup da configuracao, rollback, validacao do Geoportal publico e confirmacao de que nao ha `/api/internal/auth/login`, `POST`, `PATCH`, login, listagem ou endpoints de negocio nessa validacao. Nao expor producao publica e nao inserir botao publico de login.
 
+Registro de integracao de desenvolvimento: apos a validacao do proxy Apache real para `https://geoserver.amambai.ms.gov.br/api/internal/`, o Vite local pode usar proxy apenas em `npm run dev` para encaminhar `/api/internal/` ao dominio HTTPS de homologacao. Essa configuracao serve somente para validar a shell local `/interno/` chamando `GET /api/internal/auth/me` por caminho relativo; nao altera build de producao, nao cria login, nao chama listagem, nao habilita `POST`/`PATCH` e nao armazena token.
+
 ## 13. Relacao com documentos existentes
 
 Este documento complementa:

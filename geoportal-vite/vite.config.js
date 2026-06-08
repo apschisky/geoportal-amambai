@@ -6,7 +6,14 @@ export default defineConfig({
   base: './',
   server: {
     port: 5195,
-    strictPort: true
+    strictPort: true,
+    proxy: {
+      '/api/internal/': {
+        target: 'https://geoserver.amambai.ms.gov.br',
+        changeOrigin: true,
+        secure: true
+      }
+    }
   },
   build: {
     outDir: 'dist',

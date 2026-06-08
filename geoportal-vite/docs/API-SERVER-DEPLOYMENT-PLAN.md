@@ -473,6 +473,20 @@ O retorno `401` ao tentar acessar `/api/internal/auth/me` sem sessão é o compo
 
 **Conclusão para esta etapa:** Proxy interno controlado implementado com sucesso. Geoportal público, GeoServer e API pública continuam operacionais. Acesso interno protegido por HTTPS sem exposição de porta 8002. Rollback disponível se necessário. Pronto para integração com shell interna de homologação.
 
+## 6.4. Proxy Vite Somente para Desenvolvimento Local
+
+Para validar a shell local `/interno/` com `npm run dev`, o Vite pode encaminhar a rota relativa `/api/internal/` para `https://geoserver.amambai.ms.gov.br/api/internal/`. Essa configuracao e exclusiva do servidor de desenvolvimento do Vite e nao altera o build final, Apache real, NSSM, firewall, bind ou producao.
+
+Contrato esperado da validacao local:
+
+- `/interno/` chama somente `GET /api/internal/auth/me`;
+- Vite encaminha a requisicao para `https://geoserver.amambai.ms.gov.br/api/internal/auth/me`;
+- sem sessao, o retorno esperado e `401 Unauthorized`;
+- nao deve haver chamada para `/api/internal/auth/login`;
+- nao deve haver chamada para `/api/internal/iluminacao/solicitacoes`;
+- nao deve haver `POST` ou `PATCH`;
+- a shell deve continuar sem armazenar token em `localStorage` ou `sessionStorage`.
+
 ## 7. Relacao com login e painel interno
 
 Login e painel interno devem vir depois da estabilizacao da API publica no servidor.
