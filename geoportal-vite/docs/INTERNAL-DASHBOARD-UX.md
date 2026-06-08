@@ -594,7 +594,13 @@ Restricoes mantidas nesta fase de detalhe: coordenadas nao aparecem no painel co
 
 Validacao registrada para este marco: `npm.cmd run build` passou, `npm.cmd test` passou com 85 testes, `git diff --check` nao apontou erros alem dos avisos normais LF/CRLF do Windows, e a validacao visual confirmou login, `/me` 200, listagem GET 200 e detalhe GET 200. A aba Network mostrou apenas chamadas GET de listagem e detalhe para Iluminacao, sem chamadas mutaveis.
 
-Proxima evolucao recomendada: inventariar o contrato real de historico somente leitura antes de qualquer integracao de historico na shell. Observacoes internas, criacao de observacao e alteracao de status devem continuar reservadas para fases separadas, com permissao, auditoria, header mutavel quando aplicavel e validacao operacional propria.
+Marco implementado: no commit `31d70b2`, a shell interna passou a permitir consulta de historico somente leitura sob demanda no painel de detalhe. A chamada permitida e `GET /api/internal/iluminacao/solicitacoes/{id}/historico?limit=20&offset=0`, sempre com `credentials: "include"` e somente apos sessao autenticada, `/me` valido, detalhe carregado, identificador valido, permissao `iluminacao.solicitacoes.ver_historico` e acao explicita do usuario pelo botao `Ver historico`.
+
+O historico nao carrega automaticamente ao abrir o detalhe. A resposta paginada e exibida como timeline somente leitura, com tratamento seguro para `401`, `403`, `404`, `422` e `503`. Campos operacionais sensiveis do historico, como usuario interno e `observacao_resumida`, devem continuar tratados com cuidado visual, sem JSON bruto, sem console e sem exposicao na consulta publica.
+
+Validacao registrada para este marco: `npm.cmd run build` passou, `npm.cmd test` passou com 85 testes, `git diff --check` nao apontou erros alem dos avisos normais LF/CRLF do Windows, e a validacao visual confirmou login, `/me` 200, listagem GET 200, detalhe GET 200 e historico GET 200 apos clique explicito. A aba Network mostrou o historico com status 200, sem chamadas para observacoes e sem `POST` ou `PATCH` de Iluminacao.
+
+Proxima evolucao recomendada: inventariar o contrato real de observacoes internas somente leitura antes de qualquer integracao de leitura ou criacao de observacoes na shell. Criacao de observacao, alteracao de status, dashboard, mapa, anexos, logout e rota Google Maps devem continuar reservados para fases separadas, com permissao, auditoria, header mutavel quando aplicavel e validacao operacional propria.
 
 ## 13. Relacao com documentos existentes
 
