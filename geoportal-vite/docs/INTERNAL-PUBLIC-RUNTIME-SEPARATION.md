@@ -143,6 +143,29 @@ Validacao autenticada manual pelo servico NSSM:
 
 A validacao ponta a ponta da shell `/interno/` contra o backend interno real deve preservar a decisao de manter `GeoportalAPIInternaHomologacao` restrito a `127.0.0.1:8002`. A porta `8002` nao deve ser aberta diretamente na rede interna como primeira escolha; o caminho preferencial e um proxy interno controlado, planejado antes de qualquer alteracao operacional.
 
+Inventario Apache confirmado no servidor:
+
+- existem dois servicos Apache em execucao: `Apache2.4` e `PEMHTTPD-x64`;
+- o PID que escuta nas portas publicas `80` e `443` e `10772`;
+- o PID `10772` corresponde ao servico `Apache2.4`;
+- executavel do Apache publico ativo: `C:\Users\Anderson\OneDrive\Documentos\bd_web_gis\apache\httpd-2.4.63-250207-win64-VS17\Apache24\bin\httpd.exe`;
+- `PEMHTTPD-x64` tambem esta em execucao, mas nao escuta `80` ou `443`;
+- `httpd -S` do Apache ativo mostrou `ServerRoot: "C:/Apache24"`, `Main DocumentRoot: "C:/Apache24/htdocs"` e `VirtualHost *:443 geoserver.amambai.ms.gov.br`;
+- arquivo critico do VirtualHost ativo: `C:\Apache24\conf\extra\httpd-ssl.conf`;
+- modulos necessarios ja carregados no Apache ativo: `headers_module`, `proxy_module`, `proxy_http_module` e `ssl_module`;
+- sintaxe atual do Apache ativo retornou `Syntax OK`.
+
+O arquivo `C:\Apache24\conf\extra\httpd-ssl.conf` ja contem proxies relevantes:
+
+```apache
+ProxyPass /geoserver http://localhost:5436/geoserver
+ProxyPassReverse /geoserver http://localhost:5436/geoserver
+ProxyPass /api/ http://127.0.0.1:8001/api/
+ProxyPassReverse /api/ http://127.0.0.1:8001/api/
+```
+
+A futura regra para `/api/internal/` deve ficar antes da regra generica `/api/`, porque `/api/` pode capturar `/api/internal/...` e encaminhar a requisicao para o backend publico/producao em `127.0.0.1:8001`.
+
 O proxy interno deve permitir validar somente:
 
 - `/interno/`;
@@ -161,6 +184,20 @@ Exemplo conceitual:
 - `/api/internal/` encaminhado para `http://127.0.0.1:8002/api/internal/`;
 - `/api/health` e `/api/version`, se necessarios para validacao, encaminhados de forma controlada;
 - nenhuma exposicao direta de `8002` na rede.
+
+Bloco conceitual futuro, ainda nao aplicado:
+
+```apache
+ProxyPass        /api/internal/ http://127.0.0.1:8002/api/internal/
+ProxyPassReverse /api/internal/ http://127.0.0.1:8002/api/internal/
+```
+
+Esse bloco deve ficar antes de:
+
+```apache
+ProxyPass        /api/ http://127.0.0.1:8001/api/
+ProxyPassReverse /api/ http://127.0.0.1:8001/api/
+```
 
 Pros:
 
@@ -218,11 +255,18 @@ Esta opcao pode ser util para uma fase futura, mas nao deve publicar a area inte
 
 Antes de qualquer alteracao em Apache/proxy, a tarefa operacional deve registrar:
 
+- working tree limpo;
+- backend interno validado com `.\scripts\deploy\backend-restart-validate-service.ps1 -Environment InternaHomologacao -Restart -Validate`;
 - backup obrigatorio do arquivo de configuracao do Apache;
-- identificacao clara dos arquivos Apache envolvidos, quando conhecidos;
-- validacao de sintaxe do Apache antes de reiniciar ou recarregar;
+- arquivo envolvido atualmente identificado como `C:\Apache24\conf\extra\httpd-ssl.conf`;
+- hash, tamanho e data do arquivo antes da alteracao;
+- insercao do bloco `/api/internal/` antes do bloco `/api/`;
+- validacao de sintaxe com o executavel do servico ativo: `C:\Users\Anderson\OneDrive\Documentos\bd_web_gis\apache\httpd-2.4.63-250207-win64-VS17\Apache24\bin\httpd.exe -t`;
+- se a sintaxe falhar, restaurar backup e nao reiniciar Apache;
 - plano de rollback com restauracao do arquivo anterior, reinicio/reload do Apache e validacao do Geoportal publico;
 - validacao de que o Geoportal publico abre, camadas publicas continuam funcionando e busca publica permanece operacional;
+- validacao de que GeoServer continua respondendo;
+- validacao de que a API publica continua respondendo;
 - validacao de que `/interno/` abre apenas no ambiente planejado;
 - validacao de que `/api/internal/auth/me` retorna `401` sem sessao;
 - verificacao de que nao ha chamada para `/api/internal/auth/login`;
@@ -243,6 +287,23 @@ Criterios de aceite da etapa operacional futura:
 - sem abertura direta da porta `8002` na rede.
 
 Recomendacao: manter `GeoportalAPIInternaHomologacao` em `127.0.0.1:8002`, planejar proxy interno controlado em homologacao, nao mexer no Geoportal publico nesta etapa, nao inserir botao publico de login e nao tratar abertura direta de `8002` como arquitetura definitiva.
+
+## Planejamento para Higienizacao de Apaches Duplicados
+
+O servico `PEMHTTPD-x64` tambem esta em execucao, mas o inventario atual indica que ele nao atende as portas publicas `80` e `443`. Isso representa risco operacional de confusao durante manutencao, validacao de sintaxe, leitura de logs ou reinicio de servico.
+
+Recomendacao: nao parar, desabilitar ou alterar `PEMHTTPD-x64` antes de inventario adicional. A higienizacao de servicos Apache duplicados deve ser etapa futura separada.
+
+Roteiro manual futuro:
+
+1. Inventariar portas do `PEMHTTPD-x64`.
+2. Verificar se o PID correspondente escuta alguma porta.
+3. Verificar logs do `PEMHTTPD-x64`.
+4. Verificar se algum servico PostgreSQL/PEM depende dele.
+5. Confirmar se existe acesso local a painel ou servico em `postgres_pref`.
+6. Se nao houver dependencia, planejar mudanca controlada de `StartMode` para manual ou desabilitado, apenas apos backup, janela de manutencao e rollback.
+7. Nunca parar ou desabilitar o servico duplicado sem evidencia de que nao e usado.
+8. Nao confundir o Apache publico ativo `Apache2.4` com `PEMHTTPD-x64`.
 
 Estado de seguranca apos a validacao:
 

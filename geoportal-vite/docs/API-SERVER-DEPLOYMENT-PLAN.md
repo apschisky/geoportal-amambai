@@ -225,6 +225,56 @@ Enquanto essa evolucao nao for planejada e validada, o arranjo aceito e:
 - sem wildcard;
 - Google Forms mantido como fallback.
 
+## 6.1. Inventario Apache para proxy interno futuro
+
+Inventario operacional registrado para planejamento futuro, sem alteracao aplicada nesta etapa:
+
+- servico que atende `80` e `443`: `Apache2.4`;
+- PID observado nas portas publicas: `10772`;
+- executavel do Apache publico ativo: `C:\Users\Anderson\OneDrive\Documentos\bd_web_gis\apache\httpd-2.4.63-250207-win64-VS17\Apache24\bin\httpd.exe`;
+- `httpd -S` do Apache ativo indicou `ServerRoot: "C:/Apache24"` e `VirtualHost *:443 geoserver.amambai.ms.gov.br`;
+- arquivo critico do VirtualHost ativo: `C:\Apache24\conf\extra\httpd-ssl.conf`;
+- modulos necessarios carregados: `headers_module`, `proxy_module`, `proxy_http_module` e `ssl_module`;
+- sintaxe atual retornou `Syntax OK`;
+- servico adicional `PEMHTTPD-x64` tambem esta rodando, mas nao escuta `80` ou `443`.
+
+O arquivo `C:\Apache24\conf\extra\httpd-ssl.conf` ja possui:
+
+```apache
+ProxyPass /geoserver http://localhost:5436/geoserver
+ProxyPassReverse /geoserver http://localhost:5436/geoserver
+ProxyPass /api/ http://127.0.0.1:8001/api/
+ProxyPassReverse /api/ http://127.0.0.1:8001/api/
+```
+
+Para uma futura validacao da shell interna, a regra conceitual abaixo deve ser posicionada antes da regra generica `/api/`:
+
+```apache
+ProxyPass        /api/internal/ http://127.0.0.1:8002/api/internal/
+ProxyPassReverse /api/internal/ http://127.0.0.1:8002/api/internal/
+```
+
+Motivo: `/api/` e mais generico e pode capturar `/api/internal/...` se vier antes, encaminhando a requisicao ao backend errado em `127.0.0.1:8001`.
+
+Roteiro manual futuro para proxy interno controlado:
+
+1. Confirmar working tree limpo.
+2. Validar `GeoportalAPIInternaHomologacao` com `.\scripts\deploy\backend-restart-validate-service.ps1 -Environment InternaHomologacao -Restart -Validate`.
+3. Fazer backup de `C:\Apache24\conf\extra\httpd-ssl.conf`.
+4. Registrar hash, tamanho e data do arquivo antes da alteracao.
+5. Inserir bloco `/api/internal/` antes de `/api/`.
+6. Rodar sintaxe com `C:\Users\Anderson\OneDrive\Documentos\bd_web_gis\apache\httpd-2.4.63-250207-win64-VS17\Apache24\bin\httpd.exe -t`.
+7. Se a sintaxe falhar, restaurar backup e nao reiniciar Apache.
+8. Se a sintaxe passar, planejar reload/restart controlado do servico `Apache2.4`.
+9. Validar Geoportal publico, mapa, camadas, busca, GeoServer e API publica.
+10. Validar que `GET /api/internal/auth/me` retorna `401` sem sessao.
+11. Confirmar que `8002` continua sem exposicao direta na rede.
+12. Confirmar que nao ha login, `POST`, `PATCH` ou listagem nessa validacao.
+13. Documentar resultado.
+14. Manter rollback pronto: restaurar backup, validar sintaxe, reiniciar/recarregar Apache e validar publico.
+
+O servico `PEMHTTPD-x64` deve ser tratado como duplicidade operacional a investigar. Nao parar nem desabilitar antes de inventariar portas, logs, dependencias e finalidade. Se nao houver dependencia, qualquer mudanca de `StartMode` deve ocorrer somente em etapa propria, com backup, janela de manutencao e rollback.
+
 ## 7. Relacao com login e painel interno
 
 Login e painel interno devem vir depois da estabilizacao da API publica no servidor.
