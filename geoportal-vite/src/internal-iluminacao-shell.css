@@ -584,7 +584,7 @@ textarea:disabled {
 }
 
 .internal-table-shell {
-  min-width: 980px;
+  min-width: 1120px;
   overflow: hidden;
   border: 1px solid #d2dcdf;
   border-radius: 8px;
@@ -593,7 +593,7 @@ textarea:disabled {
 
 .internal-table-row {
   display: grid;
-  grid-template-columns: 1.1fr 1fr 1.2fr 0.9fr 0.8fr 1fr 1fr 0.8fr;
+  grid-template-columns: 1.1fr 1fr 1.2fr 0.9fr 0.8fr 1fr 1fr 0.8fr 0.9fr;
   gap: 10px;
   padding: 11px 12px;
 }
@@ -616,6 +616,27 @@ textarea:disabled {
   text-align: center;
 }
 
+.internal-row-action {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid #7da08b;
+  border-radius: 6px;
+  background: #eef8f2;
+  color: #2f6847;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.internal-row-action:hover:not(:disabled) {
+  background: #e1f1e7;
+}
+
+.internal-row-action:disabled {
+  border-color: #c4cfd3;
+  background: #edf1f3;
+  color: #728088;
+}
+
 .internal-detail-grid {
   display: grid;
   grid-column: 2;
@@ -627,6 +648,53 @@ textarea:disabled {
 .internal-card {
   min-height: 220px;
   padding: 16px;
+}
+
+.internal-detail-card {
+  grid-column: 1 / -1;
+}
+
+.internal-detail-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.internal-detail-card-header .internal-secondary-action {
+  width: auto;
+  min-width: 132px;
+  margin-top: 0;
+  padding-inline: 12px;
+}
+
+.internal-detail-sections {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.internal-detail-section {
+  border: 1px solid #e0e7ea;
+  border-radius: 8px;
+  background: #fbfcfd;
+  padding: 12px;
+}
+
+.internal-detail-section h4 {
+  margin: 0 0 8px;
+  color: #24343d;
+  font-size: 0.96rem;
+}
+
+.internal-sensitive-note {
+  margin: 12px 0 0;
+  border-left: 3px solid #d8c06d;
+  padding-left: 10px;
+  color: #655624;
+  font-size: 0.86rem;
+  line-height: 1.45;
 }
 
 .internal-card dl {
@@ -728,6 +796,11 @@ textarea:disabled {
   margin-top: 10px;
 }
 
+.internal-detail-card-header .internal-secondary-action {
+  width: auto;
+  margin-top: 0;
+}
+
 .internal-timeline {
   margin: 12px 0 0;
   padding-left: 20px;
@@ -809,9 +882,18 @@ textarea:disabled {
   .internal-workspace,
   .internal-login-panel,
   .internal-auth-grid,
+  .internal-detail-sections,
   .internal-detail-grid,
   .internal-next {
     grid-template-columns: 1fr;
+  }
+
+  .internal-detail-card-header {
+    display: grid;
+  }
+
+  .internal-detail-card-header .internal-secondary-action {
+    width: 100%;
   }
 
   .internal-detail-grid {

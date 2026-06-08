@@ -200,7 +200,8 @@ const futureCapabilities = [
 const nextSteps = [
   'Validar login visual minimo com cookie HttpOnly e /api/internal/auth/me.',
   'Validar listagem interna somente leitura apos login, sessao e permissao confirmados.',
-  'Conectar detalhe, historico e observacoes em fases separadas.',
+  'Validar detalhe somente leitura por selecao explicita da tabela.',
+  'Conectar historico e observacoes em fases separadas.',
   'Habilitar POST/PATCH apenas em fases autenticadas e testadas.',
   'Planejar dashboard, mapa operacional e proxy separadamente.'
 ];
@@ -208,7 +209,7 @@ const nextSteps = [
 const outOfScope = [
   'logout completo',
   'token manual, localStorage ou sessionStorage',
-  'detalhe, historico e observacoes de Iluminacao',
+  'historico e observacoes de Iluminacao',
   'POST/PATCH de Iluminacao ou qualquer acao operacional',
   'dashboard, estatisticas e mapa operacional',
   'proxy, Apache ou producao interna'
@@ -227,6 +228,17 @@ function createSolicitacoesState(overrides = {}) {
   };
 }
 
+function createDetalheState(overrides = {}) {
+  return {
+    status: 'idle',
+    item: null,
+    solicitacaoId: null,
+    statusCode: null,
+    message: 'Selecione uma solicitacao na tabela para carregar o detalhe somente leitura.',
+    ...overrides
+  };
+}
+
 const initialSessionState = {
   sessionState: 'checking_session',
   usuarioId: null,
@@ -237,7 +249,8 @@ const initialSessionState = {
   loginStatus: 'idle',
   loginMessage: '',
   loginValue: '',
-  solicitacoes: createSolicitacoesState()
+  solicitacoes: createSolicitacoesState(),
+  detalhe: createDetalheState()
 };
 
 function createSessionState(overrides = {}) {
@@ -252,6 +265,7 @@ function createSessionState(overrides = {}) {
     loginMessage: '',
     loginValue: '',
     solicitacoes: createSolicitacoesState(),
+    detalhe: createDetalheState(),
     ...overrides
   };
 }
@@ -261,7 +275,8 @@ let currentState = createSessionState();
 function renderApp(root, state) {
   currentState = {
     ...state,
-    solicitacoes: state.solicitacoes || createSolicitacoesState()
+    solicitacoes: state.solicitacoes || createSolicitacoesState(),
+    detalhe: state.detalhe || createDetalheState()
   };
   renderInternalIluminacaoShell(root, currentState);
 }
@@ -331,6 +346,36 @@ function isValidSolicitacoesPayload(payload) {
   );
 }
 
+function isOptionalText(value) {
+  return value === null || value === undefined || typeof value === 'string';
+}
+
+function isValidSolicitacaoDetailPayload(payload) {
+  return Boolean(
+    payload
+      && typeof payload === 'object'
+      && Number.isInteger(payload.id)
+      && payload.id > 0
+      && typeof payload.protocolo === 'string'
+      && typeof payload.origem === 'string'
+      && typeof payload.localizacao_tipo === 'string'
+      && isOptionalText(payload.poste_id)
+      && typeof payload.tipo_problema === 'string'
+      && typeof payload.descricao === 'string'
+      && isOptionalText(payload.observacoes_localizacao)
+      && isOptionalText(payload.ponto_referencia)
+      && isOptionalText(payload.poste_proximo_informado)
+      && typeof payload.nome_solicitante === 'string'
+      && typeof payload.contato_solicitante === 'string'
+      && typeof payload.status === 'string'
+      && typeof payload.prioridade === 'string'
+      && typeof payload.duplicidade_suspeita === 'boolean'
+      && typeof payload.criado_em === 'string'
+      && typeof payload.atualizado_em === 'string'
+      && isOptionalText(payload.finalizado_em)
+  );
+}
+
 function safeText(value, fallback = 'Nao informado') {
   if (value === null || value === undefined) {
     return fallback;
@@ -361,8 +406,12 @@ function formatDateTime(value) {
 
 function toDisplaySolicitacao(item) {
   const safeItem = item && typeof item === 'object' ? item : {};
+  const id = Number.isInteger(safeItem.id) && safeItem.id > 0
+    ? safeItem.id
+    : null;
 
   return {
+    id,
     protocolo: safeText(safeItem.protocolo),
     status: safeText(safeItem.status),
     tipoProblema: safeText(safeItem.tipo_problema),
@@ -374,6 +423,31 @@ function toDisplaySolicitacao(item) {
   };
 }
 
+function toDisplaySolicitacaoDetail(item) {
+  const safeItem = item && typeof item === 'object' ? item : {};
+
+  return {
+    id: Number.isInteger(safeItem.id) ? safeItem.id : null,
+    protocolo: safeText(safeItem.protocolo),
+    status: safeText(safeItem.status),
+    tipoProblema: safeText(safeItem.tipo_problema),
+    prioridade: safeText(safeItem.prioridade),
+    posteId: safeText(safeItem.poste_id, 'Sem poste'),
+    origem: safeText(safeItem.origem),
+    localizacaoTipo: safeText(safeItem.localizacao_tipo),
+    duplicidadeSuspeita: safeItem.duplicidade_suspeita === true ? 'Sim' : 'Nao',
+    criadoEm: formatDateTime(safeItem.criado_em),
+    atualizadoEm: formatDateTime(safeItem.atualizado_em),
+    finalizadoEm: formatDateTime(safeItem.finalizado_em),
+    nomeSolicitante: safeText(safeItem.nome_solicitante),
+    contatoSolicitante: safeText(safeItem.contato_solicitante),
+    descricao: safeText(safeItem.descricao),
+    observacoesLocalizacao: safeText(safeItem.observacoes_localizacao),
+    pontoReferencia: safeText(safeItem.ponto_referencia),
+    posteProximoInformado: safeText(safeItem.poste_proximo_informado)
+  };
+}
+
 function buildSolicitacoesUrl(offset = 0) {
   const params = new URLSearchParams({
     limit: String(SOLICITACOES_PAGE_SIZE),
@@ -381,6 +455,10 @@ function buildSolicitacoesUrl(offset = 0) {
   });
 
   return `${INTERNAL_SOLICITACOES_ENDPOINT}?${params.toString()}`;
+}
+
+function buildSolicitacaoDetailUrl(solicitacaoId) {
+  return `${INTERNAL_SOLICITACOES_ENDPOINT}/${encodeURIComponent(String(solicitacaoId))}`;
 }
 
 function canListSolicitacoes(state) {
@@ -588,7 +666,22 @@ function renderPermissionSummary(state) {
 
 function renderSolicitacoesRows(items) {
   return items
-    .map((item) => `
+    .map((item) => {
+      const hasValidId = Number.isInteger(item.id) && item.id > 0;
+      const actionButton = hasValidId
+        ? `
+          <button
+            type="button"
+            class="internal-row-action"
+            data-action="load-solicitacao-detail"
+            data-solicitacao-id="${escapeHtml(item.id)}"
+          >
+            Ver detalhe
+          </button>
+        `
+        : '<button type="button" class="internal-row-action" disabled>Indisponivel</button>';
+
+      return `
       <div class="internal-table-row" role="row">
         <span data-label="Protocolo">${escapeHtml(item.protocolo)}</span>
         <span data-label="Status">${escapeHtml(item.status)}</span>
@@ -598,8 +691,10 @@ function renderSolicitacoesRows(items) {
         <span data-label="Criado em">${escapeHtml(item.criadoEm)}</span>
         <span data-label="Atualizado em">${escapeHtml(item.atualizadoEm)}</span>
         <span data-label="Duplicidade">${escapeHtml(item.duplicidadeSuspeita)}</span>
+        <span data-label="Acoes">${actionButton}</span>
       </div>
-    `)
+    `;
+    })
     .join('');
 }
 
@@ -725,11 +820,179 @@ function renderSolicitacoesPanel(state) {
             <span>Criado em</span>
             <span>Atualizado em</span>
             <span>Duplicidade</span>
+            <span>Acoes</span>
           </div>
           ${renderSolicitacoesTable(listState)}
         </div>
       </div>
     </section>
+  `;
+}
+
+function renderDetailDefinitionList(items) {
+  return `
+    <dl>
+      ${items.map((item) => `
+        <div>
+          <dt>${escapeHtml(item.label)}</dt>
+          <dd>${escapeHtml(item.value)}</dd>
+        </div>
+      `).join('')}
+    </dl>
+  `;
+}
+
+function renderSolicitacaoDetailLoaded(detail) {
+  const item = detail.item;
+
+  return `
+    <article class="internal-card internal-detail-card">
+      <div class="internal-detail-card-header">
+        <div>
+          <h3>Detalhe da solicitacao</h3>
+          <p>Leitura operacional restrita. Coordenadas e JSON bruto nao sao exibidos nesta fase.</p>
+        </div>
+        <button
+          type="button"
+          class="internal-secondary-action"
+          data-action="clear-solicitacao-detail"
+        >
+          Fechar detalhe
+        </button>
+      </div>
+
+      <div class="internal-detail-sections">
+        <section class="internal-detail-section" aria-label="Identificacao da solicitacao">
+          <h4>Identificacao</h4>
+          ${renderDetailDefinitionList([
+            { label: 'Protocolo', value: item.protocolo },
+            { label: 'Status', value: item.status },
+            { label: 'Prioridade', value: item.prioridade },
+            { label: 'Tipo de problema', value: item.tipoProblema },
+            { label: 'Poste', value: item.posteId },
+            { label: 'Duplicidade suspeita', value: item.duplicidadeSuspeita }
+          ])}
+        </section>
+
+        <section class="internal-detail-section" aria-label="Origem e localizacao operacional">
+          <h4>Origem e localizacao operacional</h4>
+          ${renderDetailDefinitionList([
+            { label: 'Origem', value: item.origem },
+            { label: 'Tipo de localizacao', value: item.localizacaoTipo },
+            { label: 'Ponto de referencia', value: item.pontoReferencia },
+            { label: 'Poste proximo informado', value: item.posteProximoInformado }
+          ])}
+          <p class="internal-sensitive-note">
+            Latitude e longitude ficam fora deste painel comum e devem aguardar etapa propria de mapa/localizacao operacional.
+          </p>
+        </section>
+
+        <section class="internal-detail-section" aria-label="Dados do solicitante">
+          <h4>Dados do solicitante</h4>
+          ${renderDetailDefinitionList([
+            { label: 'Nome', value: item.nomeSolicitante },
+            { label: 'Contato', value: item.contatoSolicitante }
+          ])}
+          <p class="internal-sensitive-note">
+            Dados pessoais exibidos apenas no detalhe interno e para uso operacional restrito.
+          </p>
+        </section>
+
+        <section class="internal-detail-section" aria-label="Descricao e observacoes">
+          <h4>Descricao</h4>
+          ${renderDetailDefinitionList([
+            { label: 'Descricao', value: item.descricao },
+            { label: 'Observacoes de localizacao', value: item.observacoesLocalizacao }
+          ])}
+        </section>
+
+        <section class="internal-detail-section" aria-label="Datas da solicitacao">
+          <h4>Datas</h4>
+          ${renderDetailDefinitionList([
+            { label: 'Criado em', value: item.criadoEm },
+            { label: 'Atualizado em', value: item.atualizadoEm },
+            { label: 'Finalizado em', value: item.finalizadoEm }
+          ])}
+        </section>
+
+        <section class="internal-detail-section" aria-label="Acoes futuras indisponiveis">
+          <h4>Acoes futuras</h4>
+          <p>
+            Historico, observacoes internas e alteracao de status continuam fora desta fase e nao sao chamados pela shell.
+          </p>
+        </section>
+      </div>
+    </article>
+  `;
+}
+
+function renderSolicitacaoDetailPanel(state) {
+  const detail = state.detalhe || createDetalheState();
+
+  if (detail.status === 'loaded' && detail.item) {
+    return renderSolicitacaoDetailLoaded(detail);
+  }
+
+  const statusMessages = {
+    idle: {
+      title: 'Detalhe da solicitacao',
+      text: detail.message
+    },
+    loading: {
+      title: 'Carregando detalhe',
+      text: 'Consultando somente GET de detalhe com cookie de sessao.'
+    },
+    forbidden: {
+      title: 'Sem permissao',
+      text: detail.message
+    },
+    not_found: {
+      title: 'Solicitacao nao encontrada',
+      text: detail.message
+    },
+    expired: {
+      title: 'Sessao expirada',
+      text: detail.message
+    },
+    error: {
+      title: 'Detalhe indisponivel',
+      text: detail.message
+    }
+  };
+  const content = statusMessages[detail.status] || statusMessages.error;
+  const canClear = detail.status !== 'idle' && detail.status !== 'loading';
+
+  return `
+    <article class="internal-card internal-detail-card">
+      <div class="internal-detail-card-header">
+        <div>
+          <h3>${escapeHtml(content.title)}</h3>
+          <p>${escapeHtml(content.text)}</p>
+        </div>
+        <button
+          type="button"
+          class="internal-secondary-action"
+          data-action="clear-solicitacao-detail"
+          ${canClear ? '' : 'disabled'}
+        >
+          Limpar selecao
+        </button>
+      </div>
+      <dl>
+        <div>
+          <dt>Endpoint permitido nesta fase</dt>
+          <dd>GET /api/internal/iluminacao/solicitacoes/{id}</dd>
+        </div>
+        <div>
+          <dt>Status</dt>
+          <dd>${escapeHtml(detail.statusCode ? `HTTP ${detail.statusCode}` : 'Aguardando selecao')}</dd>
+        </div>
+        <div>
+          <dt>Restricoes</dt>
+          <dd>Sem historico, observacoes, POST, PATCH, coordenadas ou JSON bruto.</dd>
+        </div>
+      </dl>
+    </article>
   `;
 }
 
@@ -849,6 +1112,7 @@ function renderInternalIluminacaoShell(root, state) {
             <div class="internal-safety-list" aria-label="Controles mantidos nesta fase">
               <span>GET /auth/me</span>
               <span>GET solicitacoes</span>
+              <span>GET detalhe</span>
               <span>Credentials include</span>
               <span>Cookie HttpOnly</span>
               <span>Sem POST/PATCH</span>
@@ -909,7 +1173,7 @@ function renderInternalIluminacaoShell(root, state) {
           <section class="internal-module-workspace" aria-labelledby="module-workspace-title">
             <div class="internal-section-heading">
               <h2 id="module-workspace-title">Operacao planejada de Iluminacao</h2>
-              <p>A listagem minima e somente leitura. Detalhe, historico, observacoes e status continuam desabilitados.</p>
+              <p>A listagem e o detalhe sao somente leitura. Historico, observacoes e status continuam desabilitados.</p>
             </div>
 
             <div class="internal-workspace">
@@ -988,26 +1252,7 @@ function renderInternalIluminacaoShell(root, state) {
               ${renderSolicitacoesPanel(state)}
 
               <div class="internal-detail-grid">
-                <article class="internal-card">
-                  <h3>Detalhe da solicitacao</h3>
-                  <p>
-                    Futuro painel para protocolo, localizacao, descricao, solicitante, coordenadas WGS84 e status atual.
-                  </p>
-                  <dl>
-                    <div>
-                      <dt>Origem</dt>
-                      <dd>Aguardando integracao de detalhe</dd>
-                    </div>
-                    <div>
-                      <dt>Localizacao</dt>
-                      <dd>Latitude/longitude futuras</dd>
-                    </div>
-                    <div>
-                      <dt>Dados pessoais</dt>
-                      <dd>Somente quando necessario ao fluxo interno</dd>
-                    </div>
-                  </dl>
-                </article>
+                ${renderSolicitacaoDetailPanel(state)}
 
                 <article class="internal-card">
                   <h3>Historico</h3>
@@ -1255,6 +1500,89 @@ async function fetchSolicitacoesInternas(offset = 0) {
   });
 }
 
+async function fetchSolicitacaoDetail(solicitacaoId) {
+  const response = await fetch(buildSolicitacaoDetailUrl(solicitacaoId), {
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json'
+    }
+  });
+
+  if (response.status === 401) {
+    return createDetalheState({
+      status: 'expired',
+      solicitacaoId,
+      statusCode: response.status,
+      message: 'Sessao ausente ou expirada ao consultar o detalhe. Faca login novamente.'
+    });
+  }
+
+  if (response.status === 403) {
+    return createDetalheState({
+      status: 'forbidden',
+      solicitacaoId,
+      statusCode: response.status,
+      message: 'Sem permissao para visualizar o detalhe desta solicitacao.'
+    });
+  }
+
+  if (response.status === 404) {
+    return createDetalheState({
+      status: 'not_found',
+      solicitacaoId,
+      statusCode: response.status,
+      message: 'Solicitacao nao encontrada ou removida logicamente.'
+    });
+  }
+
+  if (response.status === 422) {
+    return createDetalheState({
+      status: 'error',
+      solicitacaoId,
+      statusCode: response.status,
+      message: 'Identificador da solicitacao invalido.'
+    });
+  }
+
+  if (response.status === 503) {
+    return createDetalheState({
+      status: 'error',
+      solicitacaoId,
+      statusCode: response.status,
+      message: 'Servico interno temporariamente indisponivel para carregar o detalhe.'
+    });
+  }
+
+  if (!response.ok) {
+    return createDetalheState({
+      status: 'error',
+      solicitacaoId,
+      statusCode: response.status,
+      message: 'Nao foi possivel carregar o detalhe neste momento.'
+    });
+  }
+
+  const payload = await response.json();
+
+  if (!isValidSolicitacaoDetailPayload(payload)) {
+    return createDetalheState({
+      status: 'error',
+      solicitacaoId,
+      statusCode: response.status,
+      message: 'Resposta de detalhe em formato inesperado.'
+    });
+  }
+
+  return createDetalheState({
+    status: 'loaded',
+    item: toDisplaySolicitacaoDetail(payload),
+    solicitacaoId,
+    statusCode: response.status,
+    message: 'Detalhe somente leitura carregado.'
+  });
+}
+
 async function loadSolicitacoes(root, state, offset = 0) {
   if (!canListSolicitacoes(state)) {
     renderApp(root, {
@@ -1264,7 +1592,8 @@ async function loadSolicitacoes(root, state, offset = 0) {
         message: state.sessionState === 'authenticated'
           ? 'A listagem nao foi chamada porque a permissao de Iluminacao nao foi confirmada.'
           : 'A listagem nao foi chamada porque a sessao ainda nao foi autenticada.'
-      })
+      }),
+      detalhe: createDetalheState()
     });
     return;
   }
@@ -1275,6 +1604,9 @@ async function loadSolicitacoes(root, state, offset = 0) {
       status: 'loading',
       offset,
       message: 'Carregando solicitacoes internas com limit=20 e offset seguro.'
+    }),
+    detalhe: createDetalheState({
+      message: 'Selecao de detalhe limpa durante a atualizacao da listagem.'
     })
   };
 
@@ -1305,9 +1637,85 @@ async function loadSolicitacoes(root, state, offset = 0) {
         status: 'error',
         offset,
         message: 'Falha temporaria de conexao com o servico interno de listagem.'
+      }),
+      detalhe: createDetalheState()
+    });
+  }
+}
+
+async function loadSolicitacaoDetail(root, state, solicitacaoId) {
+  if (!canListSolicitacoes(state)) {
+    renderApp(root, {
+      ...state,
+      detalhe: createDetalheState({
+        status: state.sessionState === 'authenticated' ? 'forbidden' : 'idle',
+        statusCode: state.sessionState === 'authenticated' ? 403 : null,
+        message: state.sessionState === 'authenticated'
+          ? 'O detalhe nao foi chamado porque a permissao de Iluminacao nao foi confirmada.'
+          : 'O detalhe nao foi chamado porque a sessao ainda nao foi autenticada.'
+      })
+    });
+    return;
+  }
+
+  if (!Number.isInteger(solicitacaoId) || solicitacaoId < 1) {
+    renderApp(root, {
+      ...state,
+      detalhe: createDetalheState({
+        status: 'error',
+        statusCode: 422,
+        message: 'Identificador da solicitacao invalido.'
+      })
+    });
+    return;
+  }
+
+  const loadingState = {
+    ...state,
+    detalhe: createDetalheState({
+      status: 'loading',
+      solicitacaoId,
+      message: 'Carregando detalhe somente leitura.'
+    })
+  };
+
+  renderApp(root, loadingState);
+
+  try {
+    const detalhe = await fetchSolicitacaoDetail(solicitacaoId);
+
+    if (detalhe.status === 'expired') {
+      renderApp(root, createSessionState({
+        sessionState: 'unauthenticated',
+        statusCode: 401,
+        message: 'Sessao expirada ao tentar carregar o detalhe. Faca login novamente.',
+        hasChecked: true,
+        detalhe
+      }));
+      return;
+    }
+
+    renderApp(root, {
+      ...loadingState,
+      detalhe
+    });
+  } catch {
+    renderApp(root, {
+      ...state,
+      detalhe: createDetalheState({
+        status: 'error',
+        solicitacaoId,
+        message: 'Falha temporaria de conexao com o servico interno de detalhe.'
       })
     });
   }
+}
+
+function clearSolicitacaoDetail(root, state) {
+  renderApp(root, {
+    ...state,
+    detalhe: createDetalheState()
+  });
 }
 
 async function verifySession(root) {
@@ -1490,6 +1898,27 @@ if (root) {
         : 0;
 
       loadSolicitacoes(root, currentState, safeOffset);
+      return;
+    }
+
+    if (
+      target instanceof HTMLElement
+      && target.matches('[data-action="load-solicitacao-detail"]')
+    ) {
+      const requestedId = Number.parseInt(target.dataset.solicitacaoId || '0', 10);
+      const safeId = Number.isInteger(requestedId) && requestedId > 0
+        ? requestedId
+        : 0;
+
+      loadSolicitacaoDetail(root, currentState, safeId);
+      return;
+    }
+
+    if (
+      target instanceof HTMLElement
+      && target.matches('[data-action="clear-solicitacao-detail"]')
+    ) {
+      clearSolicitacaoDetail(root, currentState);
     }
   });
 

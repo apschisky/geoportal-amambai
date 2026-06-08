@@ -588,7 +588,11 @@ A tabela inicial exibe apenas campos minimos nao pessoais: protocolo, status, ti
 
 Validacao registrada para este marco: `npm.cmd run build` passou, `npm.cmd test` passou com 85 testes, `git diff --check` nao apontou erros alem dos avisos normais LF/CRLF do Windows, e a validacao visual confirmou login, `/me` 200, listagem GET 200 e ausencia de chamadas mutaveis. Detalhe, historico, observacoes, alteracao de status, dashboard real, mapa operacional e anexos continuam desabilitados ou reservados a fases futuras. Nao ha `POST` ou `PATCH` de Iluminacao pela shell, nao ha token em `localStorage` ou `sessionStorage`, o backend continua sendo a autoridade de autorizacao e o Geoportal publico permanece preservado.
 
-Proxima evolucao recomendada: inventariar o contrato real do detalhe somente leitura `GET /api/internal/iluminacao/solicitacoes/{id}` antes de qualquer implementacao de detalhe na shell. Esse inventario deve definir campos exibiveis, dados pessoais que exigem cuidado, tratamento de 401/403/404/422/503, relacao com a listagem e criterios para manter historico, observacoes e mutacoes fora da proxima etapa.
+Marco implementado: a shell interna passou a oferecer painel de detalhe somente leitura acionado explicitamente pela tabela. A chamada permitida e `GET /api/internal/iluminacao/solicitacoes/{id}`, sempre com `credentials: "include"` e somente apos sessao autenticada, `/me` valido, permissao `iluminacao.solicitacoes.ler` e identificador positivo. O painel exibe dados operacionais do detalhe, dados do solicitante e campos livres apenas dentro do detalhe interno, com rotulo de uso restrito. A tabela continua sem nome, contato, descricao, observacoes de localizacao, ponto de referencia, poste proximo informado, latitude ou longitude.
+
+Restricoes mantidas nesta fase de detalhe: coordenadas nao aparecem no painel comum; JSON bruto nao e exibido; nao ha chamada para historico, observacoes ou status; nao ha `POST` ou `PATCH` de Iluminacao; nao ha token em `localStorage` ou `sessionStorage`; o backend continua sendo a autoridade de autorizacao; e o Geoportal publico permanece preservado.
+
+Proxima evolucao recomendada: inventariar o contrato real de historico somente leitura antes de qualquer integracao de historico na shell. Observacoes internas, criacao de observacao e alteracao de status devem continuar reservadas para fases separadas, com permissao, auditoria, header mutavel quando aplicavel e validacao operacional propria.
 
 ## 13. Relacao com documentos existentes
 
