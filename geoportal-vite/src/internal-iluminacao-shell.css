@@ -522,6 +522,55 @@ textarea:disabled {
   padding: 16px;
 }
 
+.internal-list-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #dbe5e8;
+  border-radius: 8px;
+  background: #f8fafb;
+}
+
+.internal-list-toolbar strong,
+.internal-list-toolbar span {
+  display: block;
+}
+
+.internal-list-toolbar strong {
+  color: #17252d;
+}
+
+.internal-list-toolbar span,
+.internal-list-message {
+  color: #5e6e76;
+  font-size: 0.88rem;
+}
+
+.internal-list-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.internal-list-actions .internal-secondary-action {
+  width: auto;
+  min-width: 132px;
+  margin-top: 0;
+  padding-inline: 10px;
+}
+
+.internal-list-message {
+  margin: 12px 0;
+  line-height: 1.45;
+}
+
+.internal-table-wrap {
+  overflow-x: auto;
+}
+
 .internal-panel-header {
   display: flex;
   align-items: flex-start;
@@ -535,6 +584,7 @@ textarea:disabled {
 }
 
 .internal-table-shell {
+  min-width: 980px;
   overflow: hidden;
   border: 1px solid #d2dcdf;
   border-radius: 8px;
@@ -543,9 +593,14 @@ textarea:disabled {
 
 .internal-table-row {
   display: grid;
-  grid-template-columns: 1.2fr 1fr 1.2fr 0.8fr 1fr;
+  grid-template-columns: 1.1fr 1fr 1.2fr 0.9fr 0.8fr 1fr 1fr 0.8fr;
   gap: 10px;
   padding: 11px 12px;
+}
+
+.internal-table-row span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .internal-table-head {
@@ -563,6 +618,7 @@ textarea:disabled {
 
 .internal-detail-grid {
   display: grid;
+  grid-column: 2;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
   margin-top: 14px;
@@ -758,6 +814,10 @@ textarea:disabled {
     grid-template-columns: 1fr;
   }
 
+  .internal-detail-grid {
+    grid-column: auto;
+  }
+
   .internal-sidebar {
     position: static;
   }
@@ -777,13 +837,36 @@ textarea:disabled {
   .internal-table-shell {
     display: grid;
     gap: 0;
+    min-width: 0;
   }
 
   .internal-table-row {
     grid-template-columns: 1fr;
   }
 
+  .internal-table-row span {
+    display: grid;
+    grid-template-columns: minmax(120px, 0.45fr) minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .internal-table-row span::before {
+    content: attr(data-label);
+    color: #5e6e76;
+    font-weight: 800;
+  }
+
   .internal-table-head {
     display: none;
+  }
+
+  .internal-list-toolbar,
+  .internal-list-actions {
+    display: grid;
+    justify-content: stretch;
+  }
+
+  .internal-list-actions .internal-secondary-action {
+    width: 100%;
   }
 }

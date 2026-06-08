@@ -582,6 +582,8 @@ Registro de implementacao: a fase de login visual minimo em `/interno/` implemen
 
 Hardening visual posterior: a shell deixa de exibir a lista completa de strings tecnicas de permissoes retornadas por `/me`. As permissoes continuam sendo usadas internamente para derivar menu, modulos e capacidades visuais, mas a interface comum mostra apenas resumo seguro: sessao autenticada, usuario interno, quantidade de permissoes carregadas, modulos permitidos e aviso de que a autorizacao real permanece no backend.
 
+Primeira listagem somente leitura: apos sessao autenticada por `/api/internal/auth/me` e permissao `iluminacao.solicitacoes.ler`, a shell pode chamar apenas `GET /api/internal/iluminacao/solicitacoes?limit=20&offset=0` e exibir uma tabela minima com `protocolo`, `status`, `tipo_problema`, `prioridade`, `poste_id`, `criado_em`, `atualizado_em` e `duplicidade_suspeita`. A tabela inicial nao deve exibir nome ou contato do solicitante, descricao, observacoes de localizacao, ponto de referencia, poste proximo informado, latitude ou longitude. Detalhe, historico, observacoes, status, dashboard e mapa operacional continuam para fases posteriores e sem `POST`/`PATCH` de Iluminacao nesta etapa.
+
 ## 13. Relacao com documentos existentes
 
 Este documento complementa:

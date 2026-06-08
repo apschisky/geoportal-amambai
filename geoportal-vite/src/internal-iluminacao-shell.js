@@ -2,6 +2,8 @@ import './internal-iluminacao-shell.css';
 
 const AUTH_ME_ENDPOINT = '/api/internal/auth/me';
 const AUTH_LOGIN_ENDPOINT = '/api/internal/auth/login';
+const INTERNAL_SOLICITACOES_ENDPOINT = '/api/internal/iluminacao/solicitacoes';
+const SOLICITACOES_PAGE_SIZE = 20;
 
 const SESSION_STATES = {
   checking_session: {
@@ -197,7 +199,7 @@ const futureCapabilities = [
 
 const nextSteps = [
   'Validar login visual minimo com cookie HttpOnly e /api/internal/auth/me.',
-  'Integrar listagem interna somente depois de login, sessao e permissao validados.',
+  'Validar listagem interna somente leitura apos login, sessao e permissao confirmados.',
   'Conectar detalhe, historico e observacoes em fases separadas.',
   'Habilitar POST/PATCH apenas em fases autenticadas e testadas.',
   'Planejar dashboard, mapa operacional e proxy separadamente.'
@@ -206,11 +208,24 @@ const nextSteps = [
 const outOfScope = [
   'logout completo',
   'token manual, localStorage ou sessionStorage',
-  'chamadas para /api/internal/iluminacao/solicitacoes',
+  'detalhe, historico e observacoes de Iluminacao',
   'POST/PATCH de Iluminacao ou qualquer acao operacional',
   'dashboard, estatisticas e mapa operacional',
   'proxy, Apache ou producao interna'
 ];
+
+function createSolicitacoesState(overrides = {}) {
+  return {
+    status: 'idle',
+    items: [],
+    total: 0,
+    limit: SOLICITACOES_PAGE_SIZE,
+    offset: 0,
+    statusCode: null,
+    message: 'Listagem somente leitura ainda nao carregada.',
+    ...overrides
+  };
+}
 
 const initialSessionState = {
   sessionState: 'checking_session',
@@ -221,7 +236,8 @@ const initialSessionState = {
   hasChecked: false,
   loginStatus: 'idle',
   loginMessage: '',
-  loginValue: ''
+  loginValue: '',
+  solicitacoes: createSolicitacoesState()
 };
 
 function createSessionState(overrides = {}) {
@@ -235,8 +251,19 @@ function createSessionState(overrides = {}) {
     loginStatus: 'idle',
     loginMessage: '',
     loginValue: '',
+    solicitacoes: createSolicitacoesState(),
     ...overrides
   };
+}
+
+let currentState = createSessionState();
+
+function renderApp(root, state) {
+  currentState = {
+    ...state,
+    solicitacoes: state.solicitacoes || createSolicitacoesState()
+  };
+  renderInternalIluminacaoShell(root, currentState);
 }
 
 function escapeHtml(value) {
@@ -291,6 +318,74 @@ function isValidMePayload(payload) {
       && Array.isArray(payload.permissoes)
       && payload.permissoes.every((permission) => typeof permission === 'string')
   );
+}
+
+function isValidSolicitacoesPayload(payload) {
+  return Boolean(
+    payload
+      && typeof payload === 'object'
+      && Array.isArray(payload.items)
+      && Number.isInteger(payload.limit)
+      && Number.isInteger(payload.offset)
+      && Number.isInteger(payload.total)
+  );
+}
+
+function safeText(value, fallback = 'Nao informado') {
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+
+  const text = String(value).trim();
+  return text || fallback;
+}
+
+function formatDateTime(value) {
+  const text = safeText(value, '');
+
+  if (!text) {
+    return 'Nao informado';
+  }
+
+  const date = new Date(text);
+
+  if (Number.isNaN(date.getTime())) {
+    return 'Nao informado';
+  }
+
+  return date.toLocaleString('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short'
+  });
+}
+
+function toDisplaySolicitacao(item) {
+  const safeItem = item && typeof item === 'object' ? item : {};
+
+  return {
+    protocolo: safeText(safeItem.protocolo),
+    status: safeText(safeItem.status),
+    tipoProblema: safeText(safeItem.tipo_problema),
+    prioridade: safeText(safeItem.prioridade),
+    posteId: safeText(safeItem.poste_id, 'Sem poste'),
+    criadoEm: formatDateTime(safeItem.criado_em),
+    atualizadoEm: formatDateTime(safeItem.atualizado_em),
+    duplicidadeSuspeita: safeItem.duplicidade_suspeita === true ? 'Sim' : 'Nao'
+  };
+}
+
+function buildSolicitacoesUrl(offset = 0) {
+  const params = new URLSearchParams({
+    limit: String(SOLICITACOES_PAGE_SIZE),
+    offset: String(Math.max(0, offset))
+  });
+
+  return `${INTERNAL_SOLICITACOES_ENDPOINT}?${params.toString()}`;
+}
+
+function canListSolicitacoes(state) {
+  return state.sessionState === 'authenticated'
+    && hasPermission(state, PERMISSIONS.iluminacaoRead);
 }
 
 function getModuleView(module, state) {
@@ -350,7 +445,7 @@ function getIluminacaoAccessMessage(state) {
 
   if (state.sessionState === 'authenticated') {
     if (hasPermission(state, PERMISSIONS.iluminacaoRead)) {
-      return 'Permissao iluminacao.solicitacoes.ler confirmada. A listagem real ainda nao e carregada nesta fase.';
+      return 'Permissao iluminacao.solicitacoes.ler confirmada. A listagem somente leitura usa apenas campos minimos nao pessoais.';
     }
 
     return 'Sessao confirmada, mas sem permissao iluminacao.solicitacoes.ler para operar o modulo Iluminacao.';
@@ -491,6 +586,153 @@ function renderPermissionSummary(state) {
   `;
 }
 
+function renderSolicitacoesRows(items) {
+  return items
+    .map((item) => `
+      <div class="internal-table-row" role="row">
+        <span data-label="Protocolo">${escapeHtml(item.protocolo)}</span>
+        <span data-label="Status">${escapeHtml(item.status)}</span>
+        <span data-label="Tipo">${escapeHtml(item.tipoProblema)}</span>
+        <span data-label="Prioridade">${escapeHtml(item.prioridade)}</span>
+        <span data-label="Poste">${escapeHtml(item.posteId)}</span>
+        <span data-label="Criado em">${escapeHtml(item.criadoEm)}</span>
+        <span data-label="Atualizado em">${escapeHtml(item.atualizadoEm)}</span>
+        <span data-label="Duplicidade">${escapeHtml(item.duplicidadeSuspeita)}</span>
+      </div>
+    `)
+    .join('');
+}
+
+function renderSolicitacoesTable(listState) {
+  if (listState.status === 'loading') {
+    return `
+      <div class="internal-table-empty" role="row">
+        Carregando solicitacoes internas somente leitura...
+      </div>
+    `;
+  }
+
+  if (listState.status === 'empty') {
+    return `
+      <div class="internal-table-empty" role="row">
+        Nenhuma solicitacao encontrada para esta pagina.
+      </div>
+    `;
+  }
+
+  if (listState.status === 'ready') {
+    return renderSolicitacoesRows(listState.items);
+  }
+
+  return `
+    <div class="internal-table-empty" role="row">
+      ${escapeHtml(listState.message || 'Listagem aguardando autenticacao e permissao.')}
+    </div>
+  `;
+}
+
+function getSolicitacoesStatusText(listState) {
+  if (listState.status === 'loading') {
+    return 'Carregando';
+  }
+
+  if (listState.status === 'ready' || listState.status === 'empty') {
+    return `${listState.total} registro(s)`;
+  }
+
+  if (listState.statusCode) {
+    return `HTTP ${listState.statusCode}`;
+  }
+
+  return 'Aguardando';
+}
+
+function renderSolicitacoesPanel(state) {
+  const listState = state.solicitacoes || createSolicitacoesState();
+  const canLoad = state.sessionState === 'authenticated'
+    && hasPermission(state, PERMISSIONS.iluminacaoRead);
+  const isLoading = listState.status === 'loading';
+  const previousOffset = Math.max(0, listState.offset - SOLICITACOES_PAGE_SIZE);
+  const nextOffset = listState.offset + listState.limit;
+  const hasPrevious = canLoad && listState.offset > 0 && !isLoading;
+  const hasNext = canLoad && nextOffset < listState.total && !isLoading;
+  const tableLabel = canLoad
+    ? 'Lista somente leitura de solicitacoes internas'
+    : 'Listagem bloqueada ate autenticacao e permissao';
+
+  return `
+    <section class="internal-main-panel" aria-label="Solicitacoes internas">
+      <div class="internal-panel-header">
+        <div>
+          <h3>Solicitacoes</h3>
+          <p>
+            Listagem somente leitura com campos minimos. Dados pessoais, descricao, referencia e coordenadas nao aparecem nesta tabela.
+          </p>
+        </div>
+        <span class="internal-pill">Somente leitura</span>
+      </div>
+
+      <div class="internal-list-toolbar" aria-label="Controles da listagem">
+        <div>
+          <strong>${escapeHtml(getSolicitacoesStatusText(listState))}</strong>
+          <span>
+            limit ${escapeHtml(listState.limit)} / offset ${escapeHtml(listState.offset)}
+          </span>
+        </div>
+        <div class="internal-list-actions">
+          <button
+            type="button"
+            class="internal-secondary-action"
+            data-action="previous-solicitacoes"
+            data-offset="${escapeHtml(previousOffset)}"
+            ${hasPrevious ? '' : 'disabled'}
+          >
+            Pagina anterior
+          </button>
+          <button
+            type="button"
+            class="internal-secondary-action"
+            data-action="refresh-solicitacoes"
+            data-offset="${escapeHtml(listState.offset)}"
+            ${canLoad && !isLoading ? '' : 'disabled'}
+          >
+            Atualizar listagem
+          </button>
+          <button
+            type="button"
+            class="internal-secondary-action"
+            data-action="next-solicitacoes"
+            data-offset="${escapeHtml(nextOffset)}"
+            ${hasNext ? '' : 'disabled'}
+          >
+            Proxima pagina
+          </button>
+        </div>
+      </div>
+
+      <p class="internal-list-message" role="status">
+        ${escapeHtml(listState.message)}
+      </p>
+
+      <div class="internal-table-wrap">
+        <div class="internal-table-shell" role="table" aria-label="${escapeHtml(tableLabel)}">
+          <div class="internal-table-row internal-table-head" role="row">
+            <span>Protocolo</span>
+            <span>Status</span>
+            <span>Tipo</span>
+            <span>Prioridade</span>
+            <span>Poste</span>
+            <span>Criado em</span>
+            <span>Atualizado em</span>
+            <span>Duplicidade</span>
+          </div>
+          ${renderSolicitacoesTable(listState)}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 function renderLoginPanel(state) {
   if (state.sessionState !== 'unauthenticated') {
     return '';
@@ -511,9 +753,10 @@ function renderLoginPanel(state) {
         </p>
       </div>
       <form class="internal-login-form" data-internal-login-form>
-        <label>
+        <label for="internal-login-usuario">
           Login
           <input
+            id="internal-login-usuario"
             name="login"
             type="text"
             autocomplete="username"
@@ -522,9 +765,10 @@ function renderLoginPanel(state) {
             ${isSubmitting ? 'disabled' : ''}
           />
         </label>
-        <label>
+        <label for="internal-login-senha">
           Senha
           <input
+            id="internal-login-senha"
             name="senha"
             type="password"
             autocomplete="current-password"
@@ -571,7 +815,7 @@ function renderInternalIluminacaoShell(root, state) {
           <p class="internal-kicker">Homologacao / Integracao de sessao</p>
           <h1 id="internal-page-title">Geoportal Interno</h1>
           <p class="internal-subtitle">
-            Portal municipal multi-modulo. Esta fase consulta apenas a sessao existente em /api/internal/auth/me.
+            Portal municipal multi-modulo. Esta fase usa sessao interna e listagem somente leitura de Iluminacao.
           </p>
         </div>
         ${renderSessionBox(state)}
@@ -604,6 +848,7 @@ function renderInternalIluminacaoShell(root, state) {
             </div>
             <div class="internal-safety-list" aria-label="Controles mantidos nesta fase">
               <span>GET /auth/me</span>
+              <span>GET solicitacoes</span>
               <span>Credentials include</span>
               <span>Cookie HttpOnly</span>
               <span>Sem POST/PATCH</span>
@@ -613,7 +858,7 @@ function renderInternalIluminacaoShell(root, state) {
           <section class="internal-summary" aria-labelledby="summary-title">
             <div class="internal-section-heading">
               <h2 id="summary-title">Inicio / Resumo futuro</h2>
-              <p>Cards permanecem com marcador estrutural. Nenhuma listagem ou indicador operacional e carregado.</p>
+              <p>Cards permanecem com marcador estrutural. Indicadores e dashboard real continuam fora desta fase.</p>
             </div>
             <div class="internal-summary-grid">
               ${renderSummaryCards()}
@@ -664,124 +909,152 @@ function renderInternalIluminacaoShell(root, state) {
           <section class="internal-module-workspace" aria-labelledby="module-workspace-title">
             <div class="internal-section-heading">
               <h2 id="module-workspace-title">Operacao planejada de Iluminacao</h2>
-              <p>Controles continuam desabilitados. Esta fase nao consome endpoints de Iluminacao.</p>
+              <p>A listagem minima e somente leitura. Detalhe, historico, observacoes e status continuam desabilitados.</p>
             </div>
 
             <div class="internal-workspace">
               <aside class="internal-filters" aria-labelledby="filters-title">
                 <h3 id="filters-title">Filtros planejados</h3>
-                <label>
+                <label for="internal-filter-protocolo">
                   Protocolo
-                  <input type="text" placeholder="IP-AAAA-NNNNNN" disabled />
+                  <input
+                    id="internal-filter-protocolo"
+                    name="protocolo"
+                    type="text"
+                    placeholder="IP-AAAA-NNNNNN"
+                    disabled
+                  />
                 </label>
-                <label>
+                <label for="internal-filter-status">
                   Status
-                  <select disabled>
+                  <select id="internal-filter-status" name="status" disabled>
                     <option value="">Todos</option>
                     ${renderStatusOptions()}
                   </select>
                 </label>
-                <label>
+                <label for="internal-filter-tipo-problema">
                   Tipo
-                  <input type="text" placeholder="lampada_apagada" disabled />
+                  <input
+                    id="internal-filter-tipo-problema"
+                    name="tipo_problema"
+                    type="text"
+                    placeholder="lampada_apagada"
+                    disabled
+                  />
                 </label>
-                <label>
+                <label for="internal-filter-prioridade">
                   Prioridade
-                  <input type="text" placeholder="normal" disabled />
+                  <input
+                    id="internal-filter-prioridade"
+                    name="prioridade"
+                    type="text"
+                    placeholder="normal"
+                    disabled
+                  />
                 </label>
-                <label>
+                <label for="internal-filter-poste">
                   Poste
-                  <input type="text" placeholder="ID do poste" disabled />
+                  <input
+                    id="internal-filter-poste"
+                    name="poste_id"
+                    type="text"
+                    placeholder="ID do poste"
+                    disabled
+                  />
                 </label>
                 <div class="internal-filter-grid">
-                  <label>
+                  <label for="internal-filter-criado-de">
                     Criado de
-                    <input type="date" disabled />
+                    <input
+                      id="internal-filter-criado-de"
+                      name="criado_de"
+                      type="date"
+                      disabled
+                    />
                   </label>
-                  <label>
+                  <label for="internal-filter-criado-ate">
                     Criado ate
-                    <input type="date" disabled />
+                    <input
+                      id="internal-filter-criado-ate"
+                      name="criado_ate"
+                      type="date"
+                      disabled
+                    />
                   </label>
                 </div>
                 <button type="button" disabled>Aplicar filtros em fase futura</button>
               </aside>
 
-              <section class="internal-main-panel" aria-label="Solicitacoes internas">
-                <div class="internal-panel-header">
-                  <div>
-                    <h3>Solicitacoes</h3>
-                    <p>Espaco reservado para items, total, limit e offset dos endpoints internos ja validados.</p>
-                  </div>
-                  <span class="internal-pill">Sem listagem real</span>
-                </div>
+              ${renderSolicitacoesPanel(state)}
 
-                <div class="internal-table-shell" role="table" aria-label="Lista estrutural sem dados reais">
-                  <div class="internal-table-row internal-table-head" role="row">
-                    <span>Protocolo</span>
-                    <span>Status</span>
-                    <span>Tipo</span>
-                    <span>Poste</span>
-                    <span>Atualizacao</span>
-                  </div>
-                  <div class="internal-table-empty" role="row">
-                    Nenhum dado real carregado. A fase atual consulta somente /api/internal/auth/me.
-                  </div>
-                </div>
+              <div class="internal-detail-grid">
+                <article class="internal-card">
+                  <h3>Detalhe da solicitacao</h3>
+                  <p>
+                    Futuro painel para protocolo, localizacao, descricao, solicitante, coordenadas WGS84 e status atual.
+                  </p>
+                  <dl>
+                    <div>
+                      <dt>Origem</dt>
+                      <dd>Aguardando integracao de detalhe</dd>
+                    </div>
+                    <div>
+                      <dt>Localizacao</dt>
+                      <dd>Latitude/longitude futuras</dd>
+                    </div>
+                    <div>
+                      <dt>Dados pessoais</dt>
+                      <dd>Somente quando necessario ao fluxo interno</dd>
+                    </div>
+                  </dl>
+                </article>
 
-                <div class="internal-detail-grid">
-                  <article class="internal-card">
-                    <h3>Detalhe da solicitacao</h3>
-                    <p>
-                      Futuro painel para protocolo, localizacao, descricao, solicitante, coordenadas WGS84 e status atual.
-                    </p>
-                    <dl>
-                      <div>
-                        <dt>Origem</dt>
-                        <dd>Aguardando API interna de Iluminacao</dd>
-                      </div>
-                      <div>
-                        <dt>Localizacao</dt>
-                        <dd>Latitude/longitude futuras</dd>
-                      </div>
-                      <div>
-                        <dt>Dados pessoais</dt>
-                        <dd>Somente quando necessario ao fluxo interno</dd>
-                      </div>
-                    </dl>
-                  </article>
+                <article class="internal-card">
+                  <h3>Historico</h3>
+                  <p>
+                    Leitura futura dos eventos auditados. A consulta publica nao deve exibir historico interno.
+                  </p>
+                  <ol class="internal-timeline">
+                    <li>Eventos aparecerao aqui apos integracao autenticada posterior.</li>
+                  </ol>
+                </article>
 
-                  <article class="internal-card">
-                    <h3>Historico</h3>
-                    <p>
-                      Leitura futura dos eventos auditados. A consulta publica nao deve exibir historico interno.
-                    </p>
-                    <ol class="internal-timeline">
-                      <li>Eventos aparecerao aqui apos integracao autenticada posterior.</li>
-                    </ol>
-                  </article>
+                <article class="internal-card">
+                  <h3>Observacoes internas</h3>
+                  <p>
+                    Leitura e criacao serao habilitadas depois, usando permissao e header mutavel no backend.
+                  </p>
+                  <textarea
+                    id="internal-placeholder-observacao"
+                    name="observacao_placeholder"
+                    disabled
+                    placeholder="Criacao de observacao desabilitada nesta shell"
+                  ></textarea>
+                  <button type="button" disabled>Criar observacao em fase futura</button>
+                </article>
 
-                  <article class="internal-card">
-                    <h3>Observacoes internas</h3>
-                    <p>
-                      Leitura e criacao serao habilitadas depois, usando permissao e header mutavel no backend.
-                    </p>
-                    <textarea disabled placeholder="Criacao de observacao desabilitada nesta shell"></textarea>
-                    <button type="button" disabled>Criar observacao em fase futura</button>
-                  </article>
-
-                  <article class="internal-card">
-                    <h3>Alteracao normal de status</h3>
-                    <p>
-                      A tela futura deve orientar a operacao, mas a matriz de transicoes continua validada no backend.
-                    </p>
-                    <select disabled>
-                      ${renderStatusOptions()}
-                    </select>
-                    <textarea disabled placeholder="Observacao obrigatoria no PATCH real"></textarea>
-                    <button type="button" disabled>Alterar status em fase futura</button>
-                  </article>
-                </div>
-              </section>
+                <article class="internal-card">
+                  <h3>Alteracao normal de status</h3>
+                  <p>
+                    A tela futura deve orientar a operacao, mas a matriz de transicoes continua validada no backend.
+                  </p>
+                  <select
+                    id="internal-placeholder-status"
+                    name="status_placeholder"
+                    disabled
+                    aria-label="Status futuro da solicitacao"
+                  >
+                    ${renderStatusOptions()}
+                  </select>
+                  <textarea
+                    id="internal-placeholder-status-observacao"
+                    name="status_observacao_placeholder"
+                    disabled
+                    placeholder="Observacao obrigatoria no PATCH real"
+                  ></textarea>
+                  <button type="button" disabled>Alterar status em fase futura</button>
+                </article>
+              </div>
             </div>
           </section>
 
@@ -899,14 +1172,156 @@ async function fetchCurrentSession() {
   });
 }
 
+async function fetchSolicitacoesInternas(offset = 0) {
+  const response = await fetch(buildSolicitacoesUrl(offset), {
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json'
+    }
+  });
+
+  if (response.status === 401) {
+    return createSolicitacoesState({
+      status: 'unauthenticated',
+      offset,
+      statusCode: response.status,
+      message: 'Sessao ausente ou expirada. Faca login novamente para listar solicitacoes.'
+    });
+  }
+
+  if (response.status === 403) {
+    return createSolicitacoesState({
+      status: 'forbidden',
+      offset,
+      statusCode: response.status,
+      message: 'Sem permissao para listar solicitacoes internas de Iluminacao.'
+    });
+  }
+
+  if (response.status === 422) {
+    return createSolicitacoesState({
+      status: 'error',
+      offset,
+      statusCode: response.status,
+      message: 'Parametros de listagem invalidos. A consulta foi mantida sem detalhes tecnicos.'
+    });
+  }
+
+  if (response.status === 503) {
+    return createSolicitacoesState({
+      status: 'error',
+      offset,
+      statusCode: response.status,
+      message: 'Servico interno temporariamente indisponivel para listar solicitacoes.'
+    });
+  }
+
+  if (!response.ok) {
+    return createSolicitacoesState({
+      status: 'error',
+      offset,
+      statusCode: response.status,
+      message: 'Nao foi possivel carregar a listagem interna neste momento.'
+    });
+  }
+
+  const payload = await response.json();
+
+  if (!isValidSolicitacoesPayload(payload)) {
+    return createSolicitacoesState({
+      status: 'error',
+      offset,
+      statusCode: response.status,
+      message: 'Resposta de listagem em formato inesperado.'
+    });
+  }
+
+  const safeLimit = Math.max(1, Math.min(100, payload.limit));
+  const safeOffset = Math.max(0, payload.offset);
+  const safeTotal = Math.max(0, payload.total);
+  const items = payload.items.map(toDisplaySolicitacao);
+
+  return createSolicitacoesState({
+    status: items.length > 0 ? 'ready' : 'empty',
+    items,
+    total: safeTotal,
+    limit: safeLimit,
+    offset: safeOffset,
+    statusCode: response.status,
+    message: items.length > 0
+      ? 'Listagem somente leitura carregada com campos minimos.'
+      : 'Nenhuma solicitacao encontrada nesta pagina.'
+  });
+}
+
+async function loadSolicitacoes(root, state, offset = 0) {
+  if (!canListSolicitacoes(state)) {
+    renderApp(root, {
+      ...state,
+      solicitacoes: createSolicitacoesState({
+        status: state.sessionState === 'authenticated' ? 'forbidden' : 'idle',
+        message: state.sessionState === 'authenticated'
+          ? 'A listagem nao foi chamada porque a permissao de Iluminacao nao foi confirmada.'
+          : 'A listagem nao foi chamada porque a sessao ainda nao foi autenticada.'
+      })
+    });
+    return;
+  }
+
+  const loadingState = {
+    ...state,
+    solicitacoes: createSolicitacoesState({
+      status: 'loading',
+      offset,
+      message: 'Carregando solicitacoes internas com limit=20 e offset seguro.'
+    })
+  };
+
+  renderApp(root, loadingState);
+
+  try {
+    const solicitacoes = await fetchSolicitacoesInternas(offset);
+
+    if (solicitacoes.status === 'unauthenticated') {
+      renderApp(root, createSessionState({
+        sessionState: 'unauthenticated',
+        statusCode: 401,
+        message: 'Sessao expirada ao tentar carregar a listagem. Faca login novamente.',
+        hasChecked: true,
+        solicitacoes
+      }));
+      return;
+    }
+
+    renderApp(root, {
+      ...loadingState,
+      solicitacoes
+    });
+  } catch {
+    renderApp(root, {
+      ...state,
+      solicitacoes: createSolicitacoesState({
+        status: 'error',
+        offset,
+        message: 'Falha temporaria de conexao com o servico interno de listagem.'
+      })
+    });
+  }
+}
+
 async function verifySession(root) {
-  renderInternalIluminacaoShell(root, initialSessionState);
+  renderApp(root, initialSessionState);
 
   try {
     const nextState = await fetchCurrentSession();
-    renderInternalIluminacaoShell(root, nextState);
+    renderApp(root, nextState);
+
+    if (canListSolicitacoes(nextState)) {
+      await loadSolicitacoes(root, nextState, 0);
+    }
   } catch {
-    renderInternalIluminacaoShell(root, createSessionState({
+    renderApp(root, createSessionState({
       sessionState: 'technical_error',
       message: 'Nao foi possivel conectar ao servico interno. Isso pode ocorrer em desenvolvimento sem backend/proxy ativo.',
       hasChecked: true
@@ -925,7 +1340,7 @@ async function submitLogin(root, form) {
       passwordInput.value = '';
     }
 
-    renderInternalIluminacaoShell(root, createSessionState({
+    renderApp(root, createSessionState({
       sessionState: 'unauthenticated',
       statusCode: null,
       message: 'Preencha login e senha para continuar.',
@@ -937,7 +1352,7 @@ async function submitLogin(root, form) {
     return;
   }
 
-  renderInternalIluminacaoShell(root, createSessionState({
+  renderApp(root, createSessionState({
     sessionState: 'unauthenticated',
     statusCode: null,
     message: 'Enviando credenciais ao endpoint interno de login.',
@@ -965,11 +1380,16 @@ async function submitLogin(root, form) {
       const confirmedState = await fetchCurrentSession();
 
       if (confirmedState.sessionState === 'authenticated') {
-        renderInternalIluminacaoShell(root, confirmedState);
+        renderApp(root, confirmedState);
+
+        if (canListSolicitacoes(confirmedState)) {
+          await loadSolicitacoes(root, confirmedState, 0);
+        }
+
         return;
       }
 
-      renderInternalIluminacaoShell(root, {
+      renderApp(root, {
         ...confirmedState,
         sessionState: 'unauthenticated',
         loginStatus: 'error',
@@ -980,7 +1400,7 @@ async function submitLogin(root, form) {
     }
 
     if (response.status === 401) {
-      renderInternalIluminacaoShell(root, createSessionState({
+      renderApp(root, createSessionState({
         sessionState: 'unauthenticated',
         statusCode: response.status,
         message: 'Credenciais nao autenticadas pelo backend.',
@@ -993,7 +1413,7 @@ async function submitLogin(root, form) {
     }
 
     if (response.status === 429) {
-      renderInternalIluminacaoShell(root, createSessionState({
+      renderApp(root, createSessionState({
         sessionState: 'unauthenticated',
         statusCode: response.status,
         message: 'Muitas tentativas de login em pouco tempo.',
@@ -1006,7 +1426,7 @@ async function submitLogin(root, form) {
     }
 
     if (response.status === 503) {
-      renderInternalIluminacaoShell(root, createSessionState({
+      renderApp(root, createSessionState({
         sessionState: 'technical_error',
         statusCode: response.status,
         message: 'Servico interno temporariamente indisponivel.',
@@ -1018,7 +1438,7 @@ async function submitLogin(root, form) {
       return;
     }
 
-    renderInternalIluminacaoShell(root, createSessionState({
+    renderApp(root, createSessionState({
       sessionState: 'technical_error',
       statusCode: response.status,
       message: 'Nao foi possivel concluir o login interno.',
@@ -1028,7 +1448,7 @@ async function submitLogin(root, form) {
       loginValue: login
     }));
   } catch {
-    renderInternalIluminacaoShell(root, createSessionState({
+    renderApp(root, createSessionState({
       sessionState: 'technical_error',
       statusCode: null,
       message: 'Nao foi possivel conectar ao servico interno de autenticacao.',
@@ -1057,6 +1477,19 @@ if (root) {
       && target.matches('[data-action="check-session"]')
     ) {
       verifySession(root);
+      return;
+    }
+
+    if (
+      target instanceof HTMLElement
+      && target.matches('[data-action="refresh-solicitacoes"], [data-action="previous-solicitacoes"], [data-action="next-solicitacoes"]')
+    ) {
+      const requestedOffset = Number.parseInt(target.dataset.offset || '0', 10);
+      const safeOffset = Number.isInteger(requestedOffset) && requestedOffset >= 0
+        ? requestedOffset
+        : 0;
+
+      loadSolicitacoes(root, currentState, safeOffset);
     }
   });
 
