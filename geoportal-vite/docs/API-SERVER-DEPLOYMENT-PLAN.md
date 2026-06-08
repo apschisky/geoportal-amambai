@@ -334,6 +334,145 @@ Estas ações devem ser executadas somente em planejamento operacional separado,
 
 **Conclusão para esta etapa:** Serviço inventariado e registrado. Geoportal público permanece isolado e não é impactado pelo `PEMHTTPD-x64`. Nenhuma decisão operacional foi tomada.
 
+## 6.3. Execução: Proxy Interno Controlado `/api/internal/` – Etapa Concluída
+
+O roteiro manual para proxy interno controlado foi executado com sucesso. Este documento registra a implementação operacional no Apache público ativo, com backup, validação e testes de conformidade.
+
+**Objetivo realizado:**
+Tornar o endpoint interno `GET /api/internal/auth/me` acessível via proxy HTTPS controlado (`https://geoserver.amambai.ms.gov.br/api/internal/`), sem expor diretamente a porta `8002` na rede, mantendo a API interna restrita a `127.0.0.1:8002` no servidor.
+
+**Arquivo alterado:**
+- `C:\Apache24\conf\extra\httpd-ssl.conf` (servidor de homologação)
+
+**Backup criado:**
+- Caminho: `C:\apps\geoportal-api\backups\apache-proxy-interno-20260608_080438\httpd-ssl.conf.bak`
+- Hash verificado: backup idêntico ao original antes da alteração
+- Disponível para rollback caso necessário
+
+**Bloco aplicado:**
+```apache
+# Proxy para Geoportal API interna - Homologacao controlada
+ProxyPass        /api/internal/ http://127.0.0.1:8002/api/internal/
+ProxyPassReverse /api/internal/ http://127.0.0.1:8002/api/internal/
+```
+
+**Posicionamento no arquivo:**
+O bloco foi inserido **antes** da regra genérica existente `/api/`, garantindo que `/api/internal/` seja capturado corretamente:
+```apache
+# [Novo bloco acima]
+ProxyPass        /api/internal/ http://127.0.0.1:8002/api/internal/
+ProxyPassReverse /api/internal/ http://127.0.0.1:8002/api/internal/
+
+# [Regra genérica abaixo - já existente]
+# Proxy para Geoportal API - Pre-producao
+ProxyPass        /api/ http://127.0.0.1:8001/api/
+ProxyPassReverse /api/ http://127.0.0.1:8001/api/
+```
+
+**Validações Pré-Alteração:**
+
+1. ✅ Backend interno `GeoportalAPIInternaHomologacao` (porta 8002) validado e respondendo
+2. ✅ Porta `8002` confirmada restrita a `127.0.0.1` (sem exposição de rede)
+3. ✅ Backup do arquivo crítico criado e verificado
+4. ✅ Sintaxe Apache: `Syntax OK`
+5. ✅ Serviço `Apache2.4` ativo (PID `10772`) atendendo portas `80` e `443`
+6. ✅ GeoServer público: `HTTP 200`
+7. ✅ API pública: `HTTP 200 OK`
+8. ✅ Arquivo `httpd-ssl.conf` antes: hash e linhas de proxy conferidos
+
+**Validações Pós-Alteração:**
+
+1. ✅ Arquivo proposto criado e conferido (ordem `/api/internal/` antes de `/api/`)
+2. ✅ Bloco proxy aplicado em `C:\Apache24\conf\extra\httpd-ssl.conf`
+3. ✅ Sintaxe Apache: `Syntax OK` (sem erros ou avisos)
+4. ✅ Serviço `Apache2.4` reiniciado controladamente
+5. ✅ Após restart: `Apache2.4` voltou como `Running`
+6. ✅ Novo PID observado: `25588` (diferentes do PID anterior)
+7. ✅ Portas públicas ainda ativas: `80 LISTENING`, `443 LISTENING`
+8. ✅ GeoServer público: `HTTP 200` (sem impacto)
+9. ✅ API pública: `HTTP 200 OK` com resposta esperada:
+   ```json
+   {
+     "service": "geoportal-api",
+     "version": "0.1.0",
+     "environment": "producao"
+   }
+   ```
+10. ✅ Proxy interno via HTTPS:
+    - URL testada: `https://geoserver.amambai.ms.gov.br/api/internal/auth/me`
+    - Resultado: `HTTP 401 Unauthorized` (comportamento correto sem sessão)
+    - Body: vazio (esperado para 401)
+11. ✅ Porta `8002` ainda restrita a localhost:
+    - `127.0.0.1:8002 LISTENING` ✅
+    - Não apareceu `0.0.0.0:8002` ❌
+    - Não apareceu `10.0.0.109:8002` ❌
+
+**Interpretação do Resultado `401 Unauthorized`:**
+
+O retorno `401` ao tentar acessar `/api/internal/auth/me` sem sessão é o comportamento esperado e correto:
+- Confirma que a rota interna está acessível via proxy HTTPS
+- Confirma que o backend interno está aplicando autenticação (exigindo sessão)
+- Confirma que nenhuma sessão falsa ou abertura de acesso foi concedida
+- Indica que o backend está seguro e operacional
+
+**Conformidade Arquitetural:**
+
+✅ A decisão de não expor `8002` diretamente foi preservada:
+- A API interna só é acessível via proxy HTTPS controlado no Apache
+- Acesso direto a `127.0.0.1:8002` continua restrito ao servidor local
+- Usuários remotos não podem contornar o proxy HTTPS
+
+✅ Separação funcional mantida:
+- API pública `/api/` continua apontando para `127.0.0.1:8001`
+- API interna `/api/internal/` agora aponta para `127.0.0.1:8002` via proxy
+- Ambas protegidas por HTTPS e com Geoportal público saudável
+
+**Escopo Completado:**
+
+- ✅ Proxy interno configurado
+- ✅ Sintaxe validada
+- ✅ Serviço reiniciado controladamente
+- ✅ Público + GeoServer testados (sem regressão)
+- ✅ Endpoint interno acessível (401 esperado)
+- ✅ Porta 8002 continua não-exposta
+
+**Escopo Não Executado Nesta Etapa (Planejado para Futuro):**
+
+- ❌ Nenhum endpoint de login real foi criado
+- ❌ Nenhuma sessão autenticada foi testada
+- ❌ Nenhum GET para listagem de solicitações foi validado
+- ❌ Nenhuma rota mutável (POST/PATCH) foi tocada
+- ❌ Nenhum dashboard, mapa ou painel interno foi criado
+- ❌ Nenhum usuário, perfil, permissão ou role foi criado/alterado
+
+**Próximos Passos Recomendados:**
+
+1. **Validar shell interna contra proxy real:**
+   - Frontend (shell `/interno/`) deve chamar `GET /api/internal/auth/me`
+   - Deve obter `401 Unauthorized` sem cookies/sessão
+   - Redirecionar para tela de login (etapa futura)
+
+2. **Documentar validação visual:**
+   - Network tab do DevTools deve mostrar HTTPS para `/api/internal/auth/me`
+   - Status `401` será confirmado na aba Network
+
+3. **Planejar login real (etapa separada):**
+   - Criar endpoint `POST /api/internal/auth/login`
+   - Validar com credenciais administrativas em homologação
+   - Testar cookie `HttpOnly` e revogação
+
+4. **Somente após login autenticado:**
+   - Testar `GET /api/internal/auth/me` retornando `200` com usuário e permissões
+   - Validar listagem `GET /api/internal/iluminacao/solicitacoes`
+   - Manter POST/PATCH para etapa específica de mutações
+
+5. **Registrar em `/docs/` as URLs finais dos endpoints internos:**
+   - `https://geoserver.amambai.ms.gov.br/api/internal/auth/me`
+   - `https://geoserver.amambai.ms.gov.br/api/internal/auth/login`
+   - `https://geoserver.amambai.ms.gov.br/api/internal/iluminacao/solicitacoes`
+
+**Conclusão para esta etapa:** Proxy interno controlado implementado com sucesso. Geoportal público, GeoServer e API pública continuam operacionais. Acesso interno protegido por HTTPS sem exposição de porta 8002. Rollback disponível se necessário. Pronto para integração com shell interna de homologação.
+
 ## 7. Relacao com login e painel interno
 
 Login e painel interno devem vir depois da estabilizacao da API publica no servidor.
