@@ -561,6 +561,23 @@ Proxima decisao tecnica recomendada: planejar um ambiente controlado para valida
 
 Registro de integracao de desenvolvimento: apos a validacao do proxy Apache real para `https://geoserver.amambai.ms.gov.br/api/internal/`, o Vite local pode usar proxy apenas em `npm run dev` para encaminhar `/api/internal/` ao dominio HTTPS de homologacao. Essa configuracao serve somente para validar a shell local `/interno/` chamando `GET /api/internal/auth/me` por caminho relativo; nao altera build de producao, nao cria login, nao chama listagem, nao habilita `POST`/`PATCH` e nao armazena token.
 
+Validacao manual autenticada em homologacao via proxy HTTPS real:
+
+- `POST /api/internal/auth/login` foi testado manualmente contra `https://geoserver.amambai.ms.gov.br/api/internal/auth/login` e retornou `LOGIN_STATUS=200`;
+- na mesma sessao PowerShell, `GET /api/internal/auth/me` retornou `ME_STATUS=200`, `AUTHENTICATED=True`, `USUARIO_ID=7`, `PERMISSOES_COUNT=15` e `TEM_ILUMINACAO_LER=True`;
+- a validacao confirma que o login interno funciona via proxy HTTPS real, que a sessao/cookie foi aceito no `/me` seguinte e que a base tecnica para liberar o modulo Iluminacao Publica por `iluminacao.solicitacoes.ler` esta validada em homologacao;
+- nenhum token, cookie real, senha, hash, `session_secret` ou `DATABASE_URL` foi registrado;
+- a shell ainda nao implementa login visual, listagem de solicitacoes, `POST` ou `PATCH`.
+
+Decisao sobre login visual:
+
+- o Geoportal publico deve continuar separado da logica de autenticacao interna;
+- futuramente, a tela publica pode oferecer um link simples como `Entrar`, `Acesso interno` ou `Geoportal Interno`, redirecionando para `/interno/`;
+- a primeira implementacao do formulario de login deve ocorrer dentro da shell interna `/interno/`, nao como popup acoplado ao mapa publico;
+- a shell interna deve primeiro chamar `GET /api/internal/auth/me`; em `401`, mostrar formulario de login interno; depois chamar `POST /api/internal/auth/login`, ignorar o token retornado no corpo, depender do cookie HttpOnly, chamar `/me` novamente e montar menu/modulos por permissoes;
+- o Geoportal publico nao deve manipular token, cookie, senha ou estado de sessao interna diretamente;
+- popup de login na tela publica pode ser reavaliado futuramente apenas como decisao de UX, mas nao deve ser a primeira implementacao.
+
 ## 13. Relacao com documentos existentes
 
 Este documento complementa:

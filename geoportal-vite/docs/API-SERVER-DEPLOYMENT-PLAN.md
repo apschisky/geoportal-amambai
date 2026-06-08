@@ -487,6 +487,20 @@ Contrato esperado da validacao local:
 - nao deve haver `POST` ou `PATCH`;
 - a shell deve continuar sem armazenar token em `localStorage` ou `sessionStorage`.
 
+## 6.5. Validacao Manual Autenticada via Proxy HTTPS
+
+Foi realizada validacao manual de login/sessao interna contra o proxy HTTPS real, sem expor a porta `8002` diretamente:
+
+- `POST https://geoserver.amambai.ms.gov.br/api/internal/auth/login` retornou `LOGIN_STATUS=200`;
+- na mesma sessao PowerShell, `GET https://geoserver.amambai.ms.gov.br/api/internal/auth/me` retornou `ME_STATUS=200`;
+- resultado sanitizado do `/me`: `AUTHENTICATED=True`, `USUARIO_ID=7`, `PERMISSOES_COUNT=15`, `TEM_ILUMINACAO_LER=True`;
+- a validacao confirma que o proxy HTTPS encaminha corretamente o login interno e o `/me`, que a sessao/cookie foi aceito entre chamadas e que o usuario validado possui a permissao base para o modulo Iluminacao Publica;
+- a porta `8002` permanece restrita ao loopback do servidor e nao deve ser aberta diretamente na rede;
+- a documentacao nao registra senha, token, cookie real, hash, `session_secret` ou `DATABASE_URL`;
+- essa validacao nao implementa login visual, nao chama listagem de solicitacoes e nao executa `POST`/`PATCH` pela shell.
+
+Proxima sequencia recomendada: implementar login visual minimo dentro de `/interno/`, validar que a shell ignora o token retornado no corpo do login e depende apenas do cookie HttpOnly, confirmar `/me` retornando `200` na shell e somente depois integrar a listagem somente leitura de Iluminacao. `POST` observacao e `PATCH` status continuam para etapa posterior separada.
+
 ## 7. Relacao com login e painel interno
 
 Login e painel interno devem vir depois da estabilizacao da API publica no servidor.
