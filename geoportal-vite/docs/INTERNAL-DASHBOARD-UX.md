@@ -607,7 +607,13 @@ Marco implementado: no commit `7ccb724`, a shell interna passou a permitir criac
 
 A validacao frontend aplica trim, minimo de 3 caracteres, maximo de 2000 caracteres, bloqueio de envio invalido e protecao contra duplo envio. Depois do `201 Created`, o campo e limpo e a lista de observacoes e recarregada por GET. Leitura e escrita de observacoes permanecem visualmente separadas. A criacao nao altera status, prioridade, `finalizado_em` ou dados principais da solicitacao, e nao ha `PATCH` nesta fase. O backend grava a observacao e o evento resumido no historico na mesma transacao. O Geoportal publico permanece preservado.
 
-Proxima evolucao recomendada: inventariar o contrato da alteracao normal de status antes de qualquer implementacao de `PATCH`.
+Marco implementado: no commit `b860c5d`, a shell interna passou a permitir alteracao normal de status a partir da caixa explicita de detalhe. A chamada permitida e `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`, sempre com `credentials: "include"`, `Content-Type: application/json`, `Accept: application/json`, header `X-Geoportal-Internal-Request: 1` e payload restrito a `{ status, observacao }`. A alteracao ocorre somente apos sessao autenticada, `/me` valido, detalhe carregado, identificador valido, permissao `iluminacao.solicitacoes.atualizar_status` e acao explicita do usuario.
+
+A validacao frontend exige status novo permitido pela matriz, status novo diferente do atual, observacao trimada, minimo de 3 caracteres, maximo de 1000 caracteres, bloqueio de envio invalido e protecao contra duplo envio. Status terminal bloqueia a alteracao normal na interface. Depois do `200 OK`, o detalhe e a listagem sao recarregados, o historico e recarregado somente se ja estava aberto e as observacoes nao sao recarregadas por causa do `PATCH`. O fluxo nao envia prioridade, nao envia campos extras, nao altera prioridade, nao cria observacao separada e nao modifica dados principais da solicitacao. O backend grava o evento de alteracao de status no historico na mesma transacao. O Geoportal publico permanece preservado.
+
+Decisao registrada: alteracao de prioridade nao entrou nesta fase e continua sendo evolucao futura separada. A caixa de status deve continuar tratando apenas `status + justificativa`. Reabertura ou correcao administrativa de status terminal tambem ficam fora desta fase.
+
+Proxima evolucao recomendada: encerrar e documentar este marco e, se necessario, futuramente inventariar o contrato de prioridade antes de qualquer implementacao de alteracao de prioridade.
 
 ## 13. Relacao com documentos existentes
 
