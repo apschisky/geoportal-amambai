@@ -14,39 +14,39 @@ const INTERNAL_MUTATING_REQUEST_HEADER = 'X-Geoportal-Internal-Request';
 
 const SESSION_STATES = {
   checking_session: {
-    label: 'Verificando sessao',
-    title: 'Sessao em verificacao',
-    text: 'A shell esta consultando apenas /api/internal/auth/me com cookie de sessao, se existir.',
+    label: 'Verificando sessão',
+    title: 'Sessão em verificação',
+    text: 'Verificando se há uma sessão interna ativa.',
     tone: 'checking'
   },
   unauthenticated: {
-    label: 'Nao autenticado',
-    title: 'Login interno necessario',
-    text: 'Nao foi confirmada uma sessao interna valida. Use o formulario interno para autenticar em homologacao.',
+    label: 'Não autenticado',
+    title: 'Login interno necessário',
+    text: 'Entre com suas credenciais internas para acessar o atendimento.',
     tone: 'neutral'
   },
   authenticated: {
     label: 'Autenticado',
-    title: 'Sessao interna confirmada',
-    text: 'Permissoes efetivas foram carregadas pelo backend e usadas somente para orientar a interface.',
+    title: 'Sessão interna confirmada',
+    text: 'Acesso interno confirmado.',
     tone: 'success'
   },
   forbidden: {
-    label: 'Sem permissao',
+    label: 'Sem permissão',
     title: 'Acesso negado',
-    text: 'A sessao foi reconhecida, mas o recurso consultado retornou acesso negado.',
+    text: 'Seu perfil não permite acessar este recurso.',
     tone: 'warning'
   },
   expired: {
-    label: 'Sessao expirada',
-    title: 'Sessao expirada ou invalida',
-    text: 'Quando o backend nao permitir diferenciar com seguranca, este estado e tratado como nao autenticado.',
+    label: 'Sessão expirada',
+    title: 'Sessão expirada ou inválida',
+    text: 'Entre novamente para continuar.',
     tone: 'neutral'
   },
   technical_error: {
-    label: 'Erro tecnico seguro',
-    title: 'Servico interno indisponivel',
-    text: 'A verificacao de sessao nao foi concluida. Nenhum detalhe tecnico sensivel e exibido.',
+    label: 'Erro técnico seguro',
+    title: 'Serviço interno indisponível',
+    text: 'Não foi possível concluir a operação agora.',
     tone: 'danger'
   }
 };
@@ -65,45 +65,45 @@ const PERMISSIONS = {
 const plannedModules = [
   {
     key: 'inicio',
-    name: 'Inicio',
-    description: 'Resumo futuro por permissoes',
+    name: 'Início',
+    description: 'Resumo futuro por permissões',
     kind: 'planned'
   },
   {
     key: 'iluminacao',
-    name: 'Iluminacao Publica',
-    description: 'Primeiro modulo interno',
+    name: 'Iluminação Pública',
+    description: 'Primeiro módulo interno',
     kind: 'permission',
     permissions: [PERMISSIONS.iluminacaoRead]
   },
   {
     key: 'alvaras',
-    name: 'Alvaras',
-    description: 'Modulo futuro',
+    name: 'Alvarás',
+    description: 'Módulo futuro',
     kind: 'planned'
   },
   {
     key: 'viabilidade',
     name: 'Viabilidade',
-    description: 'Modulo futuro',
+    description: 'Módulo futuro',
     kind: 'planned'
   },
   {
     key: 'meio_ambiente',
     name: 'Meio Ambiente',
-    description: 'Modulo futuro',
+    description: 'Módulo futuro',
     kind: 'planned'
   },
   {
     key: 'limpeza_lotes',
     name: 'Limpeza de Lotes',
-    description: 'Modulo futuro',
+    description: 'Módulo futuro',
     kind: 'planned'
   },
   {
     key: 'admin',
-    name: 'Administracao do Sistema',
-    description: 'Area restrita planejada',
+    name: 'Administração do Sistema',
+    description: 'Área restrita planejada',
     kind: 'admin',
     permissions: [
       PERMISSIONS.adminUsersRead,
@@ -129,12 +129,40 @@ const statusLabels = {
   aberta: 'Aberta',
   em_triagem: 'Em triagem',
   encaminhada: 'Encaminhada',
-  em_execucao: 'Em execucao',
+  em_execucao: 'Em execu\u00e7\u00e3o',
   aguardando_material: 'Aguardando material',
-  nao_localizado: 'Nao localizado',
+  nao_localizado: 'N\u00e3o localizado',
   resolvida: 'Resolvida',
   indeferida: 'Indeferida',
   cancelada: 'Cancelada'
+};
+
+const priorityLabels = {
+  baixa: 'Baixa',
+  normal: 'Normal',
+  alta: 'Alta',
+  urgente: 'Urgente'
+};
+
+const problemTypeLabels = {
+  lampada_apagada: 'L\u00e2mpada apagada',
+  lampada_piscando: 'L\u00e2mpada piscando',
+  lampada_acesa_dia: 'L\u00e2mpada acesa durante o dia',
+  poste_danificado: 'Poste danificado',
+  braco_luminaria_danificada: 'Bra\u00e7o ou lumin\u00e1ria danificada',
+  fiacao_aparente: 'Fia\u00e7\u00e3o aparente',
+  outro: 'Outro'
+};
+
+const originLabels = {
+  cidadao_web: 'Solicitante pelo Geoportal',
+  usuario_interno: 'Usu\u00e1rio interno',
+  sistema: 'Sistema'
+};
+
+const locationTypeLabels = {
+  poste_mapa: 'Poste selecionado no mapa',
+  coordenada_manual: 'Local indicado manualmente'
 };
 
 const statusTransitions = {
@@ -154,28 +182,25 @@ const terminalStatuses = [
 
 const summaryCards = [
   {
-    label: 'Chamados abertos',
+    key: 'total',
+    label: 'Solicitações na lista',
     value: '--',
-    module: 'Iluminacao Publica',
-    note: 'Pendente de integracao com listagem'
+    module: 'Iluminação Pública',
+    note: 'Aguardando carregamento'
   },
   {
-    label: 'Em execucao',
+    key: 'active',
+    label: 'Em atendimento',
     value: '--',
-    module: 'Iluminacao Publica',
-    note: 'Sem dados operacionais nesta fase'
+    module: 'Iluminação Pública',
+    note: 'Status em andamento'
   },
   {
-    label: 'Pendentes ou atrasados',
+    key: 'finished',
+    label: 'Finalizadas',
     value: '--',
-    module: 'Resumo futuro',
-    note: 'Dashboard fora desta fase'
-  },
-  {
-    label: 'Modulos permitidos',
-    value: '--',
-    module: 'Permissoes carregadas',
-    note: 'Menu deriva permissoes, sem dados reais'
+    module: 'Iluminação Pública',
+    note: 'Resolvidas ou encerradas'
   }
 ];
 
@@ -259,7 +284,7 @@ function createSolicitacoesState(overrides = {}) {
     limit: SOLICITACOES_PAGE_SIZE,
     offset: 0,
     statusCode: null,
-    message: 'Listagem somente leitura ainda nao carregada.',
+    message: 'Listagem somente leitura ainda não carregada.',
     ...overrides
   };
 }
@@ -272,7 +297,7 @@ function createHistoricoState(overrides = {}) {
     limit: HISTORICO_PAGE_SIZE,
     offset: 0,
     statusCode: null,
-    message: 'Historico carregado somente sob demanda.',
+    message: 'Histórico carregado somente sob demanda.',
     ...overrides
   };
 }
@@ -285,7 +310,7 @@ function createObservacoesState(overrides = {}) {
     limit: OBSERVACOES_PAGE_SIZE,
     offset: 0,
     statusCode: null,
-    message: 'Observacoes carregadas somente sob demanda.',
+    message: 'Observações carregadas somente sob demanda.',
     ...overrides
   };
 }
@@ -295,7 +320,7 @@ function createObservacaoFormState(overrides = {}) {
     status: 'idle',
     value: '',
     statusCode: null,
-    message: 'Criacao de observacao disponivel apenas por acao explicita.',
+    message: 'Criação de observação disponível apenas por ação explícita.',
     ...overrides
   };
 }
@@ -306,7 +331,7 @@ function createStatusFormState(overrides = {}) {
     selectedStatus: '',
     observacao: '',
     statusCode: null,
-    message: 'Alteracao normal de status disponivel apenas por acao explicita.',
+    message: 'Alteração normal de status disponível apenas por ação explícita.',
     ...overrides
   };
 }
@@ -322,7 +347,7 @@ function createDetalheState(overrides = {}) {
     item: null,
     solicitacaoId: null,
     statusCode: null,
-    message: 'Selecione uma solicitacao na tabela para carregar o detalhe somente leitura.',
+    message: 'Selecione uma solicitação na tabela para carregar o detalhe somente leitura.',
     historico,
     observacoes,
     observacaoForm,
@@ -340,7 +365,7 @@ const initialSessionState = {
   usuarioId: null,
   permissions: [],
   statusCode: null,
-  message: 'Verificando sessao interna existente.',
+  message: 'Verificando sessão interna existente.',
   hasChecked: false,
   loginStatus: 'idle',
   loginMessage: '',
@@ -355,7 +380,7 @@ function createSessionState(overrides = {}) {
     usuarioId: null,
     permissions: [],
     statusCode: null,
-    message: 'Verificando sessao interna existente.',
+    message: 'Verificando sessão interna existente.',
     hasChecked: false,
     loginStatus: 'idle',
     loginMessage: '',
@@ -544,7 +569,7 @@ function isValidStatusUpdateResponsePayload(payload) {
   );
 }
 
-function safeText(value, fallback = 'Nao informado') {
+function safeText(value, fallback = 'Não informado') {
   if (value === null || value === undefined) {
     return fallback;
   }
@@ -557,13 +582,13 @@ function formatDateTime(value) {
   const text = safeText(value, '');
 
   if (!text) {
-    return 'Nao informado';
+    return 'Não informado';
   }
 
   const date = new Date(text);
 
   if (Number.isNaN(date.getTime())) {
-    return 'Nao informado';
+    return 'Não informado';
   }
 
   return date.toLocaleString('pt-BR', {
@@ -581,13 +606,16 @@ function toDisplaySolicitacao(item) {
   return {
     id,
     protocolo: safeText(safeItem.protocolo),
-    status: safeText(safeItem.status),
-    tipoProblema: safeText(safeItem.tipo_problema),
-    prioridade: safeText(safeItem.prioridade),
+    statusKey: safeText(safeItem.status, ''),
+    status: formatStatusLabel(safeItem.status),
+    tipoProblemaKey: safeText(safeItem.tipo_problema, ''),
+    tipoProblema: formatProblemTypeLabel(safeItem.tipo_problema),
+    prioridadeKey: safeText(safeItem.prioridade, ''),
+    prioridade: formatPriorityLabel(safeItem.prioridade),
     posteId: safeText(safeItem.poste_id, 'Sem poste'),
     criadoEm: formatDateTime(safeItem.criado_em),
     atualizadoEm: formatDateTime(safeItem.atualizado_em),
-    duplicidadeSuspeita: safeItem.duplicidade_suspeita === true ? 'Sim' : 'Nao'
+    duplicidadeSuspeita: safeItem.duplicidade_suspeita === true ? 'Sim' : 'Não'
   };
 }
 
@@ -597,13 +625,16 @@ function toDisplaySolicitacaoDetail(item) {
   return {
     id: Number.isInteger(safeItem.id) ? safeItem.id : null,
     protocolo: safeText(safeItem.protocolo),
-    status: safeText(safeItem.status),
-    tipoProblema: safeText(safeItem.tipo_problema),
-    prioridade: safeText(safeItem.prioridade),
+    statusKey: safeText(safeItem.status, ''),
+    status: formatStatusLabel(safeItem.status),
+    tipoProblemaKey: safeText(safeItem.tipo_problema, ''),
+    tipoProblema: formatProblemTypeLabel(safeItem.tipo_problema),
+    prioridadeKey: safeText(safeItem.prioridade, ''),
+    prioridade: formatPriorityLabel(safeItem.prioridade),
     posteId: safeText(safeItem.poste_id, 'Sem poste'),
-    origem: safeText(safeItem.origem),
-    localizacaoTipo: safeText(safeItem.localizacao_tipo),
-    duplicidadeSuspeita: safeItem.duplicidade_suspeita === true ? 'Sim' : 'Nao',
+    origem: formatOriginLabel(safeItem.origem),
+    localizacaoTipo: formatLocationTypeLabel(safeItem.localizacao_tipo),
+    duplicidadeSuspeita: safeItem.duplicidade_suspeita === true ? 'Sim' : 'Não',
     criadoEm: formatDateTime(safeItem.criado_em),
     atualizadoEm: formatDateTime(safeItem.atualizado_em),
     finalizadoEm: formatDateTime(safeItem.finalizado_em),
@@ -625,21 +656,49 @@ function formatStatusLabel(value) {
   return statusLabels[status] || formatEventLabel(status);
 }
 
+function formatPriorityLabel(value) {
+  const priority = safeText(value, '');
+  return priorityLabels[priority] || formatEventLabel(priority);
+}
+
+function formatProblemTypeLabel(value) {
+  const problemType = safeText(value, '');
+  return problemTypeLabels[problemType] || formatEventLabel(problemType);
+}
+
+function formatOriginLabel(value) {
+  const origin = safeText(value, '');
+  return originLabels[origin] || formatEventLabel(origin);
+}
+
+function formatLocationTypeLabel(value) {
+  const locationType = safeText(value, '');
+  return locationTypeLabels[locationType] || formatEventLabel(locationType);
+}
+
 function toDisplayHistoricoEvent(event) {
   const safeEvent = event && typeof event === 'object' ? event : {};
   const usuarioNome = safeText(safeEvent.usuario_nome, '');
   const usuarioId = safeText(safeEvent.usuario_id, '');
-  const usuario = usuarioNome || (usuarioId ? `Usuario interno #${usuarioId}` : 'Nao informado');
+  const usuario = usuarioNome || (usuarioId ? `Usuário interno #${usuarioId}` : 'Não informado');
 
   return {
     id: Number.isInteger(safeEvent.id) ? safeEvent.id : null,
     criadoEm: formatDateTime(safeEvent.criado_em),
     acao: formatEventLabel(safeEvent.acao),
-    statusAnterior: safeText(safeEvent.status_anterior, 'Sem status anterior'),
-    statusNovo: safeText(safeEvent.status_novo, 'Sem novo status'),
-    prioridadeAnterior: safeText(safeEvent.prioridade_anterior, 'Sem prioridade anterior'),
-    prioridadeNova: safeText(safeEvent.prioridade_nova, 'Sem nova prioridade'),
-    origemAcao: formatEventLabel(safeEvent.origem_acao),
+    statusAnterior: safeEvent.status_anterior
+      ? formatStatusLabel(safeEvent.status_anterior)
+      : 'Sem status anterior',
+    statusNovo: safeEvent.status_novo
+      ? formatStatusLabel(safeEvent.status_novo)
+      : 'Sem novo status',
+    prioridadeAnterior: safeEvent.prioridade_anterior
+      ? formatPriorityLabel(safeEvent.prioridade_anterior)
+      : 'Sem prioridade anterior',
+    prioridadeNova: safeEvent.prioridade_nova
+      ? formatPriorityLabel(safeEvent.prioridade_nova)
+      : 'Sem nova prioridade',
+    origemAcao: formatOriginLabel(safeEvent.origem_acao),
     observacaoResumida: safeText(safeEvent.observacao_resumida, ''),
     usuario
   };
@@ -651,14 +710,14 @@ function toDisplayObservacao(observacao) {
     : {};
   const usuarioNome = safeText(safeObservation.usuario_nome, '');
   const usuarioId = safeText(safeObservation.usuario_id, '');
-  const usuario = usuarioNome || (usuarioId ? `Usuario interno #${usuarioId}` : 'Nao informado');
+  const usuario = usuarioNome || (usuarioId ? `Usuário interno #${usuarioId}` : 'Não informado');
   const editadoEm = formatDateTime(safeObservation.editado_em);
 
   return {
     id: Number.isInteger(safeObservation.id) ? safeObservation.id : null,
     criadoEm: formatDateTime(safeObservation.criado_em),
     editadoEm,
-    foiEditada: editadoEm !== 'Nao informado',
+    foiEditada: editadoEm !== 'Não informado',
     usuario,
     visibilidade: safeText(safeObservation.visibilidade),
     texto: safeText(safeObservation.observacao, 'Sem texto informado')
@@ -673,11 +732,11 @@ function getObservacaoValidationMessage(value) {
   const normalized = normalizeObservacaoInput(value);
 
   if (normalized.length < OBSERVACAO_MIN_LENGTH) {
-    return 'Informe ao menos 3 caracteres apos remover espacos.';
+    return 'Informe ao menos 3 caracteres após remover espaços.';
   }
 
   if (normalized.length > OBSERVACAO_MAX_LENGTH) {
-    return 'A observacao deve ter no maximo 2000 caracteres apos trim.';
+    return 'A observação deve ter no máximo 2000 caracteres após remover espaços.';
   }
 
   return '';
@@ -711,7 +770,7 @@ function getStatusSelectionValidationMessage(currentStatus, selectedStatus) {
   }
 
   if (!allowedStatuses.includes(selectedStatus)) {
-    return 'Transicao de status nao permitida nesta rota normal.';
+    return 'Transição de status não permitida nesta rota normal.';
   }
 
   return '';
@@ -721,11 +780,11 @@ function getStatusObservacaoValidationMessage(value) {
   const normalized = normalizeStatusObservacaoInput(value);
 
   if (normalized.length < STATUS_OBSERVACAO_MIN_LENGTH) {
-    return 'Informe justificativa com ao menos 3 caracteres apos remover espacos.';
+    return 'Informe justificativa com ao menos 3 caracteres após remover espaços.';
   }
 
   if (normalized.length > STATUS_OBSERVACAO_MAX_LENGTH) {
-    return 'A justificativa deve ter no maximo 1000 caracteres apos trim.';
+    return 'A justificativa deve ter no máximo 1000 caracteres após remover espaços.';
   }
 
   return '';
@@ -814,7 +873,7 @@ function getModuleView(module, state) {
     if (state.sessionState !== 'authenticated') {
       return {
         state: 'locked',
-        label: 'Aguardando sessao',
+        label: 'Aguardando sessão',
         enabled: false,
         active: false
       };
@@ -824,7 +883,7 @@ function getModuleView(module, state) {
 
     return {
       state: allowed ? 'allowed' : 'denied',
-      label: allowed ? 'Permitido' : 'Sem permissao',
+      label: allowed ? 'Permitido' : 'Sem permissão',
       enabled: allowed,
       active: allowed
     };
@@ -852,26 +911,26 @@ function getModuleView(module, state) {
 
 function getIluminacaoAccessMessage(state) {
   if (state.sessionState === 'checking_session') {
-    return 'Verificando permissao para o modulo Iluminacao Publica.';
+    return 'Verificando permissão para o módulo Iluminação Pública.';
   }
 
   if (state.sessionState === 'authenticated') {
     if (hasPermission(state, PERMISSIONS.iluminacaoRead)) {
-      return 'Permissao iluminacao.solicitacoes.ler confirmada. A listagem somente leitura usa apenas campos minimos nao pessoais.';
+      return 'Permissão de leitura confirmada. A listagem usa apenas campos mínimos.';
     }
 
-    return 'Sessao confirmada, mas sem permissao iluminacao.solicitacoes.ler para operar o modulo Iluminacao.';
+    return 'Sessão confirmada, mas sem permissão para operar o módulo Iluminação.';
   }
 
   if (state.sessionState === 'forbidden') {
-    return 'O backend retornou acesso negado para a verificacao solicitada.';
+    return 'O sistema retornou acesso negado para a verificação solicitada.';
   }
 
   if (state.sessionState === 'technical_error') {
-    return 'Nao foi possivel confirmar a sessao. A shell permanece visivel e sem dados reais.';
+    return 'Não foi possível confirmar a sessão. A tela permanece visível e sem dados reais.';
   }
 
-  return 'Sessao interna nao confirmada. Login real sera tratado em fase propria.';
+  return 'Sessão interna não confirmada. Faça login para continuar.';
 }
 
 function renderModuleMenu(state) {
@@ -904,8 +963,57 @@ function renderModuleMenu(state) {
     .join('');
 }
 
-function renderSummaryCards() {
-  return summaryCards
+function getSummaryCardViews(state) {
+  const listState = state.solicitacoes || createSolicitacoesState();
+  const items = Array.isArray(listState.items) ? listState.items : [];
+  const loaded = listState.status === 'ready' || listState.status === 'empty';
+  const activeStatuses = ['aberta', 'em_triagem', 'encaminhada', 'em_execucao', 'aguardando_material'];
+  const finishedStatuses = ['resolvida', 'cancelada', 'indeferida', 'nao_localizado'];
+  const activeCount = items.filter((item) => activeStatuses.includes(item.statusKey)).length;
+  const finishedCount = items.filter((item) => finishedStatuses.includes(item.statusKey)).length;
+  const allowedModules = getAllowedModules(state);
+
+  return summaryCards.map((card) => {
+    if (card.key === 'total') {
+      return {
+        ...card,
+        value: loaded ? listState.total : '--',
+        note: loaded ? 'Total retornado pela listagem' : 'Carregue a listagem para atualizar'
+      };
+    }
+
+    if (card.key === 'active') {
+      return {
+        ...card,
+        value: loaded ? activeCount : '--',
+        note: loaded ? 'Nesta página da listagem' : 'Aguardando listagem'
+      };
+    }
+
+    if (card.key === 'finished') {
+      return {
+        ...card,
+        value: loaded ? finishedCount : '--',
+        note: loaded ? 'Nesta página da listagem' : 'Aguardando listagem'
+      };
+    }
+
+    if (card.key === 'modules') {
+      return {
+        ...card,
+        value: state.sessionState === 'authenticated' ? allowedModules.length : '--',
+        note: state.sessionState === 'authenticated'
+          ? 'Menu liberado por perfil'
+          : 'Aguardando login'
+      };
+    }
+
+    return card;
+  });
+}
+
+function renderSummaryCards(state) {
+  return getSummaryCardViews(state)
     .map((card) => `
       <article class="internal-summary-card">
         <span>${escapeHtml(card.module)}</span>
@@ -919,7 +1027,7 @@ function renderSummaryCards() {
 
 function renderStatusOptions() {
   return statusOptions
-    .map((status) => `<option value="${escapeHtml(status)}">${escapeHtml(status)}</option>`)
+    .map((status) => `<option value="${escapeHtml(status)}">${escapeHtml(formatStatusLabel(status))}</option>`)
     .join('');
 }
 
@@ -946,7 +1054,7 @@ function renderCapabilityIndicators(state) {
   return futureCapabilities
     .map((capability) => {
       const allowed = hasPermission(state, capability.permission);
-      const label = allowed ? 'Permissao carregada' : 'Nao carregada';
+      const label = allowed ? 'Permissão carregada' : 'Não carregada';
 
       return `
         <span class="internal-capability ${allowed ? 'is-allowed' : 'is-missing'}">
@@ -961,9 +1069,9 @@ function renderCapabilityIndicators(state) {
 function renderPermissionSummary(state) {
   if (state.sessionState !== 'authenticated') {
     return `
-      <p>Permissoes ainda nao carregadas.</p>
+      <p>Permissões ainda não carregadas.</p>
       <p class="internal-muted-note">
-        A lista tecnica completa nao e exibida na interface comum.
+        A lista técnica completa não é exibida na interface comum.
       </p>
     `;
   }
@@ -971,29 +1079,29 @@ function renderPermissionSummary(state) {
   const allowedModules = getAllowedModules(state);
   const modulesText = allowedModules.length > 0
     ? allowedModules.join(', ')
-    : 'Nenhum modulo operacional permitido';
+    : 'Nenhum módulo operacional permitido';
 
   return `
     <dl class="internal-safe-summary">
       <div>
-        <dt>Sessao</dt>
+        <dt>Sessão</dt>
         <dd>Autenticada</dd>
       </div>
       <div>
-        <dt>Usuario</dt>
+        <dt>Usuário</dt>
         <dd>#${escapeHtml(state.usuarioId)}</dd>
       </div>
       <div>
-        <dt>Permissoes carregadas</dt>
+        <dt>Permissões carregadas</dt>
         <dd>${escapeHtml(state.permissions.length)}</dd>
       </div>
       <div>
-        <dt>Modulos permitidos</dt>
+        <dt>Módulos permitidos</dt>
         <dd>${escapeHtml(modulesText)}</dd>
       </div>
     </dl>
     <p class="internal-muted-note">
-      A interface usa permissoes apenas para orientar a navegacao. A autorizacao real continua no backend.
+      A interface usa permissões apenas para orientar a navegação. A autorização real continua no backend.
     </p>
   `;
 }
@@ -1013,7 +1121,7 @@ function renderSolicitacoesRows(items) {
             Ver detalhe
           </button>
         `
-        : '<button type="button" class="internal-row-action" disabled>Indisponivel</button>';
+        : '<button type="button" class="internal-row-action" disabled>Indisponível</button>';
 
       return `
       <div class="internal-table-row" role="row">
@@ -1025,7 +1133,7 @@ function renderSolicitacoesRows(items) {
         <span data-label="Criado em">${escapeHtml(item.criadoEm)}</span>
         <span data-label="Atualizado em">${escapeHtml(item.atualizadoEm)}</span>
         <span data-label="Duplicidade">${escapeHtml(item.duplicidadeSuspeita)}</span>
-        <span data-label="Acoes">${actionButton}</span>
+        <span data-label="Ações">${actionButton}</span>
       </div>
     `;
     })
@@ -1036,7 +1144,7 @@ function renderSolicitacoesTable(listState) {
   if (listState.status === 'loading') {
     return `
       <div class="internal-table-empty" role="row">
-        Carregando solicitacoes internas somente leitura...
+        Carregando solicitações internas somente leitura...
       </div>
     `;
   }
@@ -1044,7 +1152,7 @@ function renderSolicitacoesTable(listState) {
   if (listState.status === 'empty') {
     return `
       <div class="internal-table-empty" role="row">
-        Nenhuma solicitacao encontrada para esta pagina.
+        Nenhuma solicitação encontrada para esta página.
       </div>
     `;
   }
@@ -1055,7 +1163,7 @@ function renderSolicitacoesTable(listState) {
 
   return `
     <div class="internal-table-empty" role="row">
-      ${escapeHtml(listState.message || 'Listagem aguardando autenticacao e permissao.')}
+      ${escapeHtml(listState.message || 'Listagem aguardando autenticação e permissão.')}
     </div>
   `;
 }
@@ -1070,7 +1178,7 @@ function getSolicitacoesStatusText(listState) {
   }
 
   if (listState.statusCode) {
-    return `HTTP ${listState.statusCode}`;
+    return `Código ${listState.statusCode}`;
   }
 
   return 'Aguardando';
@@ -1086,16 +1194,16 @@ function renderSolicitacoesPanel(state) {
   const hasPrevious = canLoad && listState.offset > 0 && !isLoading;
   const hasNext = canLoad && nextOffset < listState.total && !isLoading;
   const tableLabel = canLoad
-    ? 'Lista somente leitura de solicitacoes internas'
-    : 'Listagem bloqueada ate autenticacao e permissao';
+    ? 'Lista somente leitura de solicitações internas'
+    : 'Listagem bloqueada até autenticação e permissão';
 
   return `
-    <section class="internal-main-panel" aria-label="Solicitacoes internas">
+    <section class="internal-main-panel" aria-label="Solicitações internas">
       <div class="internal-panel-header">
         <div>
-          <h3>Solicitacoes</h3>
+          <h3>Solicitações</h3>
           <p>
-            Listagem somente leitura com campos minimos. Dados pessoais, descricao, referencia e coordenadas nao aparecem nesta tabela.
+            Lista operacional com campos essenciais. Dados pessoais e coordenadas ficam apenas no detalhe quando necessário.
           </p>
         </div>
         <span class="internal-pill">Somente leitura</span>
@@ -1105,7 +1213,7 @@ function renderSolicitacoesPanel(state) {
         <div>
           <strong>${escapeHtml(getSolicitacoesStatusText(listState))}</strong>
           <span>
-            limit ${escapeHtml(listState.limit)} / offset ${escapeHtml(listState.offset)}
+            Página com até ${escapeHtml(listState.limit)} registros
           </span>
         </div>
         <div class="internal-list-actions">
@@ -1116,7 +1224,7 @@ function renderSolicitacoesPanel(state) {
             data-offset="${escapeHtml(previousOffset)}"
             ${hasPrevious ? '' : 'disabled'}
           >
-            Pagina anterior
+            Página anterior
           </button>
           <button
             type="button"
@@ -1134,7 +1242,7 @@ function renderSolicitacoesPanel(state) {
             data-offset="${escapeHtml(nextOffset)}"
             ${hasNext ? '' : 'disabled'}
           >
-            Proxima pagina
+            Próxima página
           </button>
         </div>
       </div>
@@ -1154,7 +1262,7 @@ function renderSolicitacoesPanel(state) {
             <span>Criado em</span>
             <span>Atualizado em</span>
             <span>Duplicidade</span>
-            <span>Acoes</span>
+            <span>Ações</span>
           </div>
           ${renderSolicitacoesTable(listState)}
         </div>
@@ -1190,16 +1298,16 @@ function renderHistoricoItems(items) {
             <dd>${escapeHtml(event.origemAcao)}</dd>
           </div>
           <div>
-            <dt>Usuario</dt>
+            <dt>Usuário</dt>
             <dd>${escapeHtml(event.usuario)}</dd>
           </div>
           <div>
             <dt>Status</dt>
-            <dd>${escapeHtml(event.statusAnterior)} -> ${escapeHtml(event.statusNovo)}</dd>
+            <dd>${escapeHtml(event.statusAnterior)} para ${escapeHtml(event.statusNovo)}</dd>
           </div>
           <div>
             <dt>Prioridade</dt>
-            <dd>${escapeHtml(event.prioridadeAnterior)} -> ${escapeHtml(event.prioridadeNova)}</dd>
+            <dd>${escapeHtml(event.prioridadeAnterior)} para ${escapeHtml(event.prioridadeNova)}</dd>
           </div>
         </dl>
         ${event.observacaoResumida
@@ -1224,33 +1332,33 @@ function renderHistoricoPanel(state, detail) {
   if (!hasHistoryPermission) {
     return `
       <article class="internal-card internal-history-card">
-        <h3>Historico</h3>
-        <p>Historico indisponivel para este perfil.</p>
+        <h3>Histórico</h3>
+        <p>Histórico indisponível para este perfil.</p>
         <p class="internal-muted-note">
-          A permissao iluminacao.solicitacoes.ver_historico e exigida pelo backend.
+          A permissão de histórico é exigida para esta consulta.
         </p>
       </article>
     `;
   }
 
   const statusText = historico.statusCode
-    ? `HTTP ${historico.statusCode}`
+    ? `Código ${historico.statusCode}`
     : `${historico.total} evento(s)`;
 
   return `
     <article class="internal-card internal-history-card">
       <div class="internal-history-heading">
         <div>
-          <h3>Historico</h3>
-          <p>Timeline somente leitura, carregada apenas por botao explicito.</p>
+          <h3>Histórico</h3>
+          <p>Linha do tempo carregada sob demanda.</p>
         </div>
-        <span class="internal-pill">GET sob demanda</span>
+        <span class="internal-pill">Sob demanda</span>
       </div>
 
-      <div class="internal-list-toolbar" aria-label="Controles do historico">
+      <div class="internal-list-toolbar" aria-label="Controles do histórico">
         <div>
           <strong>${escapeHtml(statusText)}</strong>
-          <span>limit ${escapeHtml(historico.limit)} / offset ${escapeHtml(historico.offset)}</span>
+          <span>Página com até ${escapeHtml(historico.limit)} eventos</span>
         </div>
         <div class="internal-list-actions">
           <button
@@ -1260,7 +1368,7 @@ function renderHistoricoPanel(state, detail) {
             data-offset="${escapeHtml(previousOffset)}"
             ${hasPrevious ? '' : 'disabled'}
           >
-            Pagina anterior
+            Página anterior
           </button>
           <button
             type="button"
@@ -1269,7 +1377,7 @@ function renderHistoricoPanel(state, detail) {
             data-offset="${escapeHtml(historico.offset)}"
             ${canLoad ? '' : 'disabled'}
           >
-            ${historico.status === 'idle' ? 'Ver historico' : 'Atualizar historico'}
+            ${historico.status === 'idle' ? 'Ver histórico' : 'Atualizar histórico'}
           </button>
           <button
             type="button"
@@ -1278,7 +1386,7 @@ function renderHistoricoPanel(state, detail) {
             data-offset="${escapeHtml(nextOffset)}"
             ${hasNext ? '' : 'disabled'}
           >
-            Proxima pagina
+            Próxima página
           </button>
         </div>
       </div>
@@ -1288,10 +1396,10 @@ function renderHistoricoPanel(state, detail) {
       </p>
 
       ${historico.status === 'loading'
-        ? '<div class="internal-table-empty">Carregando historico somente leitura...</div>'
+        ? '<div class="internal-table-empty">Carregando histórico somente leitura...</div>'
         : ''}
       ${historico.status === 'empty'
-        ? '<div class="internal-table-empty">Nenhum evento de historico encontrado.</div>'
+        ? '<div class="internal-table-empty">Nenhum evento de histórico encontrado.</div>'
         : ''}
       ${historico.status === 'ready'
         ? `<ol class="internal-timeline">${renderHistoricoItems(historico.items)}</ol>`
@@ -1317,8 +1425,8 @@ function renderObservacoesItems(items) {
             <dd>${escapeHtml(observacao.visibilidade)}</dd>
           </div>
           <div>
-            <dt>Edicao</dt>
-            <dd>${escapeHtml(observacao.foiEditada ? observacao.editadoEm : 'Nao editada')}</dd>
+            <dt>Edição</dt>
+            <dd>${escapeHtml(observacao.foiEditada ? observacao.editadoEm : 'Não editada')}</dd>
           </div>
         </dl>
       </article>
@@ -1333,11 +1441,11 @@ function renderObservacaoCreatePanel(state, detail) {
 
   if (!hasCommentPermission) {
     return `
-      <section class="internal-observation-form-panel" aria-label="Criacao de observacao interna indisponivel">
-        <h4>Nova observacao interna</h4>
-        <p>Criacao de observacao indisponivel para este perfil.</p>
+      <section class="internal-observation-form-panel internal-action-card" aria-label="Criação de observação interna indisponível">
+        <h4>Nova observação interna</h4>
+        <p>Criação de observação indisponível para este perfil.</p>
         <p class="internal-muted-note">
-          A permissao iluminacao.solicitacoes.comentar e exigida pelo backend para o POST.
+          É necessário ter permissão para comentar nesta solicitação.
         </p>
       </section>
     `;
@@ -1354,20 +1462,20 @@ function renderObservacaoCreatePanel(state, detail) {
       : '';
 
   return `
-    <section class="internal-observation-form-panel" aria-label="Criacao de observacao interna">
-      <h4>Nova observacao interna</h4>
+    <section class="internal-observation-form-panel internal-action-card" aria-label="Criação de observação interna">
+      <h4>Nova observação interna</h4>
       <p class="internal-sensitive-note">
-        Texto livre operacional interno. Nao inclua dados desnecessarios, senha, token, cookie ou informacao fora do atendimento.
+        Texto livre operacional interno. Não inclua dados desnecessários ou informação fora do atendimento.
       </p>
       <form class="internal-observation-form" data-observacao-form>
         <label for="internal-new-observacao">
-          Observacao
+          Observação
           <textarea
             id="internal-new-observacao"
             name="observacao"
             data-observacao-textarea
             rows="5"
-            placeholder="Registre uma observacao operacional interna"
+            placeholder="Registre uma observação operacional interna"
             aria-describedby="internal-new-observacao-help internal-new-observacao-counter"
             ${isSubmitting ? 'disabled' : ''}
           >${escapeHtml(formState.value)}</textarea>
@@ -1377,7 +1485,7 @@ function renderObservacaoCreatePanel(state, detail) {
             ${escapeHtml(normalizedLength)}/${escapeHtml(OBSERVACAO_MAX_LENGTH)}
           </span>
           <span id="internal-new-observacao-help" data-observacao-validation>
-            ${escapeHtml(validationMessage || 'Payload enviado contem somente observacao.')}
+            ${escapeHtml(validationMessage || 'Pronto para salvar como observação interna.')}
           </span>
         </div>
         <button
@@ -1386,14 +1494,14 @@ function renderObservacaoCreatePanel(state, detail) {
           data-observacao-submit
           ${canSubmit ? '' : 'disabled'}
         >
-          ${isSubmitting ? 'Salvando observacao...' : 'Salvar observacao'}
+          ${isSubmitting ? 'Salvando observação...' : 'Salvar observação'}
         </button>
         <p class="internal-form-message${messageClass}" role="status">
           ${escapeHtml(formState.message)}
         </p>
       </form>
       <p class="internal-muted-note">
-        A criacao usa POST com header X-Geoportal-Internal-Request: 1. Historico permanece sob demanda e pode ser recarregado manualmente.
+        Salvar uma observação não altera o status do chamado.
       </p>
     </section>
   `;
@@ -1414,35 +1522,35 @@ function renderObservacoesPanel(state, detail) {
   if (!hasObservationsPermission && !hasCommentPermission) {
     return `
       <article class="internal-card internal-observations-card">
-        <h3>Observacoes internas</h3>
-        <p>Observacoes indisponiveis para este perfil.</p>
+        <h3>Observações internas</h3>
+        <p>Observações indisponíveis para este perfil.</p>
         <p class="internal-muted-note">
-          As permissoes iluminacao.solicitacoes.ver_observacoes ou iluminacao.solicitacoes.comentar sao exigidas pelo backend.
+          Seu perfil precisa permitir leitura ou registro de observações internas.
         </p>
       </article>
     `;
   }
 
   const statusText = observacoes.statusCode
-    ? `HTTP ${observacoes.statusCode}`
-    : `${observacoes.total} observacao(oes)`;
+    ? `Código ${observacoes.statusCode}`
+    : `${observacoes.total} observação(ões)`;
 
   return `
     <article class="internal-card internal-observations-card">
       <div class="internal-history-heading">
         <div>
-          <h3>Observacoes internas</h3>
-          <p>Lista somente leitura, carregada apenas por botao explicito.</p>
+          <h3>Observações internas</h3>
+          <p>Leitura sob demanda de registros internos do atendimento.</p>
         </div>
-        <span class="internal-pill">GET sob demanda</span>
+        <span class="internal-pill">Sob demanda</span>
       </div>
 
       ${hasObservationsPermission
         ? `
-          <div class="internal-list-toolbar" aria-label="Controles das observacoes internas">
+          <div class="internal-list-toolbar" aria-label="Controles das observações internas">
             <div>
               <strong>${escapeHtml(statusText)}</strong>
-              <span>limit ${escapeHtml(observacoes.limit)} / offset ${escapeHtml(observacoes.offset)}</span>
+              <span>Página com até ${escapeHtml(observacoes.limit)} observações</span>
             </div>
             <div class="internal-list-actions">
               <button
@@ -1452,7 +1560,7 @@ function renderObservacoesPanel(state, detail) {
                 data-offset="${escapeHtml(previousOffset)}"
                 ${hasPrevious ? '' : 'disabled'}
               >
-                Pagina anterior
+                Página anterior
               </button>
               <button
                 type="button"
@@ -1461,7 +1569,7 @@ function renderObservacoesPanel(state, detail) {
                 data-offset="${escapeHtml(observacoes.offset)}"
                 ${canLoad ? '' : 'disabled'}
               >
-                ${observacoes.status === 'idle' ? 'Ver observacoes' : 'Atualizar observacoes'}
+                ${observacoes.status === 'idle' ? 'Ver observações' : 'Atualizar observações'}
               </button>
               <button
                 type="button"
@@ -1470,7 +1578,7 @@ function renderObservacoesPanel(state, detail) {
                 data-offset="${escapeHtml(nextOffset)}"
                 ${hasNext ? '' : 'disabled'}
               >
-                Proxima pagina
+                Próxima página
               </button>
             </div>
           </div>
@@ -1479,23 +1587,23 @@ function renderObservacoesPanel(state, detail) {
             ${escapeHtml(observacoes.message)}
           </p>
           <p class="internal-sensitive-note">
-            Observacao e texto livre operacional interno. Nenhum JSON bruto, token, cookie ou dado do solicitante e exibido nesta secao.
+            Observação é texto livre operacional interno. Evite dados desnecessários.
           </p>
 
           ${observacoes.status === 'loading'
-            ? '<div class="internal-table-empty">Carregando observacoes somente leitura...</div>'
+            ? '<div class="internal-table-empty">Carregando observações somente leitura...</div>'
             : ''}
           ${observacoes.status === 'empty'
-            ? '<div class="internal-table-empty">Nenhuma observacao interna encontrada.</div>'
+            ? '<div class="internal-table-empty">Nenhuma observação interna encontrada.</div>'
             : ''}
           ${observacoes.status === 'ready'
             ? `<div class="internal-observations-list">${renderObservacoesItems(observacoes.items)}</div>`
             : ''}
         `
         : `
-          <p>Leitura de observacoes indisponivel para este perfil.</p>
+          <p>Leitura de observações indisponível para este perfil.</p>
           <p class="internal-muted-note">
-            A permissao iluminacao.solicitacoes.ver_observacoes e exigida pelo backend para o GET.
+            É necessário ter permissão para consultar observações internas.
           </p>
         `}
 
@@ -1518,22 +1626,22 @@ function renderStatusUpdatePanel(state, detail) {
   const formState = detail.statusForm || createStatusFormState();
   const hasStatusPermission = canUpdateStatus(state);
   const hasLoadedDetail = detail.status === 'loaded' && detail.item;
-  const currentStatus = hasLoadedDetail ? detail.item.status : '';
+  const currentStatus = hasLoadedDetail ? detail.item.statusKey : '';
   const allowedStatuses = getAllowedNextStatuses(currentStatus);
   const terminal = isTerminalStatus(currentStatus);
 
   if (!hasStatusPermission) {
     return `
-      <article class="internal-card internal-status-card">
+      <article class="internal-card internal-status-card internal-action-card">
         <div class="internal-history-heading">
           <div>
-            <h3>Alteracao normal de status</h3>
-            <p>Alteracao de status indisponivel para este perfil.</p>
+            <h3>Alteração normal de status</h3>
+            <p>Alteração de status indisponível para este perfil.</p>
           </div>
-          <span class="internal-pill">Permissao exigida</span>
+          <span class="internal-pill">Acesso restrito</span>
         </div>
         <p class="internal-muted-note">
-          A permissao iluminacao.solicitacoes.atualizar_status e exigida pelo backend para o PATCH.
+          Seu perfil não permite atualizar o andamento desta solicitação.
         </p>
       </article>
     `;
@@ -1547,16 +1655,16 @@ function renderStatusUpdatePanel(state, detail) {
         : '';
 
     return `
-      <article class="internal-card internal-status-card">
+      <article class="internal-card internal-status-card internal-action-card">
         <div class="internal-history-heading">
           <div>
-            <h3>Alteracao normal de status</h3>
+            <h3>Alteração normal de status</h3>
             <p>Status atual: ${escapeHtml(formatStatusLabel(currentStatus))}.</p>
           </div>
           <span class="internal-pill">Status finalizado</span>
         </div>
         <p class="internal-sensitive-note">
-          Status finalizado. Reabertura ou correcao administrativa exigira fluxo especifico.
+          Status finalizado. Reabertura ou correção administrativa exigirá fluxo específico.
         </p>
         <p class="internal-form-message${terminalMessageClass}" role="status">
           ${escapeHtml(formState.message)}
@@ -1583,13 +1691,13 @@ function renderStatusUpdatePanel(state, detail) {
       : '';
 
   return `
-    <article class="internal-card internal-status-card">
+    <article class="internal-card internal-status-card internal-action-card">
       <div class="internal-history-heading">
-        <div>
-          <h3>Alteracao normal de status</h3>
-          <p>Controle separado de observacoes. Nao altera prioridade e nao faz reabertura administrativa.</p>
-        </div>
-        <span class="internal-pill">PATCH controlado</span>
+          <div>
+            <h3>Alteração normal de status</h3>
+            <p>Atualize o andamento do atendimento sem alterar prioridade ou dados do solicitante.</p>
+          </div>
+        <span class="internal-pill">Ação de andamento</span>
       </div>
       <dl>
         <div>
@@ -1597,10 +1705,10 @@ function renderStatusUpdatePanel(state, detail) {
           <dd>${escapeHtml(formatStatusLabel(currentStatus))}</dd>
         </div>
         <div>
-          <dt>Transicoes disponiveis</dt>
+          <dt>Transições disponíveis</dt>
           <dd>${allowedStatuses.length > 0
             ? escapeHtml(allowedStatuses.map(formatStatusLabel).join(', '))
-            : 'Nenhuma transicao normal disponivel'}
+            : 'Nenhuma transição normal disponível'}
           </dd>
         </div>
       </dl>
@@ -1623,14 +1731,14 @@ function renderStatusUpdatePanel(state, detail) {
           </select>
         </label>
         <label for="internal-status-observacao">
-          Justificativa da alteracao
+          Justificativa da alteração
           <textarea
             id="internal-status-observacao"
             name="observacao"
             data-status-observacao-textarea
             rows="5"
             maxlength="${escapeHtml(STATUS_OBSERVACAO_MAX_LENGTH)}"
-            placeholder="Registre uma justificativa operacional sintetica"
+            placeholder="Registre uma justificativa operacional sintética"
             aria-describedby="internal-status-help internal-status-counter"
             ${isSubmitting ? 'disabled' : ''}
           >${escapeHtml(formState.observacao)}</textarea>
@@ -1640,7 +1748,7 @@ function renderStatusUpdatePanel(state, detail) {
             ${escapeHtml(normalizedLength)}/${escapeHtml(STATUS_OBSERVACAO_MAX_LENGTH)}
           </span>
           <span id="internal-status-help" data-status-validation>
-            ${escapeHtml(validationMessage || 'Payload enviado contem somente status e observacao.')}
+            ${escapeHtml(validationMessage || 'Informe apenas o novo status e a justificativa.')}
           </span>
         </div>
         <button
@@ -1656,7 +1764,7 @@ function renderStatusUpdatePanel(state, detail) {
         </p>
       </form>
       <p class="internal-muted-note">
-        A rota normal usa X-Geoportal-Internal-Request: 1. O PATCH nao cria observacao separada e o backend continua validando a autorizacao e a matriz de transicoes.
+        A alteração de status não cria observação separada. O sistema continua validando perfil e transições permitidas.
       </p>
     </article>
   `;
@@ -1669,8 +1777,8 @@ function renderSolicitacaoDetailLoaded(state, detail) {
     <article class="internal-card internal-detail-card">
       <div class="internal-detail-card-header">
         <div>
-          <h3>Detalhe da solicitacao</h3>
-          <p>Leitura operacional restrita. Coordenadas e JSON bruto nao sao exibidos nesta fase.</p>
+          <h3>Detalhe da solicitação</h3>
+          <p>Informações operacionais do chamado selecionado.</p>
         </div>
         <button
           type="button"
@@ -1682,8 +1790,8 @@ function renderSolicitacaoDetailLoaded(state, detail) {
       </div>
 
       <div class="internal-detail-sections">
-        <section class="internal-detail-section" aria-label="Identificacao da solicitacao">
-          <h4>Identificacao</h4>
+        <section class="internal-detail-section" aria-label="Identificação da solicitação">
+          <h4>Identificação</h4>
           ${renderDetailDefinitionList([
             { label: 'Protocolo', value: item.protocolo },
             { label: 'Status', value: item.status },
@@ -1694,16 +1802,16 @@ function renderSolicitacaoDetailLoaded(state, detail) {
           ])}
         </section>
 
-        <section class="internal-detail-section" aria-label="Origem e localizacao operacional">
-          <h4>Origem e localizacao operacional</h4>
+        <section class="internal-detail-section" aria-label="Origem e localização operacional">
+          <h4>Origem e localização operacional</h4>
           ${renderDetailDefinitionList([
             { label: 'Origem', value: item.origem },
-            { label: 'Tipo de localizacao', value: item.localizacaoTipo },
-            { label: 'Ponto de referencia', value: item.pontoReferencia },
-            { label: 'Poste proximo informado', value: item.posteProximoInformado }
+            { label: 'Tipo de localização', value: item.localizacaoTipo },
+            { label: 'Ponto de referência', value: item.pontoReferencia },
+            { label: 'Poste próximo informado', value: item.posteProximoInformado }
           ])}
           <p class="internal-sensitive-note">
-            Latitude e longitude ficam fora deste painel comum e devem aguardar etapa propria de mapa/localizacao operacional.
+            Coordenadas ficam fora deste painel comum e devem aguardar etapa própria de mapa/localização operacional.
           </p>
         </section>
 
@@ -1718,11 +1826,11 @@ function renderSolicitacaoDetailLoaded(state, detail) {
           </p>
         </section>
 
-        <section class="internal-detail-section" aria-label="Descricao e observacoes">
-          <h4>Descricao</h4>
+        <section class="internal-detail-section" aria-label="Descrição e observações">
+          <h4>Descrição</h4>
           ${renderDetailDefinitionList([
-            { label: 'Descricao', value: item.descricao },
-            { label: 'Observacoes de localizacao', value: item.observacoesLocalizacao }
+            { label: 'Descrição', value: item.descricao },
+            { label: 'Observações de localização', value: item.observacoesLocalizacao }
           ])}
         </section>
 
@@ -1734,18 +1842,11 @@ function renderSolicitacaoDetailLoaded(state, detail) {
             { label: 'Finalizado em', value: item.finalizadoEm }
           ])}
         </section>
-
-        <section class="internal-detail-section" aria-label="Acoes futuras indisponiveis">
-          <h4>Acoes futuras</h4>
-          <p>
-            Correcao administrativa, reabertura de status finalizado, edicao/exclusao de observacao, anexos e mapa operacional continuam fora desta fase.
-          </p>
-        </section>
       </div>
     </article>
     ${renderStatusUpdatePanel(state, detail)}
-    ${renderObservacoesPanel(state, detail)}
     ${renderHistoricoPanel(state, detail)}
+    ${renderObservacoesPanel(state, detail)}
   `;
 }
 
@@ -1758,27 +1859,27 @@ function renderSolicitacaoDetailPanel(state) {
 
   const statusMessages = {
     idle: {
-      title: 'Detalhe da solicitacao',
+      title: 'Detalhe da solicitação',
       text: detail.message
     },
     loading: {
       title: 'Carregando detalhe',
-      text: 'Consultando somente GET de detalhe com cookie de sessao.'
+      text: 'Carregando as informacoes do chamado selecionado.'
     },
     forbidden: {
-      title: 'Sem permissao',
+      title: 'Sem permissão',
       text: detail.message
     },
     not_found: {
-      title: 'Solicitacao nao encontrada',
+      title: 'Solicitação não encontrada',
       text: detail.message
     },
     expired: {
-      title: 'Sessao expirada',
+      title: 'Sessão expirada',
       text: detail.message
     },
     error: {
-      title: 'Detalhe indisponivel',
+      title: 'Detalhe indisponível',
       text: detail.message
     }
   };
@@ -1798,21 +1899,21 @@ function renderSolicitacaoDetailPanel(state) {
           data-action="clear-solicitacao-detail"
           ${canClear ? '' : 'disabled'}
         >
-          Limpar selecao
+          Limpar seleção
         </button>
       </div>
       <dl>
         <div>
-          <dt>Endpoint permitido nesta fase</dt>
-          <dd>GET /api/internal/iluminacao/solicitacoes/{id}</dd>
+          <dt>Como usar</dt>
+          <dd>Selecione uma solicitação na tabela para abrir o atendimento.</dd>
         </div>
         <div>
           <dt>Status</dt>
-          <dd>${escapeHtml(detail.statusCode ? `HTTP ${detail.statusCode}` : 'Aguardando selecao')}</dd>
+          <dd>${escapeHtml(detail.statusCode ? `Código ${detail.statusCode}` : 'Aguardando seleção')}</dd>
         </div>
         <div>
-          <dt>Restricoes</dt>
-          <dd>PATCH limitado a status normal. Sem coordenadas, JSON bruto, reabertura ou prioridade.</dd>
+          <dt>Restrições</dt>
+          <dd>Alteração de prioridade, reabertura e mapa operacional ficam fora desta tela.</dd>
         </div>
       </dl>
     </article>
@@ -1827,15 +1928,15 @@ function renderLoginPanel(state) {
   const isSubmitting = state.loginStatus === 'submitting';
   const statusClass = state.loginStatus === 'error' ? ' is-error' : '';
   const message = state.loginMessage
-    || 'Informe suas credenciais internas de homologacao. O token retornado pelo backend sera ignorado pela shell.';
+    || 'Informe suas credenciais internas para continuar.';
 
   return `
     <section class="internal-login-panel" aria-labelledby="internal-login-title">
       <div>
-        <p class="internal-kicker">Area restrita</p>
+        <p class="internal-kicker">Área restrita</p>
         <h2 id="internal-login-title">Login interno</h2>
         <p>
-          O Geoportal publico permanece separado. Esta autenticacao acontece apenas dentro da shell interna.
+          O Geoportal público permanece separado. Esta autenticação acontece apenas dentro da shell interna.
         </p>
       </div>
       <form class="internal-login-form" data-internal-login-form>
@@ -1876,204 +1977,77 @@ function renderLoginPanel(state) {
 function renderSessionBox(state) {
   const stateInfo = SESSION_STATES[state.sessionState] || SESSION_STATES.technical_error;
   const userText = state.sessionState === 'authenticated'
-    ? `Usuario interno #${state.usuarioId}`
-    : stateInfo.title;
-  const statusText = state.statusCode ? `HTTP ${state.statusCode}` : 'Sem status HTTP';
+    ? `Usuário interno #${state.usuarioId}`
+    : 'Acesso interno';
+  const statusText = state.sessionState === 'authenticated'
+    ? 'Sessão ativa'
+    : stateInfo.label;
 
   return `
-    <aside class="internal-session-box is-${stateInfo.tone}" aria-label="Estado de sessao">
+    <aside class="internal-session-box is-${stateInfo.tone}" aria-label="Estado de sessão">
       <span>${escapeHtml(stateInfo.label)}</span>
       <strong>${escapeHtml(userText)}</strong>
-      <p>${escapeHtml(state.message || stateInfo.text)}</p>
-      <small>${escapeHtml(statusText)}</small>
+      <p>${escapeHtml(statusText)}</p>
     </aside>
   `;
 }
 
 function renderInternalIluminacaoShell(root, state) {
   const stateInfo = SESSION_STATES[state.sessionState] || SESSION_STATES.technical_error;
-  const canReadIluminacao = hasPermission(state, PERMISSIONS.iluminacaoRead);
 
   root.innerHTML = `
     <main class="internal-page" aria-labelledby="internal-page-title">
       <header class="internal-topbar">
         <div>
-          <p class="internal-kicker">Homologacao / Integracao de sessao</p>
+          <p class="internal-kicker">Homologação / Integração de sessão</p>
           <h1 id="internal-page-title">Geoportal Interno</h1>
           <p class="internal-subtitle">
-            Portal municipal multi-modulo. Esta fase usa sessao interna, consultas controladas e mutacoes restritas de Iluminacao.
+            Atendimento interno de Iluminação Pública com acesso por perfil e operações registradas.
           </p>
         </div>
         ${renderSessionBox(state)}
       </header>
 
-      <section class="internal-alert is-${stateInfo.tone}" aria-label="Aviso de seguranca">
-        <strong>${escapeHtml(stateInfo.title)}:</strong>
-        ${escapeHtml(stateInfo.text)}
-      </section>
+      ${state.sessionState !== 'authenticated'
+        ? `
+          <section class="internal-alert is-${stateInfo.tone}" aria-label="Aviso de segurança">
+            <strong>${escapeHtml(stateInfo.title)}:</strong>
+            ${escapeHtml(state.message || stateInfo.text)}
+          </section>
+        `
+        : ''}
 
       ${renderLoginPanel(state)}
 
       <div class="internal-shell-layout">
-        <aside class="internal-sidebar" aria-label="Menu de modulos por permissao">
+        <aside class="internal-sidebar" aria-label="Menu de módulos por permissão">
           <div class="internal-sidebar-heading">
-            <h2>Modulos</h2>
-            <p>Menu derivado das permissoes efetivas retornadas pelo backend.</p>
+            <h2>Módulos</h2>
+            <p>Acesso conforme perfil interno.</p>
           </div>
-          <nav class="internal-module-nav" aria-label="Modulos planejados">
+          <nav class="internal-module-nav" aria-label="Módulos planejados">
             ${renderModuleMenu(state)}
           </nav>
         </aside>
 
-        <section class="internal-content" aria-label="Conteudo do modulo ativo">
-          <section class="internal-hero-panel" aria-labelledby="active-module-title">
-            <div>
-              <p class="internal-kicker">Modulo Iluminacao</p>
-              <h2 id="active-module-title">Iluminacao Publica</h2>
-              <p>${escapeHtml(getIluminacaoAccessMessage(state))}</p>
-            </div>
-            <div class="internal-safety-list" aria-label="Controles mantidos nesta fase">
-              <span>GET /auth/me</span>
-              <span>GET solicitacoes</span>
-              <span>GET detalhe</span>
-              <span>GET historico</span>
-              <span>PATCH status</span>
-              <span>Credentials include</span>
-              <span>Cookie HttpOnly</span>
-              <span>Header mutavel</span>
-            </div>
-          </section>
-
+        <section class="internal-content" aria-label="Conteúdo do módulo ativo">
           <section class="internal-summary" aria-labelledby="summary-title">
             <div class="internal-section-heading">
-              <h2 id="summary-title">Inicio / Resumo futuro</h2>
-              <p>Cards permanecem com marcador estrutural. Indicadores e dashboard real continuam fora desta fase.</p>
+              <h2 id="summary-title">Resumo</h2>
+              <p>Indicadores simples calculados a partir da listagem carregada.</p>
             </div>
             <div class="internal-summary-grid">
-              ${renderSummaryCards()}
-            </div>
-          </section>
-
-          <section class="internal-auth-panel" aria-labelledby="auth-panel-title">
-            <div class="internal-section-heading">
-              <h2 id="auth-panel-title">Sessao e permissoes</h2>
-              <p>Contrato real usado: authenticated, usuario_id e permissoes. O backend continua sendo a autoridade.</p>
-            </div>
-            <div class="internal-auth-grid">
-              <article class="internal-card">
-                <h3>Resultado da verificacao</h3>
-                <dl>
-                  <div>
-                    <dt>Estado</dt>
-                    <dd>${escapeHtml(stateInfo.label)}</dd>
-                  </div>
-                  <div>
-                    <dt>Usuario</dt>
-                    <dd>${state.usuarioId ? `#${escapeHtml(state.usuarioId)}` : 'Nao confirmado'}</dd>
-                  </div>
-                  <div>
-                    <dt>Permissao para Iluminacao</dt>
-                    <dd>${canReadIluminacao ? 'Confirmada' : 'Nao confirmada'}</dd>
-                  </div>
-                </dl>
-                <button type="button" class="internal-secondary-action" data-action="check-session">
-                  Verificar sessao novamente
-                </button>
-              </article>
-
-              <article class="internal-card">
-                <h3>Permissoes conhecidas</h3>
-                <div class="internal-capability-grid">
-                  ${renderCapabilityIndicators(state)}
-                </div>
-              </article>
-
-              <article class="internal-card">
-                <h3>Resumo seguro</h3>
-                ${renderPermissionSummary(state)}
-              </article>
+              ${renderSummaryCards(state)}
             </div>
           </section>
 
           <section class="internal-module-workspace" aria-labelledby="module-workspace-title">
             <div class="internal-section-heading">
-              <h2 id="module-workspace-title">Operacao planejada de Iluminacao</h2>
-              <p>Listagem, detalhe, historico e leitura de observacoes continuam controlados por GET. Criacao de observacao usa POST especifico; alteracao normal de status usa PATCH especifico.</p>
+              <h2 id="module-workspace-title">Solicitações de Iluminação</h2>
+              <p>Consulte chamados, abra detalhes e registre interações internas conforme seu perfil.</p>
             </div>
 
             <div class="internal-workspace">
-              <aside class="internal-filters" aria-labelledby="filters-title">
-                <h3 id="filters-title">Filtros planejados</h3>
-                <label for="internal-filter-protocolo">
-                  Protocolo
-                  <input
-                    id="internal-filter-protocolo"
-                    name="protocolo"
-                    type="text"
-                    placeholder="IP-AAAA-NNNNNN"
-                    disabled
-                  />
-                </label>
-                <label for="internal-filter-status">
-                  Status
-                  <select id="internal-filter-status" name="status" disabled>
-                    <option value="">Todos</option>
-                    ${renderStatusOptions()}
-                  </select>
-                </label>
-                <label for="internal-filter-tipo-problema">
-                  Tipo
-                  <input
-                    id="internal-filter-tipo-problema"
-                    name="tipo_problema"
-                    type="text"
-                    placeholder="lampada_apagada"
-                    disabled
-                  />
-                </label>
-                <label for="internal-filter-prioridade">
-                  Prioridade
-                  <input
-                    id="internal-filter-prioridade"
-                    name="prioridade"
-                    type="text"
-                    placeholder="normal"
-                    disabled
-                  />
-                </label>
-                <label for="internal-filter-poste">
-                  Poste
-                  <input
-                    id="internal-filter-poste"
-                    name="poste_id"
-                    type="text"
-                    placeholder="ID do poste"
-                    disabled
-                  />
-                </label>
-                <div class="internal-filter-grid">
-                  <label for="internal-filter-criado-de">
-                    Criado de
-                    <input
-                      id="internal-filter-criado-de"
-                      name="criado_de"
-                      type="date"
-                      disabled
-                    />
-                  </label>
-                  <label for="internal-filter-criado-ate">
-                    Criado ate
-                    <input
-                      id="internal-filter-criado-ate"
-                      name="criado_ate"
-                      type="date"
-                      disabled
-                    />
-                  </label>
-                </div>
-                <button type="button" disabled>Aplicar filtros em fase futura</button>
-              </aside>
-
               ${renderSolicitacoesPanel(state)}
 
               <div class="internal-detail-grid">
@@ -2081,32 +2055,11 @@ function renderInternalIluminacaoShell(root, state) {
               </div>
             </div>
           </section>
-
-          <section class="internal-states" aria-labelledby="states-title">
-            <div class="internal-section-heading">
-              <h2 id="states-title">Estados de autenticacao</h2>
-              <p>O estado atual e destacado. Nenhum estado habilita acao mutavel nesta fase.</p>
-            </div>
-            <div class="internal-state-grid">
-              ${renderAuthStates(state)}
-            </div>
-          </section>
-
-          <section class="internal-next" aria-labelledby="next-title">
-            <article>
-              <h2 id="next-title">Proximas integracoes</h2>
-              <ol>${renderList(nextSteps)}</ol>
-            </article>
-            <article>
-              <h2>Fora desta fase</h2>
-              <ul>${renderList(outOfScope)}</ul>
-            </article>
-          </section>
         </section>
       </div>
 
       <footer class="internal-footer">
-        Geoportal publico preservado. Permissoes reais sao validadas no backend; esta shell nao armazena token nem executa POST/PATCH.
+        Geoportal público preservado. A autorização real continua no backend; esta shell não armazena token.
       </footer>
     </main>
   `;
@@ -2125,7 +2078,7 @@ async function fetchCurrentSession() {
     return createSessionState({
       sessionState: 'unauthenticated',
       statusCode: response.status,
-      message: 'Sessao ausente, expirada ou invalida. Login interno disponivel nesta shell.',
+      message: 'Sessão ausente, expirada ou inválida. Login interno disponível nesta tela.',
       hasChecked: true
     });
   }
@@ -2134,7 +2087,7 @@ async function fetchCurrentSession() {
     return createSessionState({
       sessionState: 'forbidden',
       statusCode: response.status,
-      message: 'Acesso negado pelo backend para a verificacao de sessao.',
+      message: 'Acesso negado pelo sistema para a verificação de sessão.',
       hasChecked: true
     });
   }
@@ -2152,7 +2105,7 @@ async function fetchCurrentSession() {
     return createSessionState({
       sessionState: 'technical_error',
       statusCode: response.status,
-      message: 'Servico interno temporariamente indisponivel.',
+      message: 'Serviço interno temporariamente indisponível.',
       hasChecked: true
     });
   }
@@ -2161,7 +2114,7 @@ async function fetchCurrentSession() {
     return createSessionState({
       sessionState: 'technical_error',
       statusCode: response.status,
-      message: 'Nao foi possivel verificar a sessao interna neste momento.',
+      message: 'Não foi possível verificar a sessão interna neste momento.',
       hasChecked: true
     });
   }
@@ -2172,7 +2125,7 @@ async function fetchCurrentSession() {
     return createSessionState({
       sessionState: 'technical_error',
       statusCode: response.status,
-      message: 'Resposta de sessao em formato inesperado.',
+      message: 'Resposta de sessão em formato inesperado.',
       hasChecked: true
     });
   }
@@ -2181,7 +2134,7 @@ async function fetchCurrentSession() {
     return createSessionState({
       sessionState: 'unauthenticated',
       statusCode: response.status,
-      message: 'Sessao interna nao autenticada.',
+      message: 'Sessão interna não autenticada.',
       hasChecked: true
     });
   }
@@ -2191,7 +2144,7 @@ async function fetchCurrentSession() {
     usuarioId: payload.usuario_id,
     permissions: normalizePermissions(payload.permissoes),
     statusCode: response.status,
-    message: 'Sessao interna confirmada por /api/internal/auth/me.',
+    message: 'Sessão interna confirmada.',
     hasChecked: true
   });
 }
@@ -2210,7 +2163,7 @@ async function fetchSolicitacoesInternas(offset = 0) {
       status: 'unauthenticated',
       offset,
       statusCode: response.status,
-      message: 'Sessao ausente ou expirada. Faca login novamente para listar solicitacoes.'
+      message: 'Sessão ausente ou expirada. Faça login novamente para listar solicitações.'
     });
   }
 
@@ -2219,7 +2172,7 @@ async function fetchSolicitacoesInternas(offset = 0) {
       status: 'forbidden',
       offset,
       statusCode: response.status,
-      message: 'Sem permissao para listar solicitacoes internas de Iluminacao.'
+      message: 'Sem permissão para listar solicitações internas de Iluminação.'
     });
   }
 
@@ -2228,7 +2181,7 @@ async function fetchSolicitacoesInternas(offset = 0) {
       status: 'error',
       offset,
       statusCode: response.status,
-      message: 'Parametros de listagem invalidos. A consulta foi mantida sem detalhes tecnicos.'
+      message: 'Parâmetros de listagem inválidos. A consulta foi mantida sem detalhes técnicos.'
     });
   }
 
@@ -2237,7 +2190,7 @@ async function fetchSolicitacoesInternas(offset = 0) {
       status: 'error',
       offset,
       statusCode: response.status,
-      message: 'Servico interno temporariamente indisponivel para listar solicitacoes.'
+      message: 'Serviço interno temporariamente indisponível para listar solicitações.'
     });
   }
 
@@ -2246,7 +2199,7 @@ async function fetchSolicitacoesInternas(offset = 0) {
       status: 'error',
       offset,
       statusCode: response.status,
-      message: 'Nao foi possivel carregar a listagem interna neste momento.'
+      message: 'Não foi possível carregar a listagem interna neste momento.'
     });
   }
 
@@ -2274,8 +2227,8 @@ async function fetchSolicitacoesInternas(offset = 0) {
     offset: safeOffset,
     statusCode: response.status,
     message: items.length > 0
-      ? 'Listagem somente leitura carregada com campos minimos.'
-      : 'Nenhuma solicitacao encontrada nesta pagina.'
+      ? 'Listagem somente leitura carregada com campos mínimos.'
+      : 'Nenhuma solicitação encontrada nesta página.'
   });
 }
 
@@ -2293,7 +2246,7 @@ async function fetchSolicitacaoDetail(solicitacaoId) {
       status: 'expired',
       solicitacaoId,
       statusCode: response.status,
-      message: 'Sessao ausente ou expirada ao consultar o detalhe. Faca login novamente.'
+      message: 'Sessão ausente ou expirada ao consultar o detalhe. Faça login novamente.'
     });
   }
 
@@ -2302,7 +2255,7 @@ async function fetchSolicitacaoDetail(solicitacaoId) {
       status: 'forbidden',
       solicitacaoId,
       statusCode: response.status,
-      message: 'Sem permissao para visualizar o detalhe desta solicitacao.'
+      message: 'Sem permissão para visualizar o detalhe desta solicitação.'
     });
   }
 
@@ -2311,7 +2264,7 @@ async function fetchSolicitacaoDetail(solicitacaoId) {
       status: 'not_found',
       solicitacaoId,
       statusCode: response.status,
-      message: 'Solicitacao nao encontrada ou removida logicamente.'
+      message: 'Solicitação não encontrada ou removida logicamente.'
     });
   }
 
@@ -2320,7 +2273,7 @@ async function fetchSolicitacaoDetail(solicitacaoId) {
       status: 'error',
       solicitacaoId,
       statusCode: response.status,
-      message: 'Identificador da solicitacao invalido.'
+      message: 'Identificador da solicitação inválido.'
     });
   }
 
@@ -2329,7 +2282,7 @@ async function fetchSolicitacaoDetail(solicitacaoId) {
       status: 'error',
       solicitacaoId,
       statusCode: response.status,
-      message: 'Servico interno temporariamente indisponivel para carregar o detalhe.'
+      message: 'Serviço interno temporariamente indisponível para carregar o detalhe.'
     });
   }
 
@@ -2338,7 +2291,7 @@ async function fetchSolicitacaoDetail(solicitacaoId) {
       status: 'error',
       solicitacaoId,
       statusCode: response.status,
-      message: 'Nao foi possivel carregar o detalhe neste momento.'
+      message: 'Não foi possível carregar o detalhe neste momento.'
     });
   }
 
@@ -2358,7 +2311,7 @@ async function fetchSolicitacaoDetail(solicitacaoId) {
     item: toDisplaySolicitacaoDetail(payload),
     solicitacaoId,
     statusCode: response.status,
-    message: 'Detalhe somente leitura carregado.'
+      message: 'Detalhe somente leitura carregado.'
   });
 }
 
@@ -2376,7 +2329,7 @@ async function fetchSolicitacaoHistorico(solicitacaoId, offset = 0) {
       status: 'expired',
       offset,
       statusCode: response.status,
-      message: 'Sessao ausente ou expirada ao consultar o historico. Faca login novamente.'
+      message: 'Sessão ausente ou expirada ao consultar o histórico. Faça login novamente.'
     });
   }
 
@@ -2385,7 +2338,7 @@ async function fetchSolicitacaoHistorico(solicitacaoId, offset = 0) {
       status: 'forbidden',
       offset,
       statusCode: response.status,
-      message: 'Sem permissao para visualizar o historico desta solicitacao.'
+      message: 'Sem permissão para visualizar o histórico desta solicitação.'
     });
   }
 
@@ -2394,7 +2347,7 @@ async function fetchSolicitacaoHistorico(solicitacaoId, offset = 0) {
       status: 'not_found',
       offset,
       statusCode: response.status,
-      message: 'Solicitacao nao encontrada ou removida logicamente.'
+      message: 'Solicitação não encontrada ou removida logicamente.'
     });
   }
 
@@ -2403,7 +2356,7 @@ async function fetchSolicitacaoHistorico(solicitacaoId, offset = 0) {
       status: 'error',
       offset,
       statusCode: response.status,
-      message: 'Identificador ou paginacao de historico invalidos.'
+      message: 'Identificador ou paginação de histórico inválidos.'
     });
   }
 
@@ -2412,7 +2365,7 @@ async function fetchSolicitacaoHistorico(solicitacaoId, offset = 0) {
       status: 'error',
       offset,
       statusCode: response.status,
-      message: 'Servico interno temporariamente indisponivel para carregar o historico.'
+      message: 'Serviço interno temporariamente indisponível para carregar o histórico.'
     });
   }
 
@@ -2421,7 +2374,7 @@ async function fetchSolicitacaoHistorico(solicitacaoId, offset = 0) {
       status: 'error',
       offset,
       statusCode: response.status,
-      message: 'Nao foi possivel carregar o historico neste momento.'
+      message: 'Não foi possível carregar o histórico neste momento.'
     });
   }
 
@@ -2435,7 +2388,7 @@ async function fetchSolicitacaoHistorico(solicitacaoId, offset = 0) {
       status: 'error',
       offset,
       statusCode: response.status,
-      message: 'Resposta de historico em formato inesperado.'
+      message: 'Resposta de histórico em formato inesperado.'
     });
   }
 
@@ -2452,8 +2405,8 @@ async function fetchSolicitacaoHistorico(solicitacaoId, offset = 0) {
     offset: safeOffset,
     statusCode: response.status,
     message: items.length > 0
-      ? 'Historico somente leitura carregado em ordem cronologica.'
-      : 'Nenhum evento de historico encontrado para esta pagina.'
+      ? 'Histórico somente leitura carregado em ordem cronológica.'
+      : 'Nenhum evento de histórico encontrado para esta página.'
   });
 }
 
@@ -2471,7 +2424,7 @@ async function fetchSolicitacaoObservacoes(solicitacaoId, offset = 0) {
       status: 'expired',
       offset,
       statusCode: response.status,
-      message: 'Sessao ausente ou expirada ao consultar observacoes. Faca login novamente.'
+      message: 'Sessão ausente ou expirada ao consultar observações. Faça login novamente.'
     });
   }
 
@@ -2480,7 +2433,7 @@ async function fetchSolicitacaoObservacoes(solicitacaoId, offset = 0) {
       status: 'forbidden',
       offset,
       statusCode: response.status,
-      message: 'Sem permissao para visualizar observacoes desta solicitacao.'
+      message: 'Sem permissão para visualizar observações desta solicitação.'
     });
   }
 
@@ -2489,7 +2442,7 @@ async function fetchSolicitacaoObservacoes(solicitacaoId, offset = 0) {
       status: 'not_found',
       offset,
       statusCode: response.status,
-      message: 'Solicitacao nao encontrada ou removida logicamente.'
+      message: 'Solicitação não encontrada ou removida logicamente.'
     });
   }
 
@@ -2498,7 +2451,7 @@ async function fetchSolicitacaoObservacoes(solicitacaoId, offset = 0) {
       status: 'error',
       offset,
       statusCode: response.status,
-      message: 'Identificador ou paginacao de observacoes invalidos.'
+      message: 'Identificador ou paginação de observações inválidos.'
     });
   }
 
@@ -2507,7 +2460,7 @@ async function fetchSolicitacaoObservacoes(solicitacaoId, offset = 0) {
       status: 'error',
       offset,
       statusCode: response.status,
-      message: 'Servico interno temporariamente indisponivel para carregar observacoes.'
+      message: 'Serviço interno temporariamente indisponível para carregar observações.'
     });
   }
 
@@ -2516,7 +2469,7 @@ async function fetchSolicitacaoObservacoes(solicitacaoId, offset = 0) {
       status: 'error',
       offset,
       statusCode: response.status,
-      message: 'Nao foi possivel carregar observacoes neste momento.'
+      message: 'Não foi possível carregar observações neste momento.'
     });
   }
 
@@ -2530,7 +2483,7 @@ async function fetchSolicitacaoObservacoes(solicitacaoId, offset = 0) {
       status: 'error',
       offset,
       statusCode: response.status,
-      message: 'Resposta de observacoes em formato inesperado.'
+      message: 'Resposta de observações em formato inesperado.'
     });
   }
 
@@ -2547,8 +2500,8 @@ async function fetchSolicitacaoObservacoes(solicitacaoId, offset = 0) {
     offset: safeOffset,
     statusCode: response.status,
     message: items.length > 0
-      ? 'Observacoes internas somente leitura carregadas em ordem cronologica.'
-      : 'Nenhuma observacao interna encontrada para esta pagina.'
+      ? 'Observações internas somente leitura carregadas em ordem cronológica.'
+      : 'Nenhuma observação interna encontrada para esta página.'
   });
 }
 
@@ -2570,7 +2523,7 @@ async function fetchCreateSolicitacaoObservacao(solicitacaoId, observacao) {
     return createObservacaoFormState({
       status: 'expired',
       statusCode: response.status,
-      message: 'Sessao ausente ou expirada ao salvar observacao. Faca login novamente.'
+      message: 'Sessão ausente ou expirada ao salvar observação. Faça login novamente.'
     });
   }
 
@@ -2578,7 +2531,7 @@ async function fetchCreateSolicitacaoObservacao(solicitacaoId, observacao) {
     return createObservacaoFormState({
       status: 'error',
       statusCode: response.status,
-      message: 'Sem permissao para comentar ou requisicao interna invalida.'
+      message: 'Sem permissão para comentar ou requisição interna inválida.'
     });
   }
 
@@ -2586,7 +2539,7 @@ async function fetchCreateSolicitacaoObservacao(solicitacaoId, observacao) {
     return createObservacaoFormState({
       status: 'error',
       statusCode: response.status,
-      message: 'Solicitacao nao encontrada ou removida logicamente.'
+      message: 'Solicitação não encontrada ou removida logicamente.'
     });
   }
 
@@ -2594,7 +2547,7 @@ async function fetchCreateSolicitacaoObservacao(solicitacaoId, observacao) {
     return createObservacaoFormState({
       status: 'error',
       statusCode: response.status,
-      message: 'Observacao invalida. Use texto entre 3 e 2000 caracteres.'
+      message: 'Observação inválida. Use texto entre 3 e 2000 caracteres.'
     });
   }
 
@@ -2602,7 +2555,7 @@ async function fetchCreateSolicitacaoObservacao(solicitacaoId, observacao) {
     return createObservacaoFormState({
       status: 'error',
       statusCode: response.status,
-      message: 'Servico interno temporariamente indisponivel para salvar observacao.'
+      message: 'Serviço interno temporariamente indisponível para salvar observação.'
     });
   }
 
@@ -2610,7 +2563,7 @@ async function fetchCreateSolicitacaoObservacao(solicitacaoId, observacao) {
     return createObservacaoFormState({
       status: 'error',
       statusCode: response.status,
-      message: 'Nao foi possivel salvar a observacao neste momento.'
+      message: 'Não foi possível salvar a observação neste momento.'
     });
   }
 
@@ -2622,7 +2575,7 @@ async function fetchCreateSolicitacaoObservacao(solicitacaoId, observacao) {
     return createObservacaoFormState({
       status: 'error',
       statusCode: response.status,
-      message: 'Resposta de criacao de observacao em formato inesperado.'
+      message: 'Resposta de criação de observação em formato inesperado.'
     });
   }
 
@@ -2630,7 +2583,7 @@ async function fetchCreateSolicitacaoObservacao(solicitacaoId, observacao) {
     return createObservacaoFormState({
       status: 'error',
       statusCode: response.status,
-      message: 'Resposta de criacao de observacao em formato inesperado.'
+      message: 'Resposta de criação de observação em formato inesperado.'
     });
   }
 
@@ -2638,7 +2591,7 @@ async function fetchCreateSolicitacaoObservacao(solicitacaoId, observacao) {
     status: 'success',
     value: '',
     statusCode: response.status,
-    message: 'Observacao interna criada. Observacoes recarregadas quando a leitura estiver permitida.'
+    message: 'Observação interna criada. Observações recarregadas quando a leitura estiver permitida.'
   });
 }
 
@@ -2661,7 +2614,7 @@ async function fetchUpdateSolicitacaoStatus(solicitacaoId, status, observacao) {
     return createStatusFormState({
       status: 'expired',
       statusCode: response.status,
-      message: 'Sessao ausente ou expirada ao atualizar status. Faca login novamente.'
+      message: 'Sessão ausente ou expirada ao atualizar status. Faça login novamente.'
     });
   }
 
@@ -2669,7 +2622,7 @@ async function fetchUpdateSolicitacaoStatus(solicitacaoId, status, observacao) {
     return createStatusFormState({
       status: 'error',
       statusCode: response.status,
-      message: 'Sem permissao para alterar status ou requisicao interna invalida.'
+      message: 'Sem permissão para alterar status ou requisição interna inválida.'
     });
   }
 
@@ -2677,7 +2630,7 @@ async function fetchUpdateSolicitacaoStatus(solicitacaoId, status, observacao) {
     return createStatusFormState({
       status: 'error',
       statusCode: response.status,
-      message: 'Solicitacao nao encontrada ou removida logicamente.'
+      message: 'Solicitação não encontrada ou removida logicamente.'
     });
   }
 
@@ -2685,7 +2638,7 @@ async function fetchUpdateSolicitacaoStatus(solicitacaoId, status, observacao) {
     return createStatusFormState({
       status: 'error',
       statusCode: response.status,
-      message: 'Transicao de status nao permitida. Recarregue o detalhe antes de tentar novamente.'
+      message: 'Transição de status não permitida. Recarregue o detalhe antes de tentar novamente.'
     });
   }
 
@@ -2693,7 +2646,7 @@ async function fetchUpdateSolicitacaoStatus(solicitacaoId, status, observacao) {
     return createStatusFormState({
       status: 'error',
       statusCode: response.status,
-      message: 'Status ou justificativa invalidos para a alteracao normal.'
+      message: 'Status ou justificativa inválidos para a alteração normal.'
     });
   }
 
@@ -2701,7 +2654,7 @@ async function fetchUpdateSolicitacaoStatus(solicitacaoId, status, observacao) {
     return createStatusFormState({
       status: 'error',
       statusCode: response.status,
-      message: 'Servico interno temporariamente indisponivel para atualizar status.'
+      message: 'Serviço interno temporariamente indisponível para atualizar status.'
     });
   }
 
@@ -2709,7 +2662,7 @@ async function fetchUpdateSolicitacaoStatus(solicitacaoId, status, observacao) {
     return createStatusFormState({
       status: 'error',
       statusCode: response.status,
-      message: 'Nao foi possivel atualizar o status neste momento.'
+      message: 'Não foi possível atualizar o status neste momento.'
     });
   }
 
@@ -2721,7 +2674,7 @@ async function fetchUpdateSolicitacaoStatus(solicitacaoId, status, observacao) {
     return createStatusFormState({
       status: 'error',
       statusCode: response.status,
-      message: 'Resposta de alteracao de status em formato inesperado.'
+      message: 'Resposta de alteração de status em formato inesperado.'
     });
   }
 
@@ -2729,7 +2682,7 @@ async function fetchUpdateSolicitacaoStatus(solicitacaoId, status, observacao) {
     return createStatusFormState({
       status: 'error',
       statusCode: response.status,
-      message: 'Resposta de alteracao de status em formato inesperado.'
+      message: 'Resposta de alteração de status em formato inesperado.'
     });
   }
 
@@ -2738,7 +2691,7 @@ async function fetchUpdateSolicitacaoStatus(solicitacaoId, status, observacao) {
     selectedStatus: '',
     observacao: '',
     statusCode: response.status,
-    message: 'Status atualizado. Detalhe e listagem foram recarregados; historico foi recarregado se ja estava aberto.'
+    message: 'Status atualizado. Detalhe e listagem foram recarregados; histórico foi recarregado se já estava aberto.'
   });
 }
 
@@ -2749,8 +2702,8 @@ async function loadSolicitacoes(root, state, offset = 0) {
       solicitacoes: createSolicitacoesState({
         status: state.sessionState === 'authenticated' ? 'forbidden' : 'idle',
         message: state.sessionState === 'authenticated'
-          ? 'A listagem nao foi chamada porque a permissao de Iluminacao nao foi confirmada.'
-          : 'A listagem nao foi chamada porque a sessao ainda nao foi autenticada.'
+          ? 'A listagem não foi chamada porque a permissão de Iluminação não foi confirmada.'
+          : 'A listagem não foi chamada porque a sessão ainda não foi autenticada.'
       }),
       detalhe: createDetalheState()
     });
@@ -2762,10 +2715,10 @@ async function loadSolicitacoes(root, state, offset = 0) {
     solicitacoes: createSolicitacoesState({
       status: 'loading',
       offset,
-      message: 'Carregando solicitacoes internas com limit=20 e offset seguro.'
+      message: 'Carregando solicitações internas.'
     }),
     detalhe: createDetalheState({
-      message: 'Selecao de detalhe limpa durante a atualizacao da listagem.'
+      message: 'Seleção de detalhe limpa durante a atualização da listagem.'
     })
   };
 
@@ -2778,7 +2731,7 @@ async function loadSolicitacoes(root, state, offset = 0) {
       renderApp(root, createSessionState({
         sessionState: 'unauthenticated',
         statusCode: 401,
-        message: 'Sessao expirada ao tentar carregar a listagem. Faca login novamente.',
+        message: 'Sessão expirada ao tentar carregar a listagem. Faça login novamente.',
         hasChecked: true,
         solicitacoes
       }));
@@ -2795,7 +2748,7 @@ async function loadSolicitacoes(root, state, offset = 0) {
       solicitacoes: createSolicitacoesState({
         status: 'error',
         offset,
-        message: 'Falha temporaria de conexao com o servico interno de listagem.'
+        message: 'Falha temporária de conexão com o serviço interno de listagem.'
       }),
       detalhe: createDetalheState()
     });
@@ -2810,8 +2763,8 @@ async function loadSolicitacaoDetail(root, state, solicitacaoId) {
         status: state.sessionState === 'authenticated' ? 'forbidden' : 'idle',
         statusCode: state.sessionState === 'authenticated' ? 403 : null,
         message: state.sessionState === 'authenticated'
-          ? 'O detalhe nao foi chamado porque a permissao de Iluminacao nao foi confirmada.'
-          : 'O detalhe nao foi chamado porque a sessao ainda nao foi autenticada.'
+          ? 'O detalhe não foi chamado porque a permissão de Iluminação não foi confirmada.'
+          : 'O detalhe não foi chamado porque a sessão ainda não foi autenticada.'
       })
     });
     return;
@@ -2823,7 +2776,7 @@ async function loadSolicitacaoDetail(root, state, solicitacaoId) {
       detalhe: createDetalheState({
         status: 'error',
         statusCode: 422,
-        message: 'Identificador da solicitacao invalido.'
+        message: 'Identificador da solicitação inválido.'
       })
     });
     return;
@@ -2847,7 +2800,7 @@ async function loadSolicitacaoDetail(root, state, solicitacaoId) {
       renderApp(root, createSessionState({
         sessionState: 'unauthenticated',
         statusCode: 401,
-        message: 'Sessao expirada ao tentar carregar o detalhe. Faca login novamente.',
+        message: 'Sessão expirada ao tentar carregar o detalhe. Faça login novamente.',
         hasChecked: true,
         detalhe
       }));
@@ -2864,7 +2817,7 @@ async function loadSolicitacaoDetail(root, state, solicitacaoId) {
       detalhe: createDetalheState({
         status: 'error',
         solicitacaoId,
-        message: 'Falha temporaria de conexao com o servico interno de detalhe.'
+        message: 'Falha temporária de conexão com o serviço interno de detalhe.'
       })
     });
   }
@@ -2885,8 +2838,8 @@ async function loadSolicitacaoHistorico(root, state, offset = 0) {
           status: 'forbidden',
           statusCode: state.sessionState === 'authenticated' ? 403 : null,
           message: state.sessionState === 'authenticated'
-            ? 'Historico indisponivel para este perfil.'
-            : 'O historico nao foi chamado porque a sessao ainda nao foi autenticada.'
+            ? 'Histórico indisponível para este perfil.'
+            : 'O histórico não foi chamado porque a sessão ainda não foi autenticada.'
         })
       }
     });
@@ -2901,7 +2854,7 @@ async function loadSolicitacaoHistorico(root, state, offset = 0) {
         historico: createHistoricoState({
           status: 'error',
           statusCode: 422,
-          message: 'Selecione uma solicitacao valida antes de carregar o historico.'
+          message: 'Selecione uma solicitação válida antes de carregar o histórico.'
         })
       }
     });
@@ -2913,7 +2866,7 @@ async function loadSolicitacaoHistorico(root, state, offset = 0) {
     historico: createHistoricoState({
       status: 'loading',
       offset,
-      message: 'Carregando historico somente leitura com limit=20 e offset seguro.'
+      message: 'Carregando histórico somente leitura.'
     })
   };
   const loadingState = {
@@ -2930,7 +2883,7 @@ async function loadSolicitacaoHistorico(root, state, offset = 0) {
       renderApp(root, createSessionState({
         sessionState: 'unauthenticated',
         statusCode: 401,
-        message: 'Sessao expirada ao tentar carregar o historico. Faca login novamente.',
+        message: 'Sessão expirada ao tentar carregar o histórico. Faça login novamente.',
         hasChecked: true,
         detalhe: {
           ...loadingDetail,
@@ -2955,7 +2908,7 @@ async function loadSolicitacaoHistorico(root, state, offset = 0) {
         historico: createHistoricoState({
           status: 'error',
           offset,
-          message: 'Falha temporaria de conexao com o servico interno de historico.'
+          message: 'Falha temporária de conexão com o serviço interno de histórico.'
         })
       }
     });
@@ -2977,8 +2930,8 @@ async function loadSolicitacaoObservacoes(root, state, offset = 0) {
           status: 'forbidden',
           statusCode: state.sessionState === 'authenticated' ? 403 : null,
           message: state.sessionState === 'authenticated'
-            ? 'Observacoes indisponiveis para este perfil.'
-            : 'As observacoes nao foram chamadas porque a sessao ainda nao foi autenticada.'
+            ? 'Observações indisponíveis para este perfil.'
+            : 'As observações não foram chamadas porque a sessão ainda não foi autenticada.'
         })
       }
     });
@@ -2993,7 +2946,7 @@ async function loadSolicitacaoObservacoes(root, state, offset = 0) {
         observacoes: createObservacoesState({
           status: 'error',
           statusCode: 422,
-          message: 'Selecione uma solicitacao valida antes de carregar observacoes.'
+          message: 'Selecione uma solicitação válida antes de carregar observações.'
         })
       }
     });
@@ -3005,7 +2958,7 @@ async function loadSolicitacaoObservacoes(root, state, offset = 0) {
     observacoes: createObservacoesState({
       status: 'loading',
       offset,
-      message: 'Carregando observacoes somente leitura com limit=20 e offset seguro.'
+      message: 'Carregando observações somente leitura.'
     })
   };
   const loadingState = {
@@ -3022,7 +2975,7 @@ async function loadSolicitacaoObservacoes(root, state, offset = 0) {
       renderApp(root, createSessionState({
         sessionState: 'unauthenticated',
         statusCode: 401,
-        message: 'Sessao expirada ao tentar carregar observacoes. Faca login novamente.',
+        message: 'Sessão expirada ao tentar carregar observações. Faça login novamente.',
         hasChecked: true,
         detalhe: {
           ...loadingDetail,
@@ -3047,7 +3000,7 @@ async function loadSolicitacaoObservacoes(root, state, offset = 0) {
         observacoes: createObservacoesState({
           status: 'error',
           offset,
-          message: 'Falha temporaria de conexao com o servico interno de observacoes.'
+          message: 'Falha temporária de conexão com o serviço interno de observações.'
         })
       }
     });
@@ -3072,7 +3025,7 @@ function updateObservacaoFormControls(textarea) {
   }
 
   if (validation) {
-    validation.textContent = validationMessage || 'Payload enviado contem somente observacao.';
+    validation.textContent = validationMessage || 'Pronto para salvar como observação interna.';
   }
 
   if (submit instanceof HTMLButtonElement) {
@@ -3107,7 +3060,7 @@ function updateStatusFormControls(control) {
   }
 
   if (validation) {
-    validation.textContent = validationMessage || 'Payload enviado contem somente status e observacao.';
+    validation.textContent = validationMessage || 'Pronto para atualizar o status.';
   }
 
   if (submit instanceof HTMLButtonElement) {
@@ -3129,7 +3082,7 @@ async function submitStatusUpdate(root, state, form) {
     ? detail.item.id
     : detail.solicitacaoId;
   const formData = new FormData(form);
-  const currentStatus = detail.item ? detail.item.status : '';
+  const currentStatus = detail.item ? detail.item.statusKey : '';
   const selectedStatus = String(formData.get('status') || '').trim();
   const rawObservacao = String(formData.get('observacao') || '');
   const normalizedObservacao = normalizeStatusObservacaoInput(rawObservacao);
@@ -3149,8 +3102,8 @@ async function submitStatusUpdate(root, state, form) {
           selectedStatus,
           observacao: rawObservacao,
           message: state.sessionState === 'authenticated'
-            ? 'Alteracao de status indisponivel para este perfil.'
-            : 'O status nao foi enviado porque a sessao ainda nao foi autenticada.'
+            ? 'Alteração de status indisponível para este perfil.'
+            : 'O status não foi enviado porque a sessão ainda não foi autenticada.'
         })
       }
     });
@@ -3167,7 +3120,7 @@ async function submitStatusUpdate(root, state, form) {
           statusCode: 422,
           selectedStatus,
           observacao: rawObservacao,
-          message: 'Selecione uma solicitacao valida antes de atualizar status.'
+          message: 'Selecione uma solicitação válida antes de atualizar status.'
         })
       }
     });
@@ -3184,7 +3137,7 @@ async function submitStatusUpdate(root, state, form) {
           statusCode: 409,
           selectedStatus,
           observacao: rawObservacao,
-          message: 'Status finalizado. Reabertura ou correcao administrativa exigira fluxo especifico.'
+          message: 'Status finalizado. Reabertura ou correção administrativa exigirá fluxo específico.'
         })
       }
     });
@@ -3219,7 +3172,7 @@ async function submitStatusUpdate(root, state, form) {
       status: 'submitting',
       selectedStatus,
       observacao: rawObservacao,
-      message: 'Atualizando status com PATCH controlado...'
+      message: 'Atualizando status...'
     })
   };
 
@@ -3239,7 +3192,7 @@ async function submitStatusUpdate(root, state, form) {
       renderApp(root, createSessionState({
         sessionState: 'unauthenticated',
         statusCode: 401,
-        message: 'Sessao expirada ao tentar atualizar status. Faca login novamente.',
+        message: 'Sessão expirada ao tentar atualizar status. Faça login novamente.',
         hasChecked: true,
         detalhe: {
           ...loadingDetail,
@@ -3276,7 +3229,7 @@ async function submitStatusUpdate(root, state, form) {
       refreshedDetail = createDetalheState({
         status: 'error',
         solicitacaoId,
-        message: 'Status atualizado, mas nao foi possivel recarregar o detalhe automaticamente.'
+        message: 'Status atualizado, mas não foi possível recarregar o detalhe automaticamente.'
       });
     }
 
@@ -3284,7 +3237,7 @@ async function submitStatusUpdate(root, state, form) {
       renderApp(root, createSessionState({
         sessionState: 'unauthenticated',
         statusCode: 401,
-        message: 'Sessao expirada ao recarregar o detalhe. Faca login novamente.',
+        message: 'Sessão expirada ao recarregar o detalhe. Faça login novamente.',
         hasChecked: true,
         detalhe: {
           ...loadingDetail,
@@ -3301,7 +3254,7 @@ async function submitStatusUpdate(root, state, form) {
         solicitacoes = createSolicitacoesState({
           status: 'error',
           offset: solicitacoes.offset || 0,
-          message: 'Status atualizado, mas nao foi possivel recarregar a listagem automaticamente.'
+          message: 'Status atualizado, mas não foi possível recarregar a listagem automaticamente.'
         });
       }
     }
@@ -3313,7 +3266,7 @@ async function submitStatusUpdate(root, state, form) {
         historico = createHistoricoState({
           status: 'error',
           offset: historico.offset || 0,
-          message: 'Status atualizado, mas nao foi possivel recarregar o historico automaticamente.'
+          message: 'Status atualizado, mas não foi possível recarregar o histórico automaticamente.'
         });
       }
 
@@ -3321,7 +3274,7 @@ async function submitStatusUpdate(root, state, form) {
         renderApp(root, createSessionState({
           sessionState: 'unauthenticated',
           statusCode: 401,
-          message: 'Sessao expirada ao recarregar o historico. Faca login novamente.',
+          message: 'Sessão expirada ao recarregar o histórico. Faça login novamente.',
           hasChecked: true,
           detalhe: {
             ...loadingDetail,
@@ -3357,7 +3310,7 @@ async function submitStatusUpdate(root, state, form) {
           status: 'error',
           selectedStatus,
           observacao: rawObservacao,
-          message: 'Falha temporaria de conexao ao atualizar status.'
+          message: 'Falha temporária de conexão ao atualizar status.'
         })
       }
     });
@@ -3388,8 +3341,8 @@ async function submitObservacao(root, state, form) {
           statusCode: state.sessionState === 'authenticated' ? 403 : null,
           value: rawValue,
           message: state.sessionState === 'authenticated'
-            ? 'Criacao de observacao indisponivel para este perfil.'
-            : 'A observacao nao foi enviada porque a sessao ainda nao foi autenticada.'
+            ? 'Criação de observação indisponível para este perfil.'
+            : 'A observação não foi enviada porque a sessão ainda não foi autenticada.'
         })
       }
     });
@@ -3405,7 +3358,7 @@ async function submitObservacao(root, state, form) {
           status: 'error',
           statusCode: 422,
           value: rawValue,
-          message: 'Selecione uma solicitacao valida antes de salvar observacao.'
+          message: 'Selecione uma solicitação válida antes de salvar observação.'
         })
       }
     });
@@ -3434,7 +3387,7 @@ async function submitObservacao(root, state, form) {
     observacaoForm: createObservacaoFormState({
       status: 'submitting',
       value: rawValue,
-      message: 'Salvando observacao interna...'
+      message: 'Salvando observação interna...'
     })
   };
 
@@ -3450,7 +3403,7 @@ async function submitObservacao(root, state, form) {
       renderApp(root, createSessionState({
         sessionState: 'unauthenticated',
         statusCode: 401,
-        message: 'Sessao expirada ao tentar salvar observacao. Faca login novamente.',
+        message: 'Sessão expirada ao tentar salvar observação. Faça login novamente.',
         hasChecked: true,
         detalhe: {
           ...loadingDetail,
@@ -3482,7 +3435,7 @@ async function submitObservacao(root, state, form) {
           observacoes: createObservacoesState({
             status: 'forbidden',
             statusCode: 403,
-            message: 'Observacao criada, mas a leitura de observacoes nao esta disponivel para este perfil.'
+            message: 'Observação criada, mas a leitura de observações não está disponível para este perfil.'
           }),
           observacaoForm: nextFormState
         }
@@ -3497,7 +3450,7 @@ async function submitObservacao(root, state, form) {
     } catch {
       observacoes = createObservacoesState({
         status: 'error',
-        message: 'Observacao criada, mas nao foi possivel recarregar observacoes automaticamente.'
+        message: 'Observação criada, mas não foi possível recarregar observações automaticamente.'
       });
     }
 
@@ -3505,7 +3458,7 @@ async function submitObservacao(root, state, form) {
       renderApp(root, createSessionState({
         sessionState: 'unauthenticated',
         statusCode: 401,
-        message: 'Sessao expirada ao recarregar observacoes. Faca login novamente.',
+        message: 'Sessão expirada ao recarregar observações. Faça login novamente.',
         hasChecked: true,
         detalhe: {
           ...loadingDetail,
@@ -3532,7 +3485,7 @@ async function submitObservacao(root, state, form) {
         observacaoForm: createObservacaoFormState({
           status: 'error',
           value: rawValue,
-          message: 'Falha temporaria de conexao ao salvar observacao interna.'
+          message: 'Falha temporária de conexão ao salvar observação interna.'
         })
       }
     });
@@ -3559,7 +3512,7 @@ async function verifySession(root) {
   } catch {
     renderApp(root, createSessionState({
       sessionState: 'technical_error',
-      message: 'Nao foi possivel conectar ao servico interno. Isso pode ocorrer em desenvolvimento sem backend/proxy ativo.',
+      message: 'Não foi possível conectar ao serviço interno. Isso pode ocorrer em desenvolvimento sem backend/proxy ativo.',
       hasChecked: true
     }));
   }
@@ -3591,7 +3544,7 @@ async function submitLogin(root, form) {
   renderApp(root, createSessionState({
     sessionState: 'unauthenticated',
     statusCode: null,
-    message: 'Enviando credenciais ao endpoint interno de login.',
+    message: 'Validando credenciais internas.',
     hasChecked: true,
     loginStatus: 'submitting',
     loginMessage: 'Validando credenciais internas...',
@@ -3629,7 +3582,7 @@ async function submitLogin(root, form) {
         ...confirmedState,
         sessionState: 'unauthenticated',
         loginStatus: 'error',
-        loginMessage: 'Login aceito, mas a sessao nao foi confirmada. Tente novamente.',
+        loginMessage: 'Login aceito, mas a sessão não foi confirmada. Tente novamente.',
         loginValue: login
       });
       return;
@@ -3639,10 +3592,10 @@ async function submitLogin(root, form) {
       renderApp(root, createSessionState({
         sessionState: 'unauthenticated',
         statusCode: response.status,
-        message: 'Credenciais nao autenticadas pelo backend.',
+        message: 'Credenciais não autenticadas pelo sistema.',
         hasChecked: true,
         loginStatus: 'error',
-        loginMessage: 'Login ou senha invalidos.',
+        loginMessage: 'Login ou senha inválidos.',
         loginValue: login
       }));
       return;
@@ -3665,10 +3618,10 @@ async function submitLogin(root, form) {
       renderApp(root, createSessionState({
         sessionState: 'technical_error',
         statusCode: response.status,
-        message: 'Servico interno temporariamente indisponivel.',
+        message: 'Serviço interno temporariamente indisponível.',
         hasChecked: true,
         loginStatus: 'error',
-        loginMessage: 'Servico temporariamente indisponivel.',
+        loginMessage: 'Serviço temporariamente indisponível.',
         loginValue: login
       }));
       return;
@@ -3677,20 +3630,20 @@ async function submitLogin(root, form) {
     renderApp(root, createSessionState({
       sessionState: 'technical_error',
       statusCode: response.status,
-      message: 'Nao foi possivel concluir o login interno.',
+      message: 'Não foi possível concluir o login interno.',
       hasChecked: true,
       loginStatus: 'error',
-      loginMessage: 'Nao foi possivel entrar agora.',
+      loginMessage: 'Não foi possível entrar agora.',
       loginValue: login
     }));
   } catch {
     renderApp(root, createSessionState({
       sessionState: 'technical_error',
       statusCode: null,
-      message: 'Nao foi possivel conectar ao servico interno de autenticacao.',
+      message: 'Não foi possível conectar ao serviço interno de autenticação.',
       hasChecked: true,
       loginStatus: 'error',
-      loginMessage: 'Servico interno indisponivel no momento.',
+      loginMessage: 'Serviço interno indisponível no momento.',
       loginValue: login
     }));
   } finally {
