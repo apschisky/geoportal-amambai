@@ -340,8 +340,8 @@ export const ILUMINACAO_API_TEST_CONFIG = {
   consultaEnabled: true,
   apiUrl: 'https://geoserver.amambai.ms.gov.br/api/public/iluminacao/solicitacoes',
   consultaApiUrl: 'https://geoserver.amambai.ms.gov.br/api/public/iluminacao/consulta',
-  buttonLabel: 'Solicitar Reparo pela API',
-  disabledMessage: 'Fluxo de solicitação pela API ainda está em teste. Use o formulário atual por enquanto.',
+  buttonLabel: 'Solicitar reparo',
+  disabledMessage: 'O registro de solicitação está temporariamente indisponível. Tente novamente mais tarde.',
   successMessage: 'Solicitação registrada com sucesso.',
   genericErrorMessage: 'Não foi possível registrar a solicitação no momento. Tente novamente mais tarde.'
 };

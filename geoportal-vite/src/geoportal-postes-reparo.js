@@ -807,10 +807,10 @@ function createIluminacaoApiTestModalHtml(state) {
     <div class="iluminacao-api-test-overlay" style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);display:flex;align-items:flex-start;justify-content:center;padding:6px 10px;overflow-y:auto;overflow-x:hidden;">
       <div class="iluminacao-api-test-modal" data-localizacao-tipo="${escapeHtml(localizacaoTipo)}" role="dialog" aria-modal="true" aria-labelledby="iluminacao-api-test-title" style="width:min(370px,calc(100vw - 28px));max-width:calc(100vw - 28px);max-height:none;overflow:visible;background:#fff;border-radius:8px;box-shadow:0 20px 45px rgba(15,23,42,0.35);padding:10px;color:#111827;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;">
-          <h2 id="iluminacao-api-test-title" style="font-size:16px;line-height:1.15;margin:0;color:#123f73;">Solicita\u00e7\u00e3o pela API (teste)</h2>
+          <h2 id="iluminacao-api-test-title" style="font-size:16px;line-height:1.15;margin:0;color:#123f73;">Solicita\u00e7\u00e3o de reparo em ilumina\u00e7\u00e3o p\u00fablica</h2>
           <button type="button" data-iluminacao-api-test-close="true" aria-label="Fechar" style="border:0;background:transparent;font-size:20px;line-height:1;cursor:pointer;color:#374151;">&times;</button>
         </div>
-        <p style="margin:0 0 2px;color:#4b5563;font-size:11.5px;">Formul\u00e1rio local de prepara\u00e7\u00e3o. O envio real ainda n\u00e3o est\u00e1 ativo.</p>
+        <p style="margin:0 0 2px;color:#4b5563;font-size:11.5px;">Confira o poste selecionado e informe seus dados para registrar a solicita\u00e7\u00e3o.</p>
         <p data-iluminacao-required-note="true" style="margin:0 0 2px;color:#64748b;font-size:11.5px;">* Campos obrigat\u00f3rios.</p>
 
         ${isManual ? `
@@ -874,7 +874,7 @@ function createIluminacaoApiTestModalHtml(state) {
           ${consultaLinkHtml}
           <div style="display:flex;justify-content:flex-end;gap:7px;margin-top:7px;flex-wrap:wrap;">
             <button type="button" data-iluminacao-api-test-close="true" style="padding:5px 9px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;color:#111827;font-weight:700;cursor:pointer;">Cancelar</button>
-            <button type="button" data-iluminacao-api-test-submit="true" style="padding:5px 9px;border:0;border-radius:4px;background:#1976d2;color:#fff;font-weight:700;cursor:pointer;">Enviar teste</button>
+            <button type="button" data-iluminacao-api-test-submit="true" style="padding:5px 9px;border:0;border-radius:4px;background:#1976d2;color:#fff;font-weight:700;cursor:pointer;">Enviar solicita\u00e7\u00e3o</button>
           </div>
         </div>
       </div>
