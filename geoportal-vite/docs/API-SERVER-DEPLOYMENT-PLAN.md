@@ -501,6 +501,122 @@ Foi realizada validacao manual de login/sessao interna contra o proxy HTTPS real
 
 Proxima sequencia recomendada: implementar login visual minimo dentro de `/interno/`, validar que a shell ignora o token retornado no corpo do login e depende apenas do cookie HttpOnly, confirmar `/me` retornando `200` na shell e somente depois integrar a listagem somente leitura de Iluminacao. `POST` observacao e `PATCH` status continuam para etapa posterior separada.
 
+## 6.6. Publicacao estatica da area interna no dominio `geoserver`
+
+Esta secao registra a forma operacional adotada para servir a shell interna `/interno/` no mesmo dominio onde ja existe o proxy HTTPS da API interna. O registro e documental; nenhuma alteracao em Apache, producao, backend, banco, NSSM, firewall ou `.env` e executada por este documento.
+
+### Separacao de dominios
+
+- Geoportal publico principal: `https://geoportal.amambai.ms.gov.br/`.
+- Area interna e API interna: `https://geoserver.amambai.ms.gov.br/`.
+- Shell interna: `https://geoserver.amambai.ms.gov.br/interno/`.
+- Proxy interno existente: `/api/internal/` -> `http://127.0.0.1:8002/api/internal/`.
+- Proxy GeoServer existente: `/geoserver` continua encaminhando ao Tomcat/GeoServer.
+
+A area interna deve ser servida pelo Apache do dominio `geoserver.amambai.ms.gov.br`, e nao apenas pela hospedagem/FTP do dominio `geoportal.amambai.ms.gov.br`. O motivo e manter frontend interno e API interna no mesmo dominio, reduzindo complexidade de CORS e evitando fluxo de cookie cross-site para a sessao interna.
+
+O link publico `Area interna` pode apontar para `https://geoserver.amambai.ms.gov.br/interno/`, mas a publicacao do front-end publico no dominio `geoportal` nao e suficiente para disponibilizar a shell interna se os arquivos estaticos de `/interno/` nao estiverem publicados no servidor `geoserver`.
+
+### Estrutura do build Vite
+
+O build Vite gera a estrutura:
+
+```text
+dist/
+  assets/
+  interno/
+  index.html
+```
+
+Para o servidor `geoserver`, a estrutura operacional registrada e:
+
+```text
+C:/apps/geoportal_interno/
+  assets/
+  interno/
+```
+
+Arquivo principal da shell interna:
+
+```text
+C:/apps/geoportal_interno/interno/index.html
+```
+
+Assets usados pelo build Vite:
+
+```text
+C:/apps/geoportal_interno/assets/
+```
+
+Publicacao manual esperada no servidor `geoserver`:
+
+- copiar o conteudo de `dist/interno/` para `C:/apps/geoportal_interno/interno/`;
+- copiar o conteudo de `dist/assets/` para `C:/apps/geoportal_interno/assets/`;
+- manter `/api/internal/` como proxy de backend, nao como arquivos estaticos.
+
+### Bloco Apache registrado
+
+Bloco aplicado no `<VirtualHost *:443>` de `geoserver.amambai.ms.gov.br` para servir o frontend interno estatico:
+
+```apache
+# Geoportal Interno - frontend estatico
+RedirectMatch 301 ^/interno$ /interno/
+
+Alias /interno/ "C:/apps/geoportal_interno/interno/"
+
+<Directory "C:/apps/geoportal_interno/interno/">
+    Options -Indexes
+    AllowOverride None
+    Require all granted
+    DirectoryIndex index.html
+</Directory>
+
+# Assets do build Vite usados pela shell interna
+Alias /assets/ "C:/apps/geoportal_interno/assets/"
+
+<Directory "C:/apps/geoportal_interno/assets/">
+    Options -Indexes
+    AllowOverride None
+    Require all granted
+</Directory>
+```
+
+Por clareza operacional, manter esse bloco antes das regras de proxy no VirtualHost:
+
+- `/interno/` e `/assets/` sao arquivos estaticos;
+- `/api/internal/` continua proxy para `127.0.0.1:8002`;
+- `/api/` continua proxy da API publica/producao em `127.0.0.1:8001`;
+- `/geoserver` continua proxy do GeoServer/Tomcat.
+
+### Alerta sobre `Alias /assets/`
+
+O `Alias /assets/` e global no dominio `geoserver.amambai.ms.gov.br`. Ele funciona no arranjo atual porque o build Vite referencia assets como `/assets/...` e nao ha conflito conhecido nesse dominio.
+
+Se futuramente houver conflito com outros assets servidos pelo `geoserver`, a evolucao recomendada e ajustar o build/publicacao para uma base propria da area interna, por exemplo `/interno/assets/`, em etapa separada. Essa mudanca exigiria revisao do build Vite, publicacao estatica e validacao controlada, sem alterar o proxy `/api/internal/`.
+
+### Seguranca e validacoes
+
+O frontend interno e estatico. A seguranca real nao esta no HTML/JS, e sim no backend protegido por `/api/internal/`.
+
+Validacoes esperadas:
+
+- `https://geoserver.amambai.ms.gov.br/interno/` abre a shell interna;
+- sem sessao, `GET /api/internal/auth/me` retorna `401`;
+- com sessao valida, `GET /api/internal/auth/me` retorna `200`;
+- login interno funciona usando o mesmo dominio do proxy `/api/internal/`;
+- listagem de solicitacoes carrega apenas apos sessao e permissao;
+- a pagina `/interno/` abrir publicamente nao expoe dados internos enquanto a API permanecer protegida;
+- nenhum segredo, senha, token, cookie real, hash, `session_secret` ou `DATABASE_URL` deve ser registrado na documentacao.
+
+Enquanto a shell interna nao possuir botao de logout, testar o estado sem sessao usando uma das alternativas abaixo:
+
+- aba anonima;
+- outro navegador;
+- remocao dos cookies do dominio `geoserver.amambai.ms.gov.br`;
+- aguardar expiracao da sessao.
+
+Logout permanece como melhoria futura separada.
+
 ## 7. Relacao com login e painel interno
 
 Login e painel interno devem vir depois da estabilizacao da API publica no servidor.
