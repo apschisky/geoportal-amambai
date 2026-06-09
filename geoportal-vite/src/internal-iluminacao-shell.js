@@ -8,6 +8,8 @@ const HISTORICO_PAGE_SIZE = 20;
 const OBSERVACOES_PAGE_SIZE = 20;
 const OBSERVACAO_MIN_LENGTH = 3;
 const OBSERVACAO_MAX_LENGTH = 2000;
+const STATUS_OBSERVACAO_MIN_LENGTH = 3;
+const STATUS_OBSERVACAO_MAX_LENGTH = 1000;
 const INTERNAL_MUTATING_REQUEST_HEADER = 'X-Geoportal-Internal-Request';
 
 const SESSION_STATES = {
@@ -123,6 +125,33 @@ const statusOptions = [
   'cancelada'
 ];
 
+const statusLabels = {
+  aberta: 'Aberta',
+  em_triagem: 'Em triagem',
+  encaminhada: 'Encaminhada',
+  em_execucao: 'Em execucao',
+  aguardando_material: 'Aguardando material',
+  nao_localizado: 'Nao localizado',
+  resolvida: 'Resolvida',
+  indeferida: 'Indeferida',
+  cancelada: 'Cancelada'
+};
+
+const statusTransitions = {
+  aberta: ['em_triagem', 'cancelada', 'indeferida'],
+  em_triagem: ['encaminhada', 'aguardando_material', 'nao_localizado', 'cancelada', 'indeferida'],
+  encaminhada: ['em_execucao', 'aguardando_material', 'nao_localizado', 'cancelada'],
+  em_execucao: ['aguardando_material', 'resolvida', 'nao_localizado'],
+  aguardando_material: ['encaminhada', 'em_execucao', 'cancelada']
+};
+
+const terminalStatuses = [
+  'resolvida',
+  'cancelada',
+  'indeferida',
+  'nao_localizado'
+];
+
 const summaryCards = [
   {
     label: 'Chamados abertos',
@@ -209,7 +238,7 @@ const nextSteps = [
   'Validar historico somente leitura por botao explicito no detalhe.',
   'Validar observacoes internas somente leitura por botao explicito no detalhe.',
   'Validar criacao de observacao interna com header mutavel obrigatorio.',
-  'Habilitar PATCH apenas em fase autenticada e testada.',
+  'Validar alteracao normal de status com matriz de transicoes e header mutavel obrigatorio.',
   'Planejar dashboard, mapa operacional e proxy separadamente.'
 ];
 
@@ -217,7 +246,7 @@ const outOfScope = [
   'logout completo',
   'token manual, localStorage ou sessionStorage',
   'edicao ou exclusao de observacao',
-  'PATCH de Iluminacao ou alteracao de status',
+  'correcao administrativa, reabertura de status terminal ou alteracao de prioridade',
   'dashboard, estatisticas e mapa operacional',
   'proxy, Apache ou producao interna'
 ];
@@ -271,10 +300,22 @@ function createObservacaoFormState(overrides = {}) {
   };
 }
 
+function createStatusFormState(overrides = {}) {
+  return {
+    status: 'idle',
+    selectedStatus: '',
+    observacao: '',
+    statusCode: null,
+    message: 'Alteracao normal de status disponivel apenas por acao explicita.',
+    ...overrides
+  };
+}
+
 function createDetalheState(overrides = {}) {
   const historico = createHistoricoState(overrides.historico || {});
   const observacoes = createObservacoesState(overrides.observacoes || {});
   const observacaoForm = createObservacaoFormState(overrides.observacaoForm || {});
+  const statusForm = createStatusFormState(overrides.statusForm || {});
 
   return {
     status: 'idle',
@@ -285,10 +326,12 @@ function createDetalheState(overrides = {}) {
     historico,
     observacoes,
     observacaoForm,
+    statusForm,
     ...overrides,
     historico,
     observacoes,
-    observacaoForm
+    observacaoForm,
+    statusForm
   };
 }
 
@@ -485,6 +528,22 @@ function isValidObservacaoPayload(payload) {
   );
 }
 
+function isValidStatusUpdateResponsePayload(payload) {
+  const solicitacao = payload && typeof payload === 'object'
+    ? payload.solicitacao
+    : null;
+
+  return Boolean(
+    solicitacao
+      && typeof solicitacao === 'object'
+      && Number.isInteger(solicitacao.id)
+      && solicitacao.id > 0
+      && typeof solicitacao.status === 'string'
+      && typeof solicitacao.atualizado_em === 'string'
+      && isOptionalText(solicitacao.finalizado_em)
+  );
+}
+
 function safeText(value, fallback = 'Nao informado') {
   if (value === null || value === undefined) {
     return fallback;
@@ -561,6 +620,11 @@ function formatEventLabel(value) {
   return safeText(value).replaceAll('_', ' ');
 }
 
+function formatStatusLabel(value) {
+  const status = safeText(value, '');
+  return statusLabels[status] || formatEventLabel(status);
+}
+
 function toDisplayHistoricoEvent(event) {
   const safeEvent = event && typeof event === 'object' ? event : {};
   const usuarioNome = safeText(safeEvent.usuario_nome, '');
@@ -623,6 +687,55 @@ function isValidObservacaoInput(value) {
   return getObservacaoValidationMessage(value) === '';
 }
 
+function normalizeStatusObservacaoInput(value) {
+  return String(value || '').trim();
+}
+
+function getAllowedNextStatuses(currentStatus) {
+  return statusTransitions[currentStatus] || [];
+}
+
+function isTerminalStatus(status) {
+  return terminalStatuses.includes(status);
+}
+
+function getStatusSelectionValidationMessage(currentStatus, selectedStatus) {
+  const allowedStatuses = getAllowedNextStatuses(currentStatus);
+
+  if (!selectedStatus) {
+    return 'Selecione um novo status permitido.';
+  }
+
+  if (selectedStatus === currentStatus) {
+    return 'Selecione um status diferente do atual.';
+  }
+
+  if (!allowedStatuses.includes(selectedStatus)) {
+    return 'Transicao de status nao permitida nesta rota normal.';
+  }
+
+  return '';
+}
+
+function getStatusObservacaoValidationMessage(value) {
+  const normalized = normalizeStatusObservacaoInput(value);
+
+  if (normalized.length < STATUS_OBSERVACAO_MIN_LENGTH) {
+    return 'Informe justificativa com ao menos 3 caracteres apos remover espacos.';
+  }
+
+  if (normalized.length > STATUS_OBSERVACAO_MAX_LENGTH) {
+    return 'A justificativa deve ter no maximo 1000 caracteres apos trim.';
+  }
+
+  return '';
+}
+
+function getStatusFormValidationMessage(currentStatus, selectedStatus, observacao) {
+  return getStatusSelectionValidationMessage(currentStatus, selectedStatus)
+    || getStatusObservacaoValidationMessage(observacao);
+}
+
 function buildSolicitacoesUrl(offset = 0) {
   const params = new URLSearchParams({
     limit: String(SOLICITACOES_PAGE_SIZE),
@@ -658,6 +771,10 @@ function buildCreateSolicitacaoObservacaoUrl(solicitacaoId) {
   return `${buildSolicitacaoDetailUrl(solicitacaoId)}/observacoes`;
 }
 
+function buildUpdateSolicitacaoStatusUrl(solicitacaoId) {
+  return `${buildSolicitacaoDetailUrl(solicitacaoId)}/status`;
+}
+
 function canListSolicitacoes(state) {
   return state.sessionState === 'authenticated'
     && hasPermission(state, PERMISSIONS.iluminacaoRead);
@@ -676,6 +793,11 @@ function canViewObservacoes(state) {
 function canCreateObservacao(state) {
   return state.sessionState === 'authenticated'
     && hasPermission(state, PERMISSIONS.iluminacaoComment);
+}
+
+function canUpdateStatus(state) {
+  return state.sessionState === 'authenticated'
+    && hasPermission(state, PERMISSIONS.iluminacaoStatus);
 }
 
 function getModuleView(module, state) {
@@ -1382,6 +1504,164 @@ function renderObservacoesPanel(state, detail) {
   `;
 }
 
+function renderAllowedStatusOptions(currentStatus, selectedStatus) {
+  return getAllowedNextStatuses(currentStatus)
+    .map((status) => `
+      <option value="${escapeHtml(status)}" ${selectedStatus === status ? 'selected' : ''}>
+        ${escapeHtml(formatStatusLabel(status))}
+      </option>
+    `)
+    .join('');
+}
+
+function renderStatusUpdatePanel(state, detail) {
+  const formState = detail.statusForm || createStatusFormState();
+  const hasStatusPermission = canUpdateStatus(state);
+  const hasLoadedDetail = detail.status === 'loaded' && detail.item;
+  const currentStatus = hasLoadedDetail ? detail.item.status : '';
+  const allowedStatuses = getAllowedNextStatuses(currentStatus);
+  const terminal = isTerminalStatus(currentStatus);
+
+  if (!hasStatusPermission) {
+    return `
+      <article class="internal-card internal-status-card">
+        <div class="internal-history-heading">
+          <div>
+            <h3>Alteracao normal de status</h3>
+            <p>Alteracao de status indisponivel para este perfil.</p>
+          </div>
+          <span class="internal-pill">Permissao exigida</span>
+        </div>
+        <p class="internal-muted-note">
+          A permissao iluminacao.solicitacoes.atualizar_status e exigida pelo backend para o PATCH.
+        </p>
+      </article>
+    `;
+  }
+
+  if (terminal) {
+    const terminalMessageClass = formState.status === 'error'
+      ? ' is-error'
+      : formState.status === 'success'
+        ? ' is-success'
+        : '';
+
+    return `
+      <article class="internal-card internal-status-card">
+        <div class="internal-history-heading">
+          <div>
+            <h3>Alteracao normal de status</h3>
+            <p>Status atual: ${escapeHtml(formatStatusLabel(currentStatus))}.</p>
+          </div>
+          <span class="internal-pill">Status finalizado</span>
+        </div>
+        <p class="internal-sensitive-note">
+          Status finalizado. Reabertura ou correcao administrativa exigira fluxo especifico.
+        </p>
+        <p class="internal-form-message${terminalMessageClass}" role="status">
+          ${escapeHtml(formState.message)}
+        </p>
+      </article>
+    `;
+  }
+
+  const normalizedLength = normalizeStatusObservacaoInput(formState.observacao).length;
+  const validationMessage = getStatusFormValidationMessage(
+    currentStatus,
+    formState.selectedStatus,
+    formState.observacao
+  );
+  const isSubmitting = formState.status === 'submitting';
+  const canSubmit = hasLoadedDetail
+    && allowedStatuses.length > 0
+    && !validationMessage
+    && !isSubmitting;
+  const messageClass = formState.status === 'error'
+    ? ' is-error'
+    : formState.status === 'success'
+      ? ' is-success'
+      : '';
+
+  return `
+    <article class="internal-card internal-status-card">
+      <div class="internal-history-heading">
+        <div>
+          <h3>Alteracao normal de status</h3>
+          <p>Controle separado de observacoes. Nao altera prioridade e nao faz reabertura administrativa.</p>
+        </div>
+        <span class="internal-pill">PATCH controlado</span>
+      </div>
+      <dl>
+        <div>
+          <dt>Status atual</dt>
+          <dd>${escapeHtml(formatStatusLabel(currentStatus))}</dd>
+        </div>
+        <div>
+          <dt>Transicoes disponiveis</dt>
+          <dd>${allowedStatuses.length > 0
+            ? escapeHtml(allowedStatuses.map(formatStatusLabel).join(', '))
+            : 'Nenhuma transicao normal disponivel'}
+          </dd>
+        </div>
+      </dl>
+      <form
+        class="internal-status-form"
+        data-status-form
+        data-current-status="${escapeHtml(currentStatus)}"
+      >
+        <label for="internal-status-next">
+          Novo status
+          <select
+            id="internal-status-next"
+            name="status"
+            data-status-select
+            aria-describedby="internal-status-help"
+            ${isSubmitting || allowedStatuses.length === 0 ? 'disabled' : ''}
+          >
+            <option value="">Selecione</option>
+            ${renderAllowedStatusOptions(currentStatus, formState.selectedStatus)}
+          </select>
+        </label>
+        <label for="internal-status-observacao">
+          Justificativa da alteracao
+          <textarea
+            id="internal-status-observacao"
+            name="observacao"
+            data-status-observacao-textarea
+            rows="5"
+            maxlength="${escapeHtml(STATUS_OBSERVACAO_MAX_LENGTH)}"
+            placeholder="Registre uma justificativa operacional sintetica"
+            aria-describedby="internal-status-help internal-status-counter"
+            ${isSubmitting ? 'disabled' : ''}
+          >${escapeHtml(formState.observacao)}</textarea>
+        </label>
+        <div class="internal-observation-form-footer">
+          <span id="internal-status-counter" data-status-counter>
+            ${escapeHtml(normalizedLength)}/${escapeHtml(STATUS_OBSERVACAO_MAX_LENGTH)}
+          </span>
+          <span id="internal-status-help" data-status-validation>
+            ${escapeHtml(validationMessage || 'Payload enviado contem somente status e observacao.')}
+          </span>
+        </div>
+        <button
+          type="submit"
+          class="internal-secondary-action"
+          data-status-submit
+          ${canSubmit ? '' : 'disabled'}
+        >
+          ${isSubmitting ? 'Atualizando status...' : 'Atualizar status'}
+        </button>
+        <p class="internal-form-message${messageClass}" role="status">
+          ${escapeHtml(formState.message)}
+        </p>
+      </form>
+      <p class="internal-muted-note">
+        A rota normal usa X-Geoportal-Internal-Request: 1. O PATCH nao cria observacao separada e o backend continua validando a autorizacao e a matriz de transicoes.
+      </p>
+    </article>
+  `;
+}
+
 function renderSolicitacaoDetailLoaded(state, detail) {
   const item = detail.item;
 
@@ -1458,11 +1738,12 @@ function renderSolicitacaoDetailLoaded(state, detail) {
         <section class="internal-detail-section" aria-label="Acoes futuras indisponiveis">
           <h4>Acoes futuras</h4>
           <p>
-            Alteracao de status, edicao/exclusao de observacao, anexos e mapa operacional continuam fora desta fase.
+            Correcao administrativa, reabertura de status finalizado, edicao/exclusao de observacao, anexos e mapa operacional continuam fora desta fase.
           </p>
         </section>
       </div>
     </article>
+    ${renderStatusUpdatePanel(state, detail)}
     ${renderObservacoesPanel(state, detail)}
     ${renderHistoricoPanel(state, detail)}
   `;
@@ -1531,7 +1812,7 @@ function renderSolicitacaoDetailPanel(state) {
         </div>
         <div>
           <dt>Restricoes</dt>
-          <dd>POST limitado a observacao interna. Sem PATCH, status, coordenadas ou JSON bruto.</dd>
+          <dd>PATCH limitado a status normal. Sem coordenadas, JSON bruto, reabertura ou prioridade.</dd>
         </div>
       </dl>
     </article>
@@ -1620,7 +1901,7 @@ function renderInternalIluminacaoShell(root, state) {
           <p class="internal-kicker">Homologacao / Integracao de sessao</p>
           <h1 id="internal-page-title">Geoportal Interno</h1>
           <p class="internal-subtitle">
-            Portal municipal multi-modulo. Esta fase usa sessao interna, listagem, detalhe e historico somente leitura de Iluminacao.
+            Portal municipal multi-modulo. Esta fase usa sessao interna, consultas controladas e mutacoes restritas de Iluminacao.
           </p>
         </div>
         ${renderSessionBox(state)}
@@ -1656,9 +1937,10 @@ function renderInternalIluminacaoShell(root, state) {
               <span>GET solicitacoes</span>
               <span>GET detalhe</span>
               <span>GET historico</span>
+              <span>PATCH status</span>
               <span>Credentials include</span>
               <span>Cookie HttpOnly</span>
-              <span>Sem POST/PATCH</span>
+              <span>Header mutavel</span>
             </div>
           </section>
 
@@ -1716,7 +1998,7 @@ function renderInternalIluminacaoShell(root, state) {
           <section class="internal-module-workspace" aria-labelledby="module-workspace-title">
             <div class="internal-section-heading">
               <h2 id="module-workspace-title">Operacao planejada de Iluminacao</h2>
-              <p>Listagem, detalhe, historico e leitura de observacoes continuam controlados por GET. Criacao de observacao usa POST especifico; status continua desabilitado.</p>
+              <p>Listagem, detalhe, historico e leitura de observacoes continuam controlados por GET. Criacao de observacao usa POST especifico; alteracao normal de status usa PATCH especifico.</p>
             </div>
 
             <div class="internal-workspace">
@@ -1796,28 +2078,6 @@ function renderInternalIluminacaoShell(root, state) {
 
               <div class="internal-detail-grid">
                 ${renderSolicitacaoDetailPanel(state)}
-
-                <article class="internal-card">
-                  <h3>Alteracao normal de status</h3>
-                  <p>
-                    A tela futura deve orientar a operacao, mas a matriz de transicoes continua validada no backend.
-                  </p>
-                  <select
-                    id="internal-placeholder-status"
-                    name="status_placeholder"
-                    disabled
-                    aria-label="Status futuro da solicitacao"
-                  >
-                    ${renderStatusOptions()}
-                  </select>
-                  <textarea
-                    id="internal-placeholder-status-observacao"
-                    name="status_observacao_placeholder"
-                    disabled
-                    placeholder="Observacao obrigatoria no PATCH real"
-                  ></textarea>
-                  <button type="button" disabled>Alterar status em fase futura</button>
-                </article>
               </div>
             </div>
           </section>
@@ -2382,6 +2642,106 @@ async function fetchCreateSolicitacaoObservacao(solicitacaoId, observacao) {
   });
 }
 
+async function fetchUpdateSolicitacaoStatus(solicitacaoId, status, observacao) {
+  const response = await fetch(buildUpdateSolicitacaoStatusUrl(solicitacaoId), {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      [INTERNAL_MUTATING_REQUEST_HEADER]: '1'
+    },
+    body: JSON.stringify({
+      status,
+      observacao
+    })
+  });
+
+  if (response.status === 401) {
+    return createStatusFormState({
+      status: 'expired',
+      statusCode: response.status,
+      message: 'Sessao ausente ou expirada ao atualizar status. Faca login novamente.'
+    });
+  }
+
+  if (response.status === 403) {
+    return createStatusFormState({
+      status: 'error',
+      statusCode: response.status,
+      message: 'Sem permissao para alterar status ou requisicao interna invalida.'
+    });
+  }
+
+  if (response.status === 404) {
+    return createStatusFormState({
+      status: 'error',
+      statusCode: response.status,
+      message: 'Solicitacao nao encontrada ou removida logicamente.'
+    });
+  }
+
+  if (response.status === 409) {
+    return createStatusFormState({
+      status: 'error',
+      statusCode: response.status,
+      message: 'Transicao de status nao permitida. Recarregue o detalhe antes de tentar novamente.'
+    });
+  }
+
+  if (response.status === 422) {
+    return createStatusFormState({
+      status: 'error',
+      statusCode: response.status,
+      message: 'Status ou justificativa invalidos para a alteracao normal.'
+    });
+  }
+
+  if (response.status === 503) {
+    return createStatusFormState({
+      status: 'error',
+      statusCode: response.status,
+      message: 'Servico interno temporariamente indisponivel para atualizar status.'
+    });
+  }
+
+  if (response.status !== 200) {
+    return createStatusFormState({
+      status: 'error',
+      statusCode: response.status,
+      message: 'Nao foi possivel atualizar o status neste momento.'
+    });
+  }
+
+  let payload = null;
+
+  try {
+    payload = await response.json();
+  } catch {
+    return createStatusFormState({
+      status: 'error',
+      statusCode: response.status,
+      message: 'Resposta de alteracao de status em formato inesperado.'
+    });
+  }
+
+  if (!isValidStatusUpdateResponsePayload(payload)) {
+    return createStatusFormState({
+      status: 'error',
+      statusCode: response.status,
+      message: 'Resposta de alteracao de status em formato inesperado.'
+    });
+  }
+
+  return createStatusFormState({
+    status: 'success',
+    selectedStatus: '',
+    observacao: '',
+    statusCode: response.status,
+    message: 'Status atualizado. Detalhe e listagem foram recarregados; historico foi recarregado se ja estava aberto.'
+  });
+}
+
 async function loadSolicitacoes(root, state, offset = 0) {
   if (!canListSolicitacoes(state)) {
     renderApp(root, {
@@ -2717,6 +3077,290 @@ function updateObservacaoFormControls(textarea) {
 
   if (submit instanceof HTMLButtonElement) {
     submit.disabled = Boolean(validationMessage);
+  }
+}
+
+function updateStatusFormControls(control) {
+  const form = control.closest('[data-status-form]');
+
+  if (!(form instanceof HTMLFormElement)) {
+    return;
+  }
+
+  const currentStatus = form.dataset.currentStatus || '';
+  const select = form.querySelector('[data-status-select]');
+  const textarea = form.querySelector('[data-status-observacao-textarea]');
+  const selectedStatus = select instanceof HTMLSelectElement ? select.value : '';
+  const observacao = textarea instanceof HTMLTextAreaElement ? textarea.value : '';
+  const normalizedLength = normalizeStatusObservacaoInput(observacao).length;
+  const validationMessage = getStatusFormValidationMessage(
+    currentStatus,
+    selectedStatus,
+    observacao
+  );
+  const counter = form.querySelector('[data-status-counter]');
+  const validation = form.querySelector('[data-status-validation]');
+  const submit = form.querySelector('[data-status-submit]');
+
+  if (counter) {
+    counter.textContent = `${normalizedLength}/${STATUS_OBSERVACAO_MAX_LENGTH}`;
+  }
+
+  if (validation) {
+    validation.textContent = validationMessage || 'Payload enviado contem somente status e observacao.';
+  }
+
+  if (submit instanceof HTMLButtonElement) {
+    submit.disabled = Boolean(validationMessage);
+  }
+}
+
+function shouldRefreshHistoricoAfterStatus(historico) {
+  return Boolean(
+    historico
+      && (historico.status === 'ready' || historico.status === 'empty')
+  );
+}
+
+async function submitStatusUpdate(root, state, form) {
+  const detail = state.detalhe || createDetalheState();
+  const formState = detail.statusForm || createStatusFormState();
+  const solicitacaoId = detail.item && Number.isInteger(detail.item.id)
+    ? detail.item.id
+    : detail.solicitacaoId;
+  const formData = new FormData(form);
+  const currentStatus = detail.item ? detail.item.status : '';
+  const selectedStatus = String(formData.get('status') || '').trim();
+  const rawObservacao = String(formData.get('observacao') || '');
+  const normalizedObservacao = normalizeStatusObservacaoInput(rawObservacao);
+
+  if (formState.status === 'submitting') {
+    return;
+  }
+
+  if (!canUpdateStatus(state)) {
+    renderApp(root, {
+      ...state,
+      detalhe: {
+        ...detail,
+        statusForm: createStatusFormState({
+          status: 'error',
+          statusCode: state.sessionState === 'authenticated' ? 403 : null,
+          selectedStatus,
+          observacao: rawObservacao,
+          message: state.sessionState === 'authenticated'
+            ? 'Alteracao de status indisponivel para este perfil.'
+            : 'O status nao foi enviado porque a sessao ainda nao foi autenticada.'
+        })
+      }
+    });
+    return;
+  }
+
+  if (detail.status !== 'loaded' || !Number.isInteger(solicitacaoId) || solicitacaoId < 1) {
+    renderApp(root, {
+      ...state,
+      detalhe: {
+        ...detail,
+        statusForm: createStatusFormState({
+          status: 'error',
+          statusCode: 422,
+          selectedStatus,
+          observacao: rawObservacao,
+          message: 'Selecione uma solicitacao valida antes de atualizar status.'
+        })
+      }
+    });
+    return;
+  }
+
+  if (isTerminalStatus(currentStatus)) {
+    renderApp(root, {
+      ...state,
+      detalhe: {
+        ...detail,
+        statusForm: createStatusFormState({
+          status: 'error',
+          statusCode: 409,
+          selectedStatus,
+          observacao: rawObservacao,
+          message: 'Status finalizado. Reabertura ou correcao administrativa exigira fluxo especifico.'
+        })
+      }
+    });
+    return;
+  }
+
+  const validationMessage = getStatusFormValidationMessage(
+    currentStatus,
+    selectedStatus,
+    rawObservacao
+  );
+
+  if (validationMessage) {
+    renderApp(root, {
+      ...state,
+      detalhe: {
+        ...detail,
+        statusForm: createStatusFormState({
+          status: 'error',
+          selectedStatus,
+          observacao: rawObservacao,
+          message: validationMessage
+        })
+      }
+    });
+    return;
+  }
+
+  const loadingDetail = {
+    ...detail,
+    statusForm: createStatusFormState({
+      status: 'submitting',
+      selectedStatus,
+      observacao: rawObservacao,
+      message: 'Atualizando status com PATCH controlado...'
+    })
+  };
+
+  renderApp(root, {
+    ...state,
+    detalhe: loadingDetail
+  });
+
+  try {
+    const nextFormState = await fetchUpdateSolicitacaoStatus(
+      solicitacaoId,
+      selectedStatus,
+      normalizedObservacao
+    );
+
+    if (nextFormState.status === 'expired') {
+      renderApp(root, createSessionState({
+        sessionState: 'unauthenticated',
+        statusCode: 401,
+        message: 'Sessao expirada ao tentar atualizar status. Faca login novamente.',
+        hasChecked: true,
+        detalhe: {
+          ...loadingDetail,
+          statusForm: nextFormState
+        }
+      }));
+      return;
+    }
+
+    if (nextFormState.status !== 'success') {
+      renderApp(root, {
+        ...state,
+        detalhe: {
+          ...detail,
+          statusForm: {
+            ...nextFormState,
+            selectedStatus,
+            observacao: rawObservacao
+          }
+        }
+      });
+      return;
+    }
+
+    let solicitacoes = state.solicitacoes || createSolicitacoesState();
+    let refreshedDetail = null;
+    let historico = detail.historico || createHistoricoState();
+    const shouldRefreshHistorico = canViewHistorico(state)
+      && shouldRefreshHistoricoAfterStatus(historico);
+
+    try {
+      refreshedDetail = await fetchSolicitacaoDetail(solicitacaoId);
+    } catch {
+      refreshedDetail = createDetalheState({
+        status: 'error',
+        solicitacaoId,
+        message: 'Status atualizado, mas nao foi possivel recarregar o detalhe automaticamente.'
+      });
+    }
+
+    if (refreshedDetail.status === 'expired') {
+      renderApp(root, createSessionState({
+        sessionState: 'unauthenticated',
+        statusCode: 401,
+        message: 'Sessao expirada ao recarregar o detalhe. Faca login novamente.',
+        hasChecked: true,
+        detalhe: {
+          ...loadingDetail,
+          statusForm: nextFormState
+        }
+      }));
+      return;
+    }
+
+    if (canListSolicitacoes(state)) {
+      try {
+        solicitacoes = await fetchSolicitacoesInternas(solicitacoes.offset || 0);
+      } catch {
+        solicitacoes = createSolicitacoesState({
+          status: 'error',
+          offset: solicitacoes.offset || 0,
+          message: 'Status atualizado, mas nao foi possivel recarregar a listagem automaticamente.'
+        });
+      }
+    }
+
+    if (shouldRefreshHistorico) {
+      try {
+        historico = await fetchSolicitacaoHistorico(solicitacaoId, historico.offset || 0);
+      } catch {
+        historico = createHistoricoState({
+          status: 'error',
+          offset: historico.offset || 0,
+          message: 'Status atualizado, mas nao foi possivel recarregar o historico automaticamente.'
+        });
+      }
+
+      if (historico.status === 'expired') {
+        renderApp(root, createSessionState({
+          sessionState: 'unauthenticated',
+          statusCode: 401,
+          message: 'Sessao expirada ao recarregar o historico. Faca login novamente.',
+          hasChecked: true,
+          detalhe: {
+            ...loadingDetail,
+            historico,
+            statusForm: nextFormState
+          }
+        }));
+        return;
+      }
+    }
+
+    const baseDetail = refreshedDetail.status === 'loaded'
+      ? refreshedDetail
+      : detail;
+
+    renderApp(root, {
+      ...state,
+      solicitacoes,
+      detalhe: {
+        ...baseDetail,
+        historico,
+        observacoes: detail.observacoes || createObservacoesState(),
+        observacaoForm: detail.observacaoForm || createObservacaoFormState(),
+        statusForm: nextFormState
+      }
+    });
+  } catch {
+    renderApp(root, {
+      ...state,
+      detalhe: {
+        ...detail,
+        statusForm: createStatusFormState({
+          status: 'error',
+          selectedStatus,
+          observacao: rawObservacao,
+          message: 'Falha temporaria de conexao ao atualizar status.'
+        })
+      }
+    });
   }
 }
 
@@ -3140,6 +3784,25 @@ if (root) {
       && target.matches('[data-observacao-textarea]')
     ) {
       updateObservacaoFormControls(target);
+      return;
+    }
+
+    if (
+      target instanceof HTMLTextAreaElement
+      && target.matches('[data-status-observacao-textarea]')
+    ) {
+      updateStatusFormControls(target);
+    }
+  });
+
+  root.addEventListener('change', (event) => {
+    const target = event.target;
+
+    if (
+      target instanceof HTMLSelectElement
+      && target.matches('[data-status-select]')
+    ) {
+      updateStatusFormControls(target);
     }
   });
 
@@ -3161,6 +3824,15 @@ if (root) {
     ) {
       event.preventDefault();
       submitObservacao(root, currentState, target);
+      return;
+    }
+
+    if (
+      target instanceof HTMLFormElement
+      && target.matches('[data-status-form]')
+    ) {
+      event.preventDefault();
+      submitStatusUpdate(root, currentState, target);
     }
   });
 }

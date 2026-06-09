@@ -815,6 +815,10 @@ textarea:disabled {
   grid-column: 1 / -1;
 }
 
+.internal-status-card {
+  grid-column: 1 / -1;
+}
+
 .internal-history-heading {
   display: flex;
   align-items: flex-start;
@@ -902,7 +906,14 @@ textarea:disabled {
   margin-top: 12px;
 }
 
-.internal-observation-form label {
+.internal-status-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.internal-observation-form label,
+.internal-status-form label {
   display: grid;
   gap: 6px;
   color: #33434c;
@@ -910,6 +921,8 @@ textarea:disabled {
   font-weight: 800;
 }
 
+.internal-status-form select,
+.internal-status-form textarea,
 .internal-observation-form textarea {
   width: 100%;
   min-height: 118px;
@@ -921,6 +934,13 @@ textarea:disabled {
   resize: vertical;
 }
 
+.internal-status-form select {
+  min-height: 42px;
+  resize: none;
+}
+
+.internal-status-form select:focus,
+.internal-status-form textarea:focus,
 .internal-observation-form textarea:focus {
   outline: 3px solid rgba(93, 136, 111, 0.24);
   border-color: #6f9b5d;
