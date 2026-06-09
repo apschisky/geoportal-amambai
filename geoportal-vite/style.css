@@ -665,8 +665,11 @@ body {
     left: 0;
     bottom: 0;
     display: flex;
+    flex-wrap: wrap;
+    gap: 2px 0;
     justify-content: center;
     align-items: center;
+    line-height: 1.35;
     z-index: 3000;
 }
 .footer-link {
@@ -674,6 +677,21 @@ body {
     text-decoration: underline;
     font-size: 14px;
     margin-left: 10px;
+}
+.footer-internal-link {
+    opacity: 0.78;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+}
+.footer-internal-link::before {
+    content: "|";
+    margin-right: 10px;
+    color: rgba(255, 255, 255, 0.55);
+    text-decoration: none;
+}
+.footer-internal-link:hover,
+.footer-internal-link:focus {
+    opacity: 1;
 }
 .coordinate-display {
     position: fixed;
