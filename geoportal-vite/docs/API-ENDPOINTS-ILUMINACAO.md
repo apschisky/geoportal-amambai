@@ -566,6 +566,8 @@ Recomendacao:
 
 Finalidade: adicionar observacao interna em uma solicitacao de Iluminacao Publica.
 
+Uso na shell interna: este endpoint agora e consumido pelo formulario de observacao na shell autenticada `/interno/`, de forma explicitamente acionada pelo usuario e separada da leitura das observacoes. A interface usa a permissao `iluminacao.solicitacoes.ver_observacoes` para leitura, a permissao `iluminacao.solicitacoes.comentar` para criacao e o backend continua sendo a autoridade de autorizacao.
+
 Caracteristicas:
 
 - Endpoint interno mutavel.
@@ -610,6 +612,8 @@ Estado desta etapa:
 - Nao criou migration nem alterou schema.
 - Nao altera producao, proxy, NSSM, `.env`, frontend ou API publica.
 - Anexos e `PATCH status` permanecem em etapas posteriores.
+
+Na shell interna, apos `201 Created`, o campo e limpo e a lista de observacoes e recarregada por GET. O historico correspondente nao e recarregado automaticamente pela interface, apenas permanece disponivel para nova consulta sob demanda.
 
 **Validacao operacional (criacao de observacao interna)**
 
