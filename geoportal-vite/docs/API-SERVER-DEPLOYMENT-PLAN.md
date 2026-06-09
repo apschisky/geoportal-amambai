@@ -608,14 +608,129 @@ Validacoes esperadas:
 - a pagina `/interno/` abrir publicamente nao expoe dados internos enquanto a API permanecer protegida;
 - nenhum segredo, senha, token, cookie real, hash, `session_secret` ou `DATABASE_URL` deve ser registrado na documentacao.
 
-Enquanto a shell interna nao possuir botao de logout, testar o estado sem sessao usando uma das alternativas abaixo:
+Marco atual do MVP interno: a shell interna ja possui logout visual. O botao `Sair` chama `POST /api/internal/auth/logout` no mesmo dominio, com `credentials: "include"` e header mutavel `X-Geoportal-Internal-Request: 1`. Em sucesso, a sessao e encerrada no backend, o cookie HttpOnly e limpo pela resposta do backend e o estado em memoria da shell e descartado. A shell nao manipula cookie diretamente, nao armazena token em `localStorage` ou `sessionStorage` e nao registra cookie/token/senha em console.
 
+Para testar estado sem sessao, usar preferencialmente uma das alternativas abaixo:
+
+- botao `Sair` da shell interna;
 - aba anonima;
 - outro navegador;
 - remocao dos cookies do dominio `geoserver.amambai.ms.gov.br`;
 - aguardar expiracao da sessao.
 
-Logout permanece como melhoria futura separada.
+### Marco MVP interno de Iluminacao
+
+O MVP interno/piloto do modulo Iluminacao Publica esta publicado/testado em `https://geoserver.amambai.ms.gov.br/interno/`, usando a API interna no mesmo dominio em `https://geoserver.amambai.ms.gov.br/api/internal/`.
+
+Funcionalidades atuais do MVP:
+
+- login interno;
+- verificacao de sessao por `GET /api/internal/auth/me`;
+- menu por permissoes retornadas pelo backend;
+- listagem de solicitacoes de Iluminacao;
+- detalhe da solicitacao;
+- historico sob demanda;
+- observacoes internas sob demanda;
+- criacao de observacao interna por `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes`;
+- alteracao normal de status por `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`;
+- logout por `POST /api/internal/auth/logout`.
+
+Regras de seguranca mantidas:
+
+- a shell interna usa cookie HttpOnly;
+- a shell ignora token eventualmente retornado no corpo do login;
+- a shell nao armazena token em `localStorage` ou `sessionStorage`;
+- sem sessao, `/api/internal/auth/me` deve retornar `401`;
+- com sessao valida, `/api/internal/auth/me` deve retornar `200`;
+- o backend continua sendo a autoridade real de autorizacao;
+- menu e permissoes da interface sao apenas orientacao visual;
+- listagem evita dados pessoais e usa campos minimos;
+- dados pessoais aparecem somente no detalhe autenticado;
+- coordenadas nao aparecem no painel comum;
+- observacoes sao texto livre operacional e devem ser usadas com cuidado;
+- `POST` observacao exige permissao e `X-Geoportal-Internal-Request: 1`;
+- `PATCH` status exige permissao e `X-Geoportal-Internal-Request: 1`;
+- alteracao de status nao altera prioridade e nao cria observacao separada;
+- historico registra eventos das mutacoes;
+- logout encerra a sessao e limpa o estado da shell.
+
+### Checklist pos-deploy do MVP interno
+
+1. Abrir `https://geoportal.amambai.ms.gov.br/`.
+2. Confirmar que o Geoportal publico abre normalmente.
+3. Confirmar que o link `Area interna` aponta para `https://geoserver.amambai.ms.gov.br/interno/`.
+4. Abrir `https://geoserver.amambai.ms.gov.br/interno/` em aba anonima.
+5. Confirmar tela de login.
+6. Confirmar no Network: `GET /api/internal/auth/me -> 401`.
+7. Fazer login com usuario de homologacao/piloto.
+8. Confirmar: `GET /api/internal/auth/me -> 200`.
+9. Confirmar listagem: `GET /api/internal/iluminacao/solicitacoes?limit=20&offset=0 -> 200`.
+10. Abrir detalhe de uma solicitacao.
+11. Carregar historico sob demanda.
+12. Carregar observacoes sob demanda.
+13. Criar observacao com texto sintetico, sem dados reais.
+14. Alterar status em solicitacao de teste, se permitido e apropriado.
+15. Clicar em `Sair`.
+16. Confirmar `POST /api/internal/auth/logout`.
+17. Confirmar retorno para a tela de login.
+18. Confirmar `GET /api/internal/auth/me -> 401`.
+19. Confirmar ausencia de token em `localStorage` e `sessionStorage`.
+20. Confirmar que console e documentacao nao exibem cookie, token, senha, observacoes reais ou dados pessoais reais.
+
+### Checklist de deploy e rollback estatico
+
+Antes de atualizar a area interna, fazer backup de:
+
+```text
+C:/apps/geoportal_interno/
+```
+
+Publicar:
+
+- conteudo de `dist/interno/` em `C:/apps/geoportal_interno/interno/`;
+- conteudo de `dist/assets/` em `C:/apps/geoportal_interno/assets/`.
+
+Normalmente nao e necessario reiniciar Apache para troca de arquivos estaticos.
+
+Reiniciar ou recarregar Apache somente se alterar:
+
+- `Alias`;
+- `ProxyPass`;
+- headers;
+- `VirtualHost`;
+- certificado;
+- regras CORS.
+
+Reiniciar backend somente se alterar:
+
+- codigo da API;
+- `.env`;
+- servico;
+- dependencias;
+- migrations ou schema.
+
+Rollback estatico:
+
+- restaurar o backup de `C:/apps/geoportal_interno/`;
+- validar `https://geoserver.amambai.ms.gov.br/interno/`;
+- validar `GET /api/internal/auth/me` sem sessao retornando `401`.
+
+Rollback Apache:
+
+- restaurar backup do arquivo de configuracao;
+- rodar `httpd.exe -t`;
+- reiniciar Apache controladamente;
+- validar Geoportal publico, GeoServer, API publica e API interna.
+
+### Pendencias futuras fora do MVP
+
+- Prioridade: inventario proprio, endpoint real, permissao, valores permitidos, justificativa, historico e regra para status terminal.
+- Reabertura/correcao administrativa: fluxo separado, permissao propria, justificativa obrigatoria e auditoria forte.
+- Mapa operacional: posicao/poste, coordenadas, rota ate poste, permissoes e privacidade.
+- Dashboard: indicadores reais, SLA, prioridades, produtividade e atrasos.
+- Anexos/fotos: inventario separado, armazenamento, seguranca e limites.
+- Hardening futuro: revisar/remover token no corpo da resposta de login, confirmar `Secure=True` do cookie no servidor, avaliar base propria para assets como `/interno/assets/` se houver conflito com `Alias /assets/`, registrar politica de logs e treinar usuarios.
+- Harness de novo agente/chat: preparar resumo operacional e tecnico consolidado para continuidade.
 
 ## 7. Relacao com login e painel interno
 
