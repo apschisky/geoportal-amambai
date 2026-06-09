@@ -2,6 +2,7 @@ import './internal-iluminacao-shell.css';
 
 const AUTH_ME_ENDPOINT = '/api/internal/auth/me';
 const AUTH_LOGIN_ENDPOINT = '/api/internal/auth/login';
+const AUTH_LOGOUT_ENDPOINT = '/api/internal/auth/logout';
 const INTERNAL_SOLICITACOES_ENDPOINT = '/api/internal/iluminacao/solicitacoes';
 const SOLICITACOES_PAGE_SIZE = 20;
 const HISTORICO_PAGE_SIZE = 20;
@@ -385,6 +386,8 @@ function createSessionState(overrides = {}) {
     loginStatus: 'idle',
     loginMessage: '',
     loginValue: '',
+    logoutStatus: 'idle',
+    logoutMessage: '',
     solicitacoes: createSolicitacoesState(),
     detalhe: createDetalheState(),
     ...overrides
@@ -1976,6 +1979,8 @@ function renderLoginPanel(state) {
 
 function renderSessionBox(state) {
   const stateInfo = SESSION_STATES[state.sessionState] || SESSION_STATES.technical_error;
+  const isAuthenticated = state.sessionState === 'authenticated';
+  const isLoggingOut = state.logoutStatus === 'submitting';
   const userText = state.sessionState === 'authenticated'
     ? `Usuário interno #${state.usuarioId}`
     : 'Acesso interno';
@@ -1988,6 +1993,21 @@ function renderSessionBox(state) {
       <span>${escapeHtml(stateInfo.label)}</span>
       <strong>${escapeHtml(userText)}</strong>
       <p>${escapeHtml(statusText)}</p>
+      ${isAuthenticated
+        ? `
+          <button
+            type="button"
+            class="internal-logout-button"
+            data-action="logout"
+            ${isLoggingOut ? 'disabled' : ''}
+          >
+            ${isLoggingOut ? 'Saindo...' : 'Sair'}
+          </button>
+        `
+        : ''}
+      ${state.logoutMessage
+        ? `<p class="internal-logout-message ${state.logoutStatus === 'error' ? 'is-error' : ''}" role="status">${escapeHtml(state.logoutMessage)}</p>`
+        : ''}
     </aside>
   `;
 }
@@ -2147,6 +2167,59 @@ async function fetchCurrentSession() {
     message: 'Sessão interna confirmada.',
     hasChecked: true
   });
+}
+
+function createLoggedOutState(message = 'Sessão encerrada.', statusCode = null) {
+  return createSessionState({
+    sessionState: 'unauthenticated',
+    statusCode,
+    message,
+    hasChecked: true,
+    loginStatus: 'idle',
+    loginMessage: message,
+    loginValue: ''
+  });
+}
+
+async function fetchLogoutInternalSession() {
+  const response = await fetch(AUTH_LOGOUT_ENDPOINT, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      [INTERNAL_MUTATING_REQUEST_HEADER]: '1'
+    }
+  });
+
+  if (response.ok || response.status === 401) {
+    return {
+      loggedOut: true,
+      statusCode: response.status,
+      message: 'Sessão encerrada.'
+    };
+  }
+
+  if (response.status === 403) {
+    return {
+      loggedOut: false,
+      statusCode: response.status,
+      message: 'Não foi possível encerrar a sessão. Requisição interna inválida.'
+    };
+  }
+
+  if (response.status === 503) {
+    return {
+      loggedOut: false,
+      statusCode: response.status,
+      message: 'Serviço interno temporariamente indisponível para encerrar a sessão.'
+    };
+  }
+
+  return {
+    loggedOut: false,
+    statusCode: response.status,
+    message: 'Não foi possível encerrar a sessão agora.'
+  };
 }
 
 async function fetchSolicitacoesInternas(offset = 0) {
@@ -3518,6 +3591,47 @@ async function verifySession(root) {
   }
 }
 
+async function logoutInternalSession(root, state) {
+  if (state.sessionState !== 'authenticated') {
+    renderApp(root, createLoggedOutState());
+    return;
+  }
+
+  if (state.logoutStatus === 'submitting') {
+    return;
+  }
+
+  renderApp(root, {
+    ...state,
+    logoutStatus: 'submitting',
+    logoutMessage: 'Encerrando sessão...'
+  });
+
+  try {
+    const result = await fetchLogoutInternalSession();
+
+    if (result.loggedOut) {
+      renderApp(root, createLoggedOutState(result.message, result.statusCode));
+      return;
+    }
+
+    renderApp(root, {
+      ...state,
+      logoutStatus: 'error',
+      logoutMessage: result.message,
+      statusCode: result.statusCode,
+      message: result.message
+    });
+  } catch {
+    renderApp(root, {
+      ...state,
+      logoutStatus: 'error',
+      logoutMessage: 'Falha temporária ao encerrar a sessão.',
+      message: 'Falha temporária ao encerrar a sessão.'
+    });
+  }
+}
+
 async function submitLogin(root, form) {
   const formData = new FormData(form);
   const login = String(formData.get('login') || '').trim();
@@ -3666,6 +3780,14 @@ if (root) {
       && target.matches('[data-action="check-session"]')
     ) {
       verifySession(root);
+      return;
+    }
+
+    if (
+      target instanceof HTMLElement
+      && target.matches('[data-action="logout"]')
+    ) {
+      logoutInternalSession(root, currentState);
       return;
     }
 

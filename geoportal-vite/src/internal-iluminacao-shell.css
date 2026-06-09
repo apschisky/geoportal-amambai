@@ -131,6 +131,38 @@ textarea:disabled {
   font-weight: 800;
 }
 
+.internal-logout-button {
+  width: 100%;
+  min-height: 36px;
+  margin-top: 10px;
+  border: 1px solid #b7c6cc;
+  border-radius: 6px;
+  background: #f8fafb;
+  color: #33434c;
+  font-weight: 800;
+}
+
+.internal-logout-button:hover:not(:disabled),
+.internal-logout-button:focus-visible {
+  border-color: #8299a4;
+  background: #eef4f6;
+}
+
+.internal-logout-button:disabled {
+  color: #71808a;
+  background: #e8eef1;
+}
+
+.internal-logout-message {
+  margin-top: 8px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.internal-logout-message.is-error {
+  color: #8a3f39;
+}
+
 .internal-session-box.is-checking {
   border-color: #9db7c8;
   background: #f3f8fb;
