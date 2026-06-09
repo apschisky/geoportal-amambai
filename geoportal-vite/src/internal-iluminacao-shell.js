@@ -6,6 +6,9 @@ const INTERNAL_SOLICITACOES_ENDPOINT = '/api/internal/iluminacao/solicitacoes';
 const SOLICITACOES_PAGE_SIZE = 20;
 const HISTORICO_PAGE_SIZE = 20;
 const OBSERVACOES_PAGE_SIZE = 20;
+const OBSERVACAO_MIN_LENGTH = 3;
+const OBSERVACAO_MAX_LENGTH = 2000;
+const INTERNAL_MUTATING_REQUEST_HEADER = 'X-Geoportal-Internal-Request';
 
 const SESSION_STATES = {
   checking_session: {
@@ -205,15 +208,16 @@ const nextSteps = [
   'Validar detalhe somente leitura por selecao explicita da tabela.',
   'Validar historico somente leitura por botao explicito no detalhe.',
   'Validar observacoes internas somente leitura por botao explicito no detalhe.',
-  'Habilitar POST/PATCH apenas em fases autenticadas e testadas.',
+  'Validar criacao de observacao interna com header mutavel obrigatorio.',
+  'Habilitar PATCH apenas em fase autenticada e testada.',
   'Planejar dashboard, mapa operacional e proxy separadamente.'
 ];
 
 const outOfScope = [
   'logout completo',
   'token manual, localStorage ou sessionStorage',
-  'criacao de observacao ou formulario de comentario',
-  'POST/PATCH de Iluminacao ou qualquer acao operacional',
+  'edicao ou exclusao de observacao',
+  'PATCH de Iluminacao ou alteracao de status',
   'dashboard, estatisticas e mapa operacional',
   'proxy, Apache ou producao interna'
 ];
@@ -257,9 +261,20 @@ function createObservacoesState(overrides = {}) {
   };
 }
 
+function createObservacaoFormState(overrides = {}) {
+  return {
+    status: 'idle',
+    value: '',
+    statusCode: null,
+    message: 'Criacao de observacao disponivel apenas por acao explicita.',
+    ...overrides
+  };
+}
+
 function createDetalheState(overrides = {}) {
   const historico = createHistoricoState(overrides.historico || {});
   const observacoes = createObservacoesState(overrides.observacoes || {});
+  const observacaoForm = createObservacaoFormState(overrides.observacaoForm || {});
 
   return {
     status: 'idle',
@@ -269,9 +284,11 @@ function createDetalheState(overrides = {}) {
     message: 'Selecione uma solicitacao na tabela para carregar o detalhe somente leitura.',
     historico,
     observacoes,
+    observacaoForm,
     ...overrides,
     historico,
-    observacoes
+    observacoes,
+    observacaoForm
   };
 }
 
@@ -584,6 +601,28 @@ function toDisplayObservacao(observacao) {
   };
 }
 
+function normalizeObservacaoInput(value) {
+  return String(value || '').trim();
+}
+
+function getObservacaoValidationMessage(value) {
+  const normalized = normalizeObservacaoInput(value);
+
+  if (normalized.length < OBSERVACAO_MIN_LENGTH) {
+    return 'Informe ao menos 3 caracteres apos remover espacos.';
+  }
+
+  if (normalized.length > OBSERVACAO_MAX_LENGTH) {
+    return 'A observacao deve ter no maximo 2000 caracteres apos trim.';
+  }
+
+  return '';
+}
+
+function isValidObservacaoInput(value) {
+  return getObservacaoValidationMessage(value) === '';
+}
+
 function buildSolicitacoesUrl(offset = 0) {
   const params = new URLSearchParams({
     limit: String(SOLICITACOES_PAGE_SIZE),
@@ -615,6 +654,10 @@ function buildSolicitacaoObservacoesUrl(solicitacaoId, offset = 0) {
   return `${buildSolicitacaoDetailUrl(solicitacaoId)}/observacoes?${params.toString()}`;
 }
 
+function buildCreateSolicitacaoObservacaoUrl(solicitacaoId) {
+  return `${buildSolicitacaoDetailUrl(solicitacaoId)}/observacoes`;
+}
+
 function canListSolicitacoes(state) {
   return state.sessionState === 'authenticated'
     && hasPermission(state, PERMISSIONS.iluminacaoRead);
@@ -628,6 +671,11 @@ function canViewHistorico(state) {
 function canViewObservacoes(state) {
   return state.sessionState === 'authenticated'
     && hasPermission(state, PERMISSIONS.iluminacaoObservations);
+}
+
+function canCreateObservacao(state) {
+  return state.sessionState === 'authenticated'
+    && hasPermission(state, PERMISSIONS.iluminacaoComment);
 }
 
 function getModuleView(module, state) {
@@ -1156,11 +1204,84 @@ function renderObservacoesItems(items) {
     .join('');
 }
 
+function renderObservacaoCreatePanel(state, detail) {
+  const formState = detail.observacaoForm || createObservacaoFormState();
+  const hasCommentPermission = canCreateObservacao(state);
+  const hasLoadedDetail = detail.status === 'loaded' && detail.item;
+
+  if (!hasCommentPermission) {
+    return `
+      <section class="internal-observation-form-panel" aria-label="Criacao de observacao interna indisponivel">
+        <h4>Nova observacao interna</h4>
+        <p>Criacao de observacao indisponivel para este perfil.</p>
+        <p class="internal-muted-note">
+          A permissao iluminacao.solicitacoes.comentar e exigida pelo backend para o POST.
+        </p>
+      </section>
+    `;
+  }
+
+  const normalizedLength = normalizeObservacaoInput(formState.value).length;
+  const validationMessage = getObservacaoValidationMessage(formState.value);
+  const isSubmitting = formState.status === 'submitting';
+  const canSubmit = hasLoadedDetail && !validationMessage && !isSubmitting;
+  const messageClass = formState.status === 'error'
+    ? ' is-error'
+    : formState.status === 'success'
+      ? ' is-success'
+      : '';
+
+  return `
+    <section class="internal-observation-form-panel" aria-label="Criacao de observacao interna">
+      <h4>Nova observacao interna</h4>
+      <p class="internal-sensitive-note">
+        Texto livre operacional interno. Nao inclua dados desnecessarios, senha, token, cookie ou informacao fora do atendimento.
+      </p>
+      <form class="internal-observation-form" data-observacao-form>
+        <label for="internal-new-observacao">
+          Observacao
+          <textarea
+            id="internal-new-observacao"
+            name="observacao"
+            data-observacao-textarea
+            rows="5"
+            placeholder="Registre uma observacao operacional interna"
+            aria-describedby="internal-new-observacao-help internal-new-observacao-counter"
+            ${isSubmitting ? 'disabled' : ''}
+          >${escapeHtml(formState.value)}</textarea>
+        </label>
+        <div class="internal-observation-form-footer">
+          <span id="internal-new-observacao-counter" data-observacao-counter>
+            ${escapeHtml(normalizedLength)}/${escapeHtml(OBSERVACAO_MAX_LENGTH)}
+          </span>
+          <span id="internal-new-observacao-help" data-observacao-validation>
+            ${escapeHtml(validationMessage || 'Payload enviado contem somente observacao.')}
+          </span>
+        </div>
+        <button
+          type="submit"
+          class="internal-secondary-action"
+          data-observacao-submit
+          ${canSubmit ? '' : 'disabled'}
+        >
+          ${isSubmitting ? 'Salvando observacao...' : 'Salvar observacao'}
+        </button>
+        <p class="internal-form-message${messageClass}" role="status">
+          ${escapeHtml(formState.message)}
+        </p>
+      </form>
+      <p class="internal-muted-note">
+        A criacao usa POST com header X-Geoportal-Internal-Request: 1. Historico permanece sob demanda e pode ser recarregado manualmente.
+      </p>
+    </section>
+  `;
+}
+
 function renderObservacoesPanel(state, detail) {
   const observacoes = detail.observacoes || createObservacoesState();
   const hasLoadedDetail = detail.status === 'loaded' && detail.item;
   const hasObservationsPermission = canViewObservacoes(state);
-  const canComment = hasPermission(state, PERMISSIONS.iluminacaoComment);
+  const hasCommentPermission = canCreateObservacao(state);
   const isLoading = observacoes.status === 'loading';
   const previousOffset = Math.max(0, observacoes.offset - OBSERVACOES_PAGE_SIZE);
   const nextOffset = observacoes.offset + observacoes.limit;
@@ -1168,13 +1289,13 @@ function renderObservacoesPanel(state, detail) {
   const hasNext = hasLoadedDetail && hasObservationsPermission && nextOffset < observacoes.total && !isLoading;
   const canLoad = hasLoadedDetail && hasObservationsPermission && !isLoading;
 
-  if (!hasObservationsPermission) {
+  if (!hasObservationsPermission && !hasCommentPermission) {
     return `
       <article class="internal-card internal-observations-card">
         <h3>Observacoes internas</h3>
         <p>Observacoes indisponiveis para este perfil.</p>
         <p class="internal-muted-note">
-          A permissao iluminacao.solicitacoes.ver_observacoes e exigida pelo backend.
+          As permissoes iluminacao.solicitacoes.ver_observacoes ou iluminacao.solicitacoes.comentar sao exigidas pelo backend.
         </p>
       </article>
     `;
@@ -1194,61 +1315,69 @@ function renderObservacoesPanel(state, detail) {
         <span class="internal-pill">GET sob demanda</span>
       </div>
 
-      <div class="internal-list-toolbar" aria-label="Controles das observacoes internas">
-        <div>
-          <strong>${escapeHtml(statusText)}</strong>
-          <span>limit ${escapeHtml(observacoes.limit)} / offset ${escapeHtml(observacoes.offset)}</span>
-        </div>
-        <div class="internal-list-actions">
-          <button
-            type="button"
-            class="internal-secondary-action"
-            data-action="previous-observacoes"
-            data-offset="${escapeHtml(previousOffset)}"
-            ${hasPrevious ? '' : 'disabled'}
-          >
-            Pagina anterior
-          </button>
-          <button
-            type="button"
-            class="internal-secondary-action"
-            data-action="load-observacoes"
-            data-offset="${escapeHtml(observacoes.offset)}"
-            ${canLoad ? '' : 'disabled'}
-          >
-            ${observacoes.status === 'idle' ? 'Ver observacoes' : 'Atualizar observacoes'}
-          </button>
-          <button
-            type="button"
-            class="internal-secondary-action"
-            data-action="next-observacoes"
-            data-offset="${escapeHtml(nextOffset)}"
-            ${hasNext ? '' : 'disabled'}
-          >
-            Proxima pagina
-          </button>
-        </div>
-      </div>
+      ${hasObservationsPermission
+        ? `
+          <div class="internal-list-toolbar" aria-label="Controles das observacoes internas">
+            <div>
+              <strong>${escapeHtml(statusText)}</strong>
+              <span>limit ${escapeHtml(observacoes.limit)} / offset ${escapeHtml(observacoes.offset)}</span>
+            </div>
+            <div class="internal-list-actions">
+              <button
+                type="button"
+                class="internal-secondary-action"
+                data-action="previous-observacoes"
+                data-offset="${escapeHtml(previousOffset)}"
+                ${hasPrevious ? '' : 'disabled'}
+              >
+                Pagina anterior
+              </button>
+              <button
+                type="button"
+                class="internal-secondary-action"
+                data-action="load-observacoes"
+                data-offset="${escapeHtml(observacoes.offset)}"
+                ${canLoad ? '' : 'disabled'}
+              >
+                ${observacoes.status === 'idle' ? 'Ver observacoes' : 'Atualizar observacoes'}
+              </button>
+              <button
+                type="button"
+                class="internal-secondary-action"
+                data-action="next-observacoes"
+                data-offset="${escapeHtml(nextOffset)}"
+                ${hasNext ? '' : 'disabled'}
+              >
+                Proxima pagina
+              </button>
+            </div>
+          </div>
 
-      <p class="internal-list-message" role="status">
-        ${escapeHtml(observacoes.message)}
-      </p>
-      <p class="internal-sensitive-note">
-        Observacao e texto livre operacional interno. Nenhum JSON bruto, token, cookie ou dado do solicitante e exibido nesta secao.
-      </p>
-      ${canComment
-        ? '<p class="internal-muted-note">Criacao de observacao sera implementada em fase posterior, com POST e header mutavel proprios.</p>'
-        : ''}
+          <p class="internal-list-message" role="status">
+            ${escapeHtml(observacoes.message)}
+          </p>
+          <p class="internal-sensitive-note">
+            Observacao e texto livre operacional interno. Nenhum JSON bruto, token, cookie ou dado do solicitante e exibido nesta secao.
+          </p>
 
-      ${observacoes.status === 'loading'
-        ? '<div class="internal-table-empty">Carregando observacoes somente leitura...</div>'
-        : ''}
-      ${observacoes.status === 'empty'
-        ? '<div class="internal-table-empty">Nenhuma observacao interna encontrada.</div>'
-        : ''}
-      ${observacoes.status === 'ready'
-        ? `<div class="internal-observations-list">${renderObservacoesItems(observacoes.items)}</div>`
-        : ''}
+          ${observacoes.status === 'loading'
+            ? '<div class="internal-table-empty">Carregando observacoes somente leitura...</div>'
+            : ''}
+          ${observacoes.status === 'empty'
+            ? '<div class="internal-table-empty">Nenhuma observacao interna encontrada.</div>'
+            : ''}
+          ${observacoes.status === 'ready'
+            ? `<div class="internal-observations-list">${renderObservacoesItems(observacoes.items)}</div>`
+            : ''}
+        `
+        : `
+          <p>Leitura de observacoes indisponivel para este perfil.</p>
+          <p class="internal-muted-note">
+            A permissao iluminacao.solicitacoes.ver_observacoes e exigida pelo backend para o GET.
+          </p>
+        `}
+
+      ${renderObservacaoCreatePanel(state, detail)}
     </article>
   `;
 }
@@ -1329,7 +1458,7 @@ function renderSolicitacaoDetailLoaded(state, detail) {
         <section class="internal-detail-section" aria-label="Acoes futuras indisponiveis">
           <h4>Acoes futuras</h4>
           <p>
-            Criacao de observacao e alteracao de status continuam fora desta fase e nao sao chamadas pela shell.
+            Alteracao de status, edicao/exclusao de observacao, anexos e mapa operacional continuam fora desta fase.
           </p>
         </section>
       </div>
@@ -1402,7 +1531,7 @@ function renderSolicitacaoDetailPanel(state) {
         </div>
         <div>
           <dt>Restricoes</dt>
-          <dd>Sem criacao de observacao, POST, PATCH, coordenadas ou JSON bruto.</dd>
+          <dd>POST limitado a observacao interna. Sem PATCH, status, coordenadas ou JSON bruto.</dd>
         </div>
       </dl>
     </article>
@@ -1587,7 +1716,7 @@ function renderInternalIluminacaoShell(root, state) {
           <section class="internal-module-workspace" aria-labelledby="module-workspace-title">
             <div class="internal-section-heading">
               <h2 id="module-workspace-title">Operacao planejada de Iluminacao</h2>
-              <p>A listagem, o detalhe, o historico e as observacoes sao somente leitura. Criacao de observacao e status continuam desabilitados.</p>
+              <p>Listagem, detalhe, historico e leitura de observacoes continuam controlados por GET. Criacao de observacao usa POST especifico; status continua desabilitado.</p>
             </div>
 
             <div class="internal-workspace">
@@ -2163,6 +2292,96 @@ async function fetchSolicitacaoObservacoes(solicitacaoId, offset = 0) {
   });
 }
 
+async function fetchCreateSolicitacaoObservacao(solicitacaoId, observacao) {
+  const response = await fetch(buildCreateSolicitacaoObservacaoUrl(solicitacaoId), {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      [INTERNAL_MUTATING_REQUEST_HEADER]: '1'
+    },
+    body: JSON.stringify({
+      observacao
+    })
+  });
+
+  if (response.status === 401) {
+    return createObservacaoFormState({
+      status: 'expired',
+      statusCode: response.status,
+      message: 'Sessao ausente ou expirada ao salvar observacao. Faca login novamente.'
+    });
+  }
+
+  if (response.status === 403) {
+    return createObservacaoFormState({
+      status: 'error',
+      statusCode: response.status,
+      message: 'Sem permissao para comentar ou requisicao interna invalida.'
+    });
+  }
+
+  if (response.status === 404) {
+    return createObservacaoFormState({
+      status: 'error',
+      statusCode: response.status,
+      message: 'Solicitacao nao encontrada ou removida logicamente.'
+    });
+  }
+
+  if (response.status === 422) {
+    return createObservacaoFormState({
+      status: 'error',
+      statusCode: response.status,
+      message: 'Observacao invalida. Use texto entre 3 e 2000 caracteres.'
+    });
+  }
+
+  if (response.status === 503) {
+    return createObservacaoFormState({
+      status: 'error',
+      statusCode: response.status,
+      message: 'Servico interno temporariamente indisponivel para salvar observacao.'
+    });
+  }
+
+  if (response.status !== 201) {
+    return createObservacaoFormState({
+      status: 'error',
+      statusCode: response.status,
+      message: 'Nao foi possivel salvar a observacao neste momento.'
+    });
+  }
+
+  let payload = null;
+
+  try {
+    payload = await response.json();
+  } catch {
+    return createObservacaoFormState({
+      status: 'error',
+      statusCode: response.status,
+      message: 'Resposta de criacao de observacao em formato inesperado.'
+    });
+  }
+
+  if (!isValidObservacaoPayload(payload)) {
+    return createObservacaoFormState({
+      status: 'error',
+      statusCode: response.status,
+      message: 'Resposta de criacao de observacao em formato inesperado.'
+    });
+  }
+
+  return createObservacaoFormState({
+    status: 'success',
+    value: '',
+    statusCode: response.status,
+    message: 'Observacao interna criada. Observacoes recarregadas quando a leitura estiver permitida.'
+  });
+}
+
 async function loadSolicitacoes(root, state, offset = 0) {
   if (!canListSolicitacoes(state)) {
     renderApp(root, {
@@ -2475,6 +2694,207 @@ async function loadSolicitacaoObservacoes(root, state, offset = 0) {
   }
 }
 
+function updateObservacaoFormControls(textarea) {
+  const form = textarea.closest('[data-observacao-form]');
+
+  if (!(form instanceof HTMLFormElement)) {
+    return;
+  }
+
+  const normalizedLength = normalizeObservacaoInput(textarea.value).length;
+  const validationMessage = getObservacaoValidationMessage(textarea.value);
+  const counter = form.querySelector('[data-observacao-counter]');
+  const validation = form.querySelector('[data-observacao-validation]');
+  const submit = form.querySelector('[data-observacao-submit]');
+
+  if (counter) {
+    counter.textContent = `${normalizedLength}/${OBSERVACAO_MAX_LENGTH}`;
+  }
+
+  if (validation) {
+    validation.textContent = validationMessage || 'Payload enviado contem somente observacao.';
+  }
+
+  if (submit instanceof HTMLButtonElement) {
+    submit.disabled = Boolean(validationMessage);
+  }
+}
+
+async function submitObservacao(root, state, form) {
+  const detail = state.detalhe || createDetalheState();
+  const formState = detail.observacaoForm || createObservacaoFormState();
+  const solicitacaoId = detail.item && Number.isInteger(detail.item.id)
+    ? detail.item.id
+    : detail.solicitacaoId;
+  const formData = new FormData(form);
+  const rawValue = String(formData.get('observacao') || '');
+  const normalizedValue = normalizeObservacaoInput(rawValue);
+
+  if (formState.status === 'submitting') {
+    return;
+  }
+
+  if (!canCreateObservacao(state)) {
+    renderApp(root, {
+      ...state,
+      detalhe: {
+        ...detail,
+        observacaoForm: createObservacaoFormState({
+          status: 'error',
+          statusCode: state.sessionState === 'authenticated' ? 403 : null,
+          value: rawValue,
+          message: state.sessionState === 'authenticated'
+            ? 'Criacao de observacao indisponivel para este perfil.'
+            : 'A observacao nao foi enviada porque a sessao ainda nao foi autenticada.'
+        })
+      }
+    });
+    return;
+  }
+
+  if (detail.status !== 'loaded' || !Number.isInteger(solicitacaoId) || solicitacaoId < 1) {
+    renderApp(root, {
+      ...state,
+      detalhe: {
+        ...detail,
+        observacaoForm: createObservacaoFormState({
+          status: 'error',
+          statusCode: 422,
+          value: rawValue,
+          message: 'Selecione uma solicitacao valida antes de salvar observacao.'
+        })
+      }
+    });
+    return;
+  }
+
+  const validationMessage = getObservacaoValidationMessage(rawValue);
+
+  if (validationMessage) {
+    renderApp(root, {
+      ...state,
+      detalhe: {
+        ...detail,
+        observacaoForm: createObservacaoFormState({
+          status: 'error',
+          value: rawValue,
+          message: validationMessage
+        })
+      }
+    });
+    return;
+  }
+
+  const loadingDetail = {
+    ...detail,
+    observacaoForm: createObservacaoFormState({
+      status: 'submitting',
+      value: rawValue,
+      message: 'Salvando observacao interna...'
+    })
+  };
+
+  renderApp(root, {
+    ...state,
+    detalhe: loadingDetail
+  });
+
+  try {
+    const nextFormState = await fetchCreateSolicitacaoObservacao(solicitacaoId, normalizedValue);
+
+    if (nextFormState.status === 'expired') {
+      renderApp(root, createSessionState({
+        sessionState: 'unauthenticated',
+        statusCode: 401,
+        message: 'Sessao expirada ao tentar salvar observacao. Faca login novamente.',
+        hasChecked: true,
+        detalhe: {
+          ...loadingDetail,
+          observacaoForm: nextFormState
+        }
+      }));
+      return;
+    }
+
+    if (nextFormState.status !== 'success') {
+      renderApp(root, {
+        ...state,
+        detalhe: {
+          ...detail,
+          observacaoForm: {
+            ...nextFormState,
+            value: rawValue
+          }
+        }
+      });
+      return;
+    }
+
+    if (!canViewObservacoes(state)) {
+      renderApp(root, {
+        ...state,
+        detalhe: {
+          ...detail,
+          observacoes: createObservacoesState({
+            status: 'forbidden',
+            statusCode: 403,
+            message: 'Observacao criada, mas a leitura de observacoes nao esta disponivel para este perfil.'
+          }),
+          observacaoForm: nextFormState
+        }
+      });
+      return;
+    }
+
+    let observacoes = null;
+
+    try {
+      observacoes = await fetchSolicitacaoObservacoes(solicitacaoId, 0);
+    } catch {
+      observacoes = createObservacoesState({
+        status: 'error',
+        message: 'Observacao criada, mas nao foi possivel recarregar observacoes automaticamente.'
+      });
+    }
+
+    if (observacoes.status === 'expired') {
+      renderApp(root, createSessionState({
+        sessionState: 'unauthenticated',
+        statusCode: 401,
+        message: 'Sessao expirada ao recarregar observacoes. Faca login novamente.',
+        hasChecked: true,
+        detalhe: {
+          ...loadingDetail,
+          observacoes,
+          observacaoForm: nextFormState
+        }
+      }));
+      return;
+    }
+
+    renderApp(root, {
+      ...state,
+      detalhe: {
+        ...detail,
+        observacoes,
+        observacaoForm: nextFormState
+      }
+    });
+  } catch {
+    renderApp(root, {
+      ...state,
+      detalhe: {
+        ...detail,
+        observacaoForm: createObservacaoFormState({
+          status: 'error',
+          value: rawValue,
+          message: 'Falha temporaria de conexao ao salvar observacao interna.'
+        })
+      }
+    });
+  }
+}
+
 function clearSolicitacaoDetail(root, state) {
   renderApp(root, {
     ...state,
@@ -2712,6 +3132,17 @@ if (root) {
     }
   });
 
+  root.addEventListener('input', (event) => {
+    const target = event.target;
+
+    if (
+      target instanceof HTMLTextAreaElement
+      && target.matches('[data-observacao-textarea]')
+    ) {
+      updateObservacaoFormControls(target);
+    }
+  });
+
   root.addEventListener('submit', (event) => {
     const target = event.target;
 
@@ -2721,6 +3152,15 @@ if (root) {
     ) {
       event.preventDefault();
       submitLogin(root, target);
+      return;
+    }
+
+    if (
+      target instanceof HTMLFormElement
+      && target.matches('[data-observacao-form]')
+    ) {
+      event.preventDefault();
+      submitObservacao(root, currentState, target);
     }
   });
 }

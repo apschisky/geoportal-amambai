@@ -885,6 +885,73 @@ textarea:disabled {
   white-space: pre-wrap;
 }
 
+.internal-observation-form-panel {
+  margin-top: 18px;
+  border-top: 1px solid #e0e7ea;
+  padding-top: 16px;
+}
+
+.internal-observation-form-panel h4 {
+  margin: 0 0 8px;
+  color: #24343d;
+}
+
+.internal-observation-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.internal-observation-form label {
+  display: grid;
+  gap: 6px;
+  color: #33434c;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.internal-observation-form textarea {
+  width: 100%;
+  min-height: 118px;
+  border: 1px solid #bfccd1;
+  border-radius: 6px;
+  background: #f8fafb;
+  color: #1f2d34;
+  padding: 9px 11px;
+  resize: vertical;
+}
+
+.internal-observation-form textarea:focus {
+  outline: 3px solid rgba(93, 136, 111, 0.24);
+  border-color: #6f9b5d;
+}
+
+.internal-observation-form-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  color: #687880;
+  font-size: 0.84rem;
+}
+
+.internal-form-message {
+  min-height: 22px;
+  margin: 0;
+  color: #4c5d65;
+  font-size: 0.88rem;
+}
+
+.internal-form-message.is-error {
+  color: #8a3f39;
+  font-weight: 800;
+}
+
+.internal-form-message.is-success {
+  color: #2f6847;
+  font-weight: 800;
+}
+
 .internal-state-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
