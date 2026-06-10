@@ -679,33 +679,23 @@ Regras de seguranca mantidas:
 
 ### Validacao local e operacional do MVP interno - 2026-06-10
 
-**Objetivo.** Registrar a validacao local e operacional do MVP interno/piloto de Iluminacao Publica, sem alterar codigo, backend, frontend, migrations, Apache, proxy, banco, servicos Windows/NSSM, `.env`, permissoes, roles ou arquivos de build.
+**Objetivo.** Registrar a validacao local e operacional do MVP interno/piloto de Iluminacao Publica, sem mudanca funcional nesta etapa.
 
-**Escopo.** A validacao cobriu testes automatizados locais de backend e frontend, build Vite, estado Git e fluxo operacional no navegador contra o ambiente publicado. A etapa foi apenas documental e de verificacao; nao houve mudanca funcional nesta validacao.
+**Escopo.** A validacao cobriu testes automatizados de backend e frontend, build Vite e fluxo operacional no navegador contra o ambiente publicado.
 
-**Resultados dos testes backend.**
+**Resultados backend.**
 
-- Comando executado via script: `.\scripts\dev\backend-test-local.ps1 -TestPath "tests/test_internal_iluminacao_solicitacoes_router.py" -Full -PytestArgs "-vv -s"`.
-- `tests/test_internal_iluminacao_solicitacoes_router.py`: 57 passed, 1 warning.
-- O proprio script executou a suite completa: 601 passed, 1 warning.
-- Warning conhecido: `DeprecationWarning: 'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated. Use 'HTTP_422_UNPROCESSABLE_CONTENT' instead.`
-- O warning de depreciacao nao bloqueou a validacao.
-- Testes focados adicionais: `tests/test_iluminacao_repository.py`: 32 passed.
-- Testes focados adicionais: `tests/test_iluminacao_service.py`: 46 passed.
+- Suite completa acionada pelo script local: 601 passed, 1 warning.
+- Router interno de solicitacoes: 57 passed, 1 warning.
+- Repository de Iluminacao: 32 passed.
+- Service de Iluminacao: 46 passed.
+- Warning conhecido e nao bloqueante: `DeprecationWarning: 'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated. Use 'HTTP_422_UNPROCESSABLE_CONTENT' instead.`
 
 **Resultados frontend e build.**
 
-- `npm.cmd test`: 5 test files passed; 85 tests passed.
-- `npm.cmd run build`: Vite build concluido com sucesso.
-- Build reportou 233 modules transformed.
+- Testes frontend: 85 tests passed em 5 test files.
+- Build Vite: concluido com sucesso, 233 modules transformed.
 - Build gerou `dist/interno/index.html`, `dist/index.html`, assets CSS/JS de `interno` e assets CSS/JS de `main`.
-
-**Resultado Git.**
-
-- Branch: `main`.
-- Estado: up to date with `origin/main`.
-- Resultado: `nothing to commit, working tree clean`.
-- `git diff --check` nao apontou problemas.
 
 **Validacao operacional em navegador.**
 
@@ -716,8 +706,7 @@ Regras de seguranca mantidas:
 - Observacoes retornaram 200.
 - Logout retornou 200.
 - Apos atualizar a pagina depois do logout, `/api/internal/auth/me` voltou a retornar 401.
-- `localStorage` foi confirmado vazio.
-- Nao foi registrado token no navegador via `localStorage`.
+- `localStorage` foi confirmado vazio; nao houve registro de token no navegador via `localStorage`.
 
 **Interpretacao.**
 
@@ -727,7 +716,7 @@ O fluxo basico do MVP interno esta validado: sem sessao -> login -> sessao valid
 
 - Confirmar tambem `sessionStorage` em validacao manual posterior.
 - Confirmar e registrar atributos do cookie no navegador real, especialmente `HttpOnly`, `Secure` e `SameSite`, sem copiar o valor do cookie.
-- O warning de depreciacao HTTP 422 pode ser tratado futuramente como ajuste tecnico de baixa prioridade.
+- Tratar o warning de depreciacao HTTP 422 futuramente como ajuste tecnico de baixa prioridade.
 - Manter cuidado com observacoes internas, pois sao texto livre operacional.
 - Nao avancar para anexos, reabertura/correcao administrativa ou mapa operacional sem etapa propria de planejamento, permissoes, auditoria e rollback.
 - `Alias /assets/` no dominio `geoserver` continua sendo ponto de atencao futuro se houver conflito com outros assets.
@@ -736,7 +725,6 @@ O fluxo basico do MVP interno esta validado: sem sessao -> login -> sessao valid
 
 - Registrar validacao complementar de `sessionStorage` e atributos do cookie sem copiar valores sensiveis.
 - Manter o piloto controlado com usuarios/perfis definidos e orientacao de uso para observacoes internas.
-- Tratar o warning de depreciacao HTTP 422 em ciclo tecnico futuro de baixa prioridade.
 - Planejar anexos, reabertura/correcao administrativa, mapa operacional e prioridade somente em etapas separadas, com contrato, permissao, auditoria, testes e rollback.
 
 ### Checklist de deploy e rollback estatico
