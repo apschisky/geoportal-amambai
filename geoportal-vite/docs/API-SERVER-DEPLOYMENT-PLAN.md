@@ -677,6 +677,68 @@ Regras de seguranca mantidas:
 19. Confirmar ausencia de token em `localStorage` e `sessionStorage`.
 20. Confirmar que console e documentacao nao exibem cookie, token, senha, observacoes reais ou dados pessoais reais.
 
+### Validacao local e operacional do MVP interno - 2026-06-10
+
+**Objetivo.** Registrar a validacao local e operacional do MVP interno/piloto de Iluminacao Publica, sem alterar codigo, backend, frontend, migrations, Apache, proxy, banco, servicos Windows/NSSM, `.env`, permissoes, roles ou arquivos de build.
+
+**Escopo.** A validacao cobriu testes automatizados locais de backend e frontend, build Vite, estado Git e fluxo operacional no navegador contra o ambiente publicado. A etapa foi apenas documental e de verificacao; nao houve mudanca funcional nesta validacao.
+
+**Resultados dos testes backend.**
+
+- Comando executado via script: `.\scripts\dev\backend-test-local.ps1 -TestPath "tests/test_internal_iluminacao_solicitacoes_router.py" -Full -PytestArgs "-vv -s"`.
+- `tests/test_internal_iluminacao_solicitacoes_router.py`: 57 passed, 1 warning.
+- O proprio script executou a suite completa: 601 passed, 1 warning.
+- Warning conhecido: `DeprecationWarning: 'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated. Use 'HTTP_422_UNPROCESSABLE_CONTENT' instead.`
+- O warning de depreciacao nao bloqueou a validacao.
+- Testes focados adicionais: `tests/test_iluminacao_repository.py`: 32 passed.
+- Testes focados adicionais: `tests/test_iluminacao_service.py`: 46 passed.
+
+**Resultados frontend e build.**
+
+- `npm.cmd test`: 5 test files passed; 85 tests passed.
+- `npm.cmd run build`: Vite build concluido com sucesso.
+- Build reportou 233 modules transformed.
+- Build gerou `dist/interno/index.html`, `dist/index.html`, assets CSS/JS de `interno` e assets CSS/JS de `main`.
+
+**Resultado Git.**
+
+- Branch: `main`.
+- Estado: up to date with `origin/main`.
+- Resultado: `nothing to commit, working tree clean`.
+- `git diff --check` nao apontou problemas.
+
+**Validacao operacional em navegador.**
+
+- Sem sessao, `GET /api/internal/auth/me` retornou 401.
+- Apos login, `GET /api/internal/auth/me` retornou 200.
+- `GET /api/internal/iluminacao/solicitacoes?limit=20&offset=0` retornou 200.
+- Detalhe de solicitacao retornou 200.
+- Observacoes retornaram 200.
+- Logout retornou 200.
+- Apos atualizar a pagina depois do logout, `/api/internal/auth/me` voltou a retornar 401.
+- `localStorage` foi confirmado vazio.
+- Nao foi registrado token no navegador via `localStorage`.
+
+**Interpretacao.**
+
+O fluxo basico do MVP interno esta validado: sem sessao -> login -> sessao valida -> permissoes/listagem -> detalhe/observacoes -> logout -> sessao encerrada. A shell interna continua sem persistir token em `localStorage`, e o backend permanece como autoridade real de autenticacao e autorizacao.
+
+**Pendencias e riscos.**
+
+- Confirmar tambem `sessionStorage` em validacao manual posterior.
+- Confirmar e registrar atributos do cookie no navegador real, especialmente `HttpOnly`, `Secure` e `SameSite`, sem copiar o valor do cookie.
+- O warning de depreciacao HTTP 422 pode ser tratado futuramente como ajuste tecnico de baixa prioridade.
+- Manter cuidado com observacoes internas, pois sao texto livre operacional.
+- Nao avancar para anexos, reabertura/correcao administrativa ou mapa operacional sem etapa propria de planejamento, permissoes, auditoria e rollback.
+- `Alias /assets/` no dominio `geoserver` continua sendo ponto de atencao futuro se houver conflito com outros assets.
+
+**Proximos passos recomendados.**
+
+- Registrar validacao complementar de `sessionStorage` e atributos do cookie sem copiar valores sensiveis.
+- Manter o piloto controlado com usuarios/perfis definidos e orientacao de uso para observacoes internas.
+- Tratar o warning de depreciacao HTTP 422 em ciclo tecnico futuro de baixa prioridade.
+- Planejar anexos, reabertura/correcao administrativa, mapa operacional e prioridade somente em etapas separadas, com contrato, permissao, auditoria, testes e rollback.
+
 ### Checklist de deploy e rollback estatico
 
 Antes de atualizar a area interna, fazer backup de:
