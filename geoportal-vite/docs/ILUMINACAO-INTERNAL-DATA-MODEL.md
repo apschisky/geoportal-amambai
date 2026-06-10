@@ -93,6 +93,14 @@ Na primeira fase, somente `interna` deve ser usada. A visibilidade `publica_futu
 - Usuario e data/hora devem ser registrados nas acoes internas.
 - Logs nao devem conter senha, token, `DATABASE_URL`, telefone completo ou dados sensiveis desnecessarios.
 
+### Planejamento de prioridade operacional
+
+A prioridade operacional deve classificar criticidade/urgencia sem substituir o status. Valores recomendados para a primeira versao: `baixa`, `normal`, `alta` e `urgente`, com default recomendado `normal`.
+
+Como a listagem e o detalhe internos ja documentam o campo `prioridade`, e validacoes anteriores de menor privilegio citaram a coluna `prioridade` em `mod_iluminacao.solicitacoes`, a proxima etapa deve confirmar o schema real antes de qualquer migration: tipo da coluna, default, check constraint, valores existentes e necessidade de indice para filtros. Nenhuma consulta real de banco ou migration deve ser executada apenas por este planejamento.
+
+A alteracao futura de prioridade deve ser transacional e independente da alteracao de status: atualizar somente a prioridade, registrar `acao='alteracao_prioridade'` em `solicitacoes_historico`, gravar `prioridade_anterior`, `prioridade_nova`, `usuario_id`, `usuario_nome` quando seguro e `observacao_resumida`, e reverter a alteracao se o historico falhar. Se a migration real ainda nao permitir `alteracao_prioridade`, sera necessaria migration futura para ampliar a constraint de `acao`.
+
 ## 6. Referencia para outros modulos
 
 Este desenho deve servir como referencia para modulos futuros do Geoportal, como:

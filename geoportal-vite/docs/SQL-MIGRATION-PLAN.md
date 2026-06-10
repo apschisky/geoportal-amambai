@@ -73,7 +73,7 @@ Exemplos:
 - `0003_create_iluminacao_protocolo_sequence.sql`
 - `0004_create_mod_iluminacao_views.sql`
 - `0005_create_mod_iluminacao_permissions.sql`
-- `0006_alter_mod_iluminacao_solicitacoes_add_prioridade.sql`
+- `0006_confirm_or_normalize_mod_iluminacao_solicitacoes_prioridade.sql`
 
 Regras:
 
@@ -82,6 +82,8 @@ Regras:
 - modulo identificado;
 - objeto identificado;
 - extensao `.sql`.
+
+Nota sobre prioridade operacional: documentos e validacoes anteriores ja tratam `prioridade` como campo existente na listagem/detalhe internos e nas verificacoes de menor privilegio. Antes de criar migration nova, a proxima etapa deve confirmar o schema real da coluna `prioridade`, seus valores existentes, default, constraints e indices. Se a coluna ja existir, a migration futura pode ser apenas de normalizacao, check/default, indice ou ampliacao de valores permitidos no historico para `acao='alteracao_prioridade'`. Nao criar migration nesta etapa documental.
 
 ## 6. Ordem de execucao
 

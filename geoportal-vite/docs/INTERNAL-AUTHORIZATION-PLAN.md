@@ -378,11 +378,14 @@ Permissoes conceituais granulares:
 - `admin.perfis.gerenciar`
 - `iluminacao.solicitacoes.ler`
 - `iluminacao.solicitacoes.atualizar_status`
+- `iluminacao.solicitacoes.atualizar_prioridade`
 - `iluminacao.solicitacoes.comentar`
 - `iluminacao.dashboard.ler`
 - `iluminacao.relatorios.ler`
 
 As permissoes reais devem ser criadas em etapa operacional propria, sem seed publico com dado real, e devem seguir o padrao `modulo.recurso.acao`.
+
+Permissao planejada para prioridade: `iluminacao.solicitacoes.atualizar_prioridade`. Ela deve ser diferente de `iluminacao.solicitacoes.atualizar_status`, `iluminacao.solicitacoes.comentar` e `iluminacao.solicitacoes.ler`, preservando menor privilegio e separacao entre triagem/criticidade, andamento do chamado e comentarios internos. A permissao real nao deve ser criada antes da implementacao local, testes, revisao humana do contrato e etapa operacional controlada em homologacao.
 
 Administrador funcional do Geoportal Interno:
 
