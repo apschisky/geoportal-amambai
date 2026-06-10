@@ -262,3 +262,27 @@ class IluminacaoSolicitacaoStatusInternaItem(BaseModel):
 
 class IluminacaoSolicitacaoStatusInternaResponse(BaseModel):
     solicitacao: IluminacaoSolicitacaoStatusInternaItem
+
+
+class IluminacaoSolicitacaoPrioridadeInternaUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    prioridade: str = Field(min_length=1, max_length=20)
+    observacao: str = Field(min_length=3, max_length=1000)
+
+    @field_validator("prioridade", "observacao", mode="before")
+    @classmethod
+    def strip_text(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip()
+        return value
+
+
+class IluminacaoSolicitacaoPrioridadeInternaItem(BaseModel):
+    id: int
+    prioridade: str
+    atualizado_em: datetime
+
+
+class IluminacaoSolicitacaoPrioridadeInternaResponse(BaseModel):
+    solicitacao: IluminacaoSolicitacaoPrioridadeInternaItem

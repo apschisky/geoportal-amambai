@@ -13,6 +13,7 @@ from app.schemas.iluminacao import (
     IluminacaoSolicitacaoInternaItem,
     IluminacaoSolicitacaoObservacaoInternaItem,
     IluminacaoSolicitacaoObservacoesInternasResult,
+    IluminacaoSolicitacaoPrioridadeInternaItem,
     IluminacaoSolicitacaoCreate,
     IluminacaoSolicitacaoResponse,
     IluminacaoSolicitacaoStatusInternaItem,
@@ -37,6 +38,9 @@ SOLICITACAO_DUPLICADA_ATIVA_MESSAGE = (
 
 SOLICITACAO_INTERNA_NOT_FOUND_MESSAGE = "Solicitacao nao encontrada."
 SOLICITACAO_STATUS_TRANSITION_INVALID_MESSAGE = "Transicao de status invalida."
+SOLICITACAO_PRIORIDADE_TERMINAL_STATUS_MESSAGE = (
+    "Prioridade nao pode ser alterada em status finalizado."
+)
 
 ALLOWED_STATUS_TRANSITIONS: dict[str, set[str]] = {
     "aberta": {"em_triagem", "cancelada", "indeferida"},
@@ -63,6 +67,7 @@ TERMINAL_STATUS_SOLICITACAO = {
     "nao_localizado",
 }
 VALID_STATUS_SOLICITACAO = {status.value for status in StatusSolicitacaoIluminacao}
+VALID_PRIORIDADE_SOLICITACAO = {"baixa", "normal", "alta", "urgente"}
 
 
 class SolicitacaoInternaNotFoundError(RuntimeError):
@@ -70,6 +75,10 @@ class SolicitacaoInternaNotFoundError(RuntimeError):
 
 
 class SolicitacaoInternaStatusTransitionError(RuntimeError):
+    pass
+
+
+class SolicitacaoInternaPrioridadeTerminalStatusError(RuntimeError):
     pass
 
 
@@ -351,6 +360,13 @@ def _normalize_status_solicitacao(
     return status_value
 
 
+def _normalize_prioridade_solicitacao(prioridade: str) -> str:
+    normalized = prioridade.strip()
+    if normalized not in VALID_PRIORIDADE_SOLICITACAO:
+        raise ValueError("prioridade is invalid")
+    return normalized
+
+
 def _allowed_current_statuses_for(target_status: str) -> set[str]:
     return {
         current_status
@@ -428,6 +444,51 @@ def atualizar_status_solicitacao_interna(
     if result.outcome == iluminacao_repository.STATUS_UPDATE_OUTCOME_INVALID_TRANSITION:
         raise SolicitacaoInternaStatusTransitionError(
             SOLICITACAO_STATUS_TRANSITION_INVALID_MESSAGE
+        )
+
+    if result.solicitacao is None:
+        raise DatabaseUnavailableError(DATABASE_UNAVAILABLE_MESSAGE)
+
+    return result.solicitacao
+
+
+def atualizar_prioridade_solicitacao_interna(
+    solicitacao_id: int,
+    *,
+    prioridade: str,
+    observacao: str,
+    usuario_id: int,
+    usuario_nome: str | None = None,
+) -> IluminacaoSolicitacaoPrioridadeInternaItem:
+    if solicitacao_id < 1:
+        raise ValueError("solicitacao_id must be greater than or equal to 1")
+    if usuario_id < 1:
+        raise ValueError("usuario_id must be greater than or equal to 1")
+
+    prioridade_nova = _normalize_prioridade_solicitacao(prioridade)
+    observacao_normalizada = _normalize_status_update_observacao(observacao)
+
+    try:
+        result = iluminacao_repository.update_prioridade_solicitacao_interna(
+            solicitacao_id,
+            prioridade_nova=prioridade_nova,
+            terminal_statuses=TERMINAL_STATUS_SOLICITACAO,
+            observacao_resumida=observacao_normalizada,
+            usuario_id=str(usuario_id),
+            usuario_nome=usuario_nome,
+        )
+    except (SQLAlchemyError, RuntimeError) as exc:
+        raise DatabaseUnavailableError(DATABASE_UNAVAILABLE_MESSAGE) from exc
+
+    if result.outcome == iluminacao_repository.PRIORIDADE_UPDATE_OUTCOME_NOT_FOUND:
+        raise SolicitacaoInternaNotFoundError(SOLICITACAO_INTERNA_NOT_FOUND_MESSAGE)
+
+    if (
+        result.outcome
+        == iluminacao_repository.PRIORIDADE_UPDATE_OUTCOME_TERMINAL_STATUS
+    ):
+        raise SolicitacaoInternaPrioridadeTerminalStatusError(
+            SOLICITACAO_PRIORIDADE_TERMINAL_STATUS_MESSAGE
         )
 
     if result.solicitacao is None:

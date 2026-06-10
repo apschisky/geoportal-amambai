@@ -10,6 +10,8 @@ from app.schemas.iluminacao import (
     IluminacaoSolicitacaoObservacaoInternaCreate,
     IluminacaoSolicitacaoObservacaoInternaItem,
     IluminacaoSolicitacaoObservacoesInternasResponse,
+    IluminacaoSolicitacaoPrioridadeInternaResponse,
+    IluminacaoSolicitacaoPrioridadeInternaUpdate,
     IluminacaoSolicitacaoStatusInternaResponse,
     IluminacaoSolicitacaoStatusInternaUpdate,
     IluminacaoSolicitacoesInternasResponse,
@@ -20,11 +22,15 @@ from app.services.auth_current_session_service import AuthenticatedCurrentSessio
 from app.services.exceptions import DatabaseUnavailableError
 from app.services.iluminacao_service import criar_observacao_solicitacao_interna
 from app.services.iluminacao_service import atualizar_status_solicitacao_interna
+from app.services.iluminacao_service import atualizar_prioridade_solicitacao_interna
 from app.services.iluminacao_service import listar_historico_solicitacao_interna
 from app.services.iluminacao_service import listar_observacoes_solicitacao_interna
 from app.services.iluminacao_service import listar_solicitacoes_internas
 from app.services.iluminacao_service import obter_solicitacao_interna_por_id
 from app.services.iluminacao_service import SolicitacaoInternaNotFoundError
+from app.services.iluminacao_service import (
+    SolicitacaoInternaPrioridadeTerminalStatusError,
+)
 from app.services.iluminacao_service import SolicitacaoInternaStatusTransitionError
 
 
@@ -38,6 +44,9 @@ LIST_INTERNAL_ILUMINACAO_OBSERVACOES_PERMISSION = (
 CREATE_INTERNAL_ILUMINACAO_OBSERVACAO_PERMISSION = "iluminacao.solicitacoes.comentar"
 UPDATE_INTERNAL_ILUMINACAO_STATUS_PERMISSION = (
     "iluminacao.solicitacoes.atualizar_status"
+)
+UPDATE_INTERNAL_ILUMINACAO_PRIORIDADE_PERMISSION = (
+    "iluminacao.solicitacoes.atualizar_prioridade"
 )
 
 router = APIRouter(prefix="/api/internal/iluminacao", tags=["internal-iluminacao"])
@@ -279,3 +288,47 @@ def update_internal_solicitacao_status(
         ) from exc
 
     return IluminacaoSolicitacaoStatusInternaResponse(solicitacao=solicitacao)
+
+
+@router.patch(
+    "/solicitacoes/{solicitacao_id}/prioridade",
+    response_model=IluminacaoSolicitacaoPrioridadeInternaResponse,
+)
+def update_internal_solicitacao_prioridade(
+    payload: IluminacaoSolicitacaoPrioridadeInternaUpdate,
+    solicitacao_id: int = Path(ge=1),
+    current_session: AuthenticatedCurrentSession = Depends(
+        require_permission(UPDATE_INTERNAL_ILUMINACAO_PRIORIDADE_PERMISSION)
+    ),
+    _internal_request: None = Depends(require_internal_mutating_request_header),
+) -> IluminacaoSolicitacaoPrioridadeInternaResponse:
+    try:
+        solicitacao = atualizar_prioridade_solicitacao_interna(
+            solicitacao_id,
+            prioridade=payload.prioridade,
+            observacao=payload.observacao,
+            usuario_id=current_session.usuario_id,
+            usuario_nome=None,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid payload",
+        ) from exc
+    except SolicitacaoInternaNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Not found",
+        ) from exc
+    except SolicitacaoInternaPrioridadeTerminalStatusError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Invalid priority transition",
+        ) from exc
+    except DatabaseUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
+    return IluminacaoSolicitacaoPrioridadeInternaResponse(solicitacao=solicitacao)

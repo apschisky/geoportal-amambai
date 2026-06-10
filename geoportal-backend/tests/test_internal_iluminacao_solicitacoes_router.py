@@ -15,6 +15,7 @@ from app.schemas.iluminacao import (
     IluminacaoSolicitacaoInternaItem,
     IluminacaoSolicitacaoObservacaoInternaItem,
     IluminacaoSolicitacaoObservacoesInternasResult,
+    IluminacaoSolicitacaoPrioridadeInternaItem,
     IluminacaoSolicitacaoStatusInternaItem,
     IluminacaoSolicitacoesInternasResult,
 )
@@ -47,11 +48,20 @@ INTERNAL_SOLICITACAO_STATUS_ROUTE = (
 INTERNAL_SOLICITACAO_STATUS_PATH = (
     "/api/internal/iluminacao/solicitacoes/10/status"
 )
+INTERNAL_SOLICITACAO_PRIORIDADE_ROUTE = (
+    "/api/internal/iluminacao/solicitacoes/{solicitacao_id}/prioridade"
+)
+INTERNAL_SOLICITACAO_PRIORIDADE_PATH = (
+    "/api/internal/iluminacao/solicitacoes/10/prioridade"
+)
 EXPECTED_PERMISSION = "iluminacao.solicitacoes.ler"
 EXPECTED_HISTORICO_PERMISSION = "iluminacao.solicitacoes.ver_historico"
 EXPECTED_OBSERVACOES_PERMISSION = "iluminacao.solicitacoes.ver_observacoes"
 EXPECTED_COMENTAR_PERMISSION = "iluminacao.solicitacoes.comentar"
 EXPECTED_ATUALIZAR_STATUS_PERMISSION = "iluminacao.solicitacoes.atualizar_status"
+EXPECTED_ATUALIZAR_PRIORIDADE_PERMISSION = (
+    "iluminacao.solicitacoes.atualizar_prioridade"
+)
 EXPIRES_AT = datetime(2030, 5, 27, 13, 0, tzinfo=UTC)
 CREATED_AT = datetime(2026, 5, 20, 10, 30, tzinfo=UTC)
 UPDATED_AT = datetime(2026, 5, 21, 8, 15, tzinfo=UTC)
@@ -139,6 +149,16 @@ def fake_status_item(status: str = "em_execucao") -> IluminacaoSolicitacaoStatus
         status=status,
         atualizado_em=UPDATED_AT,
         finalizado_em=None,
+    )
+
+
+def fake_prioridade_item(
+    prioridade: str = "alta",
+) -> IluminacaoSolicitacaoPrioridadeInternaItem:
+    return IluminacaoSolicitacaoPrioridadeInternaItem(
+        id=10,
+        prioridade=prioridade,
+        atualizado_em=UPDATED_AT,
     )
 
 
@@ -724,6 +744,114 @@ def test_update_internal_solicitacao_status_allows_idempotent_status(
     assert response.json()["solicitacao"]["status"] == "aberta"
 
 
+def test_update_internal_solicitacao_prioridade_returns_200_with_permission_and_header(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    calls: dict[str, object] = {}
+
+    def fake_has_permission(usuario_id: int, permission_code: str) -> bool:
+        calls.update(
+            {
+                "usuario_id": usuario_id,
+                "permission_code": permission_code,
+            }
+        )
+        return True
+
+    service_calls: dict[str, object] = {}
+
+    def fake_atualizar_prioridade_solicitacao_interna(
+        solicitacao_id: int,
+        *,
+        prioridade: str,
+        observacao: str,
+        usuario_id: int,
+        usuario_nome: str | None = None,
+    ) -> IluminacaoSolicitacaoPrioridadeInternaItem:
+        service_calls.update(
+            {
+                "solicitacao_id": solicitacao_id,
+                "prioridade": prioridade,
+                "observacao": observacao,
+                "usuario_id": usuario_id,
+                "usuario_nome": usuario_nome,
+            }
+        )
+        return fake_prioridade_item(prioridade=prioridade)
+
+    monkeypatch.setattr(auth_dependencies, "has_permission", fake_has_permission)
+    monkeypatch.setattr(
+        internal_iluminacao,
+        "atualizar_prioridade_solicitacao_interna",
+        fake_atualizar_prioridade_solicitacao_interna,
+    )
+    client = TestClient(app)
+
+    response = client.patch(
+        INTERNAL_SOLICITACAO_PRIORIDADE_PATH,
+        json={
+            "prioridade": "alta",
+            "observacao": "  Ajuste operacional de criticidade.  ",
+        },
+        headers=mutating_headers(),
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "solicitacao": {
+            "id": 10,
+            "prioridade": "alta",
+            "atualizado_em": "2026-05-21T08:15:00Z",
+        }
+    }
+    assert calls == {
+        "usuario_id": 7,
+        "permission_code": EXPECTED_ATUALIZAR_PRIORIDADE_PERMISSION,
+    }
+    assert service_calls == {
+        "solicitacao_id": 10,
+        "prioridade": "alta",
+        "observacao": "Ajuste operacional de criticidade.",
+        "usuario_id": 7,
+        "usuario_nome": None,
+    }
+
+
+def test_update_internal_solicitacao_prioridade_allows_idempotent_priority(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+    monkeypatch.setattr(
+        internal_iluminacao,
+        "atualizar_prioridade_solicitacao_interna",
+        lambda solicitacao_id, *, prioridade, observacao, usuario_id, usuario_nome: (
+            fake_prioridade_item(prioridade="normal")
+        ),
+    )
+    client = TestClient(app)
+
+    response = client.patch(
+        INTERNAL_SOLICITACAO_PRIORIDADE_PATH,
+        json={"prioridade": "normal", "observacao": "Reenvio idempotente."},
+        headers=mutating_headers(),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["solicitacao"]["prioridade"] == "normal"
+
+
 def test_internal_solicitacoes_returns_401_without_valid_session() -> None:
     app = build_isolated_app()
 
@@ -815,6 +943,25 @@ def test_update_internal_solicitacao_status_returns_401_without_valid_session() 
     response = client.patch(
         INTERNAL_SOLICITACAO_STATUS_PATH,
         json={"status": "em_execucao", "observacao": "Equipe iniciou atendimento."},
+        headers=mutating_headers(),
+    )
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Not authenticated"}
+
+
+def test_update_internal_solicitacao_prioridade_returns_401_without_valid_session() -> None:
+    app = build_isolated_app()
+
+    def fake_auth_failure() -> None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    app.dependency_overrides[get_current_authenticated_session] = fake_auth_failure
+    client = TestClient(app)
+
+    response = client.patch(
+        INTERNAL_SOLICITACAO_PRIORIDADE_PATH,
+        json={"prioridade": "alta", "observacao": "Ajuste operacional."},
         headers=mutating_headers(),
     )
 
@@ -1003,6 +1150,37 @@ def test_update_internal_solicitacao_status_returns_403_without_required_permiss
     assert response.json() == {"detail": "Forbidden"}
     assert EXPECTED_ATUALIZAR_STATUS_PERMISSION not in response.text
     assert "em_execucao" not in response.text
+
+
+def test_update_internal_solicitacao_prioridade_returns_403_without_required_permission(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: False,
+    )
+    monkeypatch.setattr(
+        internal_iluminacao,
+        "atualizar_prioridade_solicitacao_interna",
+        lambda *args, **kwargs: fake_prioridade_item(),
+    )
+    client = TestClient(app)
+
+    response = client.patch(
+        INTERNAL_SOLICITACAO_PRIORIDADE_PATH,
+        json={"prioridade": "alta", "observacao": "Ajuste operacional."},
+        headers=mutating_headers(),
+    )
+
+    assert response.status_code == 403
+    assert response.json() == {"detail": "Forbidden"}
+    assert EXPECTED_ATUALIZAR_PRIORIDADE_PERMISSION not in response.text
+    assert "alta" not in response.text
 
 
 def test_get_internal_solicitacoes_does_not_require_mutating_header(
