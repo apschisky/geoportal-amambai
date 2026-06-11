@@ -51,7 +51,7 @@ describe('internal prioridade UI', () => {
     );
 
     expect(canUpdatePrioridade(authenticatedState())).toBe(false);
-    expect(withoutPermission).toContain('Alteracao de prioridade indisponivel');
+    expect(withoutPermission).toContain('Alteração de prioridade indisponível');
     expect(withoutPermission).not.toContain('data-prioridade-form');
     expect(canUpdatePrioridade(authenticatedState([prioridadePermission]))).toBe(true);
     expect(withPermission).toContain('data-prioridade-form');

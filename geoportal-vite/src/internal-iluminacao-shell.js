@@ -358,7 +358,7 @@ function createPrioridadeFormState(overrides = {}) {
     selectedPriority: '',
     observacao: '',
     statusCode: null,
-    message: 'Alteracao de prioridade disponivel apenas por acao explicita.',
+    message: 'Alteração de prioridade disponível apenas por ação explícita.',
     ...overrides
   };
 }
@@ -863,7 +863,7 @@ function getPrioridadeSelectionValidationMessage(currentPriority, selectedPriori
   }
 
   if (!priorityOptions.includes(selectedPriority)) {
-    return 'Prioridade invalida para esta solicitacao.';
+    return 'Prioridade inválida para esta solicitação.';
   }
 
   if (selectedPriority === currentPriority) {
@@ -877,11 +877,11 @@ function getPrioridadeObservacaoValidationMessage(value) {
   const normalized = normalizePrioridadeObservacaoInput(value);
 
   if (normalized.length < PRIORIDADE_OBSERVACAO_MIN_LENGTH) {
-    return 'Informe justificativa com ao menos 3 caracteres apos remover espacos.';
+    return 'Informe justificativa com ao menos 3 caracteres após remover espaços.';
   }
 
   if (normalized.length > PRIORIDADE_OBSERVACAO_MAX_LENGTH) {
-    return 'A justificativa deve ter no maximo 1000 caracteres apos remover espacos.';
+    return 'A justificativa deve ter no máximo 1000 caracteres após remover espaços.';
   }
 
   return '';
@@ -1756,13 +1756,13 @@ function renderPriorityUpdatePanel(state, detail) {
       <article class="internal-card internal-priority-card internal-action-card">
         <div class="internal-history-heading">
           <div>
-            <h3>Alteracao de prioridade</h3>
-            <p>Alteracao de prioridade indisponivel para este perfil.</p>
+            <h3>Alteração de prioridade</h3>
+            <p>Alteração de prioridade indisponível para este perfil.</p>
           </div>
           <span class="internal-pill">Acesso restrito</span>
         </div>
         <p class="internal-muted-note">
-          Seu perfil nao permite alterar a prioridade operacional desta solicitacao.
+          Seu perfil não permite alterar a prioridade operacional desta solicitação.
         </p>
       </article>
     `;
@@ -1779,13 +1779,13 @@ function renderPriorityUpdatePanel(state, detail) {
       <article class="internal-card internal-priority-card internal-action-card">
         <div class="internal-history-heading">
           <div>
-            <h3>Alteracao de prioridade</h3>
+            <h3>Alteração de prioridade</h3>
             <p>Prioridade atual: ${escapeHtml(formatPriorityLabel(currentPriority))}.</p>
           </div>
           <span class="internal-pill">Status finalizado</span>
         </div>
         <p class="internal-sensitive-note">
-          Status finalizado. Alteracao de prioridade exige fluxo administrativo proprio.
+          Status finalizado. Alteração de prioridade exige fluxo administrativo próprio.
         </p>
         <p class="internal-form-message${terminalMessageClass}" role="status">
           ${escapeHtml(formState.message)}
@@ -1812,10 +1812,10 @@ function renderPriorityUpdatePanel(state, detail) {
     <article class="internal-card internal-priority-card internal-action-card">
       <div class="internal-history-heading">
         <div>
-          <h3>Alteracao de prioridade</h3>
+          <h3>Alteração de prioridade</h3>
           <p>Classifique a criticidade operacional sem alterar o status do chamado.</p>
         </div>
-        <span class="internal-pill">Acao de triagem</span>
+        <span class="internal-pill">Ação de triagem</span>
       </div>
       <dl>
         <div>
@@ -1846,14 +1846,14 @@ function renderPriorityUpdatePanel(state, detail) {
           </select>
         </label>
         <label for="internal-prioridade-observacao">
-          Justificativa da alteracao
+          Justificativa da alteração
           <textarea
             id="internal-prioridade-observacao"
             name="observacao"
             data-prioridade-observacao-textarea
             rows="5"
             maxlength="${escapeHtml(PRIORIDADE_OBSERVACAO_MAX_LENGTH)}"
-            placeholder="Registre uma justificativa operacional sintetica"
+            placeholder="Registre uma justificativa operacional sintética"
             aria-describedby="internal-prioridade-help internal-prioridade-counter"
             ${isSubmitting ? 'disabled' : ''}
           >${escapeHtml(formState.observacao)}</textarea>
@@ -1879,7 +1879,7 @@ function renderPriorityUpdatePanel(state, detail) {
         </p>
       </form>
       <p class="internal-muted-note">
-        Alterar prioridade nao altera status e nao cria observacao separada.
+        Alterar prioridade não altera status e não cria observação separada.
       </p>
     </article>
   `;
@@ -3048,7 +3048,7 @@ async function fetchUpdateSolicitacaoPrioridade(solicitacaoId, prioridade, obser
     return createPrioridadeFormState({
       status: 'expired',
       statusCode: response.status,
-      message: 'Sessao ausente ou expirada ao atualizar prioridade. Faca login novamente.'
+      message: 'Sessão ausente ou expirada ao atualizar prioridade. Faça login novamente.'
     });
   }
 
@@ -3056,7 +3056,7 @@ async function fetchUpdateSolicitacaoPrioridade(solicitacaoId, prioridade, obser
     return createPrioridadeFormState({
       status: 'error',
       statusCode: response.status,
-      message: 'Sem permissao para alterar prioridade ou requisicao interna invalida.'
+      message: 'Sem permissão para alterar prioridade ou requisição interna inválida.'
     });
   }
 
@@ -3064,7 +3064,7 @@ async function fetchUpdateSolicitacaoPrioridade(solicitacaoId, prioridade, obser
     return createPrioridadeFormState({
       status: 'error',
       statusCode: response.status,
-      message: 'Solicitacao nao encontrada ou removida logicamente.'
+      message: 'Solicitação não encontrada ou removida logicamente.'
     });
   }
 
@@ -3072,7 +3072,7 @@ async function fetchUpdateSolicitacaoPrioridade(solicitacaoId, prioridade, obser
     return createPrioridadeFormState({
       status: 'error',
       statusCode: response.status,
-      message: 'Solicitacao em status finalizado. Prioridade nao pode ser alterada por este fluxo.'
+      message: 'Solicitação em status finalizado. Prioridade não pode ser alterada por este fluxo.'
     });
   }
 
@@ -3080,7 +3080,7 @@ async function fetchUpdateSolicitacaoPrioridade(solicitacaoId, prioridade, obser
     return createPrioridadeFormState({
       status: 'error',
       statusCode: response.status,
-      message: 'Prioridade ou justificativa invalidas para a alteracao.'
+      message: 'Prioridade ou justificativa inválidas para a alteração.'
     });
   }
 
@@ -3088,7 +3088,7 @@ async function fetchUpdateSolicitacaoPrioridade(solicitacaoId, prioridade, obser
     return createPrioridadeFormState({
       status: 'error',
       statusCode: response.status,
-      message: 'Servico interno temporariamente indisponivel para atualizar prioridade.'
+      message: 'Serviço interno temporariamente indisponível para atualizar prioridade.'
     });
   }
 
@@ -3096,7 +3096,7 @@ async function fetchUpdateSolicitacaoPrioridade(solicitacaoId, prioridade, obser
     return createPrioridadeFormState({
       status: 'error',
       statusCode: response.status,
-      message: 'Nao foi possivel atualizar a prioridade neste momento.'
+      message: 'Não foi possível atualizar a prioridade neste momento.'
     });
   }
 
@@ -3108,7 +3108,7 @@ async function fetchUpdateSolicitacaoPrioridade(solicitacaoId, prioridade, obser
     return createPrioridadeFormState({
       status: 'error',
       statusCode: response.status,
-      message: 'Resposta de alteracao de prioridade em formato inesperado.'
+      message: 'Resposta de alteração de prioridade em formato inesperado.'
     });
   }
 
@@ -3116,7 +3116,7 @@ async function fetchUpdateSolicitacaoPrioridade(solicitacaoId, prioridade, obser
     return createPrioridadeFormState({
       status: 'error',
       statusCode: response.status,
-      message: 'Resposta de alteracao de prioridade em formato inesperado.'
+      message: 'Resposta de alteração de prioridade em formato inesperado.'
     });
   }
 
@@ -3125,7 +3125,7 @@ async function fetchUpdateSolicitacaoPrioridade(solicitacaoId, prioridade, obser
     selectedPriority: '',
     observacao: '',
     statusCode: response.status,
-    message: 'Prioridade atualizada. Detalhe, listagem e historico foram recarregados.'
+    message: 'Prioridade atualizada. Detalhe, listagem e histórico foram recarregados.'
   });
 }
 
@@ -3814,8 +3814,8 @@ async function submitPrioridadeUpdate(root, state, form) {
           selectedPriority,
           observacao: rawObservacao,
           message: state.sessionState === 'authenticated'
-            ? 'Alteracao de prioridade indisponivel para este perfil.'
-            : 'A prioridade nao foi enviada porque a sessao ainda nao foi autenticada.'
+            ? 'Alteração de prioridade indisponível para este perfil.'
+            : 'A prioridade não foi enviada porque a sessão ainda não foi autenticada.'
         })
       }
     });
@@ -3832,7 +3832,7 @@ async function submitPrioridadeUpdate(root, state, form) {
           statusCode: 422,
           selectedPriority,
           observacao: rawObservacao,
-          message: 'Selecione uma solicitacao valida antes de atualizar prioridade.'
+          message: 'Selecione uma solicitação válida antes de atualizar prioridade.'
         })
       }
     });
@@ -3849,7 +3849,7 @@ async function submitPrioridadeUpdate(root, state, form) {
           statusCode: 409,
           selectedPriority,
           observacao: rawObservacao,
-          message: 'Solicitacao em status finalizado. Prioridade nao pode ser alterada por este fluxo.'
+          message: 'Solicitação em status finalizado. Prioridade não pode ser alterada por este fluxo.'
         })
       }
     });
@@ -3904,7 +3904,7 @@ async function submitPrioridadeUpdate(root, state, form) {
       renderApp(root, createSessionState({
         sessionState: 'unauthenticated',
         statusCode: 401,
-        message: 'Sessao expirada ao tentar atualizar prioridade. Faca login novamente.',
+        message: 'Sessão expirada ao tentar atualizar prioridade. Faça login novamente.',
         hasChecked: true,
         detalhe: {
           ...loadingDetail,
@@ -3939,7 +3939,7 @@ async function submitPrioridadeUpdate(root, state, form) {
       refreshedDetail = createDetalheState({
         status: 'error',
         solicitacaoId,
-        message: 'Prioridade atualizada, mas nao foi possivel recarregar o detalhe automaticamente.'
+        message: 'Prioridade atualizada, mas não foi possível recarregar o detalhe automaticamente.'
       });
     }
 
@@ -3947,7 +3947,7 @@ async function submitPrioridadeUpdate(root, state, form) {
       renderApp(root, createSessionState({
         sessionState: 'unauthenticated',
         statusCode: 401,
-        message: 'Sessao expirada ao recarregar o detalhe. Faca login novamente.',
+        message: 'Sessão expirada ao recarregar o detalhe. Faça login novamente.',
         hasChecked: true,
         detalhe: {
           ...loadingDetail,
@@ -3964,7 +3964,7 @@ async function submitPrioridadeUpdate(root, state, form) {
         solicitacoes = createSolicitacoesState({
           status: 'error',
           offset: solicitacoes.offset || 0,
-          message: 'Prioridade atualizada, mas nao foi possivel recarregar a listagem automaticamente.'
+          message: 'Prioridade atualizada, mas não foi possível recarregar a listagem automaticamente.'
         });
       }
     }
@@ -3976,7 +3976,7 @@ async function submitPrioridadeUpdate(root, state, form) {
         historico = createHistoricoState({
           status: 'error',
           offset: historico.offset || 0,
-          message: 'Prioridade atualizada, mas nao foi possivel recarregar o historico automaticamente.'
+          message: 'Prioridade atualizada, mas não foi possível recarregar o histórico automaticamente.'
         });
       }
 
@@ -3984,7 +3984,7 @@ async function submitPrioridadeUpdate(root, state, form) {
         renderApp(root, createSessionState({
           sessionState: 'unauthenticated',
           statusCode: 401,
-          message: 'Sessao expirada ao recarregar o historico. Faca login novamente.',
+          message: 'Sessão expirada ao recarregar o histórico. Faça login novamente.',
           hasChecked: true,
           detalhe: {
             ...loadingDetail,
@@ -4021,7 +4021,7 @@ async function submitPrioridadeUpdate(root, state, form) {
           status: 'error',
           selectedPriority,
           observacao: rawObservacao,
-          message: 'Falha temporaria de conexao ao atualizar prioridade.'
+          message: 'Falha temporária de conexão ao atualizar prioridade.'
         })
       }
     });
