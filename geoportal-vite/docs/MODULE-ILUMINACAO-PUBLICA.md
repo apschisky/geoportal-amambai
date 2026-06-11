@@ -188,9 +188,9 @@ Perfis sugeridos:
 - administrador do sistema;
 - auditor/consulta.
 
-Entendimento inicial: equipe de campo, gestor e administrador veem todas as solicitacoes, podem alterar status, finalizar e anexar foto. Gestor e administrador podem cancelar/indeferir e ver dados pessoais. Administrador e auditor podem consultar auditoria.
+Entendimento inicial: equipe de campo, gestor e administrador veem todas as solicitacoes, podem alterar status e prioridade, finalizar e anexar foto futuramente. Gestor e administrador podem cancelar/indeferir e ver dados pessoais. Administrador e auditor podem consultar auditoria.
 
-Permissoes devem ser por acao, como visualizar, criar, editar, encaminhar, alterar status, finalizar, anexar, cancelar, indeferir e auditar.
+Permissoes devem ser por acao, como visualizar, criar, editar, encaminhar, alterar status, alterar prioridade, finalizar, anexar, cancelar, indeferir e auditar.
 
 ## 13. Auditoria obrigatoria
 

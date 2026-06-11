@@ -27,7 +27,7 @@ A API deve atuar como:
 | Tipo | Acesso | Exemplos | Seguranca |
 |---|---|---|---|
 | Publica | Sem login ou com protecao leve | Criar solicitacao, consultar protocolo | Validacao, rate limit, dados minimos |
-| Interna | Login obrigatorio | Listar solicitacoes, alterar status, anexar arquivos | Autenticacao, permissao, auditoria |
+| Interna | Login obrigatorio | Listar solicitacoes, alterar status, alterar prioridade, registrar observacoes, anexar arquivos futuramente | Autenticacao, permissao, auditoria |
 
 Endpoints publicos devem permanecer em `/api/public/...` e expor apenas o necessario. Endpoints internos devem ficar em `/api/internal/...`, exigir autenticacao, autorizacao no backend e registro de auditoria, sem reutilizar endpoints publicos. Endpoints publicos nunca devem retornar observacoes internas nem historico administrativo completo.
 
@@ -43,6 +43,7 @@ Endpoints conceituais internos:
 - `GET /api/internal/iluminacao/solicitacoes`
 - `GET /api/internal/iluminacao/solicitacoes/{id}`
 - `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`
+- `PATCH /api/internal/iluminacao/solicitacoes/{id}/prioridade`
 - `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes`
 - `GET /api/internal/iluminacao/solicitacoes/{id}/historico`
 - `GET /api/internal/iluminacao/estatisticas`
@@ -176,7 +177,7 @@ Entradas invalidas devem ser rejeitadas com mensagens simples e seguras.
 - Bloqueio, atraso ou protecao equivalente para tentativas excessivas de login.
 - Avaliacao futura de 2FA para perfis sensiveis.
 
-Permissoes devem considerar acoes como visualizar solicitacoes, visualizar detalhe, alterar status, registrar observacao, visualizar historico, visualizar estatisticas e administrar usuarios.
+Permissoes devem considerar acoes como visualizar solicitacoes, visualizar detalhe, alterar status, alterar prioridade, registrar observacao, visualizar historico, visualizar estatisticas e administrar usuarios.
 
 O desenho detalhado de perfis (`admin`, `gestor_modulo`, `atendente_triagem`, `equipe_execucao` e `leitura`) e matriz de permissoes esta em `docs/INTERNAL-AUTHORIZATION-PLAN.md`.
 
@@ -199,9 +200,9 @@ Toda operacao interna relevante deve registrar:
 - resumo da alteracao;
 - anexo enviado, quando houver.
 
-Auditoria deve ser obrigatoria para mudancas de status, observacoes, anexos, finalizacao, cancelamento e alteracoes administrativas.
+Auditoria deve ser obrigatoria para mudancas de status, prioridade, observacoes, anexos, finalizacao, cancelamento e alteracoes administrativas.
 
-Para o modulo interno de Iluminacao Publica, o modelo conceitual das tabelas de historico/auditoria e observacoes internas esta em `docs/ILUMINACAO-INTERNAL-DATA-MODEL.md`. A consulta publica nao deve retornar historico administrativo completo nem observacoes internas. Alteracao de status deve gravar historico; criacao de observacao deve gravar observacao interna e evento resumido no historico.
+Para o modulo interno de Iluminacao Publica, o modelo conceitual das tabelas de historico/auditoria e observacoes internas esta em `docs/ILUMINACAO-INTERNAL-DATA-MODEL.md`. A consulta publica nao deve retornar historico administrativo completo nem observacoes internas. Alteracao de status e alteracao de prioridade devem gravar historico; criacao de observacao deve gravar observacao interna e evento resumido no historico.
 
 ## 10. Tratamento de erros
 

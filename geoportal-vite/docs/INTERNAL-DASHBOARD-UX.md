@@ -611,9 +611,11 @@ Marco implementado: no commit `b860c5d`, a shell interna passou a permitir alter
 
 A validacao frontend exige status novo permitido pela matriz, status novo diferente do atual, observacao trimada, minimo de 3 caracteres, maximo de 1000 caracteres, bloqueio de envio invalido e protecao contra duplo envio. Status terminal bloqueia a alteracao normal na interface. Depois do `200 OK`, o detalhe e a listagem sao recarregados, o historico e recarregado somente se ja estava aberto e as observacoes nao sao recarregadas por causa do `PATCH`. O fluxo nao envia prioridade, nao envia campos extras, nao altera prioridade, nao cria observacao separada e nao modifica dados principais da solicitacao. O backend grava o evento de alteracao de status no historico na mesma transacao. O Geoportal publico permanece preservado.
 
-Decisao registrada: alteracao de prioridade nao entrou nesta fase e continua sendo evolucao futura separada. A caixa de status deve continuar tratando apenas `status + justificativa`. Reabertura ou correcao administrativa de status terminal tambem ficam fora desta fase.
+Marco implementado: a shell interna passou a permitir alteracao de prioridade operacional a partir de caixa propria no detalhe. A chamada permitida e `PATCH /api/internal/iluminacao/solicitacoes/{id}/prioridade`, sempre com `credentials: "include"`, `Content-Type: application/json`, `Accept: application/json`, header `X-Geoportal-Internal-Request: 1` e payload restrito a `{ prioridade, observacao }`. A alteracao ocorre somente apos sessao autenticada, `/me` valido, detalhe carregado, identificador valido, permissao `iluminacao.solicitacoes.atualizar_prioridade` e acao explicita do usuario.
 
-Proxima evolucao recomendada: encerrar e documentar este marco e, se necessario, futuramente inventariar o contrato de prioridade antes de qualquer implementacao de alteracao de prioridade.
+A validacao frontend exige prioridade nova diferente da atual, valor entre `baixa`, `normal`, `alta` e `urgente`, observacao trimada, minimo de 3 caracteres, maximo de 1000 caracteres, bloqueio de envio invalido e protecao contra duplo envio. Status terminal bloqueia a alteracao de prioridade na interface. Depois do `200 OK`, detalhe, listagem e historico sao recarregados. O fluxo nao altera status, nao cria observacao separada, nao altera `finalizado_em`, nao modifica dados principais da solicitacao e nao afeta o Geoportal publico.
+
+Proxima evolucao recomendada: consolidar o piloto controlado, observar uso real em campo e planejar separadamente mapa operacional, dashboard, anexos e correcao/reabertura administrativa de status terminal.
 
 ## 13. Relacao com documentos existentes
 
@@ -630,7 +632,9 @@ Este documento complementa:
 
 ## 14. Proximos passos
 
-- Validar fluxo com setor responsavel.
-- Decidir estrategia de homologacao por rotas, mantendo subdominios como evolucao possivel.
-- Desenhar wireframes simples.
-- So depois preparar primeira prova de conceito em homologacao.
+- Validar o MVP interno com setor responsavel em piloto controlado, incluindo login, listagem, detalhe, historico, observacoes, status, prioridade e logout.
+- Definir roteiro operacional para uso em campo: quando alterar status, quando alterar prioridade e como escrever observacoes internas sem dados pessoais desnecessarios.
+- Planejar mapa operacional como etapa separada, com contrato de coordenadas/postes, permissao, privacidade e fallback sem rota externa.
+- Planejar dashboard real com indicadores derivados do backend, evitando calculos criticos apenas no frontend.
+- Planejar correcao/reabertura administrativa de status terminal como fluxo separado, com permissao propria, justificativa forte e auditoria.
+- Planejar anexos/fotos em etapa propria, com limites, armazenamento, antivirus/validacao, privacidade e rollback.

@@ -93,13 +93,13 @@ Na primeira fase, somente `interna` deve ser usada. A visibilidade `publica_futu
 - Usuario e data/hora devem ser registrados nas acoes internas.
 - Logs nao devem conter senha, token, `DATABASE_URL`, telefone completo ou dados sensiveis desnecessarios.
 
-### Planejamento de prioridade operacional
+### Prioridade operacional
 
 A prioridade operacional deve classificar criticidade/urgencia sem substituir o status. Valores recomendados para a primeira versao: `baixa`, `normal`, `alta` e `urgente`, com default recomendado `normal`.
 
-Como a listagem e o detalhe internos ja documentam o campo `prioridade`, e validacoes anteriores de menor privilegio citaram a coluna `prioridade` em `mod_iluminacao.solicitacoes`, a proxima etapa deve confirmar o schema real antes de qualquer migration: tipo da coluna, default, check constraint, valores existentes e necessidade de indice para filtros. Nenhuma consulta real de banco ou migration deve ser executada apenas por este planejamento.
+O schema real de homologacao foi confirmado antes da implementacao: `mod_iluminacao.solicitacoes.prioridade` existe como `varchar(20) NOT NULL`, default `normal`, constraint para `baixa`, `normal`, `alta` e `urgente`; `mod_iluminacao.solicitacoes_historico` possui `prioridade_anterior` e `prioridade_nova`; e a constraint de `acao` ja permite `alteracao_prioridade`. Por isso, nao foi criada migration para prioridade nesta etapa.
 
-A alteracao futura de prioridade deve ser transacional e independente da alteracao de status: atualizar somente a prioridade, registrar `acao='alteracao_prioridade'` em `solicitacoes_historico`, gravar `prioridade_anterior`, `prioridade_nova`, `usuario_id`, `usuario_nome` quando seguro e `observacao_resumida`, e reverter a alteracao se o historico falhar. Se a migration real ainda nao permitir `alteracao_prioridade`, sera necessaria migration futura para ampliar a constraint de `acao`.
+A alteracao de prioridade e transacional e independente da alteracao de status: atualiza somente a prioridade e `atualizado_em`, registra `acao='alteracao_prioridade'` em `solicitacoes_historico`, grava `prioridade_anterior`, `prioridade_nova`, `usuario_id`, `usuario_nome` quando seguro e `observacao_resumida`, e reverte a alteracao se o historico falhar. A primeira versao bloqueia alteracao de prioridade em status terminal pelo fluxo normal.
 
 ## 6. Referencia para outros modulos
 
@@ -281,7 +281,7 @@ A auditoria deve usar `acao='alteracao_status'` e `origem_acao='usuario_interno'
 
 A implementacao trava a solicitacao com `deleted_at IS NULL` via `SELECT ... FOR UPDATE`, atualiza somente `status`, `atualizado_em` e `finalizado_em`, e insere historico na mesma conexao/transacao. Se o historico falhar, o UPDATE nao deve permanecer. O endpoint nao deve alterar prioridade, dados publicos, geometria, dados do solicitante, `deleted_at` ou `deleted_reason`.
 
-Para a etapa de alteracao normal de status, nao se recomenda migration nem trigger; a decisao incremental e manter a garantia no backend com testes de transacao atomica. Essa observacao nao elimina a necessidade de confirmar ou normalizar o schema para a futura prioridade operacional, especialmente coluna `prioridade`, valores permitidos, default, constraints, indices e suporte a `acao='alteracao_prioridade'` no historico. GRANTs devem ser aplicados apenas na etapa operacional de homologacao, com `UPDATE` minimo em `mod_iluminacao.solicitacoes` e `INSERT` em historico, sem `DELETE` e sem `UPDATE` em historico.
+Para a etapa de alteracao normal de status, nao se recomenda migration nem trigger; a decisao incremental e manter a garantia no backend com testes de transacao atomica. A prioridade operacional foi tratada em evolucao separada, apos confirmacao do schema real, e tambem nao exigiu migration nesta etapa. GRANTs devem ser aplicados apenas na etapa operacional de homologacao, com `UPDATE` minimo por coluna em `mod_iluminacao.solicitacoes` e `INSERT` em historico, sem `DELETE` e sem `UPDATE` em historico.
 
 Validacao operacional posterior confirmou que o GRANT de homologacao foi ainda mais restrito: `UPDATE` por coluna somente em `status`, `atualizado_em` e `finalizado_em` para `geoportal_api_homolog`. A matriz confirmou `UPDATE=false` em `prioridade`, `protocolo`, `geom`, `deleted_at`, `deleted_reason`, `nome_solicitante` e `contato_solicitante`. Esse desenho reduz o risco de alteracao acidental de dados publicos ou sensiveis pelo runtime interno.
 

@@ -149,6 +149,7 @@ Visao inicial:
   - visualizar;
   - criar;
   - editar;
+  - alterar prioridade;
   - encaminhar;
   - finalizar;
   - excluir.

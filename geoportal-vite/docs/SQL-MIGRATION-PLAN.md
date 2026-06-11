@@ -83,7 +83,7 @@ Regras:
 - objeto identificado;
 - extensao `.sql`.
 
-Nota sobre prioridade operacional: documentos e validacoes anteriores ja tratam `prioridade` como campo existente na listagem/detalhe internos e nas verificacoes de menor privilegio. Antes de criar migration nova, a proxima etapa deve confirmar o schema real da coluna `prioridade`, seus valores existentes, default, constraints e indices. Confirmacao pura deve ser feita por roteiro/consulta de validacao, nao por migration vazia. Se a coluna, constraint, default, indice e `acao='alteracao_prioridade'` ja estiverem adequados, nao criar migration apenas para confirmar. Se houver lacuna real, a migration futura deve ser apenas de normalizacao, check/default, indice ou ampliacao de valores permitidos no historico para `acao='alteracao_prioridade'`. Nao criar migration nesta etapa documental.
+Nota sobre prioridade operacional: a inspecao real de homologacao confirmou que a coluna `prioridade`, o default `normal`, as constraints para `baixa`, `normal`, `alta` e `urgente`, os campos `prioridade_anterior`/`prioridade_nova` no historico e o valor `acao='alteracao_prioridade'` ja estavam adequados para a primeira implementacao. Por isso, nao foi criada migration para prioridade. Confirmacao pura deve continuar sendo feita por roteiro/consulta de validacao, nao por migration vazia. A migration placeholder `0006_normalize_mod_iluminacao_solicitacoes_prioridade.sql` continua apenas como referencia conceitual caso uma lacuna real apareca no futuro, como necessidade de normalizacao, check/default, indice por gargalo confirmado ou ampliacao de valores permitidos.
 
 ## 6. Ordem de execucao
 

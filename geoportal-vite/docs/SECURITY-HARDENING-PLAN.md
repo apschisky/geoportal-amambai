@@ -194,7 +194,7 @@ Antes de avançar em autenticação interna, consulte `docs/INTERNAL-AUTH-TECHNI
 - [ ] Revisao defensiva da API publica concluida conforme `docs/PUBLIC-API-SECURITY-REVIEW.md` antes dos endpoints internos.
 - [ ] Implementacao da autenticacao backend deve seguir `docs/INTERNAL-AUTH-SECURITY-IMPLEMENTATION-PLAN.md` antes de qualquer endpoint interno publicado.
 - [ ] Perfis por secretaria e modulo: `admin`, `gestor_modulo`, `atendente_triagem`, `equipe_execucao` e `leitura`, ou equivalentes validados.
-- [ ] Permissoes por acao: visualizar solicitacoes, visualizar detalhe, alterar status, registrar observacao, visualizar historico, visualizar estatisticas e administrar usuarios.
+- [ ] Permissoes por acao: visualizar solicitacoes, visualizar detalhe, alterar status, alterar prioridade, registrar observacao, visualizar historico, visualizar estatisticas e administrar usuarios.
 - [ ] Auditoria de login.
 - [ ] Auditoria de alteracao de dados.
 - [ ] Bloqueio ou desativacao de usuarios desligados.
@@ -220,6 +220,7 @@ Registrar, conforme o modulo:
 - [ ] Fechamento ou finalizacao de atendimento.
 - [ ] Historico de encaminhamentos.
 - [ ] Alteracao de status sempre gravada em `mod_iluminacao.solicitacoes_historico`.
+- [ ] Alteracao de prioridade sempre gravada em `mod_iluminacao.solicitacoes_historico`.
 - [ ] Criacao de observacao gravada em `mod_iluminacao.solicitacoes_observacoes` e resumida no historico.
 - [ ] Consulta publica sem observacoes internas e sem historico administrativo completo.
 

@@ -562,7 +562,7 @@ Recomendacao:
 - Deve ter auditoria propria no historico e, conforme contrato futuro, pode usar `origem_acao='ajuste_administrativo'` e/ou `acao='reabertura'` quando aplicavel, sempre respeitando os valores permitidos pela migration.
 - Esse fluxo deve ser documentado e implementado em etapa separada. Nao liberar reabertura no PATCH normal e nao permitir que a tela futura replique a regra livremente; a regra deve permanecer no backend.
 
-### `PATCH /api/internal/iluminacao/solicitacoes/{id}/prioridade` (planejado)
+### `PATCH /api/internal/iluminacao/solicitacoes/{id}/prioridade` (implementado)
 
 Finalidade: alterar a prioridade operacional de uma solicitacao interna de Iluminacao Publica, sem substituir o status e sem afetar o Geoportal publico.
 
@@ -583,16 +583,16 @@ Valores recomendados:
 
 Valor padrao recomendado: `normal`.
 
-Observacao de schema: a listagem e o detalhe internos ja documentam o campo `prioridade`, e validacoes anteriores de GRANT confirmaram que `prioridade` existe como coluna de `mod_iluminacao.solicitacoes` no ambiente validado. A proxima etapa deve confirmar tipo, check constraint, default, valores reais existentes, indices e necessidade ou nao de migration. Nao executar consulta real no banco sem tarefa operacional propria.
+Observacao de schema: a verificacao manual do banco real de homologacao confirmou que `mod_iluminacao.solicitacoes.prioridade` ja existe como `varchar(20) NOT NULL`, com default `normal` e constraint permitindo `baixa`, `normal`, `alta` e `urgente`. A tabela `mod_iluminacao.solicitacoes_historico` ja possui `prioridade_anterior` e `prioridade_nova`, e a constraint de `acao` ja permite `alteracao_prioridade`. Portanto, nao foi criada migration para prioridade nesta etapa.
 
-Caracteristicas planejadas:
+Caracteristicas implementadas:
 
 - Endpoint interno mutavel.
 - Exige sessao interna autenticada.
 - Exige `require_permission("iluminacao.solicitacoes.atualizar_prioridade")`.
 - Exige header `X-Geoportal-Internal-Request: 1`.
-- Deve permanecer sob feature flag/rotas internas ja existentes.
-- Nao altera API publica, Geoportal publico, proxy, Apache, producao, migrations ou schema nesta etapa documental.
+- Permanece sob feature flag/rotas internas ja existentes.
+- Nao altera API publica, Geoportal publico, proxy, Apache, producao, migrations ou schema.
 - Nao altera status, dados pessoais, geometria, protocolo ou `finalizado_em`.
 - Nao cria observacao separada.
 - Registra historico obrigatorio.
@@ -603,7 +603,7 @@ Permissao de aplicacao:
 
 Essa permissao deve ser diferente de `iluminacao.solicitacoes.atualizar_status`, `iluminacao.solicitacoes.comentar` e `iluminacao.solicitacoes.ler`, preservando menor privilegio e separacao de responsabilidades.
 
-Payload planejado:
+Payload aceito:
 
 ```json
 {
@@ -636,7 +636,7 @@ Campos proibidos no payload:
 - campos de auditoria;
 - SQL, role, GRANT, token, senha, cookie ou qualquer campo extra.
 
-Validacao planejada:
+Validacao implementada:
 
 - `prioridade` obrigatoria.
 - `prioridade` deve estar entre `baixa`, `normal`, `alta` e `urgente`.
@@ -646,7 +646,7 @@ Validacao planejada:
 - `observacao` deve ter maximo de 1000 caracteres, compativel com `observacao_resumida` do historico.
 - Payload com campo extra deve retornar `422`.
 
-Regra operacional recomendada:
+Regra operacional implementada:
 
 - Alteracao de prioridade e independente da alteracao de status.
 - Alteracao de prioridade nao altera status.
@@ -655,13 +655,12 @@ Regra operacional recomendada:
 - Alteracao de prioridade registra evento em historico na mesma transacao.
 - Justificativa e obrigatoria para qualquer mudanca real.
 - Prioridade igual a atual deve retornar `200 OK` idempotente, sem novo `UPDATE` e sem novo historico.
-- Para status terminal (`resolvida`, `cancelada`, `indeferida`, `nao_localizado`), a regra mais segura para a primeira versao e bloquear a alteracao de prioridade pelo fluxo normal. Se houver necessidade operacional de corrigir prioridade em chamado finalizado, isso deve entrar em fluxo administrativo futuro, com permissao especifica, justificativa forte e auditoria propria.
+- Para status terminal (`resolvida`, `cancelada`, `indeferida`, `nao_localizado`), a primeira versao bloqueia a alteracao de prioridade pelo fluxo normal. Se houver necessidade operacional de corrigir prioridade em chamado finalizado, isso deve entrar em fluxo administrativo futuro, com permissao especifica, justificativa forte e auditoria propria.
 
 Auditoria obrigatoria:
 
 - Inserir evento em `mod_iluminacao.solicitacoes_historico` na mesma transacao do `UPDATE`.
-- Usar `acao='alteracao_prioridade'`, se esse valor estiver permitido pela migration real.
-- Se `alteracao_prioridade` nao estiver permitido pelo schema atual, criar migration futura para ampliar os valores permitidos. Nao usar `alteracao_status` para prioridade, pois nao e semanticamente correto.
+- Usar `acao='alteracao_prioridade'`, valor ja confirmado no schema de homologacao.
 - Usar `origem_acao='usuario_interno'`.
 - Gravar `prioridade_anterior` e `prioridade_nova`.
 - Gravar `usuario_id` da sessao interna autenticada.
@@ -669,14 +668,14 @@ Auditoria obrigatoria:
 - Gravar `observacao_resumida` com a justificativa normalizada.
 - Se o INSERT no historico falhar, o UPDATE da prioridade nao deve permanecer.
 
-Transacao obrigatoria futura:
+Transacao implementada:
 
 1. Buscar solicitacao com `deleted_at IS NULL`.
 2. Travar a linha, preferencialmente com `SELECT ... FOR UPDATE`.
 3. Validar status atual e regra de terminal.
 4. Validar prioridade nova.
 5. Se a prioridade for igual, retornar 200 idempotente sem `UPDATE` e sem historico.
-6. Fazer `UPDATE` somente de `prioridade` e `atualizado_em`, se esse for o contrato final.
+6. Fazer `UPDATE` somente de `prioridade` e `atualizado_em`.
 7. Inserir historico.
 8. Se o INSERT no historico falhar, o UPDATE nao deve permanecer.
 
@@ -700,7 +699,7 @@ Campos que nao devem ser alterados:
 - `deleted_at`;
 - `deleted_reason`.
 
-Resposta recomendada:
+Resposta implementada:
 
 - `200 OK`.
 - Retornar resumo atualizado, sem historico junto.
@@ -715,7 +714,7 @@ Resposta recomendada:
 }
 ```
 
-Erros recomendados:
+Erros previstos:
 
 - `401` sem sessao.
 - `403` sem permissao.
@@ -725,42 +724,38 @@ Erros recomendados:
 - `422` para prioridade invalida, observacao invalida ou campos extras.
 - `503` para erro de banco sanitizado, sem SQL, traceback, host, role, senha, token, cookie, hash, `session_secret` ou `DATABASE_URL`.
 
-Banco e migration futura:
+Banco e migration:
 
-- Confirmar se a coluna `prioridade` ja existe, seu tipo, default, check constraint e valores existentes.
-- Se necessario, criar ou normalizar coluna `prioridade` com default `normal`.
-- Criar ou ajustar check constraint para `baixa`, `normal`, `alta` e `urgente`.
-- Avaliar indice para filtros por prioridade.
-- Confirmar se `acao='alteracao_prioridade'` ja e permitido em `mod_iluminacao.solicitacoes_historico`; se nao for, criar migration para ampliar os valores permitidos.
-- Criar ou ajustar comentario de coluna.
-- Qualquer migration deve passar por homologacao primeiro, backup manual validado, aplicacao controlada, validacao de schema, API publica, API interna e rollback possivel. Producao somente depois de validacao.
+- Nao houve migration para prioridade nesta etapa porque o schema real de homologacao ja possuia coluna, default, constraints de valores e suporte a `acao='alteracao_prioridade'` no historico.
+- A evolucao futura pode avaliar indice por prioridade apenas se filtros/ordenacao por prioridade se tornarem gargalo real.
+- Qualquer migration futura deve passar por homologacao primeiro, backup manual validado, aplicacao controlada, validacao de schema, API publica, API interna e rollback possivel. Producao somente depois de validacao.
 
-GRANTs minimos futuros:
+GRANTs minimos para runtime:
 
 - `SELECT` em `mod_iluminacao.solicitacoes`.
-- `UPDATE` preferencialmente somente na coluna `prioridade` e, se o contrato exigir, `atualizado_em`.
+- `UPDATE` preferencialmente somente nas colunas `prioridade` e `atualizado_em`.
 - `INSERT` em `mod_iluminacao.solicitacoes_historico`.
 - `USAGE` na sequence do historico, se necessario.
 - Registrar risco de `UPDATE` amplo em PostgreSQL caso nao seja usado privilegio por coluna.
-- Nao aplicar GRANT nesta etapa documental.
 
-Testes obrigatorios futuros:
+Testes e regressao:
 
 - Router: 200 em alteracao valida, 200 idempotente quando prioridade for igual a atual, 401 sem sessao, 403 sem permissao, 403 sem header mutavel, 404 para solicitacao inexistente ou soft-deletada, 409 ou 422 para regra invalida conforme contrato, 422 para prioridade invalida, 422 para observacao invalida, 422 para campos extras e 503 sanitizado para erro de banco.
 - Service: normalizacao de prioridade, normalizacao de observacao, regra de status terminal, idempotencia, conversao de erro tecnico em erro seguro e preservacao de status, dados pessoais, protocolo, geometria e finalizacao.
 - Repository: bind parameters, sem `SELECT *`, `SELECT ... FOR UPDATE` se aplicavel, UPDATE somente de `prioridade` e `atualizado_em` se esse for o contrato, INSERT de historico na mesma transacao, rollback se historico falhar, sem alteracao de status, sem alteracao de `finalizado_em` e sem alteracao de dados publicos/pessoais.
 - Regressao: API publica preservada, listagem interna preservada, detalhe preservado, historico preservado, observacoes preservadas, alteracao normal de status preservada e logout/auth preservados.
 
-Frontend futuro:
+Frontend implementado e evolucoes futuras:
 
-- Exibir prioridade na listagem e no detalhe.
-- Implementar filtro por prioridade.
-- Exibir acao de alterar prioridade somente se a permissao `iluminacao.solicitacoes.atualizar_prioridade` existir.
-- Usar destaque visual discreto por prioridade.
-- Nao duplicar a regra real do backend no frontend; a interface apenas orienta e valida o basico.
-- Exibir mensagens seguras.
-- Apos alteracao, recarregar detalhe e historico; recarregar listagem se o item exibido puder mudar de destaque/ordenacao.
-- Nao implementar frontend nesta etapa.
+- A listagem e o detalhe exibem prioridade em formato amigavel.
+- O detalhe exibe acao de alterar prioridade somente quando `/api/internal/auth/me` retorna `iluminacao.solicitacoes.atualizar_prioridade`.
+- O PATCH de prioridade usa `credentials: "include"`, `Content-Type: application/json`, `Accept: application/json`, header `X-Geoportal-Internal-Request: 1` e payload restrito a `{ prioridade, observacao }`.
+- A interface exige justificativa obrigatoria, aplica trim, minimo visual de 3 caracteres, bloqueia envio invalido e protege contra duplo envio.
+- Apos sucesso, recarrega detalhe, listagem e historico.
+- A regra real continua no backend; a interface apenas orienta e valida o basico.
+- Filtro por prioridade, destaque visual avancado e ordenacao operacional ficam como evolucoes futuras.
+
+Marco atual: backend e frontend internos ja consomem `PATCH /api/internal/iluminacao/solicitacoes/{id}/prioridade` com permissao especifica, header mutavel obrigatorio, justificativa, auditoria em historico e bloqueio de status terminal. A implementacao nao cria observacao separada, nao altera status, nao altera `finalizado_em`, nao altera dados pessoais e nao afeta o Geoportal publico.
 
 Riscos registrados:
 
