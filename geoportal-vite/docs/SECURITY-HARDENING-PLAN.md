@@ -244,7 +244,9 @@ Bloqueadores de seguranca para essa ativacao:
 - [ ] backup validado de `amambaiGis` e rollback definido;
 - [ ] inventario de schema e GRANTs de producao concluido;
 - [ ] comparacao `amambaiGis_homologacao` x `amambaiGis` concluida sem lacunas inexplicadas;
-- [ ] porta interna `8002` mantida sem exposicao direta externa;
+- [ ] `GeoportalAPIInternaProducao` criado e validado em `127.0.0.1:8003`, sem reutilizar `GeoportalAPIInternaHomologacao` como producao real;
+- [ ] portas internas `8002` e `8003` mantidas sem exposicao direta externa;
+- [ ] Apache `/api/internal/` trocado de `8002` para `8003` somente apos backup, `httpd.exe -t` e rollback documentado;
 - [ ] cookie de sessao validado em HTTPS sem copiar valores (`HttpOnly`, `Secure`, `SameSite`);
 - [ ] perfis do piloto com menor privilegio;
 - [ ] mutacoes internas validadas com sessao, permissao e `X-Geoportal-Internal-Request: 1`;

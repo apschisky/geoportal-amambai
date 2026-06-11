@@ -780,6 +780,24 @@ Rollback Apache:
 
 Objetivo: levar o modulo interno de Iluminacao Publica de homologacao para producao interna/piloto controlado, preservando o Geoportal publico, a API publica, o GeoServer e os dados existentes. Esta secao e runbook documental: nao executa banco, Apache, NSSM, `.env`, migrations ou producao.
 
+Decisao de runtime para producao interna:
+
+- nao reutilizar `GeoportalAPIInternaHomologacao` para producao real;
+- nao misturar homologacao interna com producao interna;
+- manter isolamento entre `8000` homologacao publica, `8001` producao publica, `8002` homologacao interna e `8003` producao interna;
+- criar futuramente o servico `GeoportalAPIInternaProducao`, escutando somente em `http://127.0.0.1:8003`, com `ExpectedEnvironment=producao`, `IsInternalRuntime=true`, `PublicBaseUrl=https://geoserver.amambai.ms.gov.br` e banco `amambaiGis`;
+- manter o Apache atual apontando `/api/internal/` para `http://127.0.0.1:8002/api/internal/` ate a janela controlada de troca;
+- na ativacao futura, alterar `/api/internal/` para `http://127.0.0.1:8003/api/internal/` somente depois das pre-condicoes abaixo, com backup do Apache e rollback pronto.
+
+Mapa de ambientes planejado:
+
+| Ambiente | Servico | Base local | Porta | Banco | Finalidade |
+|---|---|---|---|---|---|
+| Homologacao | `GeoportalAPIHomologacao` | `http://127.0.0.1:8000` | `8000` | homologacao | API publica de homologacao |
+| InternaHomologacao | `GeoportalAPIInternaHomologacao` | `http://127.0.0.1:8002` | `8002` | homologacao | API interna de homologacao |
+| Producao | `GeoportalAPIProducao` | `http://127.0.0.1:8001` | `8001` | `amambaiGis` | API publica de producao |
+| InternaProducao | `GeoportalAPIInternaProducao` | `http://127.0.0.1:8003` | `8003` | `amambaiGis` | API interna de producao/piloto |
+
 Principios obrigatorios:
 
 - nao quebrar servico online;
@@ -826,6 +844,7 @@ Inventario obrigatorio de producao antes de alterar `amambaiGis`:
 - roles runtime da API publica e da API interna;
 - GRANTs efetivos por tabela, sequence e, quando possivel, por coluna;
 - servicos Windows/NSSM existentes e portas locais;
+- confirmacao de que `8003` esta livre antes de instalar `GeoportalAPIInternaProducao`;
 - VirtualHost Apache ativo, ordem de `Alias` e `ProxyPass`;
 - politicas reais de cookie (`HttpOnly`, `Secure`, `SameSite`, `Path`, expiracao), sem copiar valor de cookie;
 - logs existentes e garantia de que nao registram segredos.
@@ -882,13 +901,43 @@ Validacao da API interna:
 Validacao Apache/NSSM:
 
 - manter `/api/internal/` antes de `/api/` no VirtualHost;
-- manter `/api/internal/` apontando para `127.0.0.1:8002`;
+- manter `/api/internal/` apontando para `127.0.0.1:8002` enquanto o runtime interno de producao nao existir;
+- alterar `/api/internal/` para `127.0.0.1:8003` apenas em janela controlada, depois de validar `GeoportalAPIInternaProducao`;
 - manter `/api/` apontando para `127.0.0.1:8001`;
 - manter `/geoserver` apontando para o Tomcat/GeoServer;
-- nao expor a porta `8002` diretamente no firewall ou rede;
+- nao expor as portas `8002` ou `8003` diretamente no firewall ou rede;
 - rodar validacao de sintaxe Apache antes de qualquer reload/restart quando houver mudanca de configuracao;
 - reiniciar/recarregar Apache apenas quando houver mudanca de configuracao, nao para simples troca de arquivos estaticos;
 - reiniciar backend apenas quando houver mudanca de codigo, `.env`, servico, dependencias, migrations ou schema.
+
+Pre-condicoes para criar/ativar `GeoportalAPIInternaProducao`:
+
+1. Backup validado do banco `amambaiGis`.
+2. Inventario do schema de producao concluido.
+3. Bootstrap minimo de `mod_auth` em `amambaiGis`.
+4. GRANTs minimos para a role runtime interna de producao.
+5. Servico `GeoportalAPIInternaProducao` instalado via NSSM.
+6. Porta `8003` ouvindo somente em `127.0.0.1`.
+7. `GET http://127.0.0.1:8003/api/internal/auth/me` validado localmente, retornando `401` sem sessao.
+8. Mutacoes internas sem header retornando `403`.
+9. Mutacoes internas com header `X-Geoportal-Internal-Request: 1` e permissao funcionando em dado de teste apropriado.
+10. Apache validado com `httpd.exe -t` antes da troca.
+11. Backup do `httpd-ssl.conf`.
+12. Rollback documentado para voltar `/api/internal/` para `http://127.0.0.1:8002/api/internal/`.
+
+Troca futura do proxy interno:
+
+```apache
+# Estado atual ate a ativacao controlada da producao interna
+ProxyPass        /api/internal/ http://127.0.0.1:8002/api/internal/
+ProxyPassReverse /api/internal/ http://127.0.0.1:8002/api/internal/
+
+# Estado futuro, somente apos validar GeoportalAPIInternaProducao
+ProxyPass        /api/internal/ http://127.0.0.1:8003/api/internal/
+ProxyPassReverse /api/internal/ http://127.0.0.1:8003/api/internal/
+```
+
+Rollback da troca de proxy: restaurar o backup do `httpd-ssl.conf` ou recolocar `/api/internal/` apontando para `127.0.0.1:8002`, rodar `httpd.exe -t`, reiniciar/recarregar Apache controladamente e validar Geoportal publico, GeoServer, `/api/` publica e `/api/internal/auth/me`.
 
 Publicacao do front interno:
 
@@ -945,6 +994,8 @@ Bloqueadores antes da producao interna:
 - inexistencia de backup validado;
 - inventario incompleto de `amambaiGis`;
 - diferenca de schema nao explicada entre homologacao e producao;
+- tentativa de usar `GeoportalAPIInternaHomologacao` como producao interna real;
+- `GeoportalAPIInternaProducao` ausente ou nao validado em `127.0.0.1:8003`;
 - rollback ausente;
 - porta interna exposta diretamente;
 - cookie inseguro em HTTPS;
@@ -962,13 +1013,15 @@ Ordem recomendada:
 4. Comparar `amambaiGis_homologacao` x `amambaiGis`.
 5. Definir scripts minimos, se houver lacuna real.
 6. Validar scripts/GRANTs em homologacao.
-7. Aplicar em producao em janela controlada.
-8. Validar API interna.
-9. Publicar front interno.
-10. Criar/validar usuarios e perfis do piloto.
-11. Rodar checklist operacional.
-12. Iniciar piloto controlado.
-13. Registrar validacao e pendencias.
+7. Aplicar scripts/GRANTs em producao em janela controlada.
+8. Criar e validar `GeoportalAPIInternaProducao` em `127.0.0.1:8003`, sem trocar Apache ainda.
+9. Fazer backup do Apache, validar sintaxe e trocar `/api/internal/` de `8002` para `8003` somente se todas as pre-condicoes passarem.
+10. Validar API interna via proxy.
+11. Publicar front interno.
+12. Criar/validar usuarios e perfis do piloto.
+13. Rodar checklist operacional.
+14. Iniciar piloto controlado.
+15. Registrar validacao e pendencias.
 
 ### Pendencias futuras fora do MVP
 

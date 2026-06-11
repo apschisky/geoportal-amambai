@@ -32,6 +32,8 @@ Nao conceder `mod_auth` para `api_iluminacao_homolog`.
 
 Usar `geoportal_api_homolog` no runtime interno, com matriz minima ja validada para autenticacao, sessao, autorizacao e leitura interna de Iluminacao.
 
+Para producao interna/piloto, a decisao complementar e criar runtime proprio `GeoportalAPIInternaProducao` em porta separada (`127.0.0.1:8003`) e banco `amambaiGis`, sem reutilizar `GeoportalAPIInternaHomologacao` (`127.0.0.1:8002`). A troca do Apache `/api/internal/` de `8002` para `8003` deve ocorrer somente em janela controlada, depois de backup, inventario, GRANTs minimos, validacao local do servico novo e rollback documentado.
+
 Essa separacao e uma decisao de seguranca e escalabilidade, nao um contorno temporario.
 
 ## Arquitetura em Homologacao
@@ -144,7 +146,7 @@ Validacao autenticada manual pelo servico NSSM:
 
 ## Planejamento para Proxy Interno Controlado
 
-Nota de estado: esta secao registra o planejamento que levou ao proxy interno controlado. O proxy `/api/internal/` ja foi implementado no dominio `geoserver.amambai.ms.gov.br` e deve continuar antes do proxy generico `/api/`. Para levar o MVP interno a producao/piloto controlado, seguir o runbook em `docs/API-SERVER-DEPLOYMENT-PLAN.md`, com backup, inventario de `amambaiGis`, comparacao com `amambaiGis_homologacao`, GRANTs minimos e rollback antes de qualquer alteracao.
+Nota de estado: esta secao registra o planejamento que levou ao proxy interno controlado. O proxy `/api/internal/` ja foi implementado no dominio `geoserver.amambai.ms.gov.br` e deve continuar antes do proxy generico `/api/`. Hoje ele aponta para `127.0.0.1:8002`, runtime interno de homologacao. Para levar o MVP interno a producao/piloto controlado, seguir o runbook em `docs/API-SERVER-DEPLOYMENT-PLAN.md`, criando antes `GeoportalAPIInternaProducao` em `127.0.0.1:8003`, com backup, inventario de `amambaiGis`, comparacao com `amambaiGis_homologacao`, GRANTs minimos e rollback antes de qualquer alteracao.
 
 A validacao ponta a ponta da shell `/interno/` contra o backend interno real deve preservar a decisao de manter `GeoportalAPIInternaHomologacao` restrito a `127.0.0.1:8002`. A porta `8002` nao deve ser aberta diretamente na rede interna como primeira escolha; o caminho preferencial e um proxy interno controlado, planejado antes de qualquer alteracao operacional.
 
@@ -291,7 +293,7 @@ Criterios de aceite da etapa operacional futura:
 - sem alteracao de banco, migration, schema ou `.env`;
 - sem abertura direta da porta `8002` na rede.
 
-Recomendacao: manter `GeoportalAPIInternaHomologacao` em `127.0.0.1:8002`, planejar proxy interno controlado em homologacao, nao mexer no Geoportal publico nesta etapa, nao inserir botao publico de login e nao tratar abertura direta de `8002` como arquitetura definitiva.
+Recomendacao atual: manter `GeoportalAPIInternaHomologacao` em `127.0.0.1:8002` para homologacao interna e planejar `GeoportalAPIInternaProducao` em `127.0.0.1:8003` para producao interna. Nao abrir `8002` ou `8003` diretamente na rede e nao trocar `/api/internal/` para `8003` antes de validar o novo servico, backup do Apache, `httpd.exe -t` e rollback para `8002`.
 
 ## Planejamento para Higienizacao de Apaches Duplicados
 
@@ -321,10 +323,10 @@ Estado de seguranca apos a validacao:
 
 ## Proximos Passos
 
-1. Planejar proxy/Apache para o runtime interno somente em etapa separada e controlada.
-2. Planejar tela interna somente depois da exposicao controlada e revisada.
-3. Manter producao fail-closed ate etapa formal de ativacao controlada.
-4. Para futura producao interna, avaliar uma porta candidata conceitual como `8003`; essa porta ainda nao foi criada, configurada ou ativada.
+1. Inventariar `amambaiGis` e preparar pre-condicoes de producao interna sem alterar Apache.
+2. Criar e validar futuramente `GeoportalAPIInternaProducao` em `127.0.0.1:8003`, com `IsInternalRuntime=true`.
+3. Trocar `/api/internal/` de `8002` para `8003` somente em janela controlada, com backup e rollback.
+4. Manter producao fail-closed ate etapa formal de ativacao controlada.
 
 ## Confirmacoes de Escopo
 
