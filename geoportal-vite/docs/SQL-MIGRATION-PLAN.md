@@ -85,6 +85,8 @@ Regras:
 
 Nota sobre prioridade operacional: a inspecao real de homologacao confirmou que a coluna `prioridade`, o default `normal`, as constraints para `baixa`, `normal`, `alta` e `urgente`, os campos `prioridade_anterior`/`prioridade_nova` no historico e o valor `acao='alteracao_prioridade'` ja estavam adequados para a primeira implementacao. Por isso, nao foi criada migration para prioridade. Confirmacao pura deve continuar sendo feita por roteiro/consulta de validacao, nao por migration vazia. A migration placeholder `0006_normalize_mod_iluminacao_solicitacoes_prioridade.sql` continua apenas como referencia conceitual caso uma lacuna real apareca no futuro, como necessidade de normalizacao, check/default, indice por gargalo confirmado ou ampliacao de valores permitidos.
 
+Para ativacao em producao interna, a comparacao entre `amambaiGis_homologacao` e `amambaiGis` deve ocorrer antes de qualquer SQL. Nao copiar banco inteiro de homologacao para producao e nao criar migration apenas para "confirmar" schema existente. Se `amambaiGis` ja tiver coluna, default, constraints, historico e acao de prioridade equivalentes aos validados em homologacao, a etapa correta e registrar a validacao e aplicar somente GRANTs minimos necessarios, quando faltarem. O runbook operacional completo esta em `docs/API-SERVER-DEPLOYMENT-PLAN.md`, secao "Plano operacional para producao interna controlada de Iluminacao".
+
 ## 6. Ordem de execucao
 
 Sequencia recomendada:

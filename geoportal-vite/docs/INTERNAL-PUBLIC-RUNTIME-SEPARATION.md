@@ -94,7 +94,9 @@ Validacoes operacionais ja realizadas:
 - A listagem interna foi aprimorada com filtros operacionais e `total` para paginacao (commit `4731edc`) e validada no runtime interno com dados de homologacao/teste, mantendo leitura protegida por `iluminacao.solicitacoes.ler`.
 - Foi observado que a sessao interna expira em aproximadamente 1 hora.
 
-Producao nao foi alterada. Apache/proxy publico ainda nao foi alterado. O runtime interno foi validado em homologacao local, mas ainda nao esta exposto publicamente. A shell frontend interna ja existe em `/interno/` para desenvolvimento/homologacao, porem ainda nao possui proxy publico nem producao interna.
+Historico da etapa: naquele momento, producao nao havia sido alterada, o Apache/proxy publico ainda nao havia sido alterado, o runtime interno estava validado apenas em homologacao local e a shell frontend interna ainda nao possuia proxy publico.
+
+Estado atual: a area interna ja esta publicada/testada em `https://geoserver.amambai.ms.gov.br/interno/`, servida pelo Apache do dominio `geoserver` por `Alias`, e a API interna ja esta atras de `https://geoserver.amambai.ms.gov.br/api/internal/`, proxy para `127.0.0.1:8002`. Essa exposicao controlada mantem a porta `8002` sem acesso direto externo e preserva a separacao entre runtime publico, runtime interno e Geoportal publico.
 
 ## Validacao Operacional do Runtime Interno de Homologacao
 
@@ -141,6 +143,8 @@ Validacao autenticada manual pelo servico NSSM:
 - Essa restricao e positiva do ponto de vista de seguranca: a porta `8002` nao deve ser aberta diretamente na rede sem planejamento, justificativa, escopo de homologacao e rollback.
 
 ## Planejamento para Proxy Interno Controlado
+
+Nota de estado: esta secao registra o planejamento que levou ao proxy interno controlado. O proxy `/api/internal/` ja foi implementado no dominio `geoserver.amambai.ms.gov.br` e deve continuar antes do proxy generico `/api/`. Para levar o MVP interno a producao/piloto controlado, seguir o runbook em `docs/API-SERVER-DEPLOYMENT-PLAN.md`, com backup, inventario de `amambaiGis`, comparacao com `amambaiGis_homologacao`, GRANTs minimos e rollback antes de qualquer alteracao.
 
 A validacao ponta a ponta da shell `/interno/` contra o backend interno real deve preservar a decisao de manter `GeoportalAPIInternaHomologacao` restrito a `127.0.0.1:8002`. A porta `8002` nao deve ser aberta diretamente na rede interna como primeira escolha; o caminho preferencial e um proxy interno controlado, planejado antes de qualquer alteracao operacional.
 

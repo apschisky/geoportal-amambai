@@ -633,6 +633,7 @@ Funcionalidades atuais do MVP:
 - observacoes internas sob demanda;
 - criacao de observacao interna por `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes`;
 - alteracao normal de status por `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`;
+- alteracao de prioridade operacional por `PATCH /api/internal/iluminacao/solicitacoes/{id}/prioridade`;
 - logout por `POST /api/internal/auth/logout`.
 
 Regras de seguranca mantidas:
@@ -650,7 +651,9 @@ Regras de seguranca mantidas:
 - observacoes sao texto livre operacional e devem ser usadas com cuidado;
 - `POST` observacao exige permissao e `X-Geoportal-Internal-Request: 1`;
 - `PATCH` status exige permissao e `X-Geoportal-Internal-Request: 1`;
+- `PATCH` prioridade exige permissao e `X-Geoportal-Internal-Request: 1`;
 - alteracao de status nao altera prioridade e nao cria observacao separada;
+- alteracao de prioridade nao altera status, nao altera `finalizado_em` e nao cria observacao separada;
 - historico registra eventos das mutacoes;
 - logout encerra a sessao e limpa o estado da shell.
 
@@ -670,12 +673,13 @@ Regras de seguranca mantidas:
 12. Carregar observacoes sob demanda.
 13. Criar observacao com texto sintetico, sem dados reais.
 14. Alterar status em solicitacao de teste, se permitido e apropriado.
-15. Clicar em `Sair`.
-16. Confirmar `POST /api/internal/auth/logout`.
-17. Confirmar retorno para a tela de login.
-18. Confirmar `GET /api/internal/auth/me -> 401`.
-19. Confirmar ausencia de token em `localStorage` e `sessionStorage`.
-20. Confirmar que console e documentacao nao exibem cookie, token, senha, observacoes reais ou dados pessoais reais.
+15. Alterar prioridade em solicitacao de teste, se permitido e apropriado.
+16. Clicar em `Sair`.
+17. Confirmar `POST /api/internal/auth/logout`.
+18. Confirmar retorno para a tela de login.
+19. Confirmar `GET /api/internal/auth/me -> 401`.
+20. Confirmar ausencia de token em `localStorage` e `sessionStorage`.
+21. Confirmar que console e documentacao nao exibem cookie, token, senha, observacoes reais ou dados pessoais reais.
 
 ### Validacao local e operacional do MVP interno - 2026-06-10
 
@@ -725,7 +729,7 @@ O fluxo basico do MVP interno esta validado: sem sessao -> login -> sessao valid
 
 - Registrar validacao complementar de `sessionStorage` e atributos do cookie sem copiar valores sensiveis.
 - Manter o piloto controlado com usuarios/perfis definidos e orientacao de uso para observacoes internas.
-- Planejar anexos, reabertura/correcao administrativa, mapa operacional e prioridade somente em etapas separadas, com contrato, permissao, auditoria, testes e rollback.
+- Planejar anexos, reabertura/correcao administrativa e mapa operacional somente em etapas separadas, com contrato, permissao, auditoria, testes e rollback.
 
 ### Checklist de deploy e rollback estatico
 
@@ -772,9 +776,202 @@ Rollback Apache:
 - reiniciar Apache controladamente;
 - validar Geoportal publico, GeoServer, API publica e API interna.
 
+### Plano operacional para producao interna controlada de Iluminacao
+
+Objetivo: levar o modulo interno de Iluminacao Publica de homologacao para producao interna/piloto controlado, preservando o Geoportal publico, a API publica, o GeoServer e os dados existentes. Esta secao e runbook documental: nao executa banco, Apache, NSSM, `.env`, migrations ou producao.
+
+Principios obrigatorios:
+
+- nao quebrar servico online;
+- fazer backup antes de qualquer alteracao em `amambaiGis`, Apache, backend ou arquivos estaticos internos;
+- inventariar antes de criar migration;
+- definir rollback antes de executar;
+- aplicar menor privilegio para roles runtime;
+- manter mutacoes internas protegidas por sessao, permissao e `X-Geoportal-Internal-Request: 1`;
+- lembrar que o frontend orienta, mas o backend decide;
+- nao copiar banco inteiro de homologacao para producao;
+- nao migrar dados por suposicao;
+- nao registrar senha, token, cookie, hash, `session_secret`, `DATABASE_URL`, dados pessoais reais ou observacoes reais.
+
+Escopo do plano:
+
+- inventario de producao;
+- backup e validacao do backup;
+- comparacao `amambaiGis_homologacao` x `amambaiGis`;
+- migrations somente se houver lacuna real;
+- GRANTs minimos para a role runtime interna;
+- validacao da API interna;
+- validacao de Apache/NSSM;
+- publicacao do front interno estatico;
+- usuarios, perfis e permissoes reais do piloto;
+- checklist operacional e rollback.
+
+Fora do escopo desta ativacao:
+
+- mapa operacional;
+- dashboard avancado;
+- anexos/fotos;
+- reabertura ou correcao administrativa;
+- novos modulos;
+- tela administrativa completa de usuarios/perfis, salvo o minimo necessario para preparar usuarios do piloto em fluxo separado.
+
+Inventario obrigatorio de producao antes de alterar `amambaiGis`:
+
+- schemas existentes: `mod_iluminacao`, `mod_auth` e schemas auxiliares relacionados;
+- tabelas, colunas, constraints, FKs e indices;
+- sequences usadas por solicitacoes, historico, observacoes, auth e perfis;
+- valores permitidos para status, prioridade, origem e acao de historico;
+- existencia de `mod_iluminacao.solicitacoes.prioridade`, default `normal`, constraints `baixa`/`normal`/`alta`/`urgente`, campos `prioridade_anterior`/`prioridade_nova` e `acao='alteracao_prioridade'`;
+- migrations ja aplicadas em producao;
+- roles runtime da API publica e da API interna;
+- GRANTs efetivos por tabela, sequence e, quando possivel, por coluna;
+- servicos Windows/NSSM existentes e portas locais;
+- VirtualHost Apache ativo, ordem de `Alias` e `ProxyPass`;
+- politicas reais de cookie (`HttpOnly`, `Secure`, `SameSite`, `Path`, expiracao), sem copiar valor de cookie;
+- logs existentes e garantia de que nao registram segredos.
+
+Backup obrigatorio antes de qualquer alteracao:
+
+1. Fazer backup manual de `amambaiGis`.
+2. Validar que o arquivo existe e tem tamanho coerente.
+3. Validar o backup com comando seguro de listagem, como `pg_restore --list` quando aplicavel.
+4. Registrar data/hora, ambiente, responsavel e finalidade.
+5. Fazer backup do arquivo de configuracao Apache se houver mudanca de VirtualHost, `Alias`, `ProxyPass`, headers ou CORS.
+6. Fazer backup de `C:/apps/geoportal_interno/` antes de trocar arquivos estaticos.
+7. Definir rollback antes de executar qualquer passo.
+
+Comparacao homologacao x producao:
+
+- comparar `amambaiGis_homologacao` com `amambaiGis` somente por inventario/consulta controlada;
+- nao copiar tabelas inteiras de homologacao para producao;
+- nao migrar dados de homologacao para producao;
+- aplicar apenas scripts minimos necessarios para lacunas reais;
+- se producao ja tiver coluna, constraint, default, indice e acao de historico adequados, nao criar migration vazia para "confirmar".
+
+Migrations:
+
+- prioridade nao exige migration se `amambaiGis` tiver schema equivalente ao confirmado em homologacao;
+- qualquer migration nova deve ser revisada, testada em homologacao, acompanhada de rollback ou plano de contencao, e aplicada em producao somente apos backup validado;
+- evitar locks longos em producao;
+- separar scripts de estrutura, permissoes e dados iniciais;
+- nao executar migrations por comandos soltos sem registro.
+
+GRANTs minimos para runtime interno:
+
+- leitura de solicitacoes: `SELECT` minimo em `mod_iluminacao.solicitacoes`;
+- historico: `SELECT` para leitura e `INSERT` + `USAGE` de sequence para mutacoes que gravam historico;
+- observacoes: `SELECT` para leitura, `INSERT` + `USAGE` de sequence para criacao;
+- status: `UPDATE` preferencialmente por coluna apenas em `status`, `atualizado_em` e `finalizado_em`;
+- prioridade: `UPDATE` preferencialmente por coluna apenas em `prioridade` e `atualizado_em`;
+- auth: `SELECT` minimo nas tabelas de usuarios, sessoes, perfis e permissoes necessarias para login, `/me`, autorizacao e logout;
+- nunca conceder `DELETE` para o runtime comum sem justificativa formal;
+- evitar `UPDATE` amplo em `mod_iluminacao.solicitacoes`;
+- validar a matriz final de privilegios e registrar apenas flags/resultado, sem string de conexao ou senha.
+
+Validacao da API interna:
+
+- confirmar que o servico interno esta restrito a loopback no servidor;
+- confirmar que `/api/internal/auth/me` sem sessao retorna `401`;
+- confirmar login com usuario do piloto sem registrar senha/token/cookie;
+- confirmar `/api/internal/auth/me` com sessao retorna `200` e permissoes esperadas;
+- confirmar que mutacoes sem `X-Geoportal-Internal-Request: 1` retornam `403`;
+- confirmar que mutacoes com header incorreto retornam `403`;
+- validar listagem, detalhe, historico, observacoes, criacao de observacao, alteracao de status, alteracao de prioridade e logout;
+- confirmar que `localStorage` e `sessionStorage` continuam sem token.
+
+Validacao Apache/NSSM:
+
+- manter `/api/internal/` antes de `/api/` no VirtualHost;
+- manter `/api/internal/` apontando para `127.0.0.1:8002`;
+- manter `/api/` apontando para `127.0.0.1:8001`;
+- manter `/geoserver` apontando para o Tomcat/GeoServer;
+- nao expor a porta `8002` diretamente no firewall ou rede;
+- rodar validacao de sintaxe Apache antes de qualquer reload/restart quando houver mudanca de configuracao;
+- reiniciar/recarregar Apache apenas quando houver mudanca de configuracao, nao para simples troca de arquivos estaticos;
+- reiniciar backend apenas quando houver mudanca de codigo, `.env`, servico, dependencias, migrations ou schema.
+
+Publicacao do front interno:
+
+- gerar build Vite em ambiente controlado;
+- publicar `dist/interno/` em `C:/apps/geoportal_interno/interno/`;
+- publicar `dist/assets/` em `C:/apps/geoportal_interno/assets/`;
+- nao publicar a area interna apenas no FTP do Geoportal publico;
+- validar `https://geoserver.amambai.ms.gov.br/interno/`;
+- confirmar que o link publico `Area interna` aponta para `https://geoserver.amambai.ms.gov.br/interno/`;
+- manter atencao ao risco futuro do `Alias /assets/` global.
+
+Usuarios e perfis do piloto:
+
+- definir usuarios individuais, nunca compartilhados;
+- separar ao menos perfis conceituais de leitor, operador e administrador;
+- conceder apenas permissoes necessarias;
+- nao conceder todas as permissoes de Iluminacao a todos os usuarios;
+- validar `/api/internal/auth/me` para cada perfil do piloto;
+- se houver criacao/reset/bloqueio de usuarios, usar endpoints administrativos existentes ou scripts controlados ja documentados, nunca SQL manual solto sem plano.
+
+Checklist do piloto controlado:
+
+1. Abrir `https://geoportal.amambai.ms.gov.br/`.
+2. Confirmar que mapa, camadas, busca e solicitacao publica continuam funcionando.
+3. Confirmar link `Area interna`.
+4. Abrir `https://geoserver.amambai.ms.gov.br/interno/` em aba anonima.
+5. Confirmar login e `/api/internal/auth/me -> 401` sem sessao.
+6. Fazer login com usuario do piloto.
+7. Confirmar `/api/internal/auth/me -> 200`.
+8. Confirmar permissoes esperadas.
+9. Confirmar listagem.
+10. Confirmar detalhe.
+11. Carregar historico sob demanda.
+12. Carregar observacoes sob demanda.
+13. Criar observacao com texto sintetico.
+14. Alterar status em solicitacao de teste adequada.
+15. Alterar prioridade em solicitacao de teste adequada.
+16. Confirmar que status terminal bloqueia alteracao normal de status/prioridade quando aplicavel.
+17. Clicar em `Sair`.
+18. Confirmar logout e `/api/internal/auth/me -> 401`.
+19. Confirmar `localStorage` e `sessionStorage` vazios.
+20. Confirmar que console, logs e documentacao nao exibem cookie, token, senha, observacoes reais ou dados pessoais reais.
+
+Rollback:
+
+- banco: restaurar backup validado ou aplicar rollback/contencao documentado; nao improvisar em producao;
+- API: restaurar versao anterior do backend ou reverter commit implantado, reiniciar servico e validar `/api/health`, `/api/version`, API publica e API interna;
+- Apache: restaurar backup do arquivo de configuracao, rodar `httpd.exe -t`, reiniciar/recarregar controladamente e validar Geoportal publico, GeoServer, API publica e API interna;
+- front interno: restaurar backup de `C:/apps/geoportal_interno/` e validar `/interno/`;
+- permissoes: revogar GRANTs adicionais ou desativar permissoes de aplicacao conforme roteiro, preferindo reduzir privilegio antes de remover objetos.
+
+Bloqueadores antes da producao interna:
+
+- inexistencia de backup validado;
+- inventario incompleto de `amambaiGis`;
+- diferenca de schema nao explicada entre homologacao e producao;
+- rollback ausente;
+- porta interna exposta diretamente;
+- cookie inseguro em HTTPS;
+- permissoes PostgreSQL amplas demais;
+- perfil de piloto com permissoes excessivas;
+- ausencia de validacao do Geoportal publico apos mudanca;
+- logs com senha, token, cookie, `DATABASE_URL`, dados pessoais reais ou observacoes reais;
+- qualquer necessidade de migration sem teste previo em homologacao.
+
+Ordem recomendada:
+
+1. Revisar e commitar a documentacao deste plano.
+2. Inventariar producao sem alterar.
+3. Fazer backup validado.
+4. Comparar `amambaiGis_homologacao` x `amambaiGis`.
+5. Definir scripts minimos, se houver lacuna real.
+6. Validar scripts/GRANTs em homologacao.
+7. Aplicar em producao em janela controlada.
+8. Validar API interna.
+9. Publicar front interno.
+10. Criar/validar usuarios e perfis do piloto.
+11. Rodar checklist operacional.
+12. Iniciar piloto controlado.
+13. Registrar validacao e pendencias.
+
 ### Pendencias futuras fora do MVP
 
-- Prioridade: inventario proprio, endpoint real, permissao, valores permitidos, justificativa, historico e regra para status terminal.
 - Reabertura/correcao administrativa: fluxo separado, permissao propria, justificativa obrigatoria e auditoria forte.
 - Mapa operacional: posicao/poste, coordenadas, rota ate poste, permissoes e privacidade.
 - Dashboard: indicadores reais, SLA, prioridades, produtividade e atrasos.

@@ -235,6 +235,21 @@ Registrar, conforme o modulo:
 - [ ] Documentacao dos caminhos, scripts e responsaveis.
 - [ ] Retencao minima definida para backups.
 
+### 12.1. Producao interna/piloto de Iluminacao
+
+Antes de ativar o MVP interno de Iluminacao para usuarios reais em `amambaiGis`, seguir o runbook em `docs/API-SERVER-DEPLOYMENT-PLAN.md`, secao "Plano operacional para producao interna controlada de Iluminacao".
+
+Bloqueadores de seguranca para essa ativacao:
+
+- [ ] backup validado de `amambaiGis` e rollback definido;
+- [ ] inventario de schema e GRANTs de producao concluido;
+- [ ] comparacao `amambaiGis_homologacao` x `amambaiGis` concluida sem lacunas inexplicadas;
+- [ ] porta interna `8002` mantida sem exposicao direta externa;
+- [ ] cookie de sessao validado em HTTPS sem copiar valores (`HttpOnly`, `Secure`, `SameSite`);
+- [ ] perfis do piloto com menor privilegio;
+- [ ] mutacoes internas validadas com sessao, permissao e `X-Geoportal-Internal-Request: 1`;
+- [ ] console, logs e documentacao sem senha, token, cookie, observacoes reais ou dados pessoais reais.
+
 ## 13. Monitoramento e resposta a incidentes
 
 - [ ] Acompanhar logs de Apache.

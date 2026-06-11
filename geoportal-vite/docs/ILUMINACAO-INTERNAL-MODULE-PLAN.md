@@ -182,6 +182,8 @@ A shell continua sem dashboard real, mapa operacional, anexos ou rota Google Map
 
 Prioridade operacional implementada: a prioridade apoia triagem, ordenacao operacional, destaque visual futuro, atendimento e dashboard, sem substituir o status. Valores aceitos: `baixa`, `normal`, `alta` e `urgente`, com default `normal` no banco. A alteracao e independente da alteracao de status, exige permissao especifica `iluminacao.solicitacoes.atualizar_prioridade`, header `X-Geoportal-Internal-Request: 1`, justificativa obrigatoria e historico transacional com `acao='alteracao_prioridade'`. A primeira versao bloqueia alteracao de prioridade em status terminal pelo fluxo normal; qualquer correcao em chamado finalizado deve ser fluxo administrativo futuro.
 
+Producao interna/piloto: antes de levar o modulo de homologacao para uso real em `amambaiGis`, seguir o runbook de `docs/API-SERVER-DEPLOYMENT-PLAN.md`, secao "Plano operacional para producao interna controlada de Iluminacao". A ativacao deve preservar o Geoportal publico, comparar `amambaiGis_homologacao` x `amambaiGis`, evitar copia integral de dados, criar migration somente se houver lacuna real, aplicar GRANTs minimos e ter rollback definido antes de qualquer execucao.
+
 ## 10. Roadmap
 
 Fases sugeridas:
