@@ -870,6 +870,10 @@ textarea:disabled {
   grid-column: 1 / -1;
 }
 
+.internal-priority-card {
+  grid-column: 1 / -1;
+}
+
 .internal-action-card {
   border-color: #9fc6d2;
   background: #f4fafc;
@@ -1256,7 +1260,8 @@ textarea:disabled {
   .internal-card,
   .internal-detail-section,
   .internal-observations-card,
-  .internal-status-card {
+  .internal-status-card,
+  .internal-priority-card {
     min-width: 0;
     max-width: 100%;
   }

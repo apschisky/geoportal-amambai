@@ -11,6 +11,8 @@ const OBSERVACAO_MIN_LENGTH = 3;
 const OBSERVACAO_MAX_LENGTH = 2000;
 const STATUS_OBSERVACAO_MIN_LENGTH = 3;
 const STATUS_OBSERVACAO_MAX_LENGTH = 1000;
+const PRIORIDADE_OBSERVACAO_MIN_LENGTH = 3;
+const PRIORIDADE_OBSERVACAO_MAX_LENGTH = 1000;
 const INTERNAL_MUTATING_REQUEST_HEADER = 'X-Geoportal-Internal-Request';
 
 const SESSION_STATES = {
@@ -58,6 +60,7 @@ const PERMISSIONS = {
   iluminacaoObservations: 'iluminacao.solicitacoes.ver_observacoes',
   iluminacaoComment: 'iluminacao.solicitacoes.comentar',
   iluminacaoStatus: 'iluminacao.solicitacoes.atualizar_status',
+  iluminacaoPriority: 'iluminacao.solicitacoes.atualizar_prioridade',
   adminUsersRead: 'admin.usuarios.ler',
   adminProfilesRead: 'admin.perfis.ler',
   adminPermissionsRead: 'admin.permissoes.ler'
@@ -144,6 +147,13 @@ const priorityLabels = {
   alta: 'Alta',
   urgente: 'Urgente'
 };
+
+const priorityOptions = [
+  'baixa',
+  'normal',
+  'alta',
+  'urgente'
+];
 
 const problemTypeLabels = {
   lampada_apagada: 'L\u00e2mpada apagada',
@@ -254,6 +264,10 @@ const futureCapabilities = [
   {
     permission: PERMISSIONS.iluminacaoStatus,
     label: 'Alterar status'
+  },
+  {
+    permission: PERMISSIONS.iluminacaoPriority,
+    label: 'Alterar prioridade'
   }
 ];
 
@@ -265,6 +279,7 @@ const nextSteps = [
   'Validar observacoes internas somente leitura por botao explicito no detalhe.',
   'Validar criacao de observacao interna com header mutavel obrigatorio.',
   'Validar alteracao normal de status com matriz de transicoes e header mutavel obrigatorio.',
+  'Validar alteracao de prioridade com justificativa e header mutavel obrigatorio.',
   'Planejar dashboard, mapa operacional e proxy separadamente.'
 ];
 
@@ -272,7 +287,7 @@ const outOfScope = [
   'logout completo',
   'token manual, localStorage ou sessionStorage',
   'edicao ou exclusao de observacao',
-  'correcao administrativa, reabertura de status terminal ou alteracao de prioridade',
+  'correcao administrativa ou reabertura de status terminal',
   'dashboard, estatisticas e mapa operacional',
   'proxy, Apache ou producao interna'
 ];
@@ -337,11 +352,23 @@ function createStatusFormState(overrides = {}) {
   };
 }
 
+function createPrioridadeFormState(overrides = {}) {
+  return {
+    status: 'idle',
+    selectedPriority: '',
+    observacao: '',
+    statusCode: null,
+    message: 'Alteracao de prioridade disponivel apenas por acao explicita.',
+    ...overrides
+  };
+}
+
 function createDetalheState(overrides = {}) {
   const historico = createHistoricoState(overrides.historico || {});
   const observacoes = createObservacoesState(overrides.observacoes || {});
   const observacaoForm = createObservacaoFormState(overrides.observacaoForm || {});
   const statusForm = createStatusFormState(overrides.statusForm || {});
+  const prioridadeForm = createPrioridadeFormState(overrides.prioridadeForm || {});
 
   return {
     status: 'idle',
@@ -353,11 +380,13 @@ function createDetalheState(overrides = {}) {
     observacoes,
     observacaoForm,
     statusForm,
+    prioridadeForm,
     ...overrides,
     historico,
     observacoes,
     observacaoForm,
-    statusForm
+    statusForm,
+    prioridadeForm
   };
 }
 
@@ -572,6 +601,21 @@ function isValidStatusUpdateResponsePayload(payload) {
   );
 }
 
+function isValidPrioridadeUpdateResponsePayload(payload) {
+  const solicitacao = payload && typeof payload === 'object'
+    ? payload.solicitacao
+    : null;
+
+  return Boolean(
+    solicitacao
+      && typeof solicitacao === 'object'
+      && Number.isInteger(solicitacao.id)
+      && solicitacao.id > 0
+      && typeof solicitacao.prioridade === 'string'
+      && typeof solicitacao.atualizado_em === 'string'
+  );
+}
+
 function safeText(value, fallback = 'Não informado') {
   if (value === null || value === undefined) {
     return fallback;
@@ -599,6 +643,17 @@ function formatDateTime(value) {
     timeStyle: 'short'
   });
 }
+
+export {
+  INTERNAL_MUTATING_REQUEST_HEADER,
+  buildUpdateSolicitacaoPrioridadeUrl,
+  canUpdatePrioridade,
+  createDetalheState,
+  createPrioridadeFormState,
+  fetchUpdateSolicitacaoPrioridade,
+  getPrioridadeFormValidationMessage,
+  renderPriorityUpdatePanel
+};
 
 function toDisplaySolicitacao(item) {
   const safeItem = item && typeof item === 'object' ? item : {};
@@ -798,6 +853,45 @@ function getStatusFormValidationMessage(currentStatus, selectedStatus, observaca
     || getStatusObservacaoValidationMessage(observacao);
 }
 
+function normalizePrioridadeObservacaoInput(value) {
+  return String(value || '').trim();
+}
+
+function getPrioridadeSelectionValidationMessage(currentPriority, selectedPriority) {
+  if (!selectedPriority) {
+    return 'Selecione uma nova prioridade.';
+  }
+
+  if (!priorityOptions.includes(selectedPriority)) {
+    return 'Prioridade invalida para esta solicitacao.';
+  }
+
+  if (selectedPriority === currentPriority) {
+    return 'Selecione uma prioridade diferente da atual.';
+  }
+
+  return '';
+}
+
+function getPrioridadeObservacaoValidationMessage(value) {
+  const normalized = normalizePrioridadeObservacaoInput(value);
+
+  if (normalized.length < PRIORIDADE_OBSERVACAO_MIN_LENGTH) {
+    return 'Informe justificativa com ao menos 3 caracteres apos remover espacos.';
+  }
+
+  if (normalized.length > PRIORIDADE_OBSERVACAO_MAX_LENGTH) {
+    return 'A justificativa deve ter no maximo 1000 caracteres apos remover espacos.';
+  }
+
+  return '';
+}
+
+function getPrioridadeFormValidationMessage(currentPriority, selectedPriority, observacao) {
+  return getPrioridadeSelectionValidationMessage(currentPriority, selectedPriority)
+    || getPrioridadeObservacaoValidationMessage(observacao);
+}
+
 function buildSolicitacoesUrl(offset = 0) {
   const params = new URLSearchParams({
     limit: String(SOLICITACOES_PAGE_SIZE),
@@ -837,6 +931,10 @@ function buildUpdateSolicitacaoStatusUrl(solicitacaoId) {
   return `${buildSolicitacaoDetailUrl(solicitacaoId)}/status`;
 }
 
+function buildUpdateSolicitacaoPrioridadeUrl(solicitacaoId) {
+  return `${buildSolicitacaoDetailUrl(solicitacaoId)}/prioridade`;
+}
+
 function canListSolicitacoes(state) {
   return state.sessionState === 'authenticated'
     && hasPermission(state, PERMISSIONS.iluminacaoRead);
@@ -860,6 +958,11 @@ function canCreateObservacao(state) {
 function canUpdateStatus(state) {
   return state.sessionState === 'authenticated'
     && hasPermission(state, PERMISSIONS.iluminacaoStatus);
+}
+
+function canUpdatePrioridade(state) {
+  return state.sessionState === 'authenticated'
+    && hasPermission(state, PERMISSIONS.iluminacaoPriority);
 }
 
 function getModuleView(module, state) {
@@ -1625,6 +1728,163 @@ function renderAllowedStatusOptions(currentStatus, selectedStatus) {
     .join('');
 }
 
+function renderPriorityOptions(currentPriority, selectedPriority) {
+  return priorityOptions
+    .map((priority) => {
+      const disabled = priority === currentPriority ? 'disabled' : '';
+      const selected = selectedPriority === priority ? 'selected' : '';
+
+      return `
+        <option value="${escapeHtml(priority)}" ${selected} ${disabled}>
+          ${escapeHtml(formatPriorityLabel(priority))}
+        </option>
+      `;
+    })
+    .join('');
+}
+
+function renderPriorityUpdatePanel(state, detail) {
+  const formState = detail.prioridadeForm || createPrioridadeFormState();
+  const hasPriorityPermission = canUpdatePrioridade(state);
+  const hasLoadedDetail = detail.status === 'loaded' && detail.item;
+  const currentPriority = hasLoadedDetail ? detail.item.prioridadeKey : '';
+  const currentStatus = hasLoadedDetail ? detail.item.statusKey : '';
+  const terminal = isTerminalStatus(currentStatus);
+
+  if (!hasPriorityPermission) {
+    return `
+      <article class="internal-card internal-priority-card internal-action-card">
+        <div class="internal-history-heading">
+          <div>
+            <h3>Alteracao de prioridade</h3>
+            <p>Alteracao de prioridade indisponivel para este perfil.</p>
+          </div>
+          <span class="internal-pill">Acesso restrito</span>
+        </div>
+        <p class="internal-muted-note">
+          Seu perfil nao permite alterar a prioridade operacional desta solicitacao.
+        </p>
+      </article>
+    `;
+  }
+
+  if (terminal) {
+    const terminalMessageClass = formState.status === 'error'
+      ? ' is-error'
+      : formState.status === 'success'
+        ? ' is-success'
+        : '';
+
+    return `
+      <article class="internal-card internal-priority-card internal-action-card">
+        <div class="internal-history-heading">
+          <div>
+            <h3>Alteracao de prioridade</h3>
+            <p>Prioridade atual: ${escapeHtml(formatPriorityLabel(currentPriority))}.</p>
+          </div>
+          <span class="internal-pill">Status finalizado</span>
+        </div>
+        <p class="internal-sensitive-note">
+          Status finalizado. Alteracao de prioridade exige fluxo administrativo proprio.
+        </p>
+        <p class="internal-form-message${terminalMessageClass}" role="status">
+          ${escapeHtml(formState.message)}
+        </p>
+      </article>
+    `;
+  }
+
+  const normalizedLength = normalizePrioridadeObservacaoInput(formState.observacao).length;
+  const validationMessage = getPrioridadeFormValidationMessage(
+    currentPriority,
+    formState.selectedPriority,
+    formState.observacao
+  );
+  const isSubmitting = formState.status === 'submitting';
+  const canSubmit = hasLoadedDetail && !validationMessage && !isSubmitting;
+  const messageClass = formState.status === 'error'
+    ? ' is-error'
+    : formState.status === 'success'
+      ? ' is-success'
+      : '';
+
+  return `
+    <article class="internal-card internal-priority-card internal-action-card">
+      <div class="internal-history-heading">
+        <div>
+          <h3>Alteracao de prioridade</h3>
+          <p>Classifique a criticidade operacional sem alterar o status do chamado.</p>
+        </div>
+        <span class="internal-pill">Acao de triagem</span>
+      </div>
+      <dl>
+        <div>
+          <dt>Prioridade atual</dt>
+          <dd>${escapeHtml(formatPriorityLabel(currentPriority))}</dd>
+        </div>
+        <div>
+          <dt>Status atual</dt>
+          <dd>${escapeHtml(formatStatusLabel(currentStatus))}</dd>
+        </div>
+      </dl>
+      <form
+        class="internal-priority-form internal-status-form"
+        data-prioridade-form
+        data-current-priority="${escapeHtml(currentPriority)}"
+      >
+        <label for="internal-prioridade-next">
+          Nova prioridade
+          <select
+            id="internal-prioridade-next"
+            name="prioridade"
+            data-prioridade-select
+            aria-describedby="internal-prioridade-help"
+            ${isSubmitting ? 'disabled' : ''}
+          >
+            <option value="">Selecione</option>
+            ${renderPriorityOptions(currentPriority, formState.selectedPriority)}
+          </select>
+        </label>
+        <label for="internal-prioridade-observacao">
+          Justificativa da alteracao
+          <textarea
+            id="internal-prioridade-observacao"
+            name="observacao"
+            data-prioridade-observacao-textarea
+            rows="5"
+            maxlength="${escapeHtml(PRIORIDADE_OBSERVACAO_MAX_LENGTH)}"
+            placeholder="Registre uma justificativa operacional sintetica"
+            aria-describedby="internal-prioridade-help internal-prioridade-counter"
+            ${isSubmitting ? 'disabled' : ''}
+          >${escapeHtml(formState.observacao)}</textarea>
+        </label>
+        <div class="internal-observation-form-footer">
+          <span id="internal-prioridade-counter" data-prioridade-counter>
+            ${escapeHtml(normalizedLength)}/${escapeHtml(PRIORIDADE_OBSERVACAO_MAX_LENGTH)}
+          </span>
+          <span id="internal-prioridade-help" data-prioridade-validation>
+            ${escapeHtml(validationMessage || 'Informe apenas a nova prioridade e a justificativa.')}
+          </span>
+        </div>
+        <button
+          type="submit"
+          class="internal-secondary-action"
+          data-prioridade-submit
+          ${canSubmit ? '' : 'disabled'}
+        >
+          ${isSubmitting ? 'Atualizando prioridade...' : 'Atualizar prioridade'}
+        </button>
+        <p class="internal-form-message${messageClass}" role="status">
+          ${escapeHtml(formState.message)}
+        </p>
+      </form>
+      <p class="internal-muted-note">
+        Alterar prioridade nao altera status e nao cria observacao separada.
+      </p>
+    </article>
+  `;
+}
+
 function renderStatusUpdatePanel(state, detail) {
   const formState = detail.statusForm || createStatusFormState();
   const hasStatusPermission = canUpdateStatus(state);
@@ -1848,6 +2108,7 @@ function renderSolicitacaoDetailLoaded(state, detail) {
       </div>
     </article>
     ${renderStatusUpdatePanel(state, detail)}
+    ${renderPriorityUpdatePanel(state, detail)}
     ${renderHistoricoPanel(state, detail)}
     ${renderObservacoesPanel(state, detail)}
   `;
@@ -1916,7 +2177,7 @@ function renderSolicitacaoDetailPanel(state) {
         </div>
         <div>
           <dt>Restrições</dt>
-          <dd>Alteração de prioridade, reabertura e mapa operacional ficam fora desta tela.</dd>
+          <dd>Reabertura, correção administrativa e mapa operacional ficam fora desta tela.</dd>
         </div>
       </dl>
     </article>
@@ -2768,6 +3029,106 @@ async function fetchUpdateSolicitacaoStatus(solicitacaoId, status, observacao) {
   });
 }
 
+async function fetchUpdateSolicitacaoPrioridade(solicitacaoId, prioridade, observacao) {
+  const response = await fetch(buildUpdateSolicitacaoPrioridadeUrl(solicitacaoId), {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      [INTERNAL_MUTATING_REQUEST_HEADER]: '1'
+    },
+    body: JSON.stringify({
+      prioridade,
+      observacao
+    })
+  });
+
+  if (response.status === 401) {
+    return createPrioridadeFormState({
+      status: 'expired',
+      statusCode: response.status,
+      message: 'Sessao ausente ou expirada ao atualizar prioridade. Faca login novamente.'
+    });
+  }
+
+  if (response.status === 403) {
+    return createPrioridadeFormState({
+      status: 'error',
+      statusCode: response.status,
+      message: 'Sem permissao para alterar prioridade ou requisicao interna invalida.'
+    });
+  }
+
+  if (response.status === 404) {
+    return createPrioridadeFormState({
+      status: 'error',
+      statusCode: response.status,
+      message: 'Solicitacao nao encontrada ou removida logicamente.'
+    });
+  }
+
+  if (response.status === 409) {
+    return createPrioridadeFormState({
+      status: 'error',
+      statusCode: response.status,
+      message: 'Solicitacao em status finalizado. Prioridade nao pode ser alterada por este fluxo.'
+    });
+  }
+
+  if (response.status === 422) {
+    return createPrioridadeFormState({
+      status: 'error',
+      statusCode: response.status,
+      message: 'Prioridade ou justificativa invalidas para a alteracao.'
+    });
+  }
+
+  if (response.status === 503) {
+    return createPrioridadeFormState({
+      status: 'error',
+      statusCode: response.status,
+      message: 'Servico interno temporariamente indisponivel para atualizar prioridade.'
+    });
+  }
+
+  if (response.status !== 200) {
+    return createPrioridadeFormState({
+      status: 'error',
+      statusCode: response.status,
+      message: 'Nao foi possivel atualizar a prioridade neste momento.'
+    });
+  }
+
+  let payload = null;
+
+  try {
+    payload = await response.json();
+  } catch {
+    return createPrioridadeFormState({
+      status: 'error',
+      statusCode: response.status,
+      message: 'Resposta de alteracao de prioridade em formato inesperado.'
+    });
+  }
+
+  if (!isValidPrioridadeUpdateResponsePayload(payload)) {
+    return createPrioridadeFormState({
+      status: 'error',
+      statusCode: response.status,
+      message: 'Resposta de alteracao de prioridade em formato inesperado.'
+    });
+  }
+
+  return createPrioridadeFormState({
+    status: 'success',
+    selectedPriority: '',
+    observacao: '',
+    statusCode: response.status,
+    message: 'Prioridade atualizada. Detalhe, listagem e historico foram recarregados.'
+  });
+}
+
 async function loadSolicitacoes(root, state, offset = 0) {
   if (!canListSolicitacoes(state)) {
     renderApp(root, {
@@ -3141,6 +3502,41 @@ function updateStatusFormControls(control) {
   }
 }
 
+function updatePrioridadeFormControls(control) {
+  const form = control.closest('[data-prioridade-form]');
+
+  if (!(form instanceof HTMLFormElement)) {
+    return;
+  }
+
+  const currentPriority = form.dataset.currentPriority || '';
+  const select = form.querySelector('[data-prioridade-select]');
+  const textarea = form.querySelector('[data-prioridade-observacao-textarea]');
+  const selectedPriority = select instanceof HTMLSelectElement ? select.value : '';
+  const observacao = textarea instanceof HTMLTextAreaElement ? textarea.value : '';
+  const normalizedLength = normalizePrioridadeObservacaoInput(observacao).length;
+  const validationMessage = getPrioridadeFormValidationMessage(
+    currentPriority,
+    selectedPriority,
+    observacao
+  );
+  const counter = form.querySelector('[data-prioridade-counter]');
+  const validation = form.querySelector('[data-prioridade-validation]');
+  const submit = form.querySelector('[data-prioridade-submit]');
+
+  if (counter) {
+    counter.textContent = `${normalizedLength}/${PRIORIDADE_OBSERVACAO_MAX_LENGTH}`;
+  }
+
+  if (validation) {
+    validation.textContent = validationMessage || 'Pronto para atualizar a prioridade.';
+  }
+
+  if (submit instanceof HTMLButtonElement) {
+    submit.disabled = Boolean(validationMessage);
+  }
+}
+
 function shouldRefreshHistoricoAfterStatus(historico) {
   return Boolean(
     historico
@@ -3384,6 +3780,248 @@ async function submitStatusUpdate(root, state, form) {
           selectedStatus,
           observacao: rawObservacao,
           message: 'Falha temporária de conexão ao atualizar status.'
+        })
+      }
+    });
+  }
+}
+
+async function submitPrioridadeUpdate(root, state, form) {
+  const detail = state.detalhe || createDetalheState();
+  const formState = detail.prioridadeForm || createPrioridadeFormState();
+  const solicitacaoId = detail.item && Number.isInteger(detail.item.id)
+    ? detail.item.id
+    : detail.solicitacaoId;
+  const formData = new FormData(form);
+  const currentPriority = detail.item ? detail.item.prioridadeKey : '';
+  const currentStatus = detail.item ? detail.item.statusKey : '';
+  const selectedPriority = String(formData.get('prioridade') || '').trim();
+  const rawObservacao = String(formData.get('observacao') || '');
+  const normalizedObservacao = normalizePrioridadeObservacaoInput(rawObservacao);
+
+  if (formState.status === 'submitting') {
+    return;
+  }
+
+  if (!canUpdatePrioridade(state)) {
+    renderApp(root, {
+      ...state,
+      detalhe: {
+        ...detail,
+        prioridadeForm: createPrioridadeFormState({
+          status: 'error',
+          statusCode: state.sessionState === 'authenticated' ? 403 : null,
+          selectedPriority,
+          observacao: rawObservacao,
+          message: state.sessionState === 'authenticated'
+            ? 'Alteracao de prioridade indisponivel para este perfil.'
+            : 'A prioridade nao foi enviada porque a sessao ainda nao foi autenticada.'
+        })
+      }
+    });
+    return;
+  }
+
+  if (detail.status !== 'loaded' || !Number.isInteger(solicitacaoId) || solicitacaoId < 1) {
+    renderApp(root, {
+      ...state,
+      detalhe: {
+        ...detail,
+        prioridadeForm: createPrioridadeFormState({
+          status: 'error',
+          statusCode: 422,
+          selectedPriority,
+          observacao: rawObservacao,
+          message: 'Selecione uma solicitacao valida antes de atualizar prioridade.'
+        })
+      }
+    });
+    return;
+  }
+
+  if (isTerminalStatus(currentStatus)) {
+    renderApp(root, {
+      ...state,
+      detalhe: {
+        ...detail,
+        prioridadeForm: createPrioridadeFormState({
+          status: 'error',
+          statusCode: 409,
+          selectedPriority,
+          observacao: rawObservacao,
+          message: 'Solicitacao em status finalizado. Prioridade nao pode ser alterada por este fluxo.'
+        })
+      }
+    });
+    return;
+  }
+
+  const validationMessage = getPrioridadeFormValidationMessage(
+    currentPriority,
+    selectedPriority,
+    rawObservacao
+  );
+
+  if (validationMessage) {
+    renderApp(root, {
+      ...state,
+      detalhe: {
+        ...detail,
+        prioridadeForm: createPrioridadeFormState({
+          status: 'error',
+          selectedPriority,
+          observacao: rawObservacao,
+          message: validationMessage
+        })
+      }
+    });
+    return;
+  }
+
+  const loadingDetail = {
+    ...detail,
+    prioridadeForm: createPrioridadeFormState({
+      status: 'submitting',
+      selectedPriority,
+      observacao: rawObservacao,
+      message: 'Atualizando prioridade...'
+    })
+  };
+
+  renderApp(root, {
+    ...state,
+    detalhe: loadingDetail
+  });
+
+  try {
+    const nextFormState = await fetchUpdateSolicitacaoPrioridade(
+      solicitacaoId,
+      selectedPriority,
+      normalizedObservacao
+    );
+
+    if (nextFormState.status === 'expired') {
+      renderApp(root, createSessionState({
+        sessionState: 'unauthenticated',
+        statusCode: 401,
+        message: 'Sessao expirada ao tentar atualizar prioridade. Faca login novamente.',
+        hasChecked: true,
+        detalhe: {
+          ...loadingDetail,
+          prioridadeForm: nextFormState
+        }
+      }));
+      return;
+    }
+
+    if (nextFormState.status !== 'success') {
+      renderApp(root, {
+        ...state,
+        detalhe: {
+          ...detail,
+          prioridadeForm: {
+            ...nextFormState,
+            selectedPriority,
+            observacao: rawObservacao
+          }
+        }
+      });
+      return;
+    }
+
+    let solicitacoes = state.solicitacoes || createSolicitacoesState();
+    let refreshedDetail = null;
+    let historico = detail.historico || createHistoricoState();
+
+    try {
+      refreshedDetail = await fetchSolicitacaoDetail(solicitacaoId);
+    } catch {
+      refreshedDetail = createDetalheState({
+        status: 'error',
+        solicitacaoId,
+        message: 'Prioridade atualizada, mas nao foi possivel recarregar o detalhe automaticamente.'
+      });
+    }
+
+    if (refreshedDetail.status === 'expired') {
+      renderApp(root, createSessionState({
+        sessionState: 'unauthenticated',
+        statusCode: 401,
+        message: 'Sessao expirada ao recarregar o detalhe. Faca login novamente.',
+        hasChecked: true,
+        detalhe: {
+          ...loadingDetail,
+          prioridadeForm: nextFormState
+        }
+      }));
+      return;
+    }
+
+    if (canListSolicitacoes(state)) {
+      try {
+        solicitacoes = await fetchSolicitacoesInternas(solicitacoes.offset || 0);
+      } catch {
+        solicitacoes = createSolicitacoesState({
+          status: 'error',
+          offset: solicitacoes.offset || 0,
+          message: 'Prioridade atualizada, mas nao foi possivel recarregar a listagem automaticamente.'
+        });
+      }
+    }
+
+    if (canViewHistorico(state)) {
+      try {
+        historico = await fetchSolicitacaoHistorico(solicitacaoId, historico.offset || 0);
+      } catch {
+        historico = createHistoricoState({
+          status: 'error',
+          offset: historico.offset || 0,
+          message: 'Prioridade atualizada, mas nao foi possivel recarregar o historico automaticamente.'
+        });
+      }
+
+      if (historico.status === 'expired') {
+        renderApp(root, createSessionState({
+          sessionState: 'unauthenticated',
+          statusCode: 401,
+          message: 'Sessao expirada ao recarregar o historico. Faca login novamente.',
+          hasChecked: true,
+          detalhe: {
+            ...loadingDetail,
+            historico,
+            prioridadeForm: nextFormState
+          }
+        }));
+        return;
+      }
+    }
+
+    const baseDetail = refreshedDetail.status === 'loaded'
+      ? refreshedDetail
+      : detail;
+
+    renderApp(root, {
+      ...state,
+      solicitacoes,
+      detalhe: {
+        ...baseDetail,
+        historico,
+        observacoes: detail.observacoes || createObservacoesState(),
+        observacaoForm: detail.observacaoForm || createObservacaoFormState(),
+        statusForm: detail.statusForm || createStatusFormState(),
+        prioridadeForm: nextFormState
+      }
+    });
+  } catch {
+    renderApp(root, {
+      ...state,
+      detalhe: {
+        ...detail,
+        prioridadeForm: createPrioridadeFormState({
+          status: 'error',
+          selectedPriority,
+          observacao: rawObservacao,
+          message: 'Falha temporaria de conexao ao atualizar prioridade.'
         })
       }
     });
@@ -3767,7 +4405,9 @@ async function submitLogin(root, form) {
   }
 }
 
-const root = document.getElementById('internal-iluminacao-root');
+const root = typeof document !== 'undefined'
+  ? document.getElementById('internal-iluminacao-root')
+  : null;
 
 if (root) {
   verifySession(root);
@@ -3867,6 +4507,14 @@ if (root) {
       && target.matches('[data-status-observacao-textarea]')
     ) {
       updateStatusFormControls(target);
+      return;
+    }
+
+    if (
+      target instanceof HTMLTextAreaElement
+      && target.matches('[data-prioridade-observacao-textarea]')
+    ) {
+      updatePrioridadeFormControls(target);
     }
   });
 
@@ -3878,6 +4526,14 @@ if (root) {
       && target.matches('[data-status-select]')
     ) {
       updateStatusFormControls(target);
+      return;
+    }
+
+    if (
+      target instanceof HTMLSelectElement
+      && target.matches('[data-prioridade-select]')
+    ) {
+      updatePrioridadeFormControls(target);
     }
   });
 
@@ -3908,6 +4564,15 @@ if (root) {
     ) {
       event.preventDefault();
       submitStatusUpdate(root, currentState, target);
+      return;
+    }
+
+    if (
+      target instanceof HTMLFormElement
+      && target.matches('[data-prioridade-form]')
+    ) {
+      event.preventDefault();
+      submitPrioridadeUpdate(root, currentState, target);
     }
   });
 }
