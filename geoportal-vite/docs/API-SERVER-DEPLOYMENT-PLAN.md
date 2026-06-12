@@ -632,6 +632,9 @@ Funcionalidades atuais do MVP:
 - menu por permissoes retornadas pelo backend;
 - listagem de solicitacoes de Iluminacao;
 - detalhe da solicitacao;
+- coordenadas exibidas no detalhe quando validas;
+- botao `Abrir rota no Google Maps`, usando somente latitude/longitude;
+- mapa operacional simples no detalhe, com base publica OSM/OpenLayers e marcador do chamado;
 - historico sob demanda;
 - observacoes internas sob demanda;
 - criacao de observacao interna por `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes`;
@@ -650,7 +653,8 @@ Regras de seguranca mantidas:
 - menu e permissoes da interface sao apenas orientacao visual;
 - listagem evita dados pessoais e usa campos minimos;
 - dados pessoais aparecem somente no detalhe autenticado;
-- coordenadas nao aparecem no painel comum;
+- coordenadas aparecem apenas no detalhe autenticado e sao usadas para rota/mapa sem incluir nome, contato, descricao ou observacao na URL externa;
+- o mapa simples nao carrega camadas internas, dados pessoais ou observacoes;
 - observacoes sao texto livre operacional e devem ser usadas com cuidado;
 - `POST` observacao exige permissao e `X-Geoportal-Internal-Request: 1`;
 - `PATCH` status exige permissao e `X-Geoportal-Internal-Request: 1`;
@@ -659,6 +663,66 @@ Regras de seguranca mantidas:
 - alteracao de prioridade nao altera status, nao altera `finalizado_em` e nao cria observacao separada;
 - historico registra eventos das mutacoes;
 - logout encerra a sessao e limpa o estado da shell.
+
+### Marco frontend interno com mapa, rota e manutencao - 2026-06-12
+
+O frontend interno foi buildado no PC de desenvolvimento, transferido manualmente para o servidor por pacote `.rar` e extraido na pasta de publicacao interna. Nao registrar caminhos temporarios do pacote; o estado operacional relevante e:
+
+```text
+C:\apps\geoportal_interno\interno
+C:\apps\geoportal_interno\assets
+```
+
+Validacoes no servidor:
+
+- `C:\apps\geoportal_interno\interno\index.html` existe;
+- assets `interno-*` foram publicados;
+- `https://geoserver.amambai.ms.gov.br/interno/` retornou HTTP 200.
+
+Commits recentes relacionados ao marco:
+
+- `5252e05` Adiciona mapa e rota no modulo interno de iluminacao;
+- `0458734` Adiciona perfil de manutencao da iluminacao;
+- `35d63f0` Documenta publicacao da API interna de producao.
+
+Funcionalidades validadas no frontend interno:
+
+- exibicao de coordenadas no detalhe;
+- botao `Abrir rota no Google Maps`;
+- link seguro baseado apenas em latitude/longitude;
+- mapa simples com OSM/OpenLayers e marcador do ponto do chamado;
+- modo visual manutencao validado em desktop e mobile;
+- alteracao normal de status disponivel ao usuario de manutencao;
+- alteracao de prioridade restrita quando o perfil nao possui `iluminacao.solicitacoes.atualizar_prioridade`;
+- historico indisponivel quando o perfil nao possui permissao correspondente;
+- observacoes internas sob demanda conforme permissao.
+
+Usuario/perfil operacional validado:
+
+- perfil: `manutencao-iluminacao`;
+- nome: `Manutencao - Iluminacao Publica`;
+- usuarios validados: `manutencao.homologacao` e `manutencao.producao`;
+- permissoes de `manutencao.producao`: `internal.auth.me`, `iluminacao.solicitacoes.ler`, `iluminacao.solicitacoes.ver_observacoes`, `iluminacao.solicitacoes.comentar` e `iluminacao.solicitacoes.atualizar_status`;
+- ausentes: `admin.*` e `iluminacao.solicitacoes.atualizar_prioridade`.
+
+A validacao visual publicada foi feita em `https://geoserver.amambai.ms.gov.br/interno/`, que usa `/api/internal/` apontando para `127.0.0.1:8003`. Portanto, o teste real da URL publicada usou `manutencao.producao`, nao `manutencao.homologacao`.
+
+Validacao sanitizada do usuario operacional de producao:
+
+- login autenticado para `manutencao.producao`;
+- `/api/internal/auth/me` retornou `authenticated`, `usuario_id` e `permissoes`;
+- permissoes retornadas: `iluminacao.solicitacoes.atualizar_status`, `iluminacao.solicitacoes.comentar`, `iluminacao.solicitacoes.ler`, `iluminacao.solicitacoes.ver_observacoes` e `internal.auth.me`;
+- logout validado.
+
+O contrato atual de `/api/internal/auth/me` ainda nao retorna `login`, `nome` e `perfis`; por isso a shell pode exibir fallback como `Usuario interno #2`. Esta e uma pendencia nao bloqueadora para evolucao futura do contrato.
+
+Seguranca operacional apos bootstrap do perfil: os privilegios temporarios de `INSERT` e `UPDATE` em `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes` foram revogados para `geoportal_api_interna_prod`. Permanecem apenas os privilegios necessarios para login, sessao, auditoria de login, `/me` e autorizacao. Nao registrar senha, hash, token, token_hash, cookie, `session_secret` ou `DATABASE_URL`.
+
+Testes/build validados no ciclo:
+
+- `npm.cmd test -- --run src/internal-iluminacao-shell.test.js`: 13 passed;
+- `npm.cmd run build`: sucesso, 233 modules transformed;
+- testes cobriram coordenadas validas/invalidas, link Google Maps seguro, modo manutencao, permissoes de observacao/status/prioridade e renderizacao dos formularios operacionais.
 
 ### Checklist pos-deploy do MVP interno
 
@@ -672,17 +736,20 @@ Regras de seguranca mantidas:
 8. Confirmar: `GET /api/internal/auth/me -> 200`.
 9. Confirmar listagem: `GET /api/internal/iluminacao/solicitacoes?limit=20&offset=0 -> 200`.
 10. Abrir detalhe de uma solicitacao.
-11. Carregar historico sob demanda.
-12. Carregar observacoes sob demanda.
-13. Criar observacao com texto sintetico, sem dados reais.
-14. Alterar status em solicitacao de teste, se permitido e apropriado.
-15. Alterar prioridade em solicitacao de teste, se permitido e apropriado.
-16. Clicar em `Sair`.
-17. Confirmar `POST /api/internal/auth/logout`.
-18. Confirmar retorno para a tela de login.
-19. Confirmar `GET /api/internal/auth/me -> 401`.
-20. Confirmar ausencia de token em `localStorage` e `sessionStorage`.
-21. Confirmar que console e documentacao nao exibem cookie, token, senha, observacoes reais ou dados pessoais reais.
+11. Confirmar coordenadas quando disponiveis.
+12. Confirmar botao de rota Google Maps sem dados pessoais na URL.
+13. Confirmar mapa simples no detalhe quando houver coordenada valida.
+14. Carregar historico sob demanda quando houver permissao.
+15. Carregar observacoes sob demanda.
+16. Criar observacao com texto sintetico, sem dados reais.
+17. Alterar status em solicitacao de teste, se permitido e apropriado.
+18. Alterar prioridade em solicitacao de teste, se permitido e apropriado.
+19. Clicar em `Sair`.
+20. Confirmar `POST /api/internal/auth/logout`.
+21. Confirmar retorno para a tela de login.
+22. Confirmar `GET /api/internal/auth/me -> 401`.
+23. Confirmar ausencia de token em `localStorage` e `sessionStorage`.
+24. Confirmar que console e documentacao nao exibem cookie, token, senha, observacoes reais ou dados pessoais reais.
 
 ### Validacao local e operacional do MVP interno - 2026-06-10
 

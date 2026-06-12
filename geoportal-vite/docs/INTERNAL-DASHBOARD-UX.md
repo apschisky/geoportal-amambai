@@ -24,7 +24,7 @@ O menu deve ser montado conforme permissoes efetivas do usuario autenticado. O f
 
 Perfis de leitura geral, como prefeito, gestor geral ou equivalentes, devem poder acessar resumos e indicadores dos modulos permitidos sem receber permissoes operacionais desnecessarias. Usuarios operacionais devem ver apenas o modulo ou os modulos autorizados. A administracao do sistema deve ser area propria, restrita a perfis autorizados.
 
-Registro historico do recorte inicial: dashboard, mapa operacional, endpoints de estatisticas, endpoints de mapa, proxy, producao interna e botao publico de login eram etapas futuras. Posteriormente, proxy e producao interna foram ativados de forma controlada; dashboard, mapa operacional e endpoints agregados continuam fora do MVP.
+Registro historico do recorte inicial: dashboard, mapa operacional, endpoints de estatisticas, endpoints de mapa, proxy, producao interna e botao publico de login eram etapas futuras. Posteriormente, proxy e producao interna foram ativados de forma controlada; a shell tambem passou a exibir coordenadas, rota Google Maps e mapa simples no detalhe. Dashboard, mapa operacional amplo e endpoints agregados continuam fora do MVP.
 
 ## 1.1. Recorte da Primeira Tela Interna Minima
 
@@ -586,11 +586,11 @@ Marco implementado: no commit `a6269d2`, a shell autenticada `/interno/` passou 
 
 A tabela inicial exibe apenas campos minimos nao pessoais: protocolo, status, tipo de problema, prioridade, poste, datas de criacao/atualizacao quando presentes e indicacao de duplicidade suspeita. Ela nao deve exibir nome ou contato do solicitante, descricao, observacoes de localizacao, ponto de referencia, poste proximo informado, latitude ou longitude.
 
-Validacao registrada para este marco: `npm.cmd run build` passou, `npm.cmd test` passou com 85 testes, `git diff --check` nao apontou erros alem dos avisos normais LF/CRLF do Windows, e a validacao visual confirmou login, `/me` 200, listagem GET 200 e ausencia de chamadas mutaveis. Detalhe, historico, observacoes, alteracao de status, dashboard real, mapa operacional e anexos continuam desabilitados ou reservados a fases futuras. Nao ha `POST` ou `PATCH` de Iluminacao pela shell, nao ha token em `localStorage` ou `sessionStorage`, o backend continua sendo a autoridade de autorizacao e o Geoportal publico permanece preservado.
+Validacao registrada para o marco historico da listagem: `npm.cmd run build` passou, `npm.cmd test` passou com 85 testes, `git diff --check` nao apontou erros alem dos avisos normais LF/CRLF do Windows, e a validacao visual confirmou login, `/me` 200, listagem GET 200 e ausencia de chamadas mutaveis. Naquela fase, detalhe, historico, observacoes, alteracao de status, dashboard real, mapa operacional e anexos continuavam desabilitados ou reservados a fases futuras. Etapas posteriores ja integraram detalhe, historico, observacoes, status, prioridade, coordenadas, rota e mapa simples. Nao ha token em `localStorage` ou `sessionStorage`, o backend continua sendo a autoridade de autorizacao e o Geoportal publico permanece preservado.
 
 Marco implementado: no commit `6c4ce39`, a shell interna passou a oferecer painel de detalhe somente leitura acionado explicitamente pela tabela. A chamada permitida e `GET /api/internal/iluminacao/solicitacoes/{id}`, sempre com `credentials: "include"` e somente apos sessao autenticada, `/me` valido, permissao `iluminacao.solicitacoes.ler` e selecao explicita de uma solicitacao da listagem. O painel exibe dados operacionais do detalhe em secoes de identificacao, origem/localizacao operacional, dados do solicitante, descricao, datas e acoes futuras. A tabela continua sem nome, contato, descricao, observacoes de localizacao, ponto de referencia, poste proximo informado, latitude ou longitude.
 
-Restricoes mantidas nesta fase de detalhe: coordenadas nao aparecem no painel comum; JSON bruto nao e exibido; nao ha chamada para historico, observacoes ou status; nao ha `POST` ou `PATCH` de Iluminacao; nao ha token em `localStorage` ou `sessionStorage`; o backend continua sendo a autoridade de autorizacao; o menu/permissoes da interface sao apenas orientacao visual; e o Geoportal publico permanece preservado.
+Restricoes mantidas naquela fase de detalhe: coordenadas nao apareciam no painel comum; JSON bruto nao era exibido; nao havia chamada para historico, observacoes ou status; nao havia `POST` ou `PATCH` de Iluminacao; nao havia token em `localStorage` ou `sessionStorage`; o backend continuava sendo a autoridade de autorizacao; o menu/permissoes da interface eram apenas orientacao visual; e o Geoportal publico permanecia preservado. Etapas posteriores ja integraram coordenadas, rota e mapa simples no detalhe.
 
 Validacao registrada para este marco: `npm.cmd run build` passou, `npm.cmd test` passou com 85 testes, `git diff --check` nao apontou erros alem dos avisos normais LF/CRLF do Windows, e a validacao visual confirmou login, `/me` 200, listagem GET 200 e detalhe GET 200. A aba Network mostrou apenas chamadas GET de listagem e detalhe para Iluminacao, sem chamadas mutaveis.
 
@@ -615,7 +615,34 @@ Marco implementado: a shell interna passou a permitir alteracao de prioridade op
 
 A validacao frontend exige prioridade nova diferente da atual, valor entre `baixa`, `normal`, `alta` e `urgente`, observacao trimada, minimo de 3 caracteres, maximo de 1000 caracteres, bloqueio de envio invalido e protecao contra duplo envio. Status terminal bloqueia a alteracao de prioridade na interface. Depois do `200 OK`, detalhe, listagem e historico sao recarregados. O fluxo nao altera status, nao cria observacao separada, nao altera `finalizado_em`, nao modifica dados principais da solicitacao e nao afeta o Geoportal publico.
 
-Proxima evolucao recomendada: consolidar o piloto controlado, observar uso real em campo e planejar separadamente mapa operacional, dashboard, anexos e correcao/reabertura administrativa de status terminal.
+Marco validado: o ciclo de mapa/rota e modo manutencao foi publicado e validado em 2026-06-12. A shell interna passou a exibir coordenadas no detalhe, botao `Abrir rota no Google Maps`, link externo baseado apenas em latitude/longitude, mapa simples com OSM/OpenLayers e marcador do ponto do chamado. O mapa nao carrega camadas internas, dados pessoais, observacoes ou descricoes. A validacao visual ocorreu em desktop e mobile na URL `https://geoserver.amambai.ms.gov.br/interno/`, usando a producao interna em `127.0.0.1:8003`.
+
+Perfil de manutencao validado: o modo visual manutencao foi validado com `manutencao.producao`, vinculado ao perfil `manutencao-iluminacao`. As permissoes retornadas por `/api/internal/auth/me` foram `internal.auth.me`, `iluminacao.solicitacoes.ler`, `iluminacao.solicitacoes.ver_observacoes`, `iluminacao.solicitacoes.comentar` e `iluminacao.solicitacoes.atualizar_status`. O perfil nao possui `admin.*` nem `iluminacao.solicitacoes.atualizar_prioridade`; portanto, historico e prioridade aparecem apenas conforme permissao real retornada pelo backend.
+
+Testes do ciclo: `npm.cmd test -- --run src/internal-iluminacao-shell.test.js` passou com 13 testes, cobrindo coordenadas validas/invalidas, link Google Maps seguro, modo manutencao, permissoes de observacao/status/prioridade e renderizacao dos formularios operacionais. `npm.cmd run build` concluiu com sucesso e 233 modules transformed.
+
+Proxima evolucao recomendada: compactar a listagem de manutencao para uso em campo, especialmente no mobile. A listagem de manutencao deve exibir somente `Protocolo`, `Status/Fase`, `Tipo`, `Prioridade`, `Poste` e `Acoes`, mantendo datas completas, descricao, observacoes, duplicidade e dados do solicitante no detalhe. As acoes proximas ao protocolo devem ser `Ver detalhe`, `Tracar rota` e `Alterar fase/status`, sempre respeitando permissao e regra real do backend.
+
+Diretrizes para o proximo ciclo UX:
+
+- `Tracar rota` aparece na listagem somente quando houver latitude/longitude validas;
+- a rota usa somente coordenadas e nao inclui nome, telefone, protocolo, descricao, observacao ou dado pessoal;
+- alteracao rapida de status/fase aparece somente com `iluminacao.solicitacoes.atualizar_status`;
+- prioridade nao deve ser alterada pela listagem de manutencao;
+- telefone/contato clicavel deve ficar somente no detalhe, usando link `https://wa.me/<numero_sanitizado>`, sem mensagem automatica inicialmente e sem incluir protocolo, descricao, localizacao ou dados pessoais adicionais na URL;
+- o backend continua sendo a autoridade real de permissao e transicao.
+
+Card mobile conceitual para ate 20 solicitacoes:
+
+```text
+IP-2026-000009
+Aberta . Normal
+Lampada apagada
+Poste 3405
+
+[Ver detalhe] [Tracar rota]
+[Alterar fase]
+```
 
 ## 13. Relacao com documentos existentes
 
@@ -632,9 +659,10 @@ Este documento complementa:
 
 ## 14. Proximos passos
 
-- Validar o MVP interno com setor responsavel em piloto controlado, incluindo login, listagem, detalhe, historico, observacoes, status, prioridade e logout.
+- Validar o MVP interno com setor responsavel em piloto controlado, incluindo login, listagem, detalhe, coordenadas, rota, mapa simples, observacoes, status, prioridade e logout.
+- Refinar a listagem de manutencao para uso em campo, com card mobile compacto, acao de rota proxima ao protocolo e alteracao rapida de fase/status conforme permissao.
 - Definir roteiro operacional para uso em campo: quando alterar status, quando alterar prioridade e como escrever observacoes internas sem dados pessoais desnecessarios.
-- Planejar mapa operacional como etapa separada, com contrato de coordenadas/postes, permissao, privacidade e fallback sem rota externa.
+- Planejar mapa operacional amplo como etapa separada, com contrato de coordenadas/postes, permissao, privacidade e fallback sem rota externa.
 - Planejar dashboard real com indicadores derivados do backend, evitando calculos criticos apenas no frontend.
 - Planejar correcao/reabertura administrativa de status terminal como fluxo separado, com permissao propria, justificativa forte e auditoria.
 - Planejar anexos/fotos em etapa propria, com limites, armazenamento, antivirus/validacao, privacidade e rollback.
