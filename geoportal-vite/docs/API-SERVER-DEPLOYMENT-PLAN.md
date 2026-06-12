@@ -336,10 +336,12 @@ Estas ações devem ser executadas somente em planejamento operacional separado,
 
 ## 6.3. Execução: Proxy Interno Controlado `/api/internal/` – Etapa Concluída
 
+Nota de estado: esta secao registra a primeira etapa historica do proxy interno, quando `/api/internal/` apontava para a homologacao interna em `127.0.0.1:8002`. O estado operacional atual, validado em 2026-06-12, esta registrado na secao "Marco operacional da producao interna de Iluminacao - 2026-06-12": o Apache HTTPS `/api/internal/` aponta para `127.0.0.1:8003`, e `8002` permanece como homologacao interna/rollback temporario.
+
 O roteiro manual para proxy interno controlado foi executado com sucesso. Este documento registra a implementação operacional no Apache público ativo, com backup, validação e testes de conformidade.
 
-**Objetivo realizado:**
-Tornar o endpoint interno `GET /api/internal/auth/me` acessível via proxy HTTPS controlado (`https://geoserver.amambai.ms.gov.br/api/internal/`), sem expor diretamente a porta `8002` na rede, mantendo a API interna restrita a `127.0.0.1:8002` no servidor.
+**Objetivo realizado naquela etapa:**
+Tornar o endpoint interno `GET /api/internal/auth/me` acessível via proxy HTTPS controlado (`https://geoserver.amambai.ms.gov.br/api/internal/`), sem expor diretamente a porta `8002` na rede, mantendo a API interna de homologacao restrita a `127.0.0.1:8002` no servidor.
 
 **Arquivo alterado:**
 - `C:\Apache24\conf\extra\httpd-ssl.conf` (servidor de homologação)
@@ -424,7 +426,7 @@ O retorno `401` ao tentar acessar `/api/internal/auth/me` sem sessão é o compo
 
 ✅ Separação funcional mantida:
 - API pública `/api/` continua apontando para `127.0.0.1:8001`
-- API interna `/api/internal/` agora aponta para `127.0.0.1:8002` via proxy
+- API interna `/api/internal/` naquela etapa passou a apontar para `127.0.0.1:8002` via proxy; desde 2026-06-12, o estado atual de producao interna aponta para `127.0.0.1:8003`
 - Ambas protegidas por HTTPS e com Geoportal público saudável
 
 **Escopo Completado:**
@@ -510,7 +512,8 @@ Esta secao registra a forma operacional adotada para servir a shell interna `/in
 - Geoportal publico principal: `https://geoportal.amambai.ms.gov.br/`.
 - Area interna e API interna: `https://geoserver.amambai.ms.gov.br/`.
 - Shell interna: `https://geoserver.amambai.ms.gov.br/interno/`.
-- Proxy interno existente: `/api/internal/` -> `http://127.0.0.1:8002/api/internal/`.
+- Proxy interno de producao: `/api/internal/` -> `http://127.0.0.1:8003/api/internal/`.
+- Runtime interno de homologacao preservado: `http://127.0.0.1:8002/api/internal/`.
 - Proxy GeoServer existente: `/geoserver` continua encaminhando ao Tomcat/GeoServer.
 
 A area interna deve ser servida pelo Apache do dominio `geoserver.amambai.ms.gov.br`, e nao apenas pela hospedagem/FTP do dominio `geoportal.amambai.ms.gov.br`. O motivo e manter frontend interno e API interna no mesmo dominio, reduzindo complexidade de CORS e evitando fluxo de cookie cross-site para a sessao interna.
@@ -584,7 +587,7 @@ Alias /assets/ "C:/apps/geoportal_interno/assets/"
 Por clareza operacional, manter esse bloco antes das regras de proxy no VirtualHost:
 
 - `/interno/` e `/assets/` sao arquivos estaticos;
-- `/api/internal/` continua proxy para `127.0.0.1:8002`;
+- `/api/internal/` continua proxy para a API interna de producao em `127.0.0.1:8003`;
 - `/api/` continua proxy da API publica/producao em `127.0.0.1:8001`;
 - `/geoserver` continua proxy do GeoServer/Tomcat.
 
@@ -776,20 +779,20 @@ Rollback Apache:
 - reiniciar Apache controladamente;
 - validar Geoportal publico, GeoServer, API publica e API interna.
 
-### Plano operacional para producao interna controlada de Iluminacao
+### Marco operacional da producao interna de Iluminacao - 2026-06-12
 
-Objetivo: levar o modulo interno de Iluminacao Publica de homologacao para producao interna/piloto controlado, preservando o Geoportal publico, a API publica, o GeoServer e os dados existentes. Esta secao e runbook documental: nao executa banco, Apache, NSSM, `.env`, migrations ou producao.
+Objetivo: registrar o marco operacional em que a API Interna de Producao foi criada, validada, instalada como servico Windows/NSSM e publicada via Apache HTTPS em `/api/internal/`, preservando o Geoportal publico, a API publica, o GeoServer e a homologacao interna. Esta secao e registro documental: nao executa banco, Apache, NSSM, `.env`, migrations ou producao.
 
-Decisao de runtime para producao interna:
+Decisao de runtime aplicada:
 
 - nao reutilizar `GeoportalAPIInternaHomologacao` para producao real;
 - nao misturar homologacao interna com producao interna;
 - manter isolamento entre `8000` homologacao publica, `8001` producao publica, `8002` homologacao interna e `8003` producao interna;
-- criar futuramente o servico `GeoportalAPIInternaProducao`, escutando somente em `http://127.0.0.1:8003`, com `ExpectedEnvironment=producao`, `IsInternalRuntime=true`, `PublicBaseUrl=https://geoserver.amambai.ms.gov.br` e banco `amambaiGis`;
-- manter o Apache atual apontando `/api/internal/` para `http://127.0.0.1:8002/api/internal/` ate a janela controlada de troca;
-- na ativacao futura, alterar `/api/internal/` para `http://127.0.0.1:8003/api/internal/` somente depois das pre-condicoes abaixo, com backup do Apache e rollback pronto.
+- usar `GeoportalAPIInternaProducao` em `http://127.0.0.1:8003`, com `ExpectedEnvironment=producao`, `IsInternalRuntime=true`, `PublicBaseUrl=https://geoserver.amambai.ms.gov.br` e banco `amambaiGis`;
+- manter `GeoportalAPIInternaHomologacao` ativo em `http://127.0.0.1:8002` para homologacao interna;
+- publicar `/api/internal/` no Apache HTTPS apontando para `http://127.0.0.1:8003/api/internal/`.
 
-Mapa de ambientes planejado:
+Mapa de ambientes validado:
 
 | Ambiente | Servico | Base local | Porta | Banco | Finalidade |
 |---|---|---|---|---|---|
@@ -797,6 +800,93 @@ Mapa de ambientes planejado:
 | InternaHomologacao | `GeoportalAPIInternaHomologacao` | `http://127.0.0.1:8002` | `8002` | homologacao | API interna de homologacao |
 | Producao | `GeoportalAPIProducao` | `http://127.0.0.1:8001` | `8001` | `amambaiGis` | API publica de producao |
 | InternaProducao | `GeoportalAPIInternaProducao` | `http://127.0.0.1:8003` | `8003` | `amambaiGis` | API interna de producao/piloto |
+
+Servicos confirmados em execucao no servidor:
+
+- `Apache2.4`;
+- `GeoportalAPIProducao`;
+- `GeoportalAPIInternaHomologacao`;
+- `GeoportalAPIInternaProducao`.
+
+Portas internas confirmadas:
+
+- `127.0.0.1:8002` -> homologacao interna;
+- `127.0.0.1:8003` -> producao interna.
+
+Apache HTTPS ativo para producao interna:
+
+```apache
+ProxyPass        /api/internal/ http://127.0.0.1:8003/api/internal/
+ProxyPassReverse /api/internal/ http://127.0.0.1:8003/api/internal/
+```
+
+Configuracao logica final:
+
+- `/api/` -> producao publica em `127.0.0.1:8001`;
+- `/api/internal/` -> producao interna em `127.0.0.1:8003`;
+- `/interno/` -> frontend interno estatico no dominio `geoserver`;
+- `/geoserver` -> Tomcat/GeoServer.
+
+Servico Windows/NSSM da producao interna:
+
+- servico: `GeoportalAPIInternaProducao`;
+- script operacional no servidor: `C:\apps\geoportal-api\scripts\run-producao-interna-service.ps1`;
+- arquivo operacional de ambiente no servidor: `C:\apps\geoportal-api\env\producao-interna.env`.
+
+O conteudo do arquivo de ambiente e qualquer segredo associado nao devem ser registrados em documentacao.
+
+Banco e role operacional:
+
+- banco: `amambaiGis`;
+- PostgreSQL: `127.0.0.1:5434`;
+- role runtime interna de producao: `geoportal_api_interna_prod`.
+
+Durante a validacao do login em producao interna, foi identificado que o backend consulta `mod_auth.login_auditoria` para contar tentativas recentes falhas antes de autenticar. A role `geoportal_api_interna_prod` precisou de `SELECT` alem de `INSERT` nessa tabela. Estado final validado:
+
+- `mod_auth.login_auditoria`: `SELECT`, `INSERT`;
+- sequence `mod_auth.login_auditoria_id_seq`: `USAGE`/`SELECT` conforme necessidade operacional.
+
+Usuario administrativo inicial de producao interna:
+
+- usuario administrativo inicial: `admin.producao`;
+- perfil: `administrador-interno-geoportal`;
+- permissoes validadas: 16.
+
+A senha foi definida interativamente por script administrativo seguro, sem senha em argumento de linha de comando.
+
+Permissoes validadas:
+
+- `admin.perfis.gerenciar`
+- `admin.perfis.ler`
+- `admin.permissoes.gerenciar`
+- `admin.permissoes.ler`
+- `admin.usuarios.atribuir_perfis`
+- `admin.usuarios.bloquear`
+- `admin.usuarios.criar`
+- `admin.usuarios.ler`
+- `admin.usuarios.redefinir_senha`
+- `internal.auth.me`
+- `iluminacao.solicitacoes.ler`
+- `iluminacao.solicitacoes.ver_historico`
+- `iluminacao.solicitacoes.ver_observacoes`
+- `iluminacao.solicitacoes.comentar`
+- `iluminacao.solicitacoes.atualizar_status`
+- `iluminacao.solicitacoes.atualizar_prioridade`
+
+Validacoes HTTPS reais concluidas:
+
+- `https://geoserver.amambai.ms.gov.br/api/health` -> `200 OK`;
+- `https://geoserver.amambai.ms.gov.br/api/version` -> `environment=producao`;
+- `GET /api/internal/auth/me` sem sessao -> `401 Unauthorized`;
+- `POST /api/internal/auth/login` via HTTPS -> `200 OK`;
+- `GET /api/internal/auth/me` autenticado -> `200 OK`;
+- `GET /api/internal/iluminacao/solicitacoes` autenticado -> `200 OK`;
+- `POST /api/internal/auth/logout` com `X-Geoportal-Internal-Request: 1` -> OK;
+- `https://geoserver.amambai.ms.gov.br/interno/` validado no navegador.
+
+Contrato atual de `/api/internal/auth/me`: retorna `authenticated`, `usuario_id` e `permissoes`. Ele ainda nao retorna `login`, `nome` e `perfis`; por isso a shell interna pode exibir fallback como `Usuario interno #1`. Pendencia nao bloqueadora: avaliar evolucao do contrato de `/api/internal/auth/me` para retornar `login`, `nome` e `perfis` sanitizados.
+
+Pendencia nao bloqueadora de encoding: em terminal PowerShell, nome com acento pode aparecer com mojibake, por exemplo `Administrador ProduÃ§Ã£o`. Revisar encoding/exibicao de nomes com acento nos scripts/terminal ou padronizar nomes administrativos sem acento quando necessario.
 
 Principios obrigatorios:
 
@@ -901,8 +991,8 @@ Validacao da API interna:
 Validacao Apache/NSSM:
 
 - manter `/api/internal/` antes de `/api/` no VirtualHost;
-- manter `/api/internal/` apontando para `127.0.0.1:8002` enquanto o runtime interno de producao nao existir;
-- alterar `/api/internal/` para `127.0.0.1:8003` apenas em janela controlada, depois de validar `GeoportalAPIInternaProducao`;
+- manter `/api/internal/` apontando para `127.0.0.1:8003` em producao interna;
+- manter `127.0.0.1:8002` como homologacao interna preservada;
 - manter `/api/` apontando para `127.0.0.1:8001`;
 - manter `/geoserver` apontando para o Tomcat/GeoServer;
 - nao expor as portas `8002` ou `8003` diretamente no firewall ou rede;
@@ -910,7 +1000,7 @@ Validacao Apache/NSSM:
 - reiniciar/recarregar Apache apenas quando houver mudanca de configuracao, nao para simples troca de arquivos estaticos;
 - reiniciar backend apenas quando houver mudanca de codigo, `.env`, servico, dependencias, migrations ou schema.
 
-Pre-condicoes para criar/ativar `GeoportalAPIInternaProducao`:
+Pre-condicoes registradas para ativar `GeoportalAPIInternaProducao`:
 
 1. Backup validado do banco `amambaiGis`.
 2. Inventario do schema de producao concluido.
@@ -925,19 +1015,21 @@ Pre-condicoes para criar/ativar `GeoportalAPIInternaProducao`:
 11. Backup do `httpd-ssl.conf`.
 12. Rollback documentado para voltar `/api/internal/` para `http://127.0.0.1:8002/api/internal/`.
 
-Troca futura do proxy interno:
+Rollback temporario do proxy interno para homologacao:
 
 ```apache
-# Estado atual ate a ativacao controlada da producao interna
 ProxyPass        /api/internal/ http://127.0.0.1:8002/api/internal/
 ProxyPassReverse /api/internal/ http://127.0.0.1:8002/api/internal/
-
-# Estado futuro, somente apos validar GeoportalAPIInternaProducao
-ProxyPass        /api/internal/ http://127.0.0.1:8003/api/internal/
-ProxyPassReverse /api/internal/ http://127.0.0.1:8003/api/internal/
 ```
 
-Rollback da troca de proxy: restaurar o backup do `httpd-ssl.conf` ou recolocar `/api/internal/` apontando para `127.0.0.1:8002`, rodar `httpd.exe -t`, reiniciar/recarregar Apache controladamente e validar Geoportal publico, GeoServer, `/api/` publica e `/api/internal/auth/me`.
+Checklist de rollback do Apache:
+
+```powershell
+& "C:\Apache24\bin\httpd.exe" -t
+Restart-Service Apache2.4
+```
+
+Esse rollback altera apenas o proxy publico de `/api/internal/`; nao apaga banco, usuario, servico, arquivos estaticos nem configuracao de `GeoportalAPIInternaProducao`.
 
 Publicacao do front interno:
 
@@ -989,13 +1081,12 @@ Rollback:
 - front interno: restaurar backup de `C:/apps/geoportal_interno/` e validar `/interno/`;
 - permissoes: revogar GRANTs adicionais ou desativar permissoes de aplicacao conforme roteiro, preferindo reduzir privilegio antes de remover objetos.
 
-Bloqueadores antes da producao interna:
+Bloqueadores para ampliar uso alem do piloto controlado:
 
 - inexistencia de backup validado;
 - inventario incompleto de `amambaiGis`;
 - diferenca de schema nao explicada entre homologacao e producao;
 - tentativa de usar `GeoportalAPIInternaHomologacao` como producao interna real;
-- `GeoportalAPIInternaProducao` ausente ou nao validado em `127.0.0.1:8003`;
 - rollback ausente;
 - porta interna exposta diretamente;
 - cookie inseguro em HTTPS;
@@ -1005,23 +1096,16 @@ Bloqueadores antes da producao interna:
 - logs com senha, token, cookie, `DATABASE_URL`, dados pessoais reais ou observacoes reais;
 - qualquer necessidade de migration sem teste previo em homologacao.
 
-Ordem recomendada:
+Ordem recomendada apos o marco de 2026-06-12:
 
-1. Revisar e commitar a documentacao deste plano.
-2. Inventariar producao sem alterar.
-3. Fazer backup validado.
-4. Comparar `amambaiGis_homologacao` x `amambaiGis`.
-5. Definir scripts minimos, se houver lacuna real.
-6. Validar scripts/GRANTs em homologacao.
-7. Aplicar scripts/GRANTs em producao em janela controlada.
-8. Criar e validar `GeoportalAPIInternaProducao` em `127.0.0.1:8003`, sem trocar Apache ainda.
-9. Fazer backup do Apache, validar sintaxe e trocar `/api/internal/` de `8002` para `8003` somente se todas as pre-condicoes passarem.
-10. Validar API interna via proxy.
-11. Publicar front interno.
-12. Criar/validar usuarios e perfis do piloto.
-13. Rodar checklist operacional.
-14. Iniciar piloto controlado.
-15. Registrar validacao e pendencias.
+1. Manter piloto controlado com usuarios e perfis explicitamente definidos.
+2. Validar periodicamente `/api/`, `/api/internal/`, `/interno/` e logout.
+3. Confirmar atributos de cookie no navegador real sem copiar valores.
+4. Confirmar `localStorage` e `sessionStorage` vazios apos login/logout.
+5. Monitorar logs sem registrar senha, token, cookie, observacoes reais ou dados pessoais desnecessarios.
+6. Revisar evolucao de `/api/internal/auth/me` para retornar `login`, `nome` e `perfis` sanitizados.
+7. Planejar tela administrativa de usuarios, perfis e permissoes antes de ampliar a operacao.
+8. Planejar mapa operacional, anexos, dashboard e correcao administrativa apenas em etapas separadas.
 
 ### Pendencias futuras fora do MVP
 

@@ -32,7 +32,7 @@ Nao conceder `mod_auth` para `api_iluminacao_homolog`.
 
 Usar `geoportal_api_homolog` no runtime interno, com matriz minima ja validada para autenticacao, sessao, autorizacao e leitura interna de Iluminacao.
 
-Para producao interna/piloto, a decisao complementar e criar runtime proprio `GeoportalAPIInternaProducao` em porta separada (`127.0.0.1:8003`) e banco `amambaiGis`, sem reutilizar `GeoportalAPIInternaHomologacao` (`127.0.0.1:8002`). A troca do Apache `/api/internal/` de `8002` para `8003` deve ocorrer somente em janela controlada, depois de backup, inventario, GRANTs minimos, validacao local do servico novo e rollback documentado.
+Para producao interna/piloto, a decisao complementar foi criar runtime proprio `GeoportalAPIInternaProducao` em porta separada (`127.0.0.1:8003`) e banco `amambaiGis`, sem reutilizar `GeoportalAPIInternaHomologacao` (`127.0.0.1:8002`). Em 2026-06-12, o Apache `/api/internal/` passou a apontar para `8003`, mantendo `8002` como homologacao interna preservada e rollback operacional.
 
 Essa separacao e uma decisao de seguranca e escalabilidade, nao um contorno temporario.
 
@@ -98,7 +98,20 @@ Validacoes operacionais ja realizadas:
 
 Historico da etapa: naquele momento, producao nao havia sido alterada, o Apache/proxy publico ainda nao havia sido alterado, o runtime interno estava validado apenas em homologacao local e a shell frontend interna ainda nao possuia proxy publico.
 
-Estado atual: a area interna ja esta publicada/testada em `https://geoserver.amambai.ms.gov.br/interno/`, servida pelo Apache do dominio `geoserver` por `Alias`, e a API interna ja esta atras de `https://geoserver.amambai.ms.gov.br/api/internal/`, proxy para `127.0.0.1:8002`. Essa exposicao controlada mantem a porta `8002` sem acesso direto externo e preserva a separacao entre runtime publico, runtime interno e Geoportal publico.
+Estado atual: a area interna ja esta publicada/testada em `https://geoserver.amambai.ms.gov.br/interno/`, servida pelo Apache do dominio `geoserver` por `Alias`, e a API interna de producao ja esta atras de `https://geoserver.amambai.ms.gov.br/api/internal/`, proxy para `127.0.0.1:8003`. A homologacao interna permanece ativa em `127.0.0.1:8002`, sem acesso direto externo. Essa exposicao controlada preserva a separacao entre runtime publico, runtime interno de homologacao, runtime interno de producao e Geoportal publico.
+
+## Arquitetura Atual de Producao Interna
+
+Marco operacional validado em 2026-06-12:
+
+- `/api/` aponta para a API publica de producao em `127.0.0.1:8001`.
+- `/api/internal/` aponta para a API interna de producao em `127.0.0.1:8003`.
+- `GeoportalAPIInternaHomologacao` permanece em `127.0.0.1:8002` para homologacao interna.
+- `GeoportalAPIInternaProducao` permanece em `127.0.0.1:8003` para producao interna.
+- `/interno/` serve o frontend interno estatico no dominio `geoserver`.
+- `/geoserver` permanece como proxy do Tomcat/GeoServer.
+
+Rollback temporario de Apache para homologacao interna deve recolocar `/api/internal/` em `http://127.0.0.1:8002/api/internal/`, validar sintaxe do Apache e reiniciar/recarregar o servico controladamente. Esse rollback nao remove banco, usuario, servico, arquivos estaticos ou configuracao da producao interna.
 
 ## Validacao Operacional do Runtime Interno de Homologacao
 
@@ -138,7 +151,7 @@ Validacao autenticada manual pelo servico NSSM:
 - Correcao/reversao de status nao deve usar o PATCH normal; deve ser fluxo futuro separado, com justificativa obrigatoria, permissao especifica restrita e auditoria propria.
 - `PATCH /api/internal/iluminacao/solicitacoes/{id}/prioridade` foi implementado como mutacao interna separada do status. Ele exige sessao real, permissao `iluminacao.solicitacoes.atualizar_prioridade` e header `X-Geoportal-Internal-Request: 1`, aceita somente `prioridade` e `observacao`, registra `alteracao_prioridade` no historico e nao altera status, `finalizado_em`, observacoes internas, protocolo, geometria ou dados pessoais. A shell interna consome esse PATCH apenas por acao explicita no detalhe e o Geoportal publico permanece sem chamada a endpoints internos.
 - A integracao inicial da shell `/interno/` com `GET /api/internal/auth/me` foi implementada no commit `a6849dd`. Em validacao frontend local, a shell chamou a rota correta e recebeu `404` no Vite sem proxy/backend interno, comportamento esperado para esse ambiente; no DevTools/Network nao houve chamada para `/api/internal/auth/login`, endpoints de Iluminacao, `POST` ou `PATCH`.
-- No servidor de homologacao interna, o codigo foi atualizado no caminho `C:\apps\geoportal-api\backend\geoportal-amambai`, a branch `main` ficou alinhada com `origin/main`, o working tree estava limpo e o commit atual era `a6849dd`. O servico `GeoportalAPIInternaHomologacao` foi reiniciado e validado na porta `8002`; `/api/health` retornou OK, `/api/version` retornou `environment=homologacao` e `/api/internal/auth/me` sem sessao retornou `401 Unauthorized` com corpo vazio.
+- No servidor de homologacao interna, o codigo foi atualizado no caminho operacional do backend e o servico `GeoportalAPIInternaHomologacao` foi reiniciado e validado na porta `8002`; `/api/health` retornou OK, `/api/version` retornou `environment=homologacao` e `/api/internal/auth/me` sem sessao retornou `401 Unauthorized` com corpo vazio.
 - Essa validacao confirma que o backend interno esta saudavel, que `/api/internal/auth/me` existe e permanece protegido, e que ainda falta uma validacao ponta a ponta da shell em ambiente que consiga alcancar o backend interno real. Nao alterar Apache/proxy publico nem avancar para listagem interna antes dessa validacao controlada.
 - A validacao de bind no servidor confirmou `TCP 127.0.0.1:8002 ... LISTENING`, ou seja, o runtime interno esta ativo apenas em loopback no servidor e nao esta exposto diretamente na interface de rede `10.0.0.109`.
 - A partir do PC de desenvolvimento `10.0.0.215`, `Test-NetConnection 10.0.0.109 -Port 8002` confirmou alcance de rede ao servidor (`PingSucceeded=True`), mas falha de conexao TCP na porta (`TcpTestSucceeded=False`). Chamadas diretas para `http://10.0.0.109:8002/api/health`, `/api/version` e `/api/internal/auth/me` nao obtiveram resposta HTTP.
@@ -146,9 +159,9 @@ Validacao autenticada manual pelo servico NSSM:
 
 ## Planejamento para Proxy Interno Controlado
 
-Nota de estado: esta secao registra o planejamento que levou ao proxy interno controlado. O proxy `/api/internal/` ja foi implementado no dominio `geoserver.amambai.ms.gov.br` e deve continuar antes do proxy generico `/api/`. Hoje ele aponta para `127.0.0.1:8002`, runtime interno de homologacao. Para levar o MVP interno a producao/piloto controlado, seguir o runbook em `docs/API-SERVER-DEPLOYMENT-PLAN.md`, criando antes `GeoportalAPIInternaProducao` em `127.0.0.1:8003`, com backup, inventario de `amambaiGis`, comparacao com `amambaiGis_homologacao`, GRANTs minimos e rollback antes de qualquer alteracao.
+Nota de estado: esta secao registra o planejamento que levou ao proxy interno controlado. O proxy `/api/internal/` ja foi implementado no dominio `geoserver.amambai.ms.gov.br` e deve continuar antes do proxy generico `/api/`. Desde o marco operacional de 2026-06-12, ele aponta para `127.0.0.1:8003`, runtime interno de producao. O runtime `127.0.0.1:8002` permanece como homologacao interna e rollback temporario.
 
-A validacao ponta a ponta da shell `/interno/` contra o backend interno real deve preservar a decisao de manter `GeoportalAPIInternaHomologacao` restrito a `127.0.0.1:8002`. A porta `8002` nao deve ser aberta diretamente na rede interna como primeira escolha; o caminho preferencial e um proxy interno controlado, planejado antes de qualquer alteracao operacional.
+A validacao ponta a ponta da shell `/interno/` contra o backend interno real deve preservar a decisao de manter `GeoportalAPIInternaHomologacao` restrito a `127.0.0.1:8002` e `GeoportalAPIInternaProducao` restrito a `127.0.0.1:8003`. As portas internas nao devem ser abertas diretamente na rede; o caminho operacional permanece o proxy Apache controlado.
 
 Inventario Apache confirmado no servidor:
 
@@ -171,7 +184,7 @@ ProxyPass /api/ http://127.0.0.1:8001/api/
 ProxyPassReverse /api/ http://127.0.0.1:8001/api/
 ```
 
-A futura regra para `/api/internal/` deve ficar antes da regra generica `/api/`, porque `/api/` pode capturar `/api/internal/...` e encaminhar a requisicao para o backend publico/producao em `127.0.0.1:8001`.
+A regra para `/api/internal/` deve ficar antes da regra generica `/api/`, porque `/api/` pode capturar `/api/internal/...` e encaminhar a requisicao para o backend publico/producao em `127.0.0.1:8001`.
 
 O proxy interno deve permitir validar somente:
 
@@ -181,22 +194,29 @@ O proxy interno deve permitir validar somente:
 - resposta `200` com sessao valida em etapa posterior;
 - menu derivado das permissoes retornadas.
 
-Nesta primeira validacao da shell, o proxy interno nao deve liberar `POST`, `PATCH`, listagem de solicitacoes, dashboard, mapa, endpoint de login novo, botao publico de login ou publicacao da area interna para o publico. API publica, Geoportal publico e producao interna permanecem fora do escopo.
+Registro historico: na primeira validacao da shell, o proxy interno nao liberava `POST`, `PATCH`, listagem de solicitacoes, dashboard, mapa, endpoint de login novo, botao publico de login ou publicacao da area interna para o publico. Posteriormente, a producao interna foi ativada em `127.0.0.1:8003` com permissoes, mutacoes controladas e rollback documentado.
 
 ### Opcao A - proxy interno de homologacao no Apache com rota controlada
 
-Exemplo conceitual:
+Registro historico da opcao de homologacao:
 
 - `/interno/` servido pelo build frontend interno;
 - `/api/internal/` encaminhado para `http://127.0.0.1:8002/api/internal/`;
 - `/api/health` e `/api/version`, se necessarios para validacao, encaminhados de forma controlada;
 - nenhuma exposicao direta de `8002` na rede.
 
-Bloco conceitual futuro, ainda nao aplicado:
+Bloco historico/conceitual de homologacao:
 
 ```apache
 ProxyPass        /api/internal/ http://127.0.0.1:8002/api/internal/
 ProxyPassReverse /api/internal/ http://127.0.0.1:8002/api/internal/
+```
+
+Bloco atual de producao interna, validado em 2026-06-12:
+
+```apache
+ProxyPass        /api/internal/ http://127.0.0.1:8003/api/internal/
+ProxyPassReverse /api/internal/ http://127.0.0.1:8003/api/internal/
 ```
 
 Esse bloco deve ficar antes de:
@@ -293,7 +313,7 @@ Criterios de aceite da etapa operacional futura:
 - sem alteracao de banco, migration, schema ou `.env`;
 - sem abertura direta da porta `8002` na rede.
 
-Recomendacao atual: manter `GeoportalAPIInternaHomologacao` em `127.0.0.1:8002` para homologacao interna e planejar `GeoportalAPIInternaProducao` em `127.0.0.1:8003` para producao interna. Nao abrir `8002` ou `8003` diretamente na rede e nao trocar `/api/internal/` para `8003` antes de validar o novo servico, backup do Apache, `httpd.exe -t` e rollback para `8002`.
+Recomendacao atual: manter `GeoportalAPIInternaHomologacao` em `127.0.0.1:8002` para homologacao interna e `GeoportalAPIInternaProducao` em `127.0.0.1:8003` para producao interna. Nao abrir `8002` ou `8003` diretamente na rede. Manter rollback documentado para recolocar `/api/internal/` em `8002` se houver necessidade operacional temporaria.
 
 ## Planejamento para Higienizacao de Apaches Duplicados
 
@@ -323,10 +343,10 @@ Estado de seguranca apos a validacao:
 
 ## Proximos Passos
 
-1. Inventariar `amambaiGis` e preparar pre-condicoes de producao interna sem alterar Apache.
-2. Criar e validar futuramente `GeoportalAPIInternaProducao` em `127.0.0.1:8003`, com `IsInternalRuntime=true`.
-3. Trocar `/api/internal/` de `8002` para `8003` somente em janela controlada, com backup e rollback.
-4. Manter producao fail-closed ate etapa formal de ativacao controlada.
+1. Manter monitoramento do piloto controlado em `GeoportalAPIInternaProducao`.
+2. Validar periodicamente `/api/`, `/api/internal/`, `/interno/`, login e logout.
+3. Confirmar atributos de cookie e storage do navegador sem copiar valores sensiveis.
+4. Manter rollback de `/api/internal/` para `8002` documentado, sem abrir portas internas diretamente na rede.
 
 ## Confirmacoes de Escopo
 

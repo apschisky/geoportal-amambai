@@ -119,7 +119,7 @@ A API deve conectar ao banco usando usuario restrito por modulo e ambiente. O en
 
 A arquitetura de banco da API foi validada em homologacao com usuario restrito, sem superuser e sem acesso direto a schemas nao necessarios.
 
-Separacao de runtimes para producao interna: a API publica de producao permanece no servico `GeoportalAPIProducao` em `127.0.0.1:8001`. A API interna de producao/piloto deve usar servico proprio futuro `GeoportalAPIInternaProducao` em `127.0.0.1:8003`, com `IsInternalRuntime=true`, banco `amambaiGis` e GRANTs minimos. Nao reutilizar `GeoportalAPIInternaHomologacao` em `127.0.0.1:8002` para producao real. O Apache `/api/internal/` so deve ser trocado de `8002` para `8003` apos validacao local do servico, backup do `httpd-ssl.conf`, `httpd.exe -t` e rollback documentado.
+Separacao de runtimes para producao interna: a API publica de producao permanece no servico `GeoportalAPIProducao` em `127.0.0.1:8001`. A API interna de producao/piloto usa servico proprio `GeoportalAPIInternaProducao` em `127.0.0.1:8003`, com `IsInternalRuntime=true`, banco `amambaiGis` e GRANTs minimos. Nao reutilizar `GeoportalAPIInternaHomologacao` em `127.0.0.1:8002` para producao real; esse runtime permanece para homologacao interna. Desde o marco operacional de 2026-06-12, o Apache `/api/internal/` aponta para `8003`, com rollback documentado para `8002` se houver necessidade temporaria.
 
 Endpoints nao devem conter SQL direto. A persistencia deve ficar em repositories usando SQLAlchemy Core, bind parameters e transacoes controladas.
 

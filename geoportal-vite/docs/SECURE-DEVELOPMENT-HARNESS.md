@@ -64,7 +64,7 @@ Use o harness abaixo quando a necessidade operacional for apenas reiniciar e val
 .\scripts\deploy\backend-restart-validate-service.ps1 -Environment Producao -Restart -Validate -CheckPublicProxy -Force
 ```
 
-Nota para producao interna futura: `InternaProducao` ainda e uma decisao arquitetural documentada, nao um ambiente a assumir automaticamente no harness. Antes de usar qualquer comando para esse ambiente, o script deve ser atualizado em etapa propria e revisada para reconhecer `GeoportalAPIInternaProducao`, `http://127.0.0.1:8003`, `ExpectedEnvironment=producao` e `IsInternalRuntime=true`. Essa atualizacao nao deve instalar servico, alterar Apache, tocar `.env`, aplicar migrations ou trocar `/api/internal/` por si so.
+Nota para producao interna: `GeoportalAPIInternaProducao` foi criado e validado operacionalmente em `http://127.0.0.1:8003`, com `ExpectedEnvironment=producao` e `IsInternalRuntime=true`. Antes de usar qualquer comando do harness versionado para gerenciar esse ambiente, confirmar se o script reconhece explicitamente `InternaProducao`; se nao reconhecer, a atualizacao do harness deve ser etapa propria e revisada. Essa atualizacao nao deve instalar servico, alterar Apache, tocar `.env`, aplicar migrations ou trocar `/api/internal/` por si so.
 
 ## Harness de segurança
 

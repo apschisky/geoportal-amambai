@@ -237,16 +237,16 @@ Registrar, conforme o modulo:
 
 ### 12.1. Producao interna/piloto de Iluminacao
 
-Antes de ativar o MVP interno de Iluminacao para usuarios reais em `amambaiGis`, seguir o runbook em `docs/API-SERVER-DEPLOYMENT-PLAN.md`, secao "Plano operacional para producao interna controlada de Iluminacao".
+Para ampliar o MVP interno de Iluminacao para usuarios reais alem do piloto controlado em `amambaiGis`, seguir o runbook em `docs/API-SERVER-DEPLOYMENT-PLAN.md`, secao "Marco operacional da producao interna de Iluminacao - 2026-06-12".
 
 Bloqueadores de seguranca para essa ativacao:
 
 - [ ] backup validado de `amambaiGis` e rollback definido;
 - [ ] inventario de schema e GRANTs de producao concluido;
 - [ ] comparacao `amambaiGis_homologacao` x `amambaiGis` concluida sem lacunas inexplicadas;
-- [ ] `GeoportalAPIInternaProducao` criado e validado em `127.0.0.1:8003`, sem reutilizar `GeoportalAPIInternaHomologacao` como producao real;
-- [ ] portas internas `8002` e `8003` mantidas sem exposicao direta externa;
-- [ ] Apache `/api/internal/` trocado de `8002` para `8003` somente apos backup, `httpd.exe -t` e rollback documentado;
+- [x] `GeoportalAPIInternaProducao` criado e validado em `127.0.0.1:8003`, sem reutilizar `GeoportalAPIInternaHomologacao` como producao real;
+- [x] portas internas `8002` e `8003` mantidas sem exposicao direta externa;
+- [x] Apache `/api/internal/` apontando para `8003`, com rollback documentado para `8002`;
 - [ ] cookie de sessao validado em HTTPS sem copiar valores (`HttpOnly`, `Secure`, `SameSite`);
 - [ ] perfis do piloto com menor privilegio;
 - [ ] mutacoes internas validadas com sessao, permissao e `X-Geoportal-Internal-Request: 1`;

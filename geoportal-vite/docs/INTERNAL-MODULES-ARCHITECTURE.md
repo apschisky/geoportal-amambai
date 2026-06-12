@@ -173,7 +173,7 @@ O menu do portal interno deve ser derivado das permissoes e modulos retornados p
 
 A estrategia preferencial para navegador continua sendo sessao opaca no backend, transportada por cookie seguro, alinhada com os documentos de autenticacao interna: `HttpOnly`, `Secure` conforme ambiente e obrigatorio em producao, `SameSite` adequado, expiracao, logout/revogacao e token bruto nunca persistido no banco. O backend deve manter apenas hash ou representacao segura da sessao. O frontend nao deve guardar token em `localStorage` ou `sessionStorage`.
 
-Enquanto a etapa for apenas `GET /api/internal/auth/me`, nao deve haver `POST`, `PATCH`, login real novo, armazenamento de token, dashboard, mapa operacional, proxy interno, producao interna ou botao publico de login. Acoes mutaveis futuras, quando usarem cookie, devem manter protecao CSRF ou mecanismo equivalente, incluindo o header interno mutavel ja adotado para rotas sensiveis.
+Registro historico do recorte inicial: enquanto a etapa era apenas `GET /api/internal/auth/me`, nao deveria haver `POST`, `PATCH`, login real novo, armazenamento de token, dashboard, mapa operacional, proxy interno, producao interna ou botao publico de login. As fases posteriores implementaram login, mutacoes controladas, logout e producao interna. A regra permanente continua: acoes mutaveis com cookie devem manter protecao CSRF ou mecanismo equivalente, incluindo o header interno mutavel ja adotado para rotas sensiveis.
 
 Estados de sessao recomendados para o portal:
 
@@ -237,7 +237,7 @@ Mapeamentos conceituais:
 - Permissao administrativa como `admin.usuarios.ler` pode permitir exibir Administracao do Sistema, sempre respeitando o backend.
 - Permissoes futuras de dashboard ou indicadores podem permitir cards de resumo sem conceder acoes operacionais.
 
-Validacao operacional registrada: a shell `/interno/` passou a consultar somente `GET /api/internal/auth/me` no commit `a6849dd`, usando o contrato real `authenticated`, `usuario_id` e `permissoes`. Em desenvolvimento local, sem proxy/backend interno ativo no Vite, a rota retornou `404`, comportamento esperado para esse ambiente. No backend interno de homologacao em `127.0.0.1:8002`, o mesmo endpoint sem sessao retornou `401 Unauthorized`, confirmando que a rota existe e permanece protegida. A porta `8002` esta restrita a loopback no servidor e nao responde diretamente ao PC de desenvolvimento pela rede, o que reduz exposicao. A validacao ponta a ponta da shell contra o backend interno real deve ser planejada com proxy interno controlado, preferencialmente em homologacao, antes de carregar listagem ou acoes de negocio.
+Validacao operacional registrada: a shell `/interno/` passou a consultar somente `GET /api/internal/auth/me` no commit `a6849dd`, usando o contrato real `authenticated`, `usuario_id` e `permissoes`. Em desenvolvimento local, sem proxy/backend interno ativo no Vite, a rota retornou `404`, comportamento esperado para esse ambiente. No backend interno de homologacao em `127.0.0.1:8002`, o mesmo endpoint sem sessao retornou `401 Unauthorized`, confirmando que a rota existe e permanece protegida. Marco posterior de 2026-06-12: a producao interna foi ativada em `127.0.0.1:8003` via Apache `/api/internal/`, preservando `8002` para homologacao interna e rollback temporario.
 
 ## 8. Auditoria
 

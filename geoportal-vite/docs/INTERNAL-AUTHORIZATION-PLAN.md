@@ -645,7 +645,38 @@ O runtime interno de homologacao foi criado como servico NSSM `GeoportalAPIInter
 
 Em validacao autenticada manual pelo servico, o login interno funcionou sem registrar token na documentacao, `/api/internal/auth/me` confirmou sessao autenticada, `iluminacao.solicitacoes.ler` foi confirmada e `GET /api/internal/iluminacao/solicitacoes?limit=10&offset=0` retornou itens reais. `api_iluminacao_homolog` continua sem acesso a `mod_auth`; `geoportal_api_homolog` recebeu apenas `USAGE` no schema `mod_iluminacao` e `SELECT` em `mod_iluminacao.solicitacoes`, sem `INSERT`, `UPDATE` ou `DELETE` nessa etapa.
 
-Producao, Apache/proxy, frontend, migrations, schema, `.env` versionado e exposicao publica do runtime interno permanecem inalterados. Uma porta como `8003` pode ser avaliada futuramente como candidata conceitual para producao interna, mas ainda nao foi criada, configurada ou ativada.
+Registro historico: nessa etapa de homologacao, producao, Apache/proxy, frontend, migrations, schema, `.env` versionado e exposicao publica do runtime interno permaneciam inalterados.
+
+Marco operacional de producao interna em 2026-06-12: `GeoportalAPIInternaProducao` foi criado e validado em `127.0.0.1:8003`, com `IsInternalRuntime=true`, banco `amambaiGis` e role runtime interna `geoportal_api_interna_prod`. O Apache HTTPS `/api/internal/` passou a apontar para `127.0.0.1:8003`, enquanto `GeoportalAPIInternaHomologacao` permanece em `127.0.0.1:8002` para homologacao interna e rollback temporario.
+
+Durante a validacao do login em producao interna, foi identificado que o backend consulta `mod_auth.login_auditoria` para contar tentativas recentes falhas antes de autenticar. A role `geoportal_api_interna_prod` precisou de `SELECT` alem de `INSERT` nessa tabela; a sequence correspondente deve ter `USAGE`/`SELECT` conforme necessidade operacional. Essa decisao preserva o controle de tentativas de login sem conceder privilegios amplos.
+
+Usuario administrativo inicial validado em producao interna:
+
+- usuario: `admin.producao`;
+- perfil: `administrador-interno-geoportal`;
+- permissoes validadas: 16.
+
+Permissoes validadas:
+
+- `admin.perfis.gerenciar`
+- `admin.perfis.ler`
+- `admin.permissoes.gerenciar`
+- `admin.permissoes.ler`
+- `admin.usuarios.atribuir_perfis`
+- `admin.usuarios.bloquear`
+- `admin.usuarios.criar`
+- `admin.usuarios.ler`
+- `admin.usuarios.redefinir_senha`
+- `internal.auth.me`
+- `iluminacao.solicitacoes.ler`
+- `iluminacao.solicitacoes.ver_historico`
+- `iluminacao.solicitacoes.ver_observacoes`
+- `iluminacao.solicitacoes.comentar`
+- `iluminacao.solicitacoes.atualizar_status`
+- `iluminacao.solicitacoes.atualizar_prioridade`
+
+Contrato atual de `/api/internal/auth/me`: retorna `authenticated`, `usuario_id` e `permissoes`. Pendencia nao bloqueadora: avaliar evolucao para retornar `login`, `nome` e `perfis` sanitizados, melhorando a identificacao visual do usuario na shell interna sem expor segredo.
 
 ## Validacao da Listagem Interna de Iluminacao com Filtros
 

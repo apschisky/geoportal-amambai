@@ -1091,9 +1091,17 @@ Este documento complementa:
 - desenho de telas do painel interno somente depois dos contratos backend validados.
 ## Decisao de Runtime para Endpoints Internos
 
-O endpoint `GET /api/internal/iluminacao/solicitacoes` deve rodar no runtime interno de homologacao com `geoportal_api_homolog`, nao no runtime publico com `api_iluminacao_homolog`. A role publica permanece dedicada a `/api/public/*` e nao deve receber acesso a `mod_auth`.
+Os endpoints internos de Iluminacao devem rodar em runtime interno, nunca no runtime publico. A role publica permanece dedicada a `/api/public/*` e nao deve receber acesso a `mod_auth`.
 
-A separacao entre runtime publico e runtime interno e decisao de seguranca e menor privilegio, nao um contorno temporario. O runtime interno foi criado e validado em homologacao local, ainda nao foi exposto publicamente e os arquivos `.env` reais continuam fora do Git. Detalhes: `INTERNAL-PUBLIC-RUNTIME-SEPARATION.md`.
+Estado atual de producao interna validado em 2026-06-12:
+
+- runtime publico de producao: `GeoportalAPIProducao` em `127.0.0.1:8001`;
+- runtime interno de homologacao: `GeoportalAPIInternaHomologacao` em `127.0.0.1:8002`;
+- runtime interno de producao: `GeoportalAPIInternaProducao` em `127.0.0.1:8003`;
+- Apache HTTPS `/api/internal/` aponta para `127.0.0.1:8003`;
+- `127.0.0.1:8002` permanece para homologacao interna e rollback temporario.
+
+A separacao entre runtime publico, runtime interno de homologacao e runtime interno de producao e decisao de seguranca e menor privilegio, nao um contorno temporario. Os arquivos `.env` reais continuam fora do Git. Detalhes: `INTERNAL-PUBLIC-RUNTIME-SEPARATION.md` e `API-SERVER-DEPLOYMENT-PLAN.md`.
 
 ## Validacao Operacional do Endpoint Interno
 
@@ -1101,4 +1109,4 @@ O runtime interno de homologacao foi criado como `GeoportalAPIInternaHomologacao
 
 Em validacao autenticada manual pelo servico NSSM, o endpoint `GET /api/internal/iluminacao/solicitacoes?limit=10&offset=0` retornou itens reais apos login interno e confirmacao da permissao `iluminacao.solicitacoes.ler`, sem registrar token ou cookie real. `geoportal_api_homolog` possui somente `USAGE` no schema `mod_iluminacao` e `SELECT` em `mod_iluminacao.solicitacoes` para essa etapa; nao recebeu `INSERT`, `UPDATE` ou `DELETE` em `mod_iluminacao`.
 
-Producao, Apache/proxy, frontend, migrations, schema e `.env` versionado nao foram alterados. O runtime interno ainda nao esta exposto publicamente.
+Registro historico: nessa validacao inicial de homologacao, producao, Apache/proxy, frontend, migrations, schema e `.env` versionado nao haviam sido alterados. O marco posterior de 2026-06-12 publicou a API interna de producao via Apache HTTPS em `/api/internal/`, apontando para `127.0.0.1:8003`.

@@ -24,7 +24,7 @@ O menu deve ser montado conforme permissoes efetivas do usuario autenticado. O f
 
 Perfis de leitura geral, como prefeito, gestor geral ou equivalentes, devem poder acessar resumos e indicadores dos modulos permitidos sem receber permissoes operacionais desnecessarias. Usuarios operacionais devem ver apenas o modulo ou os modulos autorizados. A administracao do sistema deve ser area propria, restrita a perfis autorizados.
 
-Dashboard, mapa operacional, endpoints de estatisticas, endpoints de mapa, proxy, producao interna e botao publico de login sao etapas futuras. Esta decisao e apenas documental e nao cria codigo, endpoint, permissao real, proxy ou producao interna.
+Registro historico do recorte inicial: dashboard, mapa operacional, endpoints de estatisticas, endpoints de mapa, proxy, producao interna e botao publico de login eram etapas futuras. Posteriormente, proxy e producao interna foram ativados de forma controlada; dashboard, mapa operacional e endpoints agregados continuam fora do MVP.
 
 ## 1.1. Recorte da Primeira Tela Interna Minima
 
@@ -555,9 +555,9 @@ Conclusoes da validacao:
 - Apache/proxy publico e producao permanecem inalterados;
 - nao se deve avancar para listagem de solicitacoes antes da validacao ponta a ponta de sessao.
 
-Situacao operacional atual: o runtime `GeoportalAPIInternaHomologacao` esta ativo no servidor, mas escuta somente em `127.0.0.1:8002`. A partir do PC de desenvolvimento, o servidor responde ping, mas a porta `8002` nao aceita conexao TCP direta. Isso e positivo para menor exposicao de rede e reforca que a validacao ponta a ponta da shell deve ser planejada, nao improvisada.
+Situacao operacional atualizada: `GeoportalAPIInternaHomologacao` permanece ativo em `127.0.0.1:8002` para homologacao interna, e `GeoportalAPIInternaProducao` esta ativo em `127.0.0.1:8003` para producao interna. O Apache HTTPS `/api/internal/` aponta para `8003`, sem expor diretamente as portas internas na rede. O registro anterior de validacao em `8002` permanece como historico de homologacao.
 
-Proxima decisao tecnica recomendada: planejar um ambiente controlado para validar `/interno/` contra `/api/internal/auth/me` real, mantendo `8002` restrita a loopback e preferindo proxy interno de homologacao no Apache com rota controlada. Essa etapa deve ter backup da configuracao, rollback, validacao do Geoportal publico e confirmacao de que nao ha `/api/internal/auth/login`, `POST`, `PATCH`, login, listagem ou endpoints de negocio nessa validacao. Nao expor producao publica e nao inserir botao publico de login.
+Proxima decisao tecnica recomendada: manter o piloto controlado, validar periodicamente `/interno/` contra `/api/internal/auth/me` real, preservar rollback de `/api/internal/` para `8002` se necessario e confirmar que login, listagem, detalhe, historico, observacoes, status, prioridade e logout continuam sem expor portas internas diretamente.
 
 Registro de integracao de desenvolvimento: apos a validacao do proxy Apache real para `https://geoserver.amambai.ms.gov.br/api/internal/`, o Vite local pode usar proxy apenas em `npm run dev` para encaminhar `/api/internal/` ao dominio HTTPS de homologacao. Essa configuracao serve somente para validar a shell local `/interno/` chamando `GET /api/internal/auth/me` por caminho relativo; nao altera build de producao, nao cria login, nao chama listagem, nao habilita `POST`/`PATCH` e nao armazena token.
 
