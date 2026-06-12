@@ -1,4 +1,18 @@
 import './internal-iluminacao-shell.css';
+import Feature from 'ol/Feature.js';
+import Map from 'ol/Map.js';
+import View from 'ol/View.js';
+import Point from 'ol/geom/Point.js';
+import TileLayer from 'ol/layer/Tile.js';
+import VectorLayer from 'ol/layer/Vector.js';
+import { fromLonLat } from 'ol/proj.js';
+import OSM from 'ol/source/OSM.js';
+import VectorSource from 'ol/source/Vector.js';
+import CircleStyle from 'ol/style/Circle.js';
+import Fill from 'ol/style/Fill.js';
+import Stroke from 'ol/style/Stroke.js';
+import Style from 'ol/style/Style.js';
+import { buildGoogleMapsRouteUrl } from './geoportal-routes.js';
 
 const AUTH_ME_ENDPOINT = '/api/internal/auth/me';
 const AUTH_LOGIN_ENDPOINT = '/api/internal/auth/login';
@@ -14,6 +28,7 @@ const STATUS_OBSERVACAO_MAX_LENGTH = 1000;
 const PRIORIDADE_OBSERVACAO_MIN_LENGTH = 3;
 const PRIORIDADE_OBSERVACAO_MAX_LENGTH = 1000;
 const INTERNAL_MUTATING_REQUEST_HEADER = 'X-Geoportal-Internal-Request';
+const OPERATIONAL_MAP_ZOOM = 17;
 
 const SESSION_STATES = {
   checking_session: {
@@ -154,6 +169,18 @@ const priorityOptions = [
   'alta',
   'urgente'
 ];
+
+const operationalMapStatusColors = {
+  aberta: '#2563eb',
+  em_triagem: '#7c3aed',
+  encaminhada: '#0f766e',
+  em_execucao: '#ea580c',
+  aguardando_material: '#ca8a04',
+  nao_localizado: '#64748b',
+  resolvida: '#16a34a',
+  indeferida: '#b91c1c',
+  cancelada: '#475569'
+};
 
 const problemTypeLabels = {
   lampada_apagada: 'L\u00e2mpada apagada',
@@ -424,6 +451,7 @@ function createSessionState(overrides = {}) {
 }
 
 let currentState = createSessionState();
+let operationalDetailMap = null;
 
 function renderApp(root, state) {
   currentState = {
@@ -503,6 +531,68 @@ function isOptionalText(value) {
   return value === null || value === undefined || typeof value === 'string';
 }
 
+function isOptionalCoordinatePayloadValue(value) {
+  return value === null
+    || value === undefined
+    || typeof value === 'number'
+    || typeof value === 'string';
+}
+
+function parseCoordinateValue(value) {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const text = value.trim();
+
+  if (!text) {
+    return null;
+  }
+
+  const normalizedText = text.replace(',', '.');
+
+  if (!/^[+-]?\d+(?:\.\d+)?$/.test(normalizedText)) {
+    return null;
+  }
+
+  const parsed = Number(normalizedText);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeSolicitacaoCoordinate(latitudeValue, longitudeValue) {
+  const latitude = parseCoordinateValue(latitudeValue);
+  const longitude = parseCoordinateValue(longitudeValue);
+
+  if (
+    latitude === null
+    || longitude === null
+    || latitude < -90
+    || latitude > 90
+    || longitude < -180
+    || longitude > 180
+  ) {
+    return null;
+  }
+
+  return { latitude, longitude };
+}
+
+function formatCoordinateValue(value) {
+  return Number.isFinite(value) ? value.toFixed(6) : 'Não disponível';
+}
+
+function buildInternalGoogleMapsRouteUrl(coordinate) {
+  if (!coordinate) {
+    return '#';
+  }
+
+  return buildGoogleMapsRouteUrl([coordinate.longitude, coordinate.latitude], null);
+}
+
 function isValidSolicitacaoDetailPayload(payload) {
   return Boolean(
     payload
@@ -526,6 +616,8 @@ function isValidSolicitacaoDetailPayload(payload) {
       && typeof payload.criado_em === 'string'
       && typeof payload.atualizado_em === 'string'
       && isOptionalText(payload.finalizado_em)
+      && isOptionalCoordinatePayloadValue(payload.latitude)
+      && isOptionalCoordinatePayloadValue(payload.longitude)
   );
 }
 
@@ -646,13 +738,19 @@ function formatDateTime(value) {
 
 export {
   INTERNAL_MUTATING_REQUEST_HEADER,
+  buildInternalGoogleMapsRouteUrl,
   buildUpdateSolicitacaoPrioridadeUrl,
   canUpdatePrioridade,
   createDetalheState,
   createPrioridadeFormState,
   fetchUpdateSolicitacaoPrioridade,
   getPrioridadeFormValidationMessage,
-  renderPriorityUpdatePanel
+  isMaintenanceLikeUser,
+  normalizeSolicitacaoCoordinate,
+  renderCoordinateRouteSection,
+  renderObservacoesPanel,
+  renderPriorityUpdatePanel,
+  renderStatusUpdatePanel
 };
 
 function toDisplaySolicitacao(item) {
@@ -660,6 +758,10 @@ function toDisplaySolicitacao(item) {
   const id = Number.isInteger(safeItem.id) && safeItem.id > 0
     ? safeItem.id
     : null;
+  const coordinates = normalizeSolicitacaoCoordinate(
+    safeItem.latitude,
+    safeItem.longitude
+  );
 
   return {
     id,
@@ -671,6 +773,8 @@ function toDisplaySolicitacao(item) {
     prioridadeKey: safeText(safeItem.prioridade, ''),
     prioridade: formatPriorityLabel(safeItem.prioridade),
     posteId: safeText(safeItem.poste_id, 'Sem poste'),
+    coordinates,
+    hasCoordinates: Boolean(coordinates),
     criadoEm: formatDateTime(safeItem.criado_em),
     atualizadoEm: formatDateTime(safeItem.atualizado_em),
     duplicidadeSuspeita: safeItem.duplicidade_suspeita === true ? 'Sim' : 'Não'
@@ -679,6 +783,10 @@ function toDisplaySolicitacao(item) {
 
 function toDisplaySolicitacaoDetail(item) {
   const safeItem = item && typeof item === 'object' ? item : {};
+  const coordinates = normalizeSolicitacaoCoordinate(
+    safeItem.latitude,
+    safeItem.longitude
+  );
 
   return {
     id: Number.isInteger(safeItem.id) ? safeItem.id : null,
@@ -690,6 +798,15 @@ function toDisplaySolicitacaoDetail(item) {
     prioridadeKey: safeText(safeItem.prioridade, ''),
     prioridade: formatPriorityLabel(safeItem.prioridade),
     posteId: safeText(safeItem.poste_id, 'Sem poste'),
+    coordinates,
+    hasCoordinates: Boolean(coordinates),
+    latitudeText: coordinates
+      ? formatCoordinateValue(coordinates.latitude)
+      : 'Não disponível',
+    longitudeText: coordinates
+      ? formatCoordinateValue(coordinates.longitude)
+      : 'Não disponível',
+    googleMapsRouteUrl: buildInternalGoogleMapsRouteUrl(coordinates),
     origem: formatOriginLabel(safeItem.origem),
     localizacaoTipo: formatLocationTypeLabel(safeItem.localizacao_tipo),
     duplicidadeSuspeita: safeItem.duplicidade_suspeita === true ? 'Sim' : 'Não',
@@ -963,6 +1080,16 @@ function canUpdateStatus(state) {
 function canUpdatePrioridade(state) {
   return state.sessionState === 'authenticated'
     && hasPermission(state, PERMISSIONS.iluminacaoPriority);
+}
+
+function isMaintenanceLikeUser(permissions = []) {
+  const normalizedPermissions = normalizePermissions(permissions);
+  const canReadIluminacao = normalizedPermissions.includes(PERMISSIONS.iluminacaoRead);
+  const hasAdminAccess = normalizedPermissions.some((permission) => (
+    permission.startsWith('admin.')
+  ));
+
+  return canReadIluminacao && !hasAdminAccess;
 }
 
 function getModuleView(module, state) {
@@ -2033,6 +2160,74 @@ function renderStatusUpdatePanel(state, detail) {
   `;
 }
 
+function renderCoordinateRouteSection(item) {
+  if (!item.hasCoordinates || !item.coordinates) {
+    return `
+      <section class="internal-detail-section internal-coordinate-section" aria-label="Coordenadas e rota">
+        <h4>Coordenadas e rota</h4>
+        <p class="internal-sensitive-note">
+          Coordenada não disponível para este chamado.
+        </p>
+        <span class="internal-route-disabled" aria-disabled="true">
+          Abrir rota no Google Maps
+        </span>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="internal-detail-section internal-coordinate-section" aria-label="Coordenadas e rota">
+      <h4>Coordenadas e rota</h4>
+      ${renderDetailDefinitionList([
+        { label: 'Latitude', value: item.latitudeText },
+        { label: 'Longitude', value: item.longitudeText }
+      ])}
+      <a
+        class="internal-route-action"
+        href="${escapeHtml(item.googleMapsRouteUrl)}"
+        target="_blank"
+        rel="noopener noreferrer"
+        data-google-maps-route
+      >
+        Abrir rota no Google Maps
+      </a>
+      <p class="internal-muted-note">
+        A rota usa apenas a coordenada do chamado. Dados pessoais e observações internas não entram no link.
+      </p>
+    </section>
+  `;
+}
+
+function renderOperationalMapPanel(item) {
+  if (!item.hasCoordinates || !item.coordinates) {
+    return '';
+  }
+
+  return `
+    <section class="internal-card internal-operational-map-card" aria-label="Mapa operacional do chamado">
+      <div class="internal-history-heading">
+        <div>
+          <h3>Mapa operacional</h3>
+          <p>Ponto do chamado centralizado para apoio ao deslocamento.</p>
+        </div>
+        <span class="internal-pill">${escapeHtml(item.status)}</span>
+      </div>
+      <div
+        class="internal-operational-map"
+        data-operational-map
+        data-latitude="${escapeHtml(item.coordinates.latitude)}"
+        data-longitude="${escapeHtml(item.coordinates.longitude)}"
+        data-status="${escapeHtml(item.statusKey)}"
+        role="img"
+        aria-label="Mapa com a localização aproximada do chamado"
+      ></div>
+      <p class="internal-muted-note">
+        Mapa simples com base pública. Camadas internas, dados pessoais e observações não são carregados no mapa.
+      </p>
+    </section>
+  `;
+}
+
 function renderSolicitacaoDetailLoaded(state, detail) {
   const item = detail.item;
 
@@ -2073,10 +2268,9 @@ function renderSolicitacaoDetailLoaded(state, detail) {
             { label: 'Ponto de referência', value: item.pontoReferencia },
             { label: 'Poste próximo informado', value: item.posteProximoInformado }
           ])}
-          <p class="internal-sensitive-note">
-            Coordenadas ficam fora deste painel comum e devem aguardar etapa própria de mapa/localização operacional.
-          </p>
         </section>
+
+        ${renderCoordinateRouteSection(item)}
 
         <section class="internal-detail-section" aria-label="Dados do solicitante">
           <h4>Dados do solicitante</h4>
@@ -2107,6 +2301,7 @@ function renderSolicitacaoDetailLoaded(state, detail) {
         </section>
       </div>
     </article>
+    ${renderOperationalMapPanel(item)}
     ${renderStatusUpdatePanel(state, detail)}
     ${renderPriorityUpdatePanel(state, detail)}
     ${renderHistoricoPanel(state, detail)}
@@ -2273,11 +2468,86 @@ function renderSessionBox(state) {
   `;
 }
 
+function disposeOperationalDetailMap() {
+  if (operationalDetailMap) {
+    operationalDetailMap.setTarget(undefined);
+    operationalDetailMap = null;
+  }
+}
+
+function getOperationalMapStatusColor(statusKey) {
+  return operationalMapStatusColors[statusKey] || '#2563eb';
+}
+
+function renderOperationalMapIntoTarget(target, item) {
+  const center = fromLonLat([item.coordinates.longitude, item.coordinates.latitude]);
+  const marker = new Feature({
+    geometry: new Point(center)
+  });
+  const markerColor = getOperationalMapStatusColor(item.statusKey);
+
+  marker.setStyle(new Style({
+    image: new CircleStyle({
+      radius: 9,
+      fill: new Fill({ color: markerColor }),
+      stroke: new Stroke({
+        color: '#ffffff',
+        width: 3
+      })
+    })
+  }));
+
+  operationalDetailMap = new Map({
+    target,
+    layers: [
+      new TileLayer({
+        source: new OSM()
+      }),
+      new VectorLayer({
+        source: new VectorSource({
+          features: [marker]
+        })
+      })
+    ],
+    view: new View({
+      center,
+      zoom: OPERATIONAL_MAP_ZOOM
+    }),
+    controls: []
+  });
+
+  window.requestAnimationFrame(() => {
+    if (operationalDetailMap) {
+      operationalDetailMap.updateSize();
+    }
+  });
+}
+
+function syncOperationalDetailMap(root, state) {
+  const target = root.querySelector('[data-operational-map]');
+  const item = state.detalhe && state.detalhe.status === 'loaded'
+    ? state.detalhe.item
+    : null;
+
+  disposeOperationalDetailMap();
+
+  if (!target || !item || !item.coordinates) {
+    return;
+  }
+
+  try {
+    renderOperationalMapIntoTarget(target, item);
+  } catch {
+    target.innerHTML = '<p class="internal-map-fallback">Mapa indisponível neste navegador.</p>';
+  }
+}
+
 function renderInternalIluminacaoShell(root, state) {
   const stateInfo = SESSION_STATES[state.sessionState] || SESSION_STATES.technical_error;
+  const maintenanceMode = isMaintenanceLikeUser(state.permissions || []);
 
   root.innerHTML = `
-    <main class="internal-page" aria-labelledby="internal-page-title">
+    <main class="internal-page${maintenanceMode ? ' is-maintenance-mode' : ''}" aria-labelledby="internal-page-title">
       <header class="internal-topbar">
         <div>
           <p class="internal-kicker">Homologação / Integração de sessão</p>
@@ -2312,20 +2582,26 @@ function renderInternalIluminacaoShell(root, state) {
         </aside>
 
         <section class="internal-content" aria-label="Conteúdo do módulo ativo">
-          <section class="internal-summary" aria-labelledby="summary-title">
-            <div class="internal-section-heading">
-              <h2 id="summary-title">Resumo</h2>
-              <p>Indicadores simples calculados a partir da listagem carregada.</p>
-            </div>
-            <div class="internal-summary-grid">
-              ${renderSummaryCards(state)}
-            </div>
-          </section>
+          ${maintenanceMode
+            ? ''
+            : `
+              <section class="internal-summary" aria-labelledby="summary-title">
+                <div class="internal-section-heading">
+                  <h2 id="summary-title">Resumo</h2>
+                  <p>Indicadores simples calculados a partir da listagem carregada.</p>
+                </div>
+                <div class="internal-summary-grid">
+                  ${renderSummaryCards(state)}
+                </div>
+              </section>
+            `}
 
           <section class="internal-module-workspace" aria-labelledby="module-workspace-title">
             <div class="internal-section-heading">
               <h2 id="module-workspace-title">Solicitações de Iluminação</h2>
-              <p>Consulte chamados, abra detalhes e registre interações internas conforme seu perfil.</p>
+              <p>${maintenanceMode
+                ? 'Acompanhe protocolos, fase do atendimento, observações, coordenadas e rota.'
+                : 'Consulte chamados, abra detalhes e registre interações internas conforme seu perfil.'}</p>
             </div>
 
             <div class="internal-workspace">
@@ -2344,6 +2620,8 @@ function renderInternalIluminacaoShell(root, state) {
       </footer>
     </main>
   `;
+
+  syncOperationalDetailMap(root, state);
 }
 
 async function fetchCurrentSession() {
