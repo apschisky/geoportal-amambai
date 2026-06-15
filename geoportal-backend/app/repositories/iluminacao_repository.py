@@ -230,6 +230,7 @@ def list_solicitacoes_internas(
     prioridade: str | None = None,
     criado_de: datetime | None = None,
     criado_ate: datetime | None = None,
+    ativos: bool | None = None,
     limit: int = 50,
     offset: int = 0,
     engine: Engine | None = None,
@@ -296,6 +297,15 @@ def list_solicitacoes_internas(
               CAST(:criado_ate AS timestamp) IS NULL
               OR criado_em <= CAST(:criado_ate AS timestamp)
           )
+          AND (
+              CAST(:ativos AS boolean) IS NOT TRUE
+              OR status NOT IN (
+                  'resolvida',
+                  'cancelada',
+                  'indeferida',
+                  'nao_localizado'
+              )
+          )
         ORDER BY criado_em DESC, id DESC
         LIMIT :limit
         OFFSET :offset
@@ -334,6 +344,15 @@ def list_solicitacoes_internas(
               CAST(:criado_ate AS timestamp) IS NULL
               OR criado_em <= CAST(:criado_ate AS timestamp)
           )
+          AND (
+              CAST(:ativos AS boolean) IS NOT TRUE
+              OR status NOT IN (
+                  'resolvida',
+                  'cancelada',
+                  'indeferida',
+                  'nao_localizado'
+              )
+          )
         """
     )
 
@@ -345,6 +364,7 @@ def list_solicitacoes_internas(
         "prioridade": prioridade,
         "criado_de": criado_de,
         "criado_ate": criado_ate,
+        "ativos": ativos,
         "limit": limit,
         "offset": offset,
     }

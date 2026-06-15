@@ -215,6 +215,7 @@ def test_internal_solicitacoes_returns_200_for_authenticated_user_with_permissio
             "prioridade": "normal",
             "criado_de": "2026-05-01T00:00:00Z",
             "criado_ate": "2026-05-31T23:59:00Z",
+            "ativos": "true",
             "limit": 25,
             "offset": 5,
         },
@@ -262,9 +263,49 @@ def test_internal_solicitacoes_returns_200_for_authenticated_user_with_permissio
         "prioridade": "normal",
         "criado_de": datetime(2026, 5, 1, 0, 0, tzinfo=UTC),
         "criado_ate": datetime(2026, 5, 31, 23, 59, tzinfo=UTC),
+        "ativos": True,
         "limit": 25,
         "offset": 5,
     }
+
+
+def test_internal_solicitacoes_ativos_false_and_absent_preserve_full_listing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+    service_calls: list[dict[str, object]] = []
+
+    def fake_listar_solicitacoes_internas(
+        **kwargs: object,
+    ) -> IluminacaoSolicitacoesInternasResult:
+        service_calls.append(dict(kwargs))
+        return IluminacaoSolicitacoesInternasResult(
+            items=[fake_solicitacao()],
+            total=1,
+        )
+
+    monkeypatch.setattr(
+        internal_iluminacao,
+        "listar_solicitacoes_internas",
+        fake_listar_solicitacoes_internas,
+    )
+    client = TestClient(app)
+
+    response_false = client.get(INTERNAL_SOLICITACOES_PATH, params={"ativos": "false"})
+    response_absent = client.get(INTERNAL_SOLICITACOES_PATH)
+
+    assert response_false.status_code == 200
+    assert response_absent.status_code == 200
+    assert service_calls[0]["ativos"] is False
+    assert service_calls[1]["ativos"] is None
 
 
 def test_internal_solicitacao_detail_returns_200_for_authenticated_user_with_permission(
@@ -1884,6 +1925,7 @@ def test_internal_solicitacoes_validates_query_params(
         {"protocolo": ""},
         {"poste_id": ""},
         {"prioridade": ""},
+        {"ativos": "abc"},
         {"limit": 0},
         {"limit": 101},
         {"offset": -1},

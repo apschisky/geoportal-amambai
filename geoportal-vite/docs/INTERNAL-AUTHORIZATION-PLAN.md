@@ -4,7 +4,7 @@ Este documento registra a arquitetura funcional de autorizacao do Geoportal Inte
 
 Nota: o endpoint de detalhe `GET /api/internal/iluminacao/solicitacoes/{id}` foi implementado (commit `d198710`) e validado localmente e em homologacao; consulte `API-ENDPOINTS-ILUMINACAO.md` para resumo da validacao e resultados de teste.
 
-Nota operacional: a listagem interna `GET /api/internal/iluminacao/solicitacoes` foi aprimorada no commit `4731edc` com filtros por `protocolo`, `poste_id`, `tipo_problema`, `prioridade`, `criado_de`, `criado_ate` e campo `total` para paginacao. A validacao ocorreu em homologacao interna com sessao/permissao real, mantendo leitura somente, sem endpoint mutavel, sem migration, sem schema, sem producao, sem proxy e sem frontend.
+Nota operacional: a listagem interna `GET /api/internal/iluminacao/solicitacoes` foi aprimorada com filtros por `protocolo`, `poste_id`, `tipo_problema`, `prioridade`, `criado_de`, `criado_ate`, `ativos=true` para manutencao e campo `total` para paginacao. A validacao manteve leitura somente, permissao `iluminacao.solicitacoes.ler`, sem endpoint mutavel, sem migration e sem alteracao de schema.
 
 O modelo conceitual transversal de dados de autenticacao/autorizacao esta em `docs/INTERNAL-AUTH-DATA-MODEL.md`.
 
@@ -311,7 +311,7 @@ Resultado final:
 
 Proximos passos: encerrar fase administrativa de autenticacao/autorizacao com documentacao consolidada; depois planejar primeiro endpoint interno de negocio do modulo Iluminacao; tela interna continua etapa posterior.
 
-Primeiro endpoint interno de negocio implementado: `GET /api/internal/iluminacao/solicitacoes` foi criado como rota somente leitura para listar solicitacoes de Iluminacao Publica. A rota fica sob `GEOPORTAL_INTERNAL_ROUTES_ENABLED`, exige sessao autenticada e `require_permission("iluminacao.solicitacoes.ler")`, e nao exige header mutavel por ser GET. A primeira versao aceita apenas `status`, `limit` e `offset`, retornando `items`, `limit` e `offset`; filtros mais amplos e agregacoes ficam para fases futuras. A resposta inclui coordenadas `latitude`/`longitude` em WGS84 calculadas a partir de `geom` com `ST_Transform(geom, 4326)`. A implementacao nao altera a API publica, nao cria endpoint mutavel, migration, schema, usuario, perfil, permissao real, role, GRANT, producao, NSSM, `.env`, frontend ou tela.
+Primeiro endpoint interno de negocio implementado: `GET /api/internal/iluminacao/solicitacoes` foi criado como rota somente leitura para listar solicitacoes de Iluminacao Publica. A rota fica sob `GEOPORTAL_INTERNAL_ROUTES_ENABLED`, exige sessao autenticada e `require_permission("iluminacao.solicitacoes.ler")`, e nao exige header mutavel por ser GET. A primeira versao historica aceitava apenas `status`, `limit` e `offset`; a versao atual tambem cobre filtros operacionais e `ativos=true` para manutencao, mantendo `items`, `limit`, `offset` e `total` coerente com a paginacao. A resposta inclui coordenadas `latitude`/`longitude` em WGS84 calculadas a partir de `geom` com `ST_Transform(geom, 4326)`. A implementacao nao altera a API publica, nao cria endpoint mutavel, migration, schema, usuario, perfil, permissao real, role, GRANT, producao, NSSM, `.env`, frontend ou tela.
 
 ## 1. Separacao publico/interno
 

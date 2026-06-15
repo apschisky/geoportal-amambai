@@ -437,6 +437,7 @@ def test_list_solicitacoes_internas_uses_explicit_columns_and_postgis_transform(
         "prioridade": None,
         "criado_de": None,
         "criado_ate": None,
+        "ativos": None,
         "limit": 25,
         "offset": 5,
     }
@@ -448,6 +449,7 @@ def test_list_solicitacoes_internas_uses_explicit_columns_and_postgis_transform(
         "prioridade": None,
         "criado_de": None,
         "criado_ate": None,
+        "ativos": None,
     }
 
     sql = str(engine.connection.statements[0])
@@ -482,6 +484,12 @@ def test_list_solicitacoes_internas_uses_explicit_columns_and_postgis_transform(
     assert "criado_em >= CAST(:criado_de AS timestamp)" in sql
     assert ":criado_ate" in sql
     assert "criado_em <= CAST(:criado_ate AS timestamp)" in sql
+    assert ":ativos" in sql
+    assert "status NOT IN" in sql
+    assert "'resolvida'" in sql
+    assert "'cancelada'" in sql
+    assert "'indeferida'" in sql
+    assert "'nao_localizado'" in sql
     assert "LIMIT :limit" in sql
     assert "OFFSET :offset" in sql
     assert "ORDER BY criado_em DESC, id DESC" in sql
@@ -515,6 +523,7 @@ def test_list_solicitacoes_internas_allows_empty_status_filter_with_bind_param()
         "prioridade": None,
         "criado_de": None,
         "criado_ate": None,
+        "ativos": None,
         "limit": 50,
         "offset": 0,
     }
@@ -551,6 +560,7 @@ def test_list_solicitacoes_internas_filters_use_bind_params_without_interpolatio
         "prioridade": "alta",
         "criado_de": created_from,
         "criado_ate": created_to,
+        "ativos": None,
         "limit": 10,
         "offset": 20,
     }
@@ -562,10 +572,43 @@ def test_list_solicitacoes_internas_filters_use_bind_params_without_interpolatio
         "prioridade": "alta",
         "criado_de": created_from,
         "criado_ate": created_to,
+        "ativos": None,
     }
     for value in ("IP-2026", "POSTE-010", "lampada_apagada", "alta", "em_triagem"):
         assert value not in sql
         assert value not in count_sql
+
+
+def test_list_solicitacoes_internas_ativos_true_filters_terminal_statuses() -> None:
+    row = internal_solicitacao_row()
+    row["status"] = "em_execucao"
+    engine = FakeEngine([row])
+
+    response = list_solicitacoes_internas(
+        ativos=True,
+        limit=20,
+        offset=0,
+        engine=engine,
+    )
+
+    sql = str(engine.connection.statements[0])
+    count_sql = str(engine.connection.statements[1])
+    assert response.total == 1
+    assert engine.connection.params_history[0]["ativos"] is True
+    assert engine.connection.params_history[1]["ativos"] is True
+    assert "status NOT IN" in sql
+    assert "status NOT IN" in count_sql
+    for terminal_status in (
+        "'resolvida'",
+        "'cancelada'",
+        "'indeferida'",
+        "'nao_localizado'",
+    ):
+        assert terminal_status in sql
+        assert terminal_status in count_sql
+    assert "LIMIT :limit" not in count_sql
+    assert "OFFSET :offset" not in count_sql
+    assert "ORDER BY" not in count_sql
 
 
 def test_list_solicitacoes_internas_rejects_invalid_pagination_without_sql() -> None:

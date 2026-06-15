@@ -234,6 +234,7 @@ def listar_solicitacoes_internas(
     prioridade: str | None = None,
     criado_de: datetime | None = None,
     criado_ate: datetime | None = None,
+    ativos: bool | None = None,
     limit: int = 50,
     offset: int = 0,
 ) -> IluminacaoSolicitacoesInternasResult:
@@ -249,6 +250,7 @@ def listar_solicitacoes_internas(
             prioridade=_normalize_optional_filter(prioridade),
             criado_de=criado_de,
             criado_ate=criado_ate,
+            ativos=ativos,
             limit=limit,
             offset=offset,
         )

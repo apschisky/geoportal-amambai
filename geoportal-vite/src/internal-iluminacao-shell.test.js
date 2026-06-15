@@ -4,8 +4,10 @@ import {
   INTERNAL_MUTATING_REQUEST_HEADER,
   buildInternalGoogleMapsRouteUrl,
   buildInternalWhatsappUrl,
+  buildSolicitacoesUrl,
   canUpdatePrioridade,
   createDetalheState,
+  fetchSolicitacoesInternas,
   fetchUpdateSolicitacaoStatus,
   fetchUpdateSolicitacaoPrioridade,
   getPrioridadeFormValidationMessage,
@@ -85,6 +87,7 @@ function solicitacoesReadyState(permissions = [], itemOverrides = {}) {
 function jsonResponse(status, payload) {
   return {
     status,
+    ok: status >= 200 && status < 300,
     json: async () => payload
   };
 }
@@ -455,6 +458,39 @@ describe('internal modo manutencao', () => {
     expect(adminMenu).toContain('Início');
     expect(adminMenu).toContain('Administração do Sistema');
     expect(adminMenu).toContain('Planejado');
+  });
+
+  it('monta URL da listagem ativa somente quando solicitado', () => {
+    const maintenanceUrl = buildSolicitacoesUrl(0, { ativos: true });
+    const adminUrl = buildSolicitacoesUrl(20, { ativos: false });
+
+    expect(maintenanceUrl).toBe(
+      '/api/internal/iluminacao/solicitacoes?limit=20&offset=0&ativos=true'
+    );
+    expect(adminUrl).toBe(
+      '/api/internal/iluminacao/solicitacoes?limit=20&offset=20'
+    );
+  });
+
+  it('chama listagem com ativos true para manutencao e sem filtro para admin', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(jsonResponse(200, {
+        items: [],
+        limit: 20,
+        offset: 0,
+        total: 0
+      }));
+
+    await fetchSolicitacoesInternas(0, { ativos: true });
+    await fetchSolicitacoesInternas(0, { ativos: false });
+
+    expect(fetchMock.mock.calls[0][0]).toContain('ativos=true');
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({
+      method: 'GET',
+      credentials: 'include'
+    });
+    expect(fetchMock.mock.calls[1][0]).not.toContain('ativos=');
   });
 
   it('mantem controle de prioridade oculto na listagem sem permissao especifica', () => {

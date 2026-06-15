@@ -767,10 +767,12 @@ export {
   INTERNAL_MUTATING_REQUEST_HEADER,
   buildInternalGoogleMapsRouteUrl,
   buildInternalWhatsappUrl,
+  buildSolicitacoesUrl,
   buildUpdateSolicitacaoPrioridadeUrl,
   canUpdatePrioridade,
   createDetalheState,
   createPrioridadeFormState,
+  fetchSolicitacoesInternas,
   fetchUpdateSolicitacaoStatus,
   fetchUpdateSolicitacaoPrioridade,
   getPrioridadeFormValidationMessage,
@@ -1058,13 +1060,23 @@ function getPrioridadeFormValidationMessage(currentPriority, selectedPriority, o
     || getPrioridadeObservacaoValidationMessage(observacao);
 }
 
-function buildSolicitacoesUrl(offset = 0) {
+function buildSolicitacoesUrl(offset = 0, options = {}) {
   const params = new URLSearchParams({
     limit: String(SOLICITACOES_PAGE_SIZE),
     offset: String(Math.max(0, offset))
   });
 
+  if (options.ativos === true) {
+    params.set('ativos', 'true');
+  }
+
   return `${INTERNAL_SOLICITACOES_ENDPOINT}?${params.toString()}`;
+}
+
+function getSolicitacoesListOptions(state) {
+  return {
+    ativos: isMaintenanceLikeUser(state.permissions || [])
+  };
 }
 
 function buildSolicitacaoDetailUrl(solicitacaoId) {
@@ -3084,8 +3096,8 @@ async function fetchLogoutInternalSession() {
   };
 }
 
-async function fetchSolicitacoesInternas(offset = 0) {
-  const response = await fetch(buildSolicitacoesUrl(offset), {
+async function fetchSolicitacoesInternas(offset = 0, options = {}) {
+  const response = await fetch(buildSolicitacoesUrl(offset, options), {
     method: 'GET',
     credentials: 'include',
     headers: {
@@ -3760,7 +3772,10 @@ async function loadSolicitacoes(root, state, offset = 0) {
   renderApp(root, loadingState);
 
   try {
-    const solicitacoes = await fetchSolicitacoesInternas(offset);
+    const solicitacoes = await fetchSolicitacoesInternas(
+      offset,
+      getSolicitacoesListOptions(state)
+    );
 
     if (solicitacoes.status === 'unauthenticated') {
       renderApp(root, createSessionState({
@@ -4319,7 +4334,10 @@ async function submitStatusUpdate(root, state, form) {
 
     if (canListSolicitacoes(state)) {
       try {
-        solicitacoes = await fetchSolicitacoesInternas(solicitacoes.offset || 0);
+        solicitacoes = await fetchSolicitacoesInternas(
+          solicitacoes.offset || 0,
+          getSolicitacoesListOptions(state)
+        );
       } catch {
         solicitacoes = createSolicitacoesState({
           status: 'error',
@@ -4468,7 +4486,10 @@ async function submitListStatusUpdate(root, state, form) {
       && nextDetail.item.id === solicitacaoId;
 
     if (canListSolicitacoes(state)) {
-      solicitacoes = await fetchSolicitacoesInternas(solicitacoes.offset || 0);
+      solicitacoes = await fetchSolicitacoesInternas(
+        solicitacoes.offset || 0,
+        getSolicitacoesListOptions(state)
+      );
       solicitacoes = {
         ...solicitacoes,
         message: 'Fase atualizada. Listagem recarregada.'
@@ -4693,7 +4714,10 @@ async function submitPrioridadeUpdate(root, state, form) {
 
     if (canListSolicitacoes(state)) {
       try {
-        solicitacoes = await fetchSolicitacoesInternas(solicitacoes.offset || 0);
+        solicitacoes = await fetchSolicitacoesInternas(
+          solicitacoes.offset || 0,
+          getSolicitacoesListOptions(state)
+        );
       } catch {
         solicitacoes = createSolicitacoesState({
           status: 'error',

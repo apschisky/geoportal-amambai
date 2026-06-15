@@ -64,6 +64,7 @@ def list_internal_solicitacoes(
     prioridade: str | None = Query(default=None, min_length=1, max_length=40),
     criado_de: datetime | None = Query(default=None),
     criado_ate: datetime | None = Query(default=None),
+    ativos: bool | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     _current_session: AuthenticatedCurrentSession = Depends(
@@ -79,6 +80,7 @@ def list_internal_solicitacoes(
             prioridade=prioridade,
             criado_de=criado_de,
             criado_ate=criado_ate,
+            ativos=ativos,
             limit=limit,
             offset=offset,
         )

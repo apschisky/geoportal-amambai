@@ -538,6 +538,7 @@ def test_listar_solicitacoes_internas_calls_repository_with_filters(
         prioridade=" normal ",
         criado_de=datetime(2026, 5, 1, 0, 0),
         criado_ate=datetime(2026, 5, 31, 23, 59),
+        ativos=True,
         limit=25,
         offset=5,
     )
@@ -552,6 +553,7 @@ def test_listar_solicitacoes_internas_calls_repository_with_filters(
         "prioridade": "normal",
         "criado_de": datetime(2026, 5, 1, 0, 0),
         "criado_ate": datetime(2026, 5, 31, 23, 59),
+        "ativos": True,
         "limit": 25,
         "offset": 5,
     }
