@@ -232,7 +232,23 @@ Campos retornados por item:
 
 Fases futuras podem adicionar filtros por regiao, resumo por status e agregacoes operacionais. Esses campos nao fazem parte desta versao para manter menor escopo e menor risco.
 
+Filtro futuro recomendado para a visao de manutencao: `ativos=true` ou parametro equivalente. O objetivo e fazer o backend retornar apenas chamados nao terminais para a equipe de campo, antes da paginacao, evitando depender apenas de filtro visual no frontend quando houver muitos chamados ou paginas com finalizados. Comportamento esperado: `ativos=true` exclui `resolvida`, `cancelada`, `indeferida` e `nao_localizado`; ausencia do filtro ou `ativos=false` mantem a listagem completa para perfis autorizados. O backend deve continuar aplicando sessao, permissao, bind parameters, paginacao correta, respostas 401/403/422/503 sanitizadas e nenhum vazamento de SQL, role, GRANT, senha, token, cookie, hash, `session_secret` ou `DATABASE_URL`.
+
 Erros: 401 sem sessao, 403 sem permissao, 422 para query invalida e 503 generico se o banco estiver indisponivel, sem expor SQL, traceback, host, role, segredo ou `DATABASE_URL`.
+
+### `GET /api/internal/iluminacao/relatorios/solicitacoes` (planejado)
+
+Finalidade futura: gerar relatorio administrativo sanitizado de solicitacoes/servicos de Iluminacao Publica, por endpoint backend autorizado. Este contrato ainda nao esta implementado e nao deve ser substituido por exportacao simples da tabela renderizada no frontend, porque a tabela pode estar paginada, filtrada visualmente ou incompleta.
+
+Escopo recomendado para a versao 1:
+
+- Disponivel somente para perfil administrativo/autorizado; nao disponivel para manutencao.
+- Filtros obrigatorios ou recomendados: `data_inicial`, `data_final`, `status` opcional, `prioridade` opcional e `tipo_problema` opcional.
+- Formato: CSV compativel com Excel ou XLSX se o projeto aprovar dependencia/geracao backend.
+- Colunas sanitizadas: `protocolo`, `status`, `prioridade`, `tipo_problema`, `poste_id`, `origem`, `localizacao_tipo`, bairro/rua quando ja existirem no contrato, `criado_em`, `atualizado_em`, `finalizado_em`, tempo ate finalizacao quando calculavel com seguranca e `duplicidade_suspeita`.
+- Excluir por padrao: nome do solicitante, telefone/WhatsApp, observacoes internas livres, descricao livre do cidadao e campos com risco de dados pessoais/LGPD.
+- Indicadores por periodo: total, abertos, em andamento, resolvidos, cancelados, indeferidos, nao localizados, por prioridade e por tipo de problema.
+- Permissao futura pode ser especifica para relatorios/exportacao, separada das permissoes operacionais de manutencao.
 
 **Validacao operacional (filtros e paginacao da listagem interna)**
 

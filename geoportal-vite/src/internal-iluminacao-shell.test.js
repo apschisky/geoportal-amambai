@@ -305,6 +305,71 @@ describe('internal modo manutencao', () => {
     expect(html).not.toContain('Duplicidade');
   });
 
+  it('oculta status terminal da listagem de manutencao', () => {
+    const html = renderSolicitacoesPanel({
+      sessionState: 'authenticated',
+      permissions: [readPermission, statusPermission],
+      solicitacoes: {
+        status: 'ready',
+        items: [
+          listItem(),
+          listItem({
+            id: 11,
+            protocolo: 'IP-2026-000010',
+            status: 'Resolvida',
+            statusKey: 'Resolvida',
+            prioridade: 'Normal'
+          }),
+          listItem({
+            id: 12,
+            protocolo: 'IP-2026-000011',
+            status: 'Não localizado',
+            statusKey: 'Não localizado',
+            prioridade: 'Alta'
+          })
+        ],
+        total: 3,
+        limit: 20,
+        offset: 0,
+        message: 'Solicitacoes carregadas.'
+      },
+      detalhe: createDetalheState()
+    });
+
+    expect(html).toContain('IP-2026-000009');
+    expect(html).not.toContain('IP-2026-000010');
+    expect(html).not.toContain('IP-2026-000011');
+    expect(html).toContain('1 ativo(s) nesta página');
+  });
+
+  it('mantem status terminal visivel para usuario administrativo', () => {
+    const html = renderSolicitacoesPanel({
+      sessionState: 'authenticated',
+      permissions: [readPermission, 'admin.usuarios.ler'],
+      solicitacoes: {
+        status: 'ready',
+        items: [
+          listItem({
+            id: 11,
+            protocolo: 'IP-2026-000010',
+            status: 'Resolvida',
+            statusKey: 'resolvida',
+            prioridade: 'Normal'
+          })
+        ],
+        total: 1,
+        limit: 20,
+        offset: 0,
+        message: 'Solicitacoes carregadas.'
+      },
+      detalhe: createDetalheState()
+    });
+
+    expect(html).toContain('IP-2026-000010');
+    expect(html).toContain('Resolvida');
+    expect(html).toContain('1 registro(s)');
+  });
+
   it('mantem visual completo para usuario administrativo', () => {
     const html = renderSolicitacoesPanel(
       solicitacoesReadyState([readPermission, 'admin.usuarios.ler'])

@@ -798,7 +798,7 @@ function toDisplaySolicitacao(item) {
   return {
     id,
     protocolo: safeText(safeItem.protocolo),
-    statusKey: safeText(safeItem.status, ''),
+    statusKey: normalizeStatusKey(safeItem.status),
     status: formatStatusLabel(safeItem.status),
     tipoProblemaKey: safeText(safeItem.tipo_problema, ''),
     tipoProblema: formatProblemTypeLabel(safeItem.tipo_problema),
@@ -823,7 +823,7 @@ function toDisplaySolicitacaoDetail(item) {
   return {
     id: Number.isInteger(safeItem.id) ? safeItem.id : null,
     protocolo: safeText(safeItem.protocolo),
-    statusKey: safeText(safeItem.status, ''),
+    statusKey: normalizeStatusKey(safeItem.status),
     status: formatStatusLabel(safeItem.status),
     tipoProblemaKey: safeText(safeItem.tipo_problema, ''),
     tipoProblema: formatProblemTypeLabel(safeItem.tipo_problema),
@@ -858,8 +858,25 @@ function formatEventLabel(value) {
   return safeText(value).replaceAll('_', ' ');
 }
 
+function normalizeStatusKey(value) {
+  const status = safeText(value, '').trim().toLowerCase();
+
+  if (!status) {
+    return '';
+  }
+
+  if (statusLabels[status]) {
+    return status;
+  }
+
+  return status
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\s-]+/g, '_');
+}
+
 function formatStatusLabel(value) {
-  const status = safeText(value, '');
+  const status = normalizeStatusKey(value);
   return statusLabels[status] || formatEventLabel(status);
 }
 
@@ -962,7 +979,7 @@ function getAllowedNextStatuses(currentStatus) {
 }
 
 function isTerminalStatus(status) {
-  return terminalStatuses.includes(status);
+  return terminalStatuses.includes(normalizeStatusKey(status));
 }
 
 function getStatusSelectionValidationMessage(currentStatus, selectedStatus) {
@@ -1643,7 +1660,17 @@ function renderSolicitacoesTable(listState, state) {
 
   if (listState.status === 'ready') {
     if (isMaintenanceLikeUser(state.permissions || [])) {
-      return renderMaintenanceSolicitacoesCards(listState.items, state);
+      const activeItems = listState.items.filter((item) => !isTerminalStatus(item.statusKey));
+
+      if (activeItems.length === 0) {
+        return `
+          <div class="internal-table-empty" role="listitem">
+            Nenhuma solicitação ativa nesta página. Chamados finalizados ficam fora da visão de manutenção.
+          </div>
+        `;
+      }
+
+      return renderMaintenanceSolicitacoesCards(activeItems, state);
     }
 
     return renderSolicitacoesRows(listState.items);
@@ -1656,12 +1683,17 @@ function renderSolicitacoesTable(listState, state) {
   `;
 }
 
-function getSolicitacoesStatusText(listState) {
+function getSolicitacoesStatusText(listState, maintenanceMode = false) {
   if (listState.status === 'loading') {
     return 'Carregando';
   }
 
   if (listState.status === 'ready' || listState.status === 'empty') {
+    if (maintenanceMode && Array.isArray(listState.items)) {
+      const activeCount = listState.items.filter((item) => !isTerminalStatus(item.statusKey)).length;
+      return `${activeCount} ativo(s) nesta página`;
+    }
+
     return `${listState.total} registro(s)`;
   }
 
@@ -1705,7 +1737,7 @@ function renderSolicitacoesPanel(state) {
 
       <div class="internal-list-toolbar" aria-label="Controles da listagem">
         <div>
-          <strong>${escapeHtml(getSolicitacoesStatusText(listState))}</strong>
+          <strong>${escapeHtml(getSolicitacoesStatusText(listState, maintenanceMode))}</strong>
           <span>
             Página com até ${escapeHtml(listState.limit)} registros
           </span>
