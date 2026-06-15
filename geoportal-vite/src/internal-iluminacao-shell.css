@@ -686,6 +686,115 @@ textarea:disabled {
   color: #728088;
 }
 
+.internal-maintenance-list-wrap {
+  overflow-x: visible;
+}
+
+.internal-maintenance-list {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+  border: 0;
+  background: transparent;
+}
+
+.internal-maintenance-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #cfdde2;
+  border-left: 4px solid #2f7088;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.internal-maintenance-card-main {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.internal-maintenance-card-main > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.internal-maintenance-card-main strong {
+  color: #142f3d;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.internal-maintenance-card-main span,
+.internal-maintenance-card-main small {
+  color: #52646e;
+  font-weight: 700;
+}
+
+.internal-maintenance-card-main p {
+  margin: 0;
+  color: #243944;
+  font-weight: 700;
+}
+
+.internal-maintenance-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.internal-maintenance-actions .internal-row-action,
+.internal-maintenance-actions .internal-route-action {
+  width: 100%;
+  min-height: 42px;
+  margin: 0;
+}
+
+.internal-maintenance-status,
+.internal-maintenance-observation {
+  border-top: 1px solid #e1e9ec;
+  padding-top: 8px;
+}
+
+.internal-maintenance-status summary,
+.internal-maintenance-observation summary {
+  cursor: pointer;
+  color: #24556a;
+  font-weight: 800;
+}
+
+.internal-list-status-form,
+.internal-list-observation-form {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.internal-list-status-form label,
+.internal-list-observation-form label {
+  color: #243944;
+  font-weight: 800;
+}
+
+.internal-list-status-form select,
+.internal-list-status-form textarea,
+.internal-list-observation-form textarea {
+  width: 100%;
+}
+
+.internal-list-status-form textarea,
+.internal-list-observation-form textarea {
+  min-height: 84px;
+}
+
+.internal-maintenance-note {
+  margin: 0;
+  color: #66757d;
+  font-size: 0.9rem;
+}
+
 .internal-detail-grid {
   display: grid;
   grid-column: auto;
@@ -870,6 +979,27 @@ textarea:disabled {
   border: 1px solid #c8d4d9;
   background: #edf2f4;
   color: #687880;
+}
+
+.internal-whatsapp-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  border: 1px solid #2f7c56;
+  border-radius: 6px;
+  background: #2f7c56;
+  color: #ffffff;
+  font-weight: 800;
+  text-align: center;
+  text-decoration: none;
+}
+
+.internal-whatsapp-action:hover,
+.internal-whatsapp-action:focus-visible {
+  background: #286a49;
 }
 
 .internal-operational-map-card {
@@ -1466,6 +1596,18 @@ textarea:disabled {
     min-height: 44px;
   }
 
+  .internal-maintenance-card {
+    padding: 10px;
+  }
+
+  .internal-maintenance-card-main > div {
+    align-items: flex-start;
+  }
+
+  .internal-maintenance-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .internal-detail-sections,
   .internal-observation-form-footer,
   .internal-history-heading,
@@ -1565,6 +1707,15 @@ textarea:disabled {
     grid-template-columns: minmax(104px, 0.42fr) minmax(0, 1fr);
     gap: 8px;
     font-size: 0.92rem;
+  }
+
+  .internal-maintenance-card-main > div {
+    display: grid;
+    gap: 2px;
+  }
+
+  .internal-maintenance-actions {
+    grid-template-columns: 1fr;
   }
 
   .internal-detail-section,

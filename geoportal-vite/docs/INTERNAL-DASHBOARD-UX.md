@@ -621,15 +621,15 @@ Perfil de manutencao validado: o modo visual manutencao foi validado com `manute
 
 Testes do ciclo: `npm.cmd test -- --run src/internal-iluminacao-shell.test.js` passou com 13 testes, cobrindo coordenadas validas/invalidas, link Google Maps seguro, modo manutencao, permissoes de observacao/status/prioridade e renderizacao dos formularios operacionais. `npm.cmd run build` concluiu com sucesso e 233 modules transformed.
 
-Proxima evolucao recomendada: compactar a listagem de manutencao para uso em campo, especialmente no mobile. A listagem de manutencao deve exibir somente `Protocolo`, `Status/Fase`, `Tipo`, `Prioridade`, `Poste` e `Acoes`, mantendo datas completas, descricao, observacoes, duplicidade e dados do solicitante no detalhe. As acoes proximas ao protocolo devem ser `Ver detalhe`, `Tracar rota` e `Alterar fase/status`, sempre respeitando permissao e regra real do backend.
+Marco implementado: a listagem de manutencao foi compactada para uso em campo, especialmente no mobile. Para usuario operacional sem `admin.*`, a listagem exibe somente `Protocolo`, `Status/Fase`, `Tipo`, `Prioridade`, `Poste` e `Acoes`, mantendo datas completas, descricao, observacoes, duplicidade e dados do solicitante no detalhe. As acoes proximas ao protocolo sao `Ver detalhe`, `Tracar rota` e `Alterar fase/status`, sempre respeitando permissao e regra real do backend.
 
-Diretrizes para o proximo ciclo UX:
+Diretrizes implementadas neste ciclo UX:
 
 - `Tracar rota` aparece na listagem somente quando houver latitude/longitude validas;
 - a rota usa somente coordenadas e nao inclui nome, telefone, protocolo, descricao, observacao ou dado pessoal;
 - alteracao rapida de status/fase aparece somente com `iluminacao.solicitacoes.atualizar_status`;
 - prioridade nao deve ser alterada pela listagem de manutencao;
-- telefone/contato clicavel deve ficar somente no detalhe, usando link `https://wa.me/<numero_sanitizado>`, sem mensagem automatica inicialmente e sem incluir protocolo, descricao, localizacao ou dados pessoais adicionais na URL;
+- telefone/contato clicavel fica somente no detalhe, usando link `https://wa.me/<numero_sanitizado>`, sem mensagem automatica e sem incluir protocolo, descricao, localizacao ou dados pessoais adicionais na URL;
 - o backend continua sendo a autoridade real de permissao e transicao.
 
 Card mobile conceitual para ate 20 solicitacoes:
@@ -660,7 +660,7 @@ Este documento complementa:
 ## 14. Proximos passos
 
 - Validar o MVP interno com setor responsavel em piloto controlado, incluindo login, listagem, detalhe, coordenadas, rota, mapa simples, observacoes, status, prioridade e logout.
-- Refinar a listagem de manutencao para uso em campo, com card mobile compacto, acao de rota proxima ao protocolo e alteracao rapida de fase/status conforme permissao.
+- Validar em piloto controlado a listagem de manutencao compacta, com card mobile, acao de rota proxima ao protocolo e alteracao rapida de fase/status conforme permissao.
 - Definir roteiro operacional para uso em campo: quando alterar status, quando alterar prioridade e como escrever observacoes internas sem dados pessoais desnecessarios.
 - Planejar mapa operacional amplo como etapa separada, com contrato de coordenadas/postes, permissao, privacidade e fallback sem rota externa.
 - Planejar dashboard real com indicadores derivados do backend, evitando calculos criticos apenas no frontend.

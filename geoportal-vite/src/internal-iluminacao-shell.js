@@ -593,6 +593,33 @@ function buildInternalGoogleMapsRouteUrl(coordinate) {
   return buildGoogleMapsRouteUrl([coordinate.longitude, coordinate.latitude], null);
 }
 
+function sanitizeInternalWhatsappNumber(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+
+  if (digits.length < 10) {
+    return null;
+  }
+
+  if (digits.startsWith('55') && digits.length >= 12 && digits.length <= 13) {
+    return digits;
+  }
+
+  if (digits.length === 10 || digits.length === 11) {
+    return `55${digits}`;
+  }
+
+  if (digits.length >= 12 && digits.length <= 15) {
+    return digits;
+  }
+
+  return null;
+}
+
+function buildInternalWhatsappUrl(value) {
+  const sanitizedNumber = sanitizeInternalWhatsappNumber(value);
+  return sanitizedNumber ? `https://wa.me/${sanitizedNumber}` : null;
+}
+
 function isValidSolicitacaoDetailPayload(payload) {
   return Boolean(
     payload
@@ -739,17 +766,22 @@ function formatDateTime(value) {
 export {
   INTERNAL_MUTATING_REQUEST_HEADER,
   buildInternalGoogleMapsRouteUrl,
+  buildInternalWhatsappUrl,
   buildUpdateSolicitacaoPrioridadeUrl,
   canUpdatePrioridade,
   createDetalheState,
   createPrioridadeFormState,
+  fetchUpdateSolicitacaoStatus,
   fetchUpdateSolicitacaoPrioridade,
   getPrioridadeFormValidationMessage,
   isMaintenanceLikeUser,
   normalizeSolicitacaoCoordinate,
   renderCoordinateRouteSection,
+  renderModuleMenu,
   renderObservacoesPanel,
   renderPriorityUpdatePanel,
+  renderSolicitacaoDetailLoaded,
+  renderSolicitacoesPanel,
   renderStatusUpdatePanel
 };
 
@@ -1167,11 +1199,21 @@ function getIluminacaoAccessMessage(state) {
 }
 
 function renderModuleMenu(state) {
-  return plannedModules
+  const maintenanceMode = isMaintenanceLikeUser(state.permissions || []);
+  const modules = maintenanceMode
+    ? plannedModules.filter((module) => {
+      const view = getModuleView(module, state);
+      return view.enabled && view.active;
+    })
+    : plannedModules;
+
+  return modules
     .map((module) => {
       const view = getModuleView(module, state);
+      const hideStateLabel = maintenanceMode;
       const classes = [
         'internal-module-button',
+        hideStateLabel ? 'is-maintenance-visible' : '',
         `is-${view.state}`,
         view.active ? 'is-active' : ''
       ].filter(Boolean).join(' ');
@@ -1189,7 +1231,7 @@ function renderModuleMenu(state) {
             <strong>${escapeHtml(module.name)}</strong>
             <small>${escapeHtml(module.description)}</small>
           </span>
-          <em>${escapeHtml(view.label)}</em>
+          ${hideStateLabel ? '' : `<em>${escapeHtml(view.label)}</em>`}
         </button>
       `;
     })
@@ -1339,6 +1381,215 @@ function renderPermissionSummary(state) {
   `;
 }
 
+function renderListRouteAction(item) {
+  if (!item.hasCoordinates || !item.coordinates) {
+    return '';
+  }
+
+  const routeUrl = buildInternalGoogleMapsRouteUrl(item.coordinates);
+
+  if (!routeUrl) {
+    return '';
+  }
+
+  return `
+    <a
+      class="internal-route-action is-compact"
+      href="${escapeHtml(routeUrl)}"
+      target="_blank"
+      rel="noopener noreferrer"
+      data-list-google-maps-route
+    >
+      Traçar rota
+    </a>
+  `;
+}
+
+function renderMaintenanceStatusQuickForm(item, state) {
+  if (!canUpdateStatus(state)) {
+    return '';
+  }
+
+  if (!Number.isInteger(item.id) || item.id <= 0) {
+    return '';
+  }
+
+  if (isTerminalStatus(item.statusKey)) {
+    return `
+      <p class="internal-maintenance-note">
+        Status finalizado. Reabertura exige fluxo administrativo.
+      </p>
+    `;
+  }
+
+  const allowedStatuses = getAllowedNextStatuses(item.statusKey);
+
+  if (allowedStatuses.length === 0) {
+    return '';
+  }
+
+  return `
+    <details class="internal-maintenance-status">
+      <summary>Alterar fase</summary>
+      <form
+        class="internal-list-status-form"
+        data-status-form
+        data-list-status-form
+        data-current-status="${escapeHtml(item.statusKey)}"
+        data-solicitacao-id="${escapeHtml(item.id)}"
+      >
+        <label for="list-status-select-${escapeHtml(item.id)}">Nova fase</label>
+        <select id="list-status-select-${escapeHtml(item.id)}" name="status" data-status-select>
+          <option value="">Selecione</option>
+          ${renderAllowedStatusOptions(item.statusKey, '')}
+        </select>
+
+        <label for="list-status-observacao-${escapeHtml(item.id)}">Justificativa</label>
+        <textarea
+          id="list-status-observacao-${escapeHtml(item.id)}"
+          name="observacao"
+          maxlength="${STATUS_OBSERVACAO_MAX_LENGTH}"
+          data-status-observacao-textarea
+          placeholder="Informe o motivo da alteração"
+        ></textarea>
+
+        <div class="internal-field-meta">
+          <span data-status-counter>0/${STATUS_OBSERVACAO_MAX_LENGTH}</span>
+          <span data-status-validation>Informe ao menos ${STATUS_OBSERVACAO_MIN_LENGTH} caracteres.</span>
+        </div>
+
+        <button type="submit" class="internal-primary-action" data-status-submit disabled>
+          Atualizar fase
+        </button>
+        <p class="internal-form-message" data-list-status-message role="status"></p>
+      </form>
+    </details>
+  `;
+}
+
+function renderMaintenanceObservationQuickForm(item, state) {
+  if (!canCreateObservacao(state)) {
+    return '';
+  }
+
+  if (!Number.isInteger(item.id) || item.id <= 0) {
+    return '';
+  }
+
+  return `
+    <details class="internal-maintenance-observation">
+      <summary>Registrar observação</summary>
+      <form
+        class="internal-list-observation-form"
+        data-observacao-form
+        data-list-observacao-form
+        data-solicitacao-id="${escapeHtml(item.id)}"
+      >
+        <label for="list-observacao-${escapeHtml(item.id)}">Observação interna</label>
+        <textarea
+          id="list-observacao-${escapeHtml(item.id)}"
+          name="observacao"
+          maxlength="${OBSERVACAO_MAX_LENGTH}"
+          data-observacao-textarea
+          placeholder="Ex.: troca realizada, potência da lâmpada ou material usado"
+        ></textarea>
+
+        <div class="internal-field-meta">
+          <span data-observacao-counter>0/${OBSERVACAO_MAX_LENGTH}</span>
+          <span data-observacao-validation>Informe ao menos ${OBSERVACAO_MIN_LENGTH} caracteres.</span>
+        </div>
+
+        <button type="submit" class="internal-secondary-action" data-observacao-submit disabled>
+          Salvar observação
+        </button>
+        <p class="internal-form-message" data-list-observacao-message role="status"></p>
+      </form>
+    </details>
+  `;
+}
+
+function renderMaintenanceSolicitacoesRows(items, state) {
+  return items
+    .map((item) => {
+      const hasValidId = Number.isInteger(item.id) && item.id > 0;
+      const detailButton = hasValidId
+        ? `
+          <button
+            type="button"
+            class="internal-row-action"
+            data-action="load-solicitacao-detail"
+            data-solicitacao-id="${escapeHtml(item.id)}"
+          >
+            Ver detalhe
+          </button>
+        `
+        : '<button type="button" class="internal-row-action" disabled>IndisponÃ­vel</button>';
+
+      return `
+        <article class="internal-maintenance-card" role="listitem">
+          <div class="internal-maintenance-card-main">
+            <div>
+              <strong>${escapeHtml(item.protocolo)}</strong>
+              <span>${escapeHtml(item.status)} - ${escapeHtml(item.prioridade)}</span>
+            </div>
+            <p>${escapeHtml(item.tipoProblema)}</p>
+            <small>Poste ${escapeHtml(item.posteId)}</small>
+          </div>
+
+          <div class="internal-maintenance-actions" aria-label="Ações da solicitação">
+            ${detailButton}
+            ${renderListRouteAction(item)}
+          </div>
+
+          ${renderMaintenanceStatusQuickForm(item, state)}
+          ${renderMaintenanceObservationQuickForm(item, state)}
+        </article>
+      `;
+    })
+    .join('');
+}
+
+function renderMaintenanceSolicitacoesCards(items, state) {
+  return items
+    .map((item) => {
+      const hasValidId = Number.isInteger(item.id) && item.id > 0;
+      const detailButton = hasValidId
+        ? `
+          <button
+            type="button"
+            class="internal-row-action"
+            data-action="load-solicitacao-detail"
+            data-solicitacao-id="${escapeHtml(item.id)}"
+          >
+            Ver detalhe
+          </button>
+        `
+        : '<button type="button" class="internal-row-action" disabled>Indisponível</button>';
+
+      return `
+        <article class="internal-maintenance-card" role="listitem">
+          <div class="internal-maintenance-card-main">
+            <div>
+              <strong>${escapeHtml(item.protocolo)}</strong>
+              <span>${escapeHtml(item.status)} - ${escapeHtml(item.prioridade)}</span>
+            </div>
+            <p>${escapeHtml(item.tipoProblema)}</p>
+            <small>Poste ${escapeHtml(item.posteId)}</small>
+          </div>
+
+          <div class="internal-maintenance-actions" aria-label="Ações da solicitação">
+            ${detailButton}
+            ${renderListRouteAction(item)}
+          </div>
+
+          ${renderMaintenanceStatusQuickForm(item, state)}
+          ${renderMaintenanceObservationQuickForm(item, state)}
+        </article>
+      `;
+    })
+    .join('');
+}
+
 function renderSolicitacoesRows(items) {
   return items
     .map((item) => {
@@ -1373,7 +1624,7 @@ function renderSolicitacoesRows(items) {
     .join('');
 }
 
-function renderSolicitacoesTable(listState) {
+function renderSolicitacoesTable(listState, state) {
   if (listState.status === 'loading') {
     return `
       <div class="internal-table-empty" role="row">
@@ -1391,6 +1642,10 @@ function renderSolicitacoesTable(listState) {
   }
 
   if (listState.status === 'ready') {
+    if (isMaintenanceLikeUser(state.permissions || [])) {
+      return renderMaintenanceSolicitacoesCards(listState.items, state);
+    }
+
     return renderSolicitacoesRows(listState.items);
   }
 
@@ -1419,6 +1674,7 @@ function getSolicitacoesStatusText(listState) {
 
 function renderSolicitacoesPanel(state) {
   const listState = state.solicitacoes || createSolicitacoesState();
+  const maintenanceMode = isMaintenanceLikeUser(state.permissions || []);
   const canLoad = state.sessionState === 'authenticated'
     && hasPermission(state, PERMISSIONS.iluminacaoRead);
   const isLoading = listState.status === 'loading';
@@ -1426,6 +1682,11 @@ function renderSolicitacoesPanel(state) {
   const nextOffset = listState.offset + listState.limit;
   const hasPrevious = canLoad && listState.offset > 0 && !isLoading;
   const hasNext = canLoad && nextOffset < listState.total && !isLoading;
+  const effectiveTableLabel = canLoad && maintenanceMode
+    ? 'Lista compacta de solicitaÃ§Ãµes para manutenÃ§Ã£o'
+    : canLoad
+    ? 'Lista somente leitura de solicitaÃ§Ãµes internas'
+    : 'Listagem bloqueada atÃ© autenticaÃ§Ã£o e permissÃ£o';
   const tableLabel = canLoad
     ? 'Lista somente leitura de solicitações internas'
     : 'Listagem bloqueada até autenticação e permissão';
@@ -1484,8 +1745,13 @@ function renderSolicitacoesPanel(state) {
         ${escapeHtml(listState.message)}
       </p>
 
-      <div class="internal-table-wrap">
-        <div class="internal-table-shell" role="table" aria-label="${escapeHtml(tableLabel)}">
+      <div class="internal-table-wrap${maintenanceMode ? ' internal-maintenance-list-wrap' : ''}">
+        <div
+          class="internal-table-shell${maintenanceMode ? ' internal-maintenance-list' : ''}"
+          role="${maintenanceMode ? 'list' : 'table'}"
+          aria-label="${escapeHtml(effectiveTableLabel)}"
+        >
+          ${maintenanceMode ? '' : `
           <div class="internal-table-row internal-table-head" role="row">
             <span>Protocolo</span>
             <span>Status</span>
@@ -1497,7 +1763,8 @@ function renderSolicitacoesPanel(state) {
             <span>Duplicidade</span>
             <span>Ações</span>
           </div>
-          ${renderSolicitacoesTable(listState)}
+          `}
+          ${renderSolicitacoesTable(listState, state)}
         </div>
       </div>
     </section>
@@ -2198,6 +2465,29 @@ function renderCoordinateRouteSection(item) {
   `;
 }
 
+function renderSolicitanteWhatsappAction(item) {
+  const whatsappUrl = buildInternalWhatsappUrl(item.contatoSolicitante);
+
+  if (!whatsappUrl) {
+    return '';
+  }
+
+  return `
+    <a
+      class="internal-whatsapp-action"
+      href="${escapeHtml(whatsappUrl)}"
+      target="_blank"
+      rel="noopener noreferrer"
+      data-internal-whatsapp
+    >
+      Abrir WhatsApp
+    </a>
+    <p class="internal-muted-note">
+      O link usa apenas o nÃºmero sanitizado e nÃ£o inclui mensagem automÃ¡tica.
+    </p>
+  `;
+}
+
 function renderOperationalMapPanel(item) {
   if (!item.hasCoordinates || !item.coordinates) {
     return '';
@@ -2278,6 +2568,7 @@ function renderSolicitacaoDetailLoaded(state, detail) {
             { label: 'Nome', value: item.nomeSolicitante },
             { label: 'Contato', value: item.contatoSolicitante }
           ])}
+          ${renderSolicitanteWhatsappAction(item)}
           <p class="internal-sensitive-note">
             Dados pessoais exibidos apenas no detalhe interno e para uso operacional restrito.
           </p>
@@ -4064,6 +4355,139 @@ async function submitStatusUpdate(root, state, form) {
   }
 }
 
+async function submitListStatusUpdate(root, state, form) {
+  if (form.dataset.submitting === 'true') {
+    return;
+  }
+
+  const formData = new FormData(form);
+  const solicitacaoId = Number.parseInt(form.dataset.solicitacaoId || '', 10);
+  const currentStatus = form.dataset.currentStatus || '';
+  const selectedStatus = String(formData.get('status') || '').trim();
+  const rawObservacao = String(formData.get('observacao') || '');
+  const normalizedObservacao = normalizeStatusObservacaoInput(rawObservacao);
+  const messageElement = form.querySelector('[data-list-status-message]');
+  const submitButton = form.querySelector('[data-status-submit]');
+
+  const setMessage = (message, isError = false) => {
+    if (messageElement) {
+      messageElement.textContent = message;
+      messageElement.classList.toggle('is-error', isError);
+    }
+  };
+
+  if (!canUpdateStatus(state)) {
+    setMessage('AlteraÃ§Ã£o de fase indisponÃ­vel para este perfil.', true);
+    return;
+  }
+
+  if (!Number.isInteger(solicitacaoId) || solicitacaoId < 1) {
+    setMessage('SolicitaÃ§Ã£o invÃ¡lida para alteraÃ§Ã£o de fase.', true);
+    return;
+  }
+
+  const validationMessage = getStatusFormValidationMessage(
+    currentStatus,
+    selectedStatus,
+    rawObservacao
+  );
+
+  if (validationMessage) {
+    setMessage(validationMessage, true);
+    return;
+  }
+
+  form.dataset.submitting = 'true';
+
+  if (submitButton instanceof HTMLButtonElement) {
+    submitButton.disabled = true;
+  }
+
+  setMessage('Atualizando fase...');
+
+  try {
+    const nextFormState = await fetchUpdateSolicitacaoStatus(
+      solicitacaoId,
+      selectedStatus,
+      normalizedObservacao
+    );
+
+    if (nextFormState.status === 'expired') {
+      renderApp(root, createSessionState({
+        sessionState: 'unauthenticated',
+        statusCode: 401,
+        message: 'SessÃ£o expirada ao tentar atualizar fase. FaÃ§a login novamente.',
+        hasChecked: true
+      }));
+      return;
+    }
+
+    if (nextFormState.status !== 'success') {
+      setMessage(nextFormState.message || 'NÃ£o foi possÃ­vel atualizar a fase.', true);
+      form.dataset.submitting = 'false';
+      updateStatusFormControls(form);
+      return;
+    }
+
+    let solicitacoes = state.solicitacoes || createSolicitacoesState();
+    let nextDetail = state.detalhe || createDetalheState();
+    const currentDetailMatches = nextDetail.status === 'loaded'
+      && nextDetail.item
+      && nextDetail.item.id === solicitacaoId;
+
+    if (canListSolicitacoes(state)) {
+      solicitacoes = await fetchSolicitacoesInternas(solicitacoes.offset || 0);
+      solicitacoes = {
+        ...solicitacoes,
+        message: 'Fase atualizada. Listagem recarregada.'
+      };
+    }
+
+    if (currentDetailMatches) {
+      const refreshedDetail = await fetchSolicitacaoDetail(solicitacaoId);
+
+      if (refreshedDetail.status === 'expired') {
+        renderApp(root, createSessionState({
+          sessionState: 'unauthenticated',
+          statusCode: 401,
+          message: 'SessÃ£o expirada ao recarregar o detalhe. FaÃ§a login novamente.',
+          hasChecked: true
+        }));
+        return;
+      }
+
+      let historico = nextDetail.historico || createHistoricoState();
+      const shouldRefreshHistorico = canViewHistorico(state)
+        && shouldRefreshHistoricoAfterStatus(historico);
+
+      if (shouldRefreshHistorico) {
+        historico = await fetchSolicitacaoHistorico(solicitacaoId, historico.offset || 0);
+      }
+
+      nextDetail = refreshedDetail.status === 'loaded'
+        ? {
+          ...refreshedDetail,
+          historico,
+          observacoes: nextDetail.observacoes || createObservacoesState(),
+          observacaoForm: nextDetail.observacaoForm || createObservacaoFormState(),
+          statusForm: nextFormState,
+          prioridadeForm: nextDetail.prioridadeForm || createPrioridadeFormState()
+        }
+        : nextDetail;
+    }
+
+    renderApp(root, {
+      ...state,
+      solicitacoes,
+      detalhe: nextDetail
+    });
+  } catch {
+    setMessage('Falha temporÃ¡ria de conexÃ£o ao atualizar fase.', true);
+    form.dataset.submitting = 'false';
+    updateStatusFormControls(form);
+  }
+}
+
 async function submitPrioridadeUpdate(root, state, form) {
   const detail = state.detalhe || createDetalheState();
   const formState = detail.prioridadeForm || createPrioridadeFormState();
@@ -4481,6 +4905,119 @@ async function submitObservacao(root, state, form) {
   }
 }
 
+async function submitListObservacao(root, state, form) {
+  if (form.dataset.submitting === 'true') {
+    return;
+  }
+
+  const formData = new FormData(form);
+  const solicitacaoId = Number.parseInt(form.dataset.solicitacaoId || '', 10);
+  const rawValue = String(formData.get('observacao') || '');
+  const normalizedValue = normalizeObservacaoInput(rawValue);
+  const messageElement = form.querySelector('[data-list-observacao-message]');
+  const submitButton = form.querySelector('[data-observacao-submit]');
+
+  const setMessage = (message, isError = false) => {
+    if (messageElement) {
+      messageElement.textContent = message;
+      messageElement.classList.toggle('is-error', isError);
+      messageElement.classList.toggle('is-success', !isError && Boolean(message));
+    }
+  };
+
+  if (!canCreateObservacao(state)) {
+    setMessage('Criação de observação indisponível para este perfil.', true);
+    return;
+  }
+
+  if (!Number.isInteger(solicitacaoId) || solicitacaoId < 1) {
+    setMessage('Solicitação inválida para registrar observação.', true);
+    return;
+  }
+
+  const validationMessage = getObservacaoValidationMessage(rawValue);
+
+  if (validationMessage) {
+    setMessage(validationMessage, true);
+    return;
+  }
+
+  form.dataset.submitting = 'true';
+
+  if (submitButton instanceof HTMLButtonElement) {
+    submitButton.disabled = true;
+  }
+
+  setMessage('Salvando observação...');
+
+  try {
+    const nextFormState = await fetchCreateSolicitacaoObservacao(
+      solicitacaoId,
+      normalizedValue
+    );
+
+    if (nextFormState.status === 'expired') {
+      renderApp(root, createSessionState({
+        sessionState: 'unauthenticated',
+        statusCode: 401,
+        message: 'Sessão expirada ao tentar salvar observação. Faça login novamente.',
+        hasChecked: true
+      }));
+      return;
+    }
+
+    if (nextFormState.status !== 'success') {
+      setMessage(nextFormState.message || 'Não foi possível salvar a observação.', true);
+      form.dataset.submitting = 'false';
+      const textarea = form.querySelector('[data-observacao-textarea]');
+
+      if (textarea instanceof HTMLTextAreaElement) {
+        updateObservacaoFormControls(textarea);
+      }
+      return;
+    }
+
+    let solicitacoes = state.solicitacoes || createSolicitacoesState();
+    let nextDetail = state.detalhe || createDetalheState();
+    const currentDetailMatches = nextDetail.status === 'loaded'
+      && nextDetail.item
+      && nextDetail.item.id === solicitacaoId;
+
+    solicitacoes = {
+      ...solicitacoes,
+      message: 'Observação registrada para o chamado.'
+    };
+
+    if (currentDetailMatches && canViewObservacoes(state)) {
+      let observacoes = nextDetail.observacoes || createObservacoesState();
+
+      if (observacoes.status === 'ready' || observacoes.status === 'empty') {
+        observacoes = await fetchSolicitacaoObservacoes(solicitacaoId, 0);
+      }
+
+      nextDetail = {
+        ...nextDetail,
+        observacoes,
+        observacaoForm: nextFormState
+      };
+    }
+
+    renderApp(root, {
+      ...state,
+      solicitacoes,
+      detalhe: nextDetail
+    });
+  } catch {
+    setMessage('Falha temporária de conexão ao salvar observação.', true);
+    form.dataset.submitting = 'false';
+    const textarea = form.querySelector('[data-observacao-textarea]');
+
+    if (textarea instanceof HTMLTextAreaElement) {
+      updateObservacaoFormControls(textarea);
+    }
+  }
+}
+
 function clearSolicitacaoDetail(root, state) {
   renderApp(root, {
     ...state,
@@ -4829,10 +5366,28 @@ if (root) {
 
     if (
       target instanceof HTMLFormElement
+      && target.matches('[data-list-observacao-form]')
+    ) {
+      event.preventDefault();
+      submitListObservacao(root, currentState, target);
+      return;
+    }
+
+    if (
+      target instanceof HTMLFormElement
       && target.matches('[data-observacao-form]')
     ) {
       event.preventDefault();
       submitObservacao(root, currentState, target);
+      return;
+    }
+
+    if (
+      target instanceof HTMLFormElement
+      && target.matches('[data-list-status-form]')
+    ) {
+      event.preventDefault();
+      submitListStatusUpdate(root, currentState, target);
       return;
     }
 
