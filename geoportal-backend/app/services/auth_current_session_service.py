@@ -12,6 +12,8 @@ class AuthenticatedCurrentSession:
     usuario_id: int
     sessao_id: int
     expira_em: datetime
+    login: str | None = None
+    nome: str | None = None
 
 
 def resolve_authenticated_session(
@@ -35,4 +37,6 @@ def resolve_authenticated_session(
         usuario_id=session.usuario_id,
         sessao_id=session.id,
         expira_em=session.expira_em,
+        login=session.login,
+        nome=session.nome,
     )

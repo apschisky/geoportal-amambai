@@ -9,6 +9,7 @@ import {
   canViewRelatorio,
   canUpdatePrioridade,
   createDetalheState,
+  createSessionState,
   createRelatorioState,
   fetchRelatorioSolicitacoesCsv,
   fetchRelatorioSolicitacoesResumo,
@@ -24,6 +25,7 @@ import {
   renderObservacoesPanel,
   renderRelatorioPanel,
   renderPriorityUpdatePanel,
+  renderSessionBox,
   renderSolicitacaoDetailLoaded,
   renderSolicitacoesPanel,
   renderStatusUpdatePanel
@@ -35,10 +37,11 @@ const commentPermission = 'iluminacao.solicitacoes.comentar';
 const statusPermission = 'iluminacao.solicitacoes.atualizar_status';
 const adminUsersReadPermission = 'admin.usuarios.ler';
 
-function authenticatedState(permissions = []) {
+function authenticatedState(permissions = [], overrides = {}) {
   return {
     sessionState: 'authenticated',
-    permissions
+    permissions,
+    ...overrides
   };
 }
 
@@ -106,6 +109,32 @@ function jsonResponse(status, payload) {
 
 afterEach(() => {
   vi.restoreAllMocks();
+});
+
+describe('internal auth me UX', () => {
+  it('usa nome, login e perfis vindos de /me quando disponiveis', () => {
+    const html = renderSessionBox(createSessionState({
+      sessionState: 'authenticated',
+      usuarioId: 2,
+      nome: 'Administrador Producao',
+      login: 'admin.producao',
+      profiles: ['administrador-interno-geoportal']
+    }));
+
+    expect(html).toContain('Administrador Producao');
+    expect(html).toContain('admin.producao');
+    expect(html).toContain('Perfis: administrador-interno-geoportal');
+  });
+
+  it('mantem fallback antigo quando /me nao informa nome login ou perfis', () => {
+    const html = renderSessionBox(createSessionState({
+      sessionState: 'authenticated',
+      usuarioId: 7
+    }));
+
+    expect(html).toContain('Usuário interno #7');
+    expect(html).not.toContain('Perfis:');
+  });
 });
 
 describe('internal prioridade UI', () => {

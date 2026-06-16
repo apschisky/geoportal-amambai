@@ -19,6 +19,8 @@ def active_session_record() -> AuthSessionRecord:
     return AuthSessionRecord(
         id=30,
         usuario_id=20,
+        login="usuario.ficticio",
+        nome="Usuario Ficticio",
         criado_em=NOW,
         expira_em=EXPIRES_AT,
         revogado_em=None,
@@ -145,6 +147,8 @@ def test_found_session_returns_internal_authenticated_session(
     assert response.usuario_id == 20
     assert response.sessao_id == 30
     assert response.expira_em == EXPIRES_AT
+    assert response.login == "usuario.ficticio"
+    assert response.nome == "Usuario Ficticio"
 
 
 def test_response_does_not_expose_sensitive_fields(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -1,6 +1,7 @@
 from sqlalchemy.engine import Engine
 
 from app.repositories.auth_permission_repository import (
+    get_effective_profiles_for_user,
     get_effective_permissions_for_user,
 )
 
@@ -10,6 +11,13 @@ def get_user_permissions(
     engine: Engine | None = None,
 ) -> set[str]:
     return get_effective_permissions_for_user(usuario_id, engine=engine)
+
+
+def get_user_profiles(
+    usuario_id: int,
+    engine: Engine | None = None,
+) -> set[str]:
+    return get_effective_profiles_for_user(usuario_id, engine=engine)
 
 
 def has_permission(

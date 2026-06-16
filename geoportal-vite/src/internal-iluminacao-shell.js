@@ -440,6 +440,9 @@ function createDetalheState(overrides = {}) {
 const initialSessionState = {
   sessionState: 'checking_session',
   usuarioId: null,
+  login: '',
+  nome: '',
+  profiles: [],
   permissions: [],
   statusCode: null,
   message: 'Verificando sessão interna existente.',
@@ -456,6 +459,9 @@ function createSessionState(overrides = {}) {
   return {
     sessionState: 'checking_session',
     usuarioId: null,
+    login: '',
+    nome: '',
+    profiles: [],
     permissions: [],
     statusCode: null,
     message: 'Verificando sessão interna existente.',
@@ -470,6 +476,41 @@ function createSessionState(overrides = {}) {
     detalhe: createDetalheState(),
     ...overrides
   };
+}
+
+function getSessionDisplayName(state) {
+  if (typeof state.nome === 'string' && state.nome.trim()) {
+    return state.nome.trim();
+  }
+
+  if (typeof state.login === 'string' && state.login.trim()) {
+    return state.login.trim();
+  }
+
+  if (Number.isInteger(state.usuarioId) && state.usuarioId > 0) {
+    return `Usuário interno #${state.usuarioId}`;
+  }
+
+  return 'Acesso interno';
+}
+
+function getSessionStatusMeta(state) {
+  const parts = [];
+  const displayName = getSessionDisplayName(state);
+
+  if (
+    typeof state.login === 'string'
+    && state.login.trim()
+    && state.login.trim() !== displayName
+  ) {
+    parts.push(state.login.trim());
+  }
+
+  if (Array.isArray(state.profiles) && state.profiles.length > 0) {
+    parts.push(`Perfis: ${state.profiles.join(', ')}`);
+  }
+
+  return parts.join(' · ');
 }
 
 let currentState = createSessionState();
@@ -527,12 +568,35 @@ function normalizePermissions(permissions) {
   ).sort();
 }
 
+function normalizeProfile(profile) {
+  if (typeof profile !== 'string') {
+    return '';
+  }
+
+  return profile.trim().toLowerCase();
+}
+
+function normalizeProfiles(profiles) {
+  return Array.from(
+    new Set(profiles.map(normalizeProfile).filter(Boolean))
+  ).sort();
+}
+
 function isValidMePayload(payload) {
   return Boolean(
     payload
       && typeof payload === 'object'
       && typeof payload.authenticated === 'boolean'
       && Number.isInteger(payload.usuario_id)
+      && isOptionalText(payload.login)
+      && isOptionalText(payload.nome)
+      && (
+        payload.perfis === undefined
+        || (
+          Array.isArray(payload.perfis)
+          && payload.perfis.every((profile) => typeof profile === 'string')
+        )
+      )
       && Array.isArray(payload.permissoes)
       && payload.permissoes.every((permission) => typeof permission === 'string')
   );
@@ -817,6 +881,7 @@ export {
   canViewRelatorio,
   canUpdatePrioridade,
   createDetalheState,
+  createSessionState,
   createRelatorioState,
   createPrioridadeFormState,
   fetchRelatorioSolicitacoesCsv,
@@ -833,6 +898,7 @@ export {
   renderObservacoesPanel,
   renderRelatorioPanel,
   renderPriorityUpdatePanel,
+  renderSessionBox,
   renderSolicitacaoDetailLoaded,
   renderSolicitacoesPanel,
   renderStatusUpdatePanel
@@ -3031,6 +3097,14 @@ function renderSessionBox(state) {
   const stateInfo = SESSION_STATES[state.sessionState] || SESSION_STATES.technical_error;
   const isAuthenticated = state.sessionState === 'authenticated';
   const isLoggingOut = state.logoutStatus === 'submitting';
+  const sessionIdentity = {
+    userText: state.sessionState === 'authenticated'
+      ? getSessionDisplayName(state)
+      : 'Acesso interno',
+    statusText: state.sessionState === 'authenticated'
+      ? (getSessionStatusMeta(state) || 'Sessão ativa')
+      : stateInfo.label
+  };
   const userText = state.sessionState === 'authenticated'
     ? `Usuário interno #${state.usuarioId}`
     : 'Acesso interno';
@@ -3041,8 +3115,8 @@ function renderSessionBox(state) {
   return `
     <aside class="internal-session-box is-${stateInfo.tone}" aria-label="Estado de sessão">
       <span>${escapeHtml(stateInfo.label)}</span>
-      <strong>${escapeHtml(userText)}</strong>
-      <p>${escapeHtml(statusText)}</p>
+      <strong>${escapeHtml(sessionIdentity.userText)}</strong>
+      <p>${escapeHtml(sessionIdentity.statusText)}</p>
       ${isAuthenticated
         ? `
           <button
@@ -3296,6 +3370,9 @@ async function fetchCurrentSession() {
   return createSessionState({
     sessionState: 'authenticated',
     usuarioId: payload.usuario_id,
+    login: typeof payload.login === 'string' ? payload.login.trim() : '',
+    nome: typeof payload.nome === 'string' ? payload.nome.trim() : '',
+    profiles: Array.isArray(payload.perfis) ? normalizeProfiles(payload.perfis) : [],
     permissions: normalizePermissions(payload.permissoes),
     statusCode: response.status,
     message: 'Sessão interna confirmada.',

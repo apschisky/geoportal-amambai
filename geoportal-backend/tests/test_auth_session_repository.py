@@ -15,6 +15,8 @@ from app.repositories.auth_session_repository import (
 SESSION_ROW = {
     "id": 10,
     "usuario_id": 20,
+    "login": "usuario.ficticio",
+    "nome": "Usuario Ficticio",
     "criado_em": datetime(2026, 5, 26, 12, 0, tzinfo=UTC),
     "expira_em": datetime(2026, 5, 26, 13, 0, tzinfo=UTC),
     "revogado_em": None,
@@ -151,6 +153,8 @@ def test_get_active_session_by_token_hash_filters_active_session_safely() -> Non
     assert response is not None
     assert response.id == 10
     assert response.usuario_id == 20
+    assert response.login == "usuario.ficticio"
+    assert response.nome == "Usuario Ficticio"
     assert params == {"token_hash": TOKEN_HASH}
     assert "s.token_hash = :token_hash" in sql
     assert "s.revogado_em IS NULL" in sql

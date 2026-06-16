@@ -715,11 +715,11 @@ A validacao visual publicada foi feita em `https://geoserver.amambai.ms.gov.br/i
 Validacao sanitizada do usuario operacional de producao:
 
 - login autenticado para `manutencao.producao`;
-- `/api/internal/auth/me` retornou `authenticated`, `usuario_id` e `permissoes`;
+- `/api/internal/auth/me` retorna `authenticated`, `usuario_id`, `login`, `nome`, `perfis` e `permissoes`;
 - permissoes retornadas: `iluminacao.solicitacoes.atualizar_status`, `iluminacao.solicitacoes.comentar`, `iluminacao.solicitacoes.ler`, `iluminacao.solicitacoes.ver_observacoes` e `internal.auth.me`;
 - logout validado.
 
-O contrato atual de `/api/internal/auth/me` ainda nao retorna `login`, `nome` e `perfis`; por isso a shell pode exibir fallback como `Usuario interno #2`. Esta e uma pendencia nao bloqueadora para evolucao futura do contrato.
+O contrato atual de `/api/internal/auth/me` retorna `login`, `nome` e `perfis` sanitizados alem de `authenticated`, `usuario_id` e `permissoes`. A shell interna usa esses campos quando disponiveis e preserva compatibilidade visual com fallback antigo, como `Usuario interno #2`, se uma resposta legada ou parcial nao trouxer identificacao completa.
 
 Seguranca operacional apos bootstrap do perfil: os privilegios temporarios de `INSERT` e `UPDATE` em `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuario_perfis` e `mod_auth.perfil_permissoes` foram revogados para `geoportal_api_interna_prod`. Permanecem apenas os privilegios necessarios para login, sessao, auditoria de login, `/me` e autorizacao. Nao registrar senha, hash, token, token_hash, cookie, `session_secret` ou `DATABASE_URL`.
 
@@ -968,7 +968,7 @@ Validacoes HTTPS reais concluidas:
 - `POST /api/internal/auth/logout` com `X-Geoportal-Internal-Request: 1` -> OK;
 - `https://geoserver.amambai.ms.gov.br/interno/` validado no navegador.
 
-Contrato atual de `/api/internal/auth/me`: retorna `authenticated`, `usuario_id` e `permissoes`. Ele ainda nao retorna `login`, `nome` e `perfis`; por isso a shell interna pode exibir fallback como `Usuario interno #1`. Pendencia nao bloqueadora: avaliar evolucao do contrato de `/api/internal/auth/me` para retornar `login`, `nome` e `perfis` sanitizados.
+Contrato atual de `/api/internal/auth/me`: retorna `authenticated`, `usuario_id`, `login`, `nome`, `perfis` e `permissoes`. O endpoint nao retorna token, cookie, `senha_hash`, `token_hash`, `session_secret` ou `DATABASE_URL`. A shell interna usa `nome`, `login` e `perfis` quando disponiveis e mantem fallback visual antigo para compatibilidade com respostas legadas/parciais.
 
 Pendencia nao bloqueadora de encoding: em terminal PowerShell, nome com acento pode aparecer com mojibake, por exemplo `Administrador ProduÃ§Ã£o`. Revisar encoding/exibicao de nomes com acento nos scripts/terminal ou padronizar nomes administrativos sem acento quando necessario.
 
@@ -1187,8 +1187,8 @@ Ordem recomendada apos o marco de 2026-06-12:
 3. Confirmar atributos de cookie no navegador real sem copiar valores.
 4. Confirmar `localStorage` e `sessionStorage` vazios apos login/logout.
 5. Monitorar logs sem registrar senha, token, cookie, observacoes reais ou dados pessoais desnecessarios.
-6. Revisar evolucao de `/api/internal/auth/me` para retornar `login`, `nome` e `perfis` sanitizados.
-7. Planejar tela administrativa de usuarios, perfis e permissoes antes de ampliar a operacao.
+6. Planejar tela administrativa de usuarios, perfis e permissoes antes de ampliar a operacao.
+7. Manter o contrato de `/api/internal/auth/me` enxuto e sanitizado, evitando incluir segredos ou dados pessoais desnecessarios.
 8. Planejar mapa operacional, anexos, dashboard e correcao administrativa apenas em etapas separadas.
 
 ### Pendencias futuras fora do MVP

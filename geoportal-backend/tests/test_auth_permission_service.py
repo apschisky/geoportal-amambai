@@ -53,3 +53,25 @@ def test_get_user_permissions_delegates_to_repository(monkeypatch) -> None:
 
     assert response == {"iluminacao.solicitacoes.ler"}
     assert calls == {"usuario_id": 7, "engine": "engine-ficticio"}
+
+
+def test_get_user_profiles_delegates_to_repository(monkeypatch) -> None:
+    calls: dict[str, object] = {}
+
+    def fake_get_effective_profiles_for_user(
+        usuario_id: int,
+        engine: object = None,
+    ) -> set[str]:
+        calls.update({"usuario_id": usuario_id, "engine": engine})
+        return {"manutencao-iluminacao"}
+
+    monkeypatch.setattr(
+        auth_permission_service,
+        "get_effective_profiles_for_user",
+        fake_get_effective_profiles_for_user,
+    )
+
+    response = auth_permission_service.get_user_profiles(7, engine="engine-ficticio")
+
+    assert response == {"manutencao-iluminacao"}
+    assert calls == {"usuario_id": 7, "engine": "engine-ficticio"}

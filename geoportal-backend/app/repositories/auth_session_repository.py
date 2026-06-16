@@ -14,6 +14,8 @@ class AuthSessionRecord:
     criado_em: datetime
     expira_em: datetime
     revogado_em: datetime | None
+    login: str | None = None
+    nome: str | None = None
 
 
 def create_session(
@@ -79,6 +81,8 @@ def get_active_session_by_token_hash(
         SELECT
             s.id,
             s.usuario_id,
+            u.login,
+            u.nome,
             s.criado_em,
             s.expira_em,
             s.revogado_em

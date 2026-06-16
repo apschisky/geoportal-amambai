@@ -3,6 +3,7 @@ from typing import Any
 from sqlalchemy.sql.elements import TextClause
 
 from app.repositories.auth_permission_repository import (
+    get_effective_profiles_for_user,
     get_effective_permissions_for_user,
 )
 
@@ -15,6 +16,11 @@ PERMISSION_ROWS = [
 RAW_TOKEN = "token-bruto-ficticio"
 SESSION_SECRET = "segredo-ficticio"
 DATABASE_CONFIG_MARKER = "database-config-ficticia"
+PROFILE_ROWS = [
+    {"perfil": "administrador-interno-geoportal"},
+    {"perfil": "administrador-interno-geoportal"},
+    {"perfil": "manutencao-iluminacao"},
+]
 
 
 class FakeResult:
@@ -115,3 +121,34 @@ def test_get_effective_permissions_does_not_interpolate_user_or_sensitive_values
     assert DATABASE_CONFIG_MARKER not in sql
     assert "senha" not in sql.lower()
     assert "token_hash" not in sql.lower()
+
+
+def test_get_effective_profiles_returns_unique_profile_keys() -> None:
+    engine = FakeEngine(PROFILE_ROWS)
+
+    response = get_effective_profiles_for_user(usuario_id=7, engine=engine)
+
+    assert response == {
+        "administrador-interno-geoportal",
+        "manutencao-iluminacao",
+    }
+
+
+def test_get_effective_profiles_uses_bind_params_and_active_filters() -> None:
+    engine = FakeEngine(PROFILE_ROWS)
+
+    get_effective_profiles_for_user(usuario_id=7, engine=engine)
+
+    sql = sql_for(engine)
+    params = params_for(engine)
+
+    assert "SELECT DISTINCT" in sql
+    assert "lower(btrim(pf.chave)) AS perfil" in sql
+    assert "FROM mod_auth.usuario_perfis up" in sql
+    assert "INNER JOIN mod_auth.perfis pf" in sql
+    assert "up.usuario_id = :usuario_id" in sql
+    assert "up.ativo IS true" in sql
+    assert "pf.ativo IS true" in sql
+    assert "perfil_permissoes" not in sql
+    assert "mod_auth.permissoes" not in sql
+    assert params == {"usuario_id": 7}

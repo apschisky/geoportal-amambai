@@ -27,6 +27,8 @@ Prefixos conceituais:
 
 Os nomes finais podem mudar na implementacao, desde que a separacao entre publico e interno seja preservada.
 
+Contrato operacional atual relacionado a autenticacao interna: `GET /api/internal/auth/me` retorna `authenticated`, `usuario_id`, `login`, `nome`, `perfis` e `permissoes`. O endpoint continua protegido por sessao/cookie HttpOnly, nao retorna token, cookie, senha, hash, `session_secret` ou `DATABASE_URL`, e a shell interna preserva fallback visual antigo se uma resposta legada/parcial nao trouxer `login`, `nome` ou `perfis`.
+
 ## 4. Endpoints publicos
 
 ### `POST /api/public/iluminacao/solicitacoes`

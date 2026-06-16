@@ -39,3 +39,35 @@ def get_effective_permissions_for_user(
         for row in rows
         if row.get("permissao") is not None
     }
+
+
+def get_effective_profiles_for_user(
+    usuario_id: int,
+    engine: Engine | None = None,
+) -> set[str]:
+    db_engine = engine or get_engine()
+
+    statement = text(
+        """
+        SELECT DISTINCT
+            lower(btrim(pf.chave)) AS perfil
+        FROM mod_auth.usuario_perfis up
+        INNER JOIN mod_auth.perfis pf
+            ON pf.id = up.perfil_id
+        WHERE up.usuario_id = :usuario_id
+          AND up.ativo IS true
+          AND pf.ativo IS true
+        """
+    )
+
+    with db_engine.begin() as connection:
+        rows = connection.execute(
+            statement,
+            {"usuario_id": usuario_id},
+        ).mappings().all()
+
+    return {
+        str(row["perfil"])
+        for row in rows
+        if row.get("perfil") is not None
+    }
