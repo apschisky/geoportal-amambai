@@ -623,6 +623,8 @@ Testes do ciclo: `npm.cmd test -- --run src/internal-iluminacao-shell.test.js` p
 
 Marco implementado: a listagem de manutencao foi compactada para uso em campo, especialmente no mobile. Para usuario operacional sem `admin.*`, a listagem exibe somente `Protocolo`, `Status/Fase`, `Tipo`, `Prioridade`, `Poste` e `Acoes`, mantendo datas completas, descricao, observacoes, duplicidade e dados do solicitante no detalhe. As acoes proximas ao protocolo sao `Ver detalhe`, `Tracar rota` e `Alterar fase/status`, sempre respeitando permissao e regra real do backend.
 
+Refino operacional adicional: ao clicar em `Ver detalhe`, a shell agora rola automaticamente ate a secao de detalhe para aproximar a leitura operacional da acao escolhida, sem alterar contrato de API ou permissao. No formulario de relatorio administrativo, os campos nativos de data deixaram de disparar re-render durante o evento de `input`; a sincronizacao ficou concentrada em `change`, reduzindo o risco de o calendario fechar ao navegar entre meses no seletor nativo do navegador.
+
 Diretrizes implementadas neste ciclo UX:
 
 - `Tracar rota` aparece na listagem somente quando houver latitude/longitude validas;
@@ -633,6 +635,8 @@ Diretrizes implementadas neste ciclo UX:
 - o backend continua sendo a autoridade real de permissao e transicao.
 
 Regra atual implementada na visao de manutencao: a listagem de campo consome `GET /api/internal/iluminacao/solicitacoes?ativos=true`, para que o backend oculte status terminais antes da paginacao e evite confusao operacional. `ativos=true` exclui `resolvida`, `cancelada`, `indeferida` e `nao_localizado`; ausencia do filtro ou `ativos=false` mantem a listagem completa para perfis autorizados. A comparacao visual no frontend normaliza tanto status tecnico quanto status ja formatado, cobrindo `resolvida`/`Resolvida`, `cancelada`/`Cancelada`, `indeferida`/`Indeferida` e `nao_localizado`/`Não localizado`, como defesa complementar. A visao administrativa/perfil completo continua exibindo todos os chamados para auditoria, conferencia e futura volta de fase controlada.
+
+Estado atual da matriz de fase/status: `aberta -> em_triagem` continua permitido no fluxo normal, mas `aberta -> em_execucao` ainda nao e destino permitido pela matriz backend. Se o piloto operacional exigir esse atalho, a mudanca deve ser tratada em ciclo proprio de contrato e testes, sem flexibilizacao cega apenas no frontend.
 
 Relatorio administrativo atual: a exportacao de solicitacoes/servicos foi implementada por endpoint backend autorizado, nao como exportacao simples da tabela renderizada no frontend. A versao 1 aceita relatorio geral sem datas ou filtros opcionais por `data_inicio`, `data_fim`, status, prioridade e tipo, inclui campos sanitizados como protocolo, status, prioridade, tipo, poste, origem, localizacao, datas de abertura/atualizacao/finalizacao, duplicidade suspeita e tempo ate finalizacao em segundos, e exclui por padrao nome, telefone/WhatsApp, observacoes internas livres, descricao livre e coordenadas quando houver risco de dados pessoais. A exportacao continua administrativa, nao disponivel para manutencao, e o frontend apenas aciona o contrato backend. A shell administrativa atual tambem ja orienta que datas sao opcionais e que a ausencia delas gera recorte geral.
 

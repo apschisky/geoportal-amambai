@@ -33,6 +33,7 @@ const PRIORIDADE_OBSERVACAO_MIN_LENGTH = 3;
 const PRIORIDADE_OBSERVACAO_MAX_LENGTH = 1000;
 const INTERNAL_MUTATING_REQUEST_HEADER = 'X-Geoportal-Internal-Request';
 const OPERATIONAL_MAP_ZOOM = 17;
+const DETAIL_SECTION_SELECTOR = '[data-solicitacao-detail-section]';
 
 const SESSION_STATES = {
   checking_session: {
@@ -901,7 +902,9 @@ export {
   renderSessionBox,
   renderSolicitacaoDetailLoaded,
   renderSolicitacoesPanel,
-  renderStatusUpdatePanel
+  renderStatusUpdatePanel,
+  scrollToSolicitacaoDetailSection,
+  shouldSyncRelatorioFormOnInput
 };
 
 function toDisplaySolicitacao(item) {
@@ -3039,6 +3042,25 @@ function renderSolicitacaoDetailPanel(state) {
   `;
 }
 
+function scrollToSolicitacaoDetailSection(root) {
+  if (!root || typeof root.querySelector !== 'function') {
+    return false;
+  }
+
+  const detailSection = root.querySelector(DETAIL_SECTION_SELECTOR);
+
+  if (!detailSection || typeof detailSection.scrollIntoView !== 'function') {
+    return false;
+  }
+
+  detailSection.scrollIntoView({
+    behavior: 'smooth',
+    block: 'start'
+  });
+
+  return true;
+}
+
 function renderLoginPanel(state) {
   if (state.sessionState !== 'unauthenticated') {
     return '';
@@ -3287,7 +3309,11 @@ function renderInternalIluminacaoShell(root, state) {
               ${renderRelatorioPanel(state)}
               ${renderSolicitacoesPanel(state)}
 
-              <div class="internal-detail-grid">
+              <div
+                class="internal-detail-grid"
+                id="internal-iluminacao-detalhe"
+                data-solicitacao-detail-section
+              >
                 ${renderSolicitacaoDetailPanel(state)}
               </div>
             </div>
@@ -4322,6 +4348,7 @@ async function loadSolicitacaoDetail(root, state, solicitacaoId) {
       ...loadingState,
       detalhe
     });
+    scrollToSolicitacaoDetailSection(root);
   } catch {
     renderApp(root, {
       ...state,
@@ -5562,6 +5589,17 @@ function syncRelatorioForm(root, state, form) {
   });
 }
 
+function shouldSyncRelatorioFormOnInput(target) {
+  return Boolean(
+    target
+      && typeof target.type === 'string'
+      && target.form
+      && typeof target.form.matches === 'function'
+      && target.form.matches('[data-relatorio-form]')
+      && target.type !== 'date'
+  );
+}
+
 function downloadRelatorioBlob(blob, filename) {
   const objectUrl = window.URL.createObjectURL(blob);
   const anchor = document.createElement('a');
@@ -5990,11 +6028,7 @@ if (root) {
   root.addEventListener('input', (event) => {
     const target = event.target;
 
-    if (
-      target instanceof HTMLInputElement
-      && target.form instanceof HTMLFormElement
-      && target.form.matches('[data-relatorio-form]')
-    ) {
+    if (shouldSyncRelatorioFormOnInput(target)) {
       syncRelatorioForm(root, currentState, target.form);
       return;
     }
@@ -6027,7 +6061,7 @@ if (root) {
     const target = event.target;
 
     if (
-      target instanceof HTMLSelectElement
+      (target instanceof HTMLInputElement || target instanceof HTMLSelectElement)
       && target.form instanceof HTMLFormElement
       && target.form.matches('[data-relatorio-form]')
     ) {

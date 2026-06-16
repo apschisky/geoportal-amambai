@@ -28,7 +28,9 @@ import {
   renderSessionBox,
   renderSolicitacaoDetailLoaded,
   renderSolicitacoesPanel,
-  renderStatusUpdatePanel
+  renderStatusUpdatePanel,
+  scrollToSolicitacaoDetailSection,
+  shouldSyncRelatorioFormOnInput
 } from './internal-iluminacao-shell.js';
 
 const prioridadePermission = 'iluminacao.solicitacoes.atualizar_prioridade';
@@ -136,6 +138,32 @@ describe('internal auth me UX', () => {
 
     expect(html).toContain('Usuário interno #7');
     expect(html).not.toContain('Perfis:');
+  });
+});
+
+describe('internal detail UX helpers', () => {
+  it('rola ate a secao de detalhe quando ela estiver presente', () => {
+    const scrollSpy = vi.fn();
+    const detailSection = {
+      scrollIntoView: scrollSpy
+    };
+    const root = {
+      querySelector: vi.fn(() => detailSection)
+    };
+
+    expect(scrollToSolicitacaoDetailSection(root)).toBe(true);
+    expect(scrollSpy).toHaveBeenCalledWith({
+      behavior: 'smooth',
+      block: 'start'
+    });
+  });
+
+  it('nao tenta rolar quando a secao de detalhe nao existe', () => {
+    const root = {
+      querySelector: vi.fn(() => null)
+    };
+
+    expect(scrollToSolicitacaoDetailSection(root)).toBe(false);
   });
 });
 
@@ -259,6 +287,23 @@ describe('internal prioridade UI', () => {
 });
 
 describe('internal relatorio administrativo', () => {
+  it('nao sincroniza o formulario no input de data para evitar fechar o calendario nativo', () => {
+    const form = {
+      matches: vi.fn((selector) => selector === '[data-relatorio-form]')
+    };
+    const dateInput = {
+      type: 'date',
+      form
+    };
+    const textInput = {
+      type: 'text',
+      form
+    };
+
+    expect(shouldSyncRelatorioFormOnInput(dateInput)).toBe(false);
+    expect(shouldSyncRelatorioFormOnInput(textInput)).toBe(true);
+  });
+
   it('renderiza area de relatorio apenas para perfil administrativo', () => {
     const adminHtml = renderRelatorioPanel({
       ...adminState(),
