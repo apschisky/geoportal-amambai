@@ -3097,6 +3097,15 @@ function renderSessionBox(state) {
   const stateInfo = SESSION_STATES[state.sessionState] || SESSION_STATES.technical_error;
   const isAuthenticated = state.sessionState === 'authenticated';
   const isLoggingOut = state.logoutStatus === 'submitting';
+  const compactSessionUserText = isAuthenticated
+    ? getSessionDisplayName(state)
+    : 'Acesso interno';
+  const compactSessionLoginText = isAuthenticated
+    && typeof state.login === 'string'
+    && state.login.trim()
+    && state.login.trim() !== compactSessionUserText
+    ? state.login.trim()
+    : '';
   const sessionIdentity = {
     userText: state.sessionState === 'authenticated'
       ? getSessionDisplayName(state)
@@ -3114,9 +3123,11 @@ function renderSessionBox(state) {
 
   return `
     <aside class="internal-session-box is-${stateInfo.tone}" aria-label="Estado de sessão">
-      <span>${escapeHtml(stateInfo.label)}</span>
-      <strong>${escapeHtml(sessionIdentity.userText)}</strong>
-      <p>${escapeHtml(sessionIdentity.statusText)}</p>
+      ${isAuthenticated ? '' : `<span>${escapeHtml(stateInfo.label)}</span>`}
+      <strong>${escapeHtml(compactSessionUserText)}</strong>
+      ${compactSessionLoginText
+        ? `<p class="internal-session-login">${escapeHtml(compactSessionLoginText)}</p>`
+        : ''}
       ${isAuthenticated
         ? `
           <button

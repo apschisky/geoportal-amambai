@@ -112,7 +112,7 @@ afterEach(() => {
 });
 
 describe('internal auth me UX', () => {
-  it('usa nome, login e perfis vindos de /me quando disponiveis', () => {
+  it('usa nome e login vindos de /me sem exibir autenticado ou perfis', () => {
     const html = renderSessionBox(createSessionState({
       sessionState: 'authenticated',
       usuarioId: 2,
@@ -123,7 +123,9 @@ describe('internal auth me UX', () => {
 
     expect(html).toContain('Administrador Producao');
     expect(html).toContain('admin.producao');
-    expect(html).toContain('Perfis: administrador-interno-geoportal');
+    expect(html).not.toContain('AUTENTICADO');
+    expect(html).not.toContain('Autenticado');
+    expect(html).not.toContain('Perfis:');
   });
 
   it('mantem fallback antigo quando /me nao informa nome login ou perfis', () => {

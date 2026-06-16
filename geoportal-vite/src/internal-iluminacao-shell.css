@@ -123,6 +123,13 @@ textarea:disabled {
   line-height: 1.45;
 }
 
+.internal-session-login {
+  margin: 5px 0 0;
+  color: #5a6870;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
 .internal-session-box small {
   display: inline-block;
   margin-top: 10px;
