@@ -451,11 +451,13 @@ Validacao:
 
 Matriz conservadora de transicoes da primeira versao:
 
-- `aberta` pode ir para `em_triagem`, `cancelada` ou `indeferida`.
+- `aberta` pode ir para `em_triagem`, `em_execucao`, `cancelada` ou `indeferida`.
 - `em_triagem` pode ir para `encaminhada`, `aguardando_material`, `nao_localizado`, `cancelada` ou `indeferida`.
 - `encaminhada` pode ir para `em_execucao`, `aguardando_material`, `nao_localizado` ou `cancelada`.
 - `em_execucao` pode ir para `aguardando_material`, `resolvida` ou `nao_localizado`.
 - `aguardando_material` pode ir para `encaminhada`, `em_execucao` ou `cancelada`.
+
+Refino operacional aprovado: `em_triagem` continua existindo e continua disponivel quando a triagem separada fizer sentido, mas deixa de ser etapa obrigatoria para toda solicitacao. Em operacao enxuta, a mesma pessoa/equipe pode levar `aberta -> em_execucao` diretamente pelo fluxo normal, mantendo justificativa, permissao atual e historico obrigatorio. `encaminhada` continua disponivel e volta de fase/reabertura continua fora deste ciclo.
 
 Status terminais na primeira versao:
 

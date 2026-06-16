@@ -209,7 +209,7 @@ const locationTypeLabels = {
 };
 
 const statusTransitions = {
-  aberta: ['em_triagem', 'cancelada', 'indeferida'],
+  aberta: ['em_triagem', 'em_execucao', 'cancelada', 'indeferida'],
   em_triagem: ['encaminhada', 'aguardando_material', 'nao_localizado', 'cancelada', 'indeferida'],
   encaminhada: ['em_execucao', 'aguardando_material', 'nao_localizado', 'cancelada'],
   em_execucao: ['aguardando_material', 'resolvida', 'nao_localizado'],

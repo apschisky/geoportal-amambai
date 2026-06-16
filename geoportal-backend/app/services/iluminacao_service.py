@@ -48,7 +48,7 @@ SOLICITACAO_PRIORIDADE_TERMINAL_STATUS_MESSAGE = (
 )
 
 ALLOWED_STATUS_TRANSITIONS: dict[str, set[str]] = {
-    "aberta": {"em_triagem", "cancelada", "indeferida"},
+    "aberta": {"em_triagem", "em_execucao", "cancelada", "indeferida"},
     "em_triagem": {
         "encaminhada",
         "aguardando_material",

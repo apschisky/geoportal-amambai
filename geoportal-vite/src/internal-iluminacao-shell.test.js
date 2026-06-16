@@ -236,7 +236,7 @@ describe('internal prioridade UI', () => {
       jsonResponse(200, {
         solicitacao: {
           id: 10,
-          status: 'em_triagem',
+          status: 'em_execucao',
           atualizado_em: '2026-06-11T10:00:00Z',
           finalizado_em: null
         }
@@ -245,7 +245,7 @@ describe('internal prioridade UI', () => {
 
     const result = await fetchUpdateSolicitacaoStatus(
       10,
-      'em_triagem',
+      'em_execucao',
       'Justificativa operacional'
     );
 
@@ -263,7 +263,7 @@ describe('internal prioridade UI', () => {
       }
     });
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
-      status: 'em_triagem',
+      status: 'em_execucao',
       observacao: 'Justificativa operacional'
     });
     expect(result.status).toBe('success');
@@ -784,6 +784,19 @@ describe('internal modo manutencao', () => {
     expect(observacoesHtml).toContain('data-observacao-form');
     expect(statusHtml).toContain('data-status-form');
     expect(prioridadeHtml).toContain('data-prioridade-form');
+  });
+
+  it('permite selecionar Em execucao como alteracao normal quando o status atual e aberta', () => {
+    const detail = loadedDetail({
+      statusKey: 'aberta'
+    });
+    const statusHtml = renderStatusUpdatePanel(
+      authenticatedState([statusPermission]),
+      detail
+    );
+
+    expect(statusHtml).toContain('Em triagem');
+    expect(statusHtml).toContain('Em execu');
   });
 
   it('renderiza WhatsApp somente no detalhe com contato valido', () => {

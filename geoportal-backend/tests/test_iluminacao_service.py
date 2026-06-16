@@ -1408,7 +1408,7 @@ def test_atualizar_status_solicitacao_interna_updates_valid_transition(
     assert calls == {
         "solicitacao_id": 10,
         "status_novo": "em_execucao",
-        "allowed_current_statuses": {"encaminhada", "aguardando_material"},
+        "allowed_current_statuses": {"aberta", "encaminhada", "aguardando_material"},
         "is_terminal_status": False,
         "observacao_resumida": "Equipe iniciou atendimento.",
         "usuario_id": "7",
