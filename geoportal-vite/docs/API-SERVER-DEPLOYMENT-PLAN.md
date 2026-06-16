@@ -683,7 +683,10 @@ Commits recentes relacionados ao marco:
 
 - `5252e05` Adiciona mapa e rota no modulo interno de iluminacao;
 - `0458734` Adiciona perfil de manutencao da iluminacao;
-- `35d63f0` Documenta publicacao da API interna de producao.
+- `35d63f0` Documenta publicacao da API interna de producao;
+- `5f92fdd` Implementa filtro ativos na listagem de iluminacao;
+- `fcaa782` Ajusta relatorio administrativo de iluminacao;
+- `762e911` aJUSTA RELATORIO ADMINISTRATIVO.
 
 Funcionalidades validadas no frontend interno:
 
@@ -692,10 +695,12 @@ Funcionalidades validadas no frontend interno:
 - link seguro baseado apenas em latitude/longitude;
 - mapa simples com OSM/OpenLayers e marcador do ponto do chamado;
 - modo visual manutencao validado em desktop e mobile;
+- listagem de manutencao consumindo `ativos=true` no backend;
 - alteracao normal de status disponivel ao usuario de manutencao;
 - alteracao de prioridade restrita quando o perfil nao possui `iluminacao.solicitacoes.atualizar_prioridade`;
 - historico indisponivel quando o perfil nao possui permissao correspondente;
-- observacoes internas sob demanda conforme permissao.
+- observacoes internas sob demanda conforme permissao;
+- relatorio administrativo sanitizado com CSV e resumo JSON apenas para perfil administrativo/autorizado.
 
 Usuario/perfil operacional validado:
 
@@ -720,9 +725,10 @@ Seguranca operacional apos bootstrap do perfil: os privilegios temporarios de `I
 
 Testes/build validados no ciclo:
 
-- `npm.cmd test -- --run src/internal-iluminacao-shell.test.js`: 13 passed;
+- `npm.cmd test -- --run src/internal-iluminacao-shell.test.js`: 31 passed;
+- `npm.cmd test -- --run`: 116 passed;
 - `npm.cmd run build`: sucesso, 233 modules transformed;
-- testes cobriram coordenadas validas/invalidas, link Google Maps seguro, modo manutencao, permissoes de observacao/status/prioridade e renderizacao dos formularios operacionais.
+- testes cobriram coordenadas validas/invalidas, link Google Maps seguro, modo manutencao, `ativos=true`, permissao de relatorio, filtros administrativos seguros, tratamento amigavel de 403/404/422/503 e renderizacao dos formularios operacionais.
 
 ### Checklist pos-deploy do MVP interno
 
@@ -744,12 +750,15 @@ Testes/build validados no ciclo:
 16. Criar observacao com texto sintetico, sem dados reais.
 17. Alterar status em solicitacao de teste, se permitido e apropriado.
 18. Alterar prioridade em solicitacao de teste, se permitido e apropriado.
-19. Clicar em `Sair`.
-20. Confirmar `POST /api/internal/auth/logout`.
-21. Confirmar retorno para a tela de login.
-22. Confirmar `GET /api/internal/auth/me -> 401`.
-23. Confirmar ausencia de token em `localStorage` e `sessionStorage`.
-24. Confirmar que console e documentacao nao exibem cookie, token, senha, observacoes reais ou dados pessoais reais.
+19. Se o usuario autenticado for administrativo, validar `GET /api/internal/iluminacao/relatorios/solicitacoes/resumo` com e sem datas.
+20. Se o usuario autenticado for administrativo, validar `GET /api/internal/iluminacao/relatorios/solicitacoes.csv` com e sem datas e confirmar ausencia de dados pessoais no arquivo.
+21. Se a shell administrativa receber `404` nos endpoints de relatorio, tratar como indicio de API interna ainda nao atualizada ou restart pendente no servidor, e repetir a validacao somente apos `pull` e reinicio controlado do runtime correto.
+22. Clicar em `Sair`.
+23. Confirmar `POST /api/internal/auth/logout`.
+24. Confirmar retorno para a tela de login.
+25. Confirmar `GET /api/internal/auth/me -> 401`.
+26. Confirmar ausencia de token em `localStorage` e `sessionStorage`.
+27. Confirmar que console e documentacao nao exibem cookie, token, senha, observacoes reais ou dados pessoais reais.
 
 ### Validacao local e operacional do MVP interno - 2026-06-10
 

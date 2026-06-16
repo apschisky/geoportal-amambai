@@ -248,8 +248,8 @@ Bloqueadores de seguranca para essa ativacao:
 - [x] portas internas `8002` e `8003` mantidas sem exposicao direta externa;
 - [x] Apache `/api/internal/` apontando para `8003`, com rollback documentado para `8002`;
 - [ ] cookie de sessao validado em HTTPS sem copiar valores (`HttpOnly`, `Secure`, `SameSite`);
-- [ ] perfis do piloto com menor privilegio;
-- [ ] mutacoes internas validadas com sessao, permissao e `X-Geoportal-Internal-Request: 1`;
+- [x] perfis do piloto com menor privilegio validados, incluindo `manutencao-iluminacao` sem `admin.*` e sem `iluminacao.solicitacoes.atualizar_prioridade`;
+- [x] mutacoes internas validadas com sessao, permissao e `X-Geoportal-Internal-Request: 1`, incluindo observacao interna, alteracao normal de status e alteracao de prioridade;
 - [ ] console, logs e documentacao sem senha, token, cookie, observacoes reais ou dados pessoais reais.
 
 ## 13. Monitoramento e resposta a incidentes
