@@ -176,6 +176,38 @@ class IluminacaoSolicitacoesInternasResult(BaseModel):
     total: int
 
 
+class IluminacaoRelatorioSolicitacaoInternaItem(BaseModel):
+    protocolo: str
+    status: str
+    prioridade: str
+    tipo_problema: str
+    poste_id: str | None = None
+    origem: str
+    localizacao_tipo: str
+    criado_em: datetime
+    atualizado_em: datetime
+    finalizado_em: datetime | None = None
+    duplicidade_suspeita: bool
+    tempo_finalizacao_segundos: float | None = None
+
+
+class IluminacaoRelatorioSolicitacoesInternasResult(BaseModel):
+    items: list[IluminacaoRelatorioSolicitacaoInternaItem]
+
+
+class IluminacaoRelatorioResumoInternoResponse(BaseModel):
+    total: int
+    abertas: int
+    em_triagem: int
+    em_andamento: int
+    resolvidas: int
+    canceladas: int
+    indeferidas: int
+    nao_localizadas: int
+    por_prioridade: dict[str, int]
+    por_tipo_problema: dict[str, int]
+
+
 class IluminacaoSolicitacaoHistoricoInternoItem(BaseModel):
     id: int
     solicitacao_id: int

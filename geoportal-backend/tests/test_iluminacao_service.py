@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 import pytest
 from sqlalchemy.exc import SQLAlchemyError
@@ -6,6 +6,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.schemas.iluminacao import (
     IluminacaoConsultaRepositoryRecord,
     IluminacaoConsultaRequest,
+    IluminacaoRelatorioSolicitacaoInternaItem,
+    IluminacaoRelatorioSolicitacoesInternasResult,
     IluminacaoSolicitacaoHistoricoInternoItem,
     IluminacaoSolicitacaoHistoricoInternoResult,
     IluminacaoSolicitacaoInternaItem,
@@ -358,6 +360,28 @@ def observacao_solicitacao_item() -> IluminacaoSolicitacaoObservacaoInternaItem:
     )
 
 
+def relatorio_solicitacao_item(
+    **overrides: object,
+) -> IluminacaoRelatorioSolicitacaoInternaItem:
+    return IluminacaoRelatorioSolicitacaoInternaItem.model_validate(
+        {
+            "protocolo": "IP-2026-000010",
+            "status": "aberta",
+            "prioridade": "normal",
+            "tipo_problema": "lampada_apagada",
+            "poste_id": "POSTE-010",
+            "origem": "geoportal_publico",
+            "localizacao_tipo": "poste_mapa",
+            "criado_em": datetime(2026, 5, 20, 10, 30),
+            "atualizado_em": datetime(2026, 5, 21, 8, 15),
+            "finalizado_em": None,
+            "duplicidade_suspeita": False,
+            "tempo_finalizacao_segundos": None,
+            **overrides,
+        }
+    )
+
+
 def status_solicitacao_item(
     status: str = "em_execucao",
 ) -> IluminacaoSolicitacaoStatusInternaItem:
@@ -596,6 +620,214 @@ def test_listar_solicitacoes_internas_rejects_invalid_period() -> None:
         )
 
     assert str(exc_info.value) == "criado_de must be less than or equal to criado_ate"
+
+
+def test_listar_relatorio_solicitacoes_internas_normalizes_filters_and_period(
+    monkeypatch,
+) -> None:
+    calls: dict[str, object] = {}
+
+    def fake_list_relatorio_solicitacoes_internas(
+        **kwargs: object,
+    ) -> IluminacaoRelatorioSolicitacoesInternasResult:
+        calls.update(kwargs)
+        return IluminacaoRelatorioSolicitacoesInternasResult(
+            items=[relatorio_solicitacao_item()],
+        )
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "list_relatorio_solicitacoes_internas",
+        fake_list_relatorio_solicitacoes_internas,
+    )
+
+    response = iluminacao_service.listar_relatorio_solicitacoes_internas(
+        data_inicio=date(2026, 6, 1),
+        data_fim=date(2026, 6, 30),
+        status=StatusSolicitacaoIluminacao.aberta,
+        prioridade=" normal ",
+        tipo_problema=TipoProblemaIluminacao.lampada_apagada,
+    )
+
+    assert response.items[0].protocolo == "IP-2026-000010"
+    assert calls == {
+        "data_inicio": datetime(2026, 6, 1, 0, 0),
+        "data_fim_exclusive": datetime(2026, 7, 1, 0, 0),
+        "status": StatusSolicitacaoIluminacao.aberta,
+        "prioridade": "normal",
+        "tipo_problema": TipoProblemaIluminacao.lampada_apagada,
+    }
+
+
+def test_listar_relatorio_solicitacoes_internas_accepts_optional_dates(
+    monkeypatch,
+) -> None:
+    calls: list[dict[str, object]] = []
+
+    def fake_list_relatorio_solicitacoes_internas(
+        **kwargs: object,
+    ) -> IluminacaoRelatorioSolicitacoesInternasResult:
+        calls.append(kwargs)
+        return IluminacaoRelatorioSolicitacoesInternasResult(
+            items=[relatorio_solicitacao_item()],
+        )
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "list_relatorio_solicitacoes_internas",
+        fake_list_relatorio_solicitacoes_internas,
+    )
+
+    iluminacao_service.listar_relatorio_solicitacoes_internas()
+    iluminacao_service.listar_relatorio_solicitacoes_internas(
+        data_inicio=date(2026, 6, 1),
+    )
+    iluminacao_service.listar_relatorio_solicitacoes_internas(
+        data_fim=date(2026, 6, 30),
+    )
+
+    assert calls == [
+        {
+            "data_inicio": None,
+            "data_fim_exclusive": None,
+            "status": None,
+            "prioridade": None,
+            "tipo_problema": None,
+        },
+        {
+            "data_inicio": datetime(2026, 6, 1, 0, 0),
+            "data_fim_exclusive": None,
+            "status": None,
+            "prioridade": None,
+            "tipo_problema": None,
+        },
+        {
+            "data_inicio": None,
+            "data_fim_exclusive": datetime(2026, 7, 1, 0, 0),
+            "status": None,
+            "prioridade": None,
+            "tipo_problema": None,
+        },
+    ]
+
+
+def test_listar_relatorio_solicitacoes_internas_rejects_invalid_period_and_priority() -> None:
+    with pytest.raises(ValueError) as period_error:
+        iluminacao_service.listar_relatorio_solicitacoes_internas(
+            data_inicio=date(2026, 6, 30),
+            data_fim=date(2026, 6, 1),
+        )
+
+    assert str(period_error.value) == "data_fim must be greater than or equal to data_inicio"
+
+    with pytest.raises(ValueError) as priority_error:
+        iluminacao_service.listar_relatorio_solicitacoes_internas(
+            data_inicio=date(2026, 6, 1),
+            data_fim=date(2026, 6, 30),
+            prioridade="critica",
+        )
+
+    assert str(priority_error.value) == "prioridade must be one of allowed values"
+
+
+def test_montar_nome_arquivo_relatorio_solicitacoes_supports_optional_dates() -> None:
+    assert (
+        iluminacao_service.montar_nome_arquivo_relatorio_solicitacoes(None, None)
+        == "relatorio_iluminacao_geral.csv"
+    )
+    assert (
+        iluminacao_service.montar_nome_arquivo_relatorio_solicitacoes(
+            date(2026, 6, 1),
+            None,
+        )
+        == "relatorio_iluminacao_desde_2026-06-01.csv"
+    )
+    assert (
+        iluminacao_service.montar_nome_arquivo_relatorio_solicitacoes(
+            None,
+            date(2026, 6, 30),
+        )
+        == "relatorio_iluminacao_ate_2026-06-30.csv"
+    )
+
+
+def test_listar_relatorio_solicitacoes_internas_converts_database_error_to_safe_error(
+    monkeypatch,
+) -> None:
+    def fail_with_database_error(*args: object, **kwargs: object) -> None:
+        raise SQLAlchemyError(
+            "could not connect using DATABASE_URL on host db.internal:5432 SELECT"
+        )
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "list_relatorio_solicitacoes_internas",
+        fail_with_database_error,
+    )
+
+    with pytest.raises(DatabaseUnavailableError) as exc_info:
+        iluminacao_service.listar_relatorio_solicitacoes_internas(
+            data_inicio=date(2026, 6, 1),
+            data_fim=date(2026, 6, 30),
+        )
+
+    message = str(exc_info.value)
+    assert message == iluminacao_service.DATABASE_UNAVAILABLE_MESSAGE
+    assert "DATABASE_URL" not in message
+    assert "db.internal" not in message
+    assert "SELECT" not in message
+
+
+def test_build_relatorio_solicitacoes_csv_is_sanitized_and_excel_compatible() -> None:
+    csv_content = iluminacao_service.build_relatorio_solicitacoes_csv(
+        [
+            relatorio_solicitacao_item(
+                finalizado_em=datetime(2026, 5, 22, 9, 0),
+                duplicidade_suspeita=True,
+                tempo_finalizacao_segundos=171000.4,
+            )
+        ]
+    )
+
+    assert csv_content.startswith("\ufeff")
+    assert "protocolo,status,prioridade,tipo_problema" in csv_content
+    assert "IP-2026-000010,aberta,normal,lampada_apagada" in csv_content
+    assert "sim,171000" in csv_content
+    for forbidden in (
+        "nome_solicitante",
+        "contato_solicitante",
+        "observacao",
+        "descricao",
+        "DATABASE_URL",
+        "session_secret",
+    ):
+        assert forbidden not in csv_content
+
+
+def test_resumir_relatorio_solicitacoes_internas_aggregates_statuses_and_priority() -> None:
+    summary = iluminacao_service.resumir_relatorio_solicitacoes_internas(
+        [
+            relatorio_solicitacao_item(status="aberta", prioridade="normal"),
+            relatorio_solicitacao_item(status="encaminhada", prioridade="alta"),
+            relatorio_solicitacao_item(status="resolvida", prioridade="alta"),
+            relatorio_solicitacao_item(
+                status="nao_localizado",
+                prioridade="baixa",
+                tipo_problema="fiacao_aparente",
+            ),
+        ]
+    )
+
+    assert summary.total == 4
+    assert summary.abertas == 1
+    assert summary.em_andamento == 1
+    assert summary.resolvidas == 1
+    assert summary.nao_localizadas == 1
+    assert summary.por_prioridade == {"normal": 1, "alta": 2, "baixa": 1}
+    assert summary.por_tipo_problema == {
+        "lampada_apagada": 3,
+        "fiacao_aparente": 1,
+    }
 
 
 def test_obter_solicitacao_interna_por_id_returns_found_item(monkeypatch) -> None:

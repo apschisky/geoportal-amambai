@@ -389,6 +389,8 @@ Permissoes conceituais granulares:
 
 As permissoes reais devem ser criadas em etapa operacional propria, sem seed publico com dado real, e devem seguir o padrao `modulo.recurso.acao`.
 
+Relatorio administrativo sanitizado de Iluminacao Publica: a versao 1 implementada no backend foi protegida por permissao administrativa existente, e nao pelas permissoes operacionais de manutencao. A regra atual permite exportacao CSV e resumo JSON apenas para perfil administrativo/autorizado; manutencao continua sem acesso ao relatorio. O recorte temporal passou a ser opcional: sem datas, o backend pode gerar relatorio geral; com uma ou duas datas, aplica apenas os limites informados. Na shell, um `404` para os endpoints de relatorio deve ser tratado como indicio de API interna ainda nao atualizada ou restart pendente no servidor. Evolucao recomendada: criar permissao especifica de exportacao/leitura de relatorio em etapa propria, sem misturar esse acesso com leitura operacional de campo.
+
 Permissao operacional para prioridade: `iluminacao.solicitacoes.atualizar_prioridade`. Ela permanece diferente de `iluminacao.solicitacoes.atualizar_status`, `iluminacao.solicitacoes.comentar` e `iluminacao.solicitacoes.ler`, preservando menor privilegio e separacao entre triagem/criticidade, andamento do chamado e comentarios internos. A shell interna usa essa permissao apenas para orientar a interface; a autorizacao real permanece no backend por `require_permission("iluminacao.solicitacoes.atualizar_prioridade")`.
 
 Administrador funcional do Geoportal Interno:

@@ -3,19 +3,26 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   INTERNAL_MUTATING_REQUEST_HEADER,
   buildInternalGoogleMapsRouteUrl,
+  buildRelatorioSolicitacoesCsvUrl,
   buildInternalWhatsappUrl,
   buildSolicitacoesUrl,
+  canViewRelatorio,
   canUpdatePrioridade,
   createDetalheState,
+  createRelatorioState,
+  fetchRelatorioSolicitacoesCsv,
+  fetchRelatorioSolicitacoesResumo,
   fetchSolicitacoesInternas,
   fetchUpdateSolicitacaoStatus,
   fetchUpdateSolicitacaoPrioridade,
   getPrioridadeFormValidationMessage,
+  getRelatorioValidationMessage,
   isMaintenanceLikeUser,
   normalizeSolicitacaoCoordinate,
   renderCoordinateRouteSection,
   renderModuleMenu,
   renderObservacoesPanel,
+  renderRelatorioPanel,
   renderPriorityUpdatePanel,
   renderSolicitacaoDetailLoaded,
   renderSolicitacoesPanel,
@@ -26,12 +33,17 @@ const prioridadePermission = 'iluminacao.solicitacoes.atualizar_prioridade';
 const readPermission = 'iluminacao.solicitacoes.ler';
 const commentPermission = 'iluminacao.solicitacoes.comentar';
 const statusPermission = 'iluminacao.solicitacoes.atualizar_status';
+const adminUsersReadPermission = 'admin.usuarios.ler';
 
 function authenticatedState(permissions = []) {
   return {
     sessionState: 'authenticated',
     permissions
   };
+}
+
+function adminState() {
+  return authenticatedState([readPermission, adminUsersReadPermission]);
 }
 
 function loadedDetail(overrides = {}) {
@@ -212,6 +224,159 @@ describe('internal prioridade UI', () => {
     fetchMock.mockResolvedValueOnce(jsonResponse(422, {}));
     await expect(fetchUpdateSolicitacaoPrioridade(10, 'alta', 'Justificativa')).resolves
       .toMatchObject({ status: 'error', statusCode: 422 });
+  });
+});
+
+describe('internal relatorio administrativo', () => {
+  it('renderiza area de relatorio apenas para perfil administrativo', () => {
+    const adminHtml = renderRelatorioPanel({
+      ...adminState(),
+      relatorio: createRelatorioState()
+    });
+    const maintenanceHtml = renderRelatorioPanel({
+      ...authenticatedState([readPermission, statusPermission]),
+      relatorio: createRelatorioState()
+    });
+
+    expect(canViewRelatorio(adminState())).toBe(true);
+    expect(adminHtml).toContain('Relatorio administrativo');
+    expect(adminHtml).toContain('Exportar CSV');
+    expect(adminHtml).toContain('Atualizar resumo');
+    expect(canViewRelatorio(authenticatedState([readPermission, statusPermission]))).toBe(false);
+    expect(maintenanceHtml).toBe('');
+  });
+
+  it('permite relatorio geral sem datas e orienta o filtro opcional', () => {
+    expect(getRelatorioValidationMessage(createRelatorioState())).toBe('');
+
+    const html = renderRelatorioPanel({
+      ...adminState(),
+      relatorio: createRelatorioState()
+    });
+
+    expect(html).toContain('Se deixar em branco, o relatorio sera geral');
+    expect(html).toContain('value="csv"');
+    expect(html).not.toContain('required');
+  });
+
+  it('monta URL de exportacao apenas com filtros administrativos seguros', () => {
+    const fullUrl = buildRelatorioSolicitacoesCsvUrl({
+      dataInicio: '2026-06-01',
+      dataFim: '2026-06-30',
+      statusFilter: 'aberta',
+      prioridadeFilter: 'normal',
+      tipoFilter: 'lampada_apagada',
+      nomeSolicitante: 'Nao deve ir',
+      contatoSolicitante: '67999990000',
+      observacao: 'Nao deve ir'
+    });
+    const noDatesUrl = buildRelatorioSolicitacoesCsvUrl({});
+    const onlyStartUrl = buildRelatorioSolicitacoesCsvUrl({
+      dataInicio: '2026-06-01'
+    });
+    const onlyEndUrl = buildRelatorioSolicitacoesCsvUrl({
+      dataFim: '2026-06-30'
+    });
+
+    expect(fullUrl).toContain('/api/internal/iluminacao/relatorios/solicitacoes.csv?');
+    expect(fullUrl).toContain('data_inicio=2026-06-01');
+    expect(fullUrl).toContain('data_fim=2026-06-30');
+    expect(fullUrl).toContain('status=aberta');
+    expect(fullUrl).toContain('prioridade=normal');
+    expect(fullUrl).toContain('tipo=lampada_apagada');
+    expect(fullUrl).not.toContain('nomeSolicitante');
+    expect(fullUrl).not.toContain('contatoSolicitante');
+    expect(fullUrl).not.toContain('observacao');
+    expect(noDatesUrl).toBe('/api/internal/iluminacao/relatorios/solicitacoes.csv');
+    expect(noDatesUrl).not.toContain('data_inicio=');
+    expect(noDatesUrl).not.toContain('data_fim=');
+    expect(onlyStartUrl).toContain('data_inicio=2026-06-01');
+    expect(onlyStartUrl).not.toContain('data_fim=');
+    expect(onlyEndUrl).toContain('data_fim=2026-06-30');
+    expect(onlyEndUrl).not.toContain('data_inicio=');
+  });
+
+  it('busca resumo com credentials include e trata erros amigavelmente', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, {
+      total: 4,
+      abertas: 1,
+      em_triagem: 1,
+      em_andamento: 1,
+      resolvidas: 1,
+      canceladas: 0,
+      indeferidas: 0,
+      nao_localizadas: 0,
+      por_prioridade: { normal: 2, alta: 2 },
+      por_tipo_problema: { lampada_apagada: 4 }
+    }));
+
+    const success = await fetchRelatorioSolicitacoesResumo({
+      dataInicio: '2026-06-01',
+      dataFim: '2026-06-30'
+    });
+
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        Accept: 'application/json'
+      }
+    });
+    expect(success.status).toBe('success');
+    expect(success.summary.total).toBe(4);
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(404, {}));
+    await expect(fetchRelatorioSolicitacoesResumo({})).resolves.toMatchObject({
+      status: 'error',
+      statusCode: 404,
+      message: 'Relatorio indisponivel nesta versao. Verifique se a API interna foi atualizada.'
+    });
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(403, {}));
+    await expect(fetchRelatorioSolicitacoesResumo({
+      dataInicio: '2026-06-01',
+      dataFim: '2026-06-30'
+    })).resolves.toMatchObject({
+      status: 'error',
+      statusCode: 403,
+      message: 'Relatorio indisponivel para este perfil.'
+    });
+  });
+
+  it('exporta CSV com credentials include e sem dados sensiveis na URL', async () => {
+    const blob = new Blob(['csv'], { type: 'text/csv' });
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({
+        'content-disposition': 'attachment; filename="relatorio_iluminacao_2026-06-01_2026-06-30.csv"'
+      }),
+      blob: async () => blob
+    });
+
+    const result = await fetchRelatorioSolicitacoesCsv({
+      statusFilter: 'aberta',
+      prioridadeFilter: 'normal',
+      tipoFilter: 'lampada_apagada'
+    });
+
+    expect(fetchMock.mock.calls[0][0]).not.toContain('data_inicio=');
+    expect(fetchMock.mock.calls[0][0]).not.toContain('data_fim=');
+    expect(fetchMock.mock.calls[0][0]).not.toContain('nome_solicitante');
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        Accept: 'text/csv'
+      }
+    });
+    expect(result).toMatchObject({
+      status: 'success',
+      statusCode: 200,
+      filename: 'relatorio_iluminacao_2026-06-01_2026-06-30.csv'
+    });
   });
 });
 

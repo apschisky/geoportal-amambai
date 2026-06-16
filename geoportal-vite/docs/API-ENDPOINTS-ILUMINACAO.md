@@ -236,19 +236,35 @@ Filtro implementado para a visao de manutencao: `ativos=true`. O objetivo e faze
 
 Erros: 401 sem sessao, 403 sem permissao, 422 para query invalida e 503 generico se o banco estiver indisponivel, sem expor SQL, traceback, host, role, segredo ou `DATABASE_URL`.
 
-### `GET /api/internal/iluminacao/relatorios/solicitacoes` (planejado)
+### `GET /api/internal/iluminacao/relatorios/solicitacoes.csv`
 
-Finalidade futura: gerar relatorio administrativo sanitizado de solicitacoes/servicos de Iluminacao Publica, por endpoint backend autorizado. Este contrato ainda nao esta implementado e nao deve ser substituido por exportacao simples da tabela renderizada no frontend, porque a tabela pode estar paginada, filtrada visualmente ou incompleta.
+Finalidade: exportar relatorio administrativo sanitizado de solicitacoes/servicos de Iluminacao Publica. O endpoint nao depende da tabela visivel no frontend e consulta o backend diretamente com filtros de periodo antes de montar o CSV.
 
-Escopo recomendado para a versao 1:
+Contrato atual:
 
-- Disponivel somente para perfil administrativo/autorizado; nao disponivel para manutencao.
-- Filtros obrigatorios ou recomendados: `data_inicial`, `data_final`, `status` opcional, `prioridade` opcional e `tipo_problema` opcional.
-- Formato: CSV compativel com Excel ou XLSX se o projeto aprovar dependencia/geracao backend.
-- Colunas sanitizadas: `protocolo`, `status`, `prioridade`, `tipo_problema`, `poste_id`, `origem`, `localizacao_tipo`, bairro/rua quando ja existirem no contrato, `criado_em`, `atualizado_em`, `finalizado_em`, tempo ate finalizacao quando calculavel com seguranca e `duplicidade_suspeita`.
-- Excluir por padrao: nome do solicitante, telefone/WhatsApp, observacoes internas livres, descricao livre do cidadao e campos com risco de dados pessoais/LGPD.
-- Indicadores por periodo: total, abertos, em andamento, resolvidos, cancelados, indeferidos, nao localizados, por prioridade e por tipo de problema.
-- Permissao futura pode ser especifica para relatorios/exportacao, separada das permissoes operacionais de manutencao.
+- Disponivel somente para perfil administrativo/autorizado. Na versao 1, a protecao backend usa permissao administrativa existente; manutencao nao acessa a exportacao.
+- Query temporal opcional: `data_inicio=YYYY-MM-DD` e `data_fim=YYYY-MM-DD`.
+- Filtros opcionais: `status`, `prioridade` e `tipo`.
+- Regras: sem datas, o endpoint gera relatorio geral; apenas `data_inicio` gera relatorio desde a data informada; apenas `data_fim` gera relatorio ate a data informada; com ambas, usa o intervalo informado. `data_inicio`/`data_fim` invalidos retornam `422`; periodo invertido retorna `422`; periodo acima do limite validado pelo service retorna `422`; autenticacao e autorizacao continuam no backend.
+- Formato: `text/csv; charset=utf-8`, com cabecalho e nome de arquivo seguro como `relatorio_iluminacao_geral.csv`, `relatorio_iluminacao_desde_2026-06-01.csv`, `relatorio_iluminacao_ate_2026-06-30.csv` ou `relatorio_iluminacao_2026-06-01_2026-06-30.csv`.
+- Compatibilidade: CSV v1 compativel com Excel, gerado com biblioteca padrao do Python e BOM UTF-8 para preservar acentuacao em Windows.
+- Colunas sanitizadas atuais: `protocolo`, `status`, `prioridade`, `tipo_problema`, `poste_id`, `origem`, `localizacao_tipo`, `criado_em`, `atualizado_em`, `finalizado_em`, `duplicidade_suspeita`, `tempo_finalizacao_segundos`.
+- Excluir por padrao: `nome_solicitante`, `contato_solicitante`, telefone/WhatsApp, observacoes internas livres, descricao livre do cidadao, coordenadas, SQL, role, GRANT, senha, token, cookie, hash, `session_secret` e `DATABASE_URL`.
+- Erros sanitizados: `401`, `403`, `404`, `422` e `503`. Na shell administrativa, `404` deve ser tratado como indicio de API interna ainda nao atualizada ou restart pendente no servidor.
+
+### `GET /api/internal/iluminacao/relatorios/solicitacoes/resumo`
+
+Finalidade: retornar resumo administrativo JSON do mesmo recorte temporal do CSV, sem exportacao de dados pessoais e sem depender da tabela paginada do frontend.
+
+Contrato atual:
+
+- Mesmo controle administrativo e mesmos filtros do CSV: `data_inicio`, `data_fim`, `status`, `prioridade` e `tipo`, todos opcionais.
+- Retorna agregados sanitizados por periodo: `total`, `abertas`, `em_triagem`, `em_andamento`, `resolvidas`, `canceladas`, `indeferidas`, `nao_localizadas`, `por_prioridade` e `por_tipo_problema`.
+- `em_andamento` agrega `encaminhada`, `em_execucao` e `aguardando_material`.
+- Sem datas, o resumo representa o recorte geral retornado pelo backend; com uma ou duas datas, aplica apenas os limites informados.
+- Erros sanitizados: `401`, `403`, `404`, `422` e `503`.
+
+Nota de autorizacao: a evolucao futura recomendada continua sendo uma permissao especifica de relatorio/exportacao, separada das permissoes operacionais de manutencao. Na versao 1 foi adotada uma permissao administrativa existente para evitar criar privilegio novo sem ciclo proprio de bootstrap/GRANT.
 
 **Validacao operacional (filtros e paginacao da listagem interna)**
 

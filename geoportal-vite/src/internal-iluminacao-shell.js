@@ -18,6 +18,10 @@ const AUTH_ME_ENDPOINT = '/api/internal/auth/me';
 const AUTH_LOGIN_ENDPOINT = '/api/internal/auth/login';
 const AUTH_LOGOUT_ENDPOINT = '/api/internal/auth/logout';
 const INTERNAL_SOLICITACOES_ENDPOINT = '/api/internal/iluminacao/solicitacoes';
+const INTERNAL_RELATORIO_SOLICITACOES_CSV_ENDPOINT =
+  '/api/internal/iluminacao/relatorios/solicitacoes.csv';
+const INTERNAL_RELATORIO_SOLICITACOES_RESUMO_ENDPOINT =
+  '/api/internal/iluminacao/relatorios/solicitacoes/resumo';
 const SOLICITACOES_PAGE_SIZE = 20;
 const HISTORICO_PAGE_SIZE = 20;
 const OBSERVACOES_PAGE_SIZE = 20;
@@ -390,6 +394,22 @@ function createPrioridadeFormState(overrides = {}) {
   };
 }
 
+function createRelatorioState(overrides = {}) {
+  return {
+    dataInicio: '',
+    dataFim: '',
+    statusFilter: '',
+    prioridadeFilter: '',
+    tipoFilter: '',
+    exportStatus: 'idle',
+    summaryStatus: 'idle',
+    statusCode: null,
+    message: 'Use datas para filtrar por periodo. Se deixar em branco, o relatorio sera geral.',
+    summary: null,
+    ...overrides
+  };
+}
+
 function createDetalheState(overrides = {}) {
   const historico = createHistoricoState(overrides.historico || {});
   const observacoes = createObservacoesState(overrides.observacoes || {});
@@ -427,6 +447,7 @@ const initialSessionState = {
   loginStatus: 'idle',
   loginMessage: '',
   loginValue: '',
+  relatorio: createRelatorioState(),
   solicitacoes: createSolicitacoesState(),
   detalhe: createDetalheState()
 };
@@ -444,6 +465,7 @@ function createSessionState(overrides = {}) {
     loginValue: '',
     logoutStatus: 'idle',
     logoutMessage: '',
+    relatorio: createRelatorioState(),
     solicitacoes: createSolicitacoesState(),
     detalhe: createDetalheState(),
     ...overrides
@@ -735,6 +757,27 @@ function isValidPrioridadeUpdateResponsePayload(payload) {
   );
 }
 
+function isValidRelatorioResumoPayload(payload) {
+  return Boolean(
+    payload
+      && typeof payload === 'object'
+      && Number.isInteger(payload.total)
+      && Number.isInteger(payload.abertas)
+      && Number.isInteger(payload.em_triagem)
+      && Number.isInteger(payload.em_andamento)
+      && Number.isInteger(payload.resolvidas)
+      && Number.isInteger(payload.canceladas)
+      && Number.isInteger(payload.indeferidas)
+      && Number.isInteger(payload.nao_localizadas)
+      && payload.por_prioridade
+      && typeof payload.por_prioridade === 'object'
+      && !Array.isArray(payload.por_prioridade)
+      && payload.por_tipo_problema
+      && typeof payload.por_tipo_problema === 'object'
+      && !Array.isArray(payload.por_tipo_problema)
+  );
+}
+
 function safeText(value, fallback = 'Não informado') {
   if (value === null || value === undefined) {
     return fallback;
@@ -766,21 +809,29 @@ function formatDateTime(value) {
 export {
   INTERNAL_MUTATING_REQUEST_HEADER,
   buildInternalGoogleMapsRouteUrl,
+  buildRelatorioSolicitacoesCsvUrl,
+  buildRelatorioSolicitacoesResumoUrl,
   buildInternalWhatsappUrl,
   buildSolicitacoesUrl,
   buildUpdateSolicitacaoPrioridadeUrl,
+  canViewRelatorio,
   canUpdatePrioridade,
   createDetalheState,
+  createRelatorioState,
   createPrioridadeFormState,
+  fetchRelatorioSolicitacoesCsv,
+  fetchRelatorioSolicitacoesResumo,
   fetchSolicitacoesInternas,
   fetchUpdateSolicitacaoStatus,
   fetchUpdateSolicitacaoPrioridade,
   getPrioridadeFormValidationMessage,
+  getRelatorioValidationMessage,
   isMaintenanceLikeUser,
   normalizeSolicitacaoCoordinate,
   renderCoordinateRouteSection,
   renderModuleMenu,
   renderObservacoesPanel,
+  renderRelatorioPanel,
   renderPriorityUpdatePanel,
   renderSolicitacaoDetailLoaded,
   renderSolicitacoesPanel,
@@ -1113,6 +1164,56 @@ function buildUpdateSolicitacaoPrioridadeUrl(solicitacaoId) {
   return `${buildSolicitacaoDetailUrl(solicitacaoId)}/prioridade`;
 }
 
+function normalizeRelatorioDateValue(value) {
+  const text = String(value || '').trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : '';
+}
+
+function buildRelatorioQueryParams(filters = {}) {
+  const params = new URLSearchParams();
+  const dataInicio = normalizeRelatorioDateValue(filters.dataInicio);
+  const dataFim = normalizeRelatorioDateValue(filters.dataFim);
+  const statusFilter = safeText(filters.statusFilter, '').trim();
+  const prioridadeFilter = safeText(filters.prioridadeFilter, '').trim();
+  const tipoFilter = safeText(filters.tipoFilter, '').trim();
+
+  if (dataInicio) {
+    params.set('data_inicio', dataInicio);
+  }
+
+  if (dataFim) {
+    params.set('data_fim', dataFim);
+  }
+
+  if (statusFilter) {
+    params.set('status', statusFilter);
+  }
+
+  if (prioridadeFilter) {
+    params.set('prioridade', prioridadeFilter);
+  }
+
+  if (tipoFilter) {
+    params.set('tipo', tipoFilter);
+  }
+
+  return params;
+}
+
+function buildRelatorioSolicitacoesCsvUrl(filters = {}) {
+  const query = buildRelatorioQueryParams(filters).toString();
+  return query
+    ? `${INTERNAL_RELATORIO_SOLICITACOES_CSV_ENDPOINT}?${query}`
+    : INTERNAL_RELATORIO_SOLICITACOES_CSV_ENDPOINT;
+}
+
+function buildRelatorioSolicitacoesResumoUrl(filters = {}) {
+  const query = buildRelatorioQueryParams(filters).toString();
+  return query
+    ? `${INTERNAL_RELATORIO_SOLICITACOES_RESUMO_ENDPOINT}?${query}`
+    : INTERNAL_RELATORIO_SOLICITACOES_RESUMO_ENDPOINT;
+}
+
 function canListSolicitacoes(state) {
   return state.sessionState === 'authenticated'
     && hasPermission(state, PERMISSIONS.iluminacaoRead);
@@ -1141,6 +1242,11 @@ function canUpdateStatus(state) {
 function canUpdatePrioridade(state) {
   return state.sessionState === 'authenticated'
     && hasPermission(state, PERMISSIONS.iluminacaoPriority);
+}
+
+function canViewRelatorio(state) {
+  return state.sessionState === 'authenticated'
+    && hasPermission(state, PERMISSIONS.adminUsersRead);
 }
 
 function isMaintenanceLikeUser(permissions = []) {
@@ -1329,10 +1435,163 @@ function renderSummaryCards(state) {
     .join('');
 }
 
+function getRelatorioValidationMessage(relatorioState) {
+  return '';
+}
+
+function renderRelatorioSummaryCards(summary) {
+  if (!summary) {
+    return '';
+  }
+
+  const cards = [
+    ['Total no periodo', summary.total],
+    ['Abertas', summary.abertas],
+    ['Em triagem', summary.em_triagem],
+    ['Em andamento', summary.em_andamento],
+    ['Resolvidas', summary.resolvidas],
+    ['Canceladas', summary.canceladas],
+    ['Indeferidas', summary.indeferidas],
+    ['Nao localizadas', summary.nao_localizadas]
+  ];
+
+  return cards
+    .map(([label, value]) => `
+      <article class="internal-report-card">
+        <strong>${escapeHtml(String(value))}</strong>
+        <span>${escapeHtml(label)}</span>
+      </article>
+    `)
+    .join('');
+}
+
+function renderRelatorioPanel(state) {
+  if (!canViewRelatorio(state)) {
+    return '';
+  }
+
+  const relatorio = state.relatorio || createRelatorioState();
+  const isBusy = relatorio.summaryStatus === 'loading' || relatorio.exportStatus === 'submitting';
+
+  return `
+    <section class="internal-main-panel internal-report-panel" aria-labelledby="internal-report-title">
+      <div class="internal-panel-header">
+        <div>
+          <h3 id="internal-report-title">Relatorio administrativo</h3>
+          <p>
+            Use datas para filtrar por periodo. Se deixar em branco, o relatorio sera geral.
+          </p>
+        </div>
+        <span class="internal-pill">CSV v1</span>
+      </div>
+
+      <form class="internal-report-form" data-relatorio-form>
+        <label>
+          <span>Data inicial</span>
+          <input type="date" name="data_inicio" value="${escapeHtml(relatorio.dataInicio)}" />
+        </label>
+        <label>
+          <span>Data final</span>
+          <input type="date" name="data_fim" value="${escapeHtml(relatorio.dataFim)}" />
+        </label>
+        <label>
+          <span>Status</span>
+          <select name="status">
+            ${renderStatusFilterOptions(relatorio.statusFilter)}
+          </select>
+        </label>
+        <label>
+          <span>Prioridade</span>
+          <select name="prioridade">
+            ${renderPriorityFilterOptions(relatorio.prioridadeFilter)}
+          </select>
+        </label>
+        <label>
+          <span>Tipo</span>
+          <select name="tipo">
+            ${renderProblemTypeFilterOptions(relatorio.tipoFilter)}
+          </select>
+        </label>
+        <div class="internal-report-actions">
+          <button
+            type="submit"
+            class="internal-secondary-action"
+            name="relatorio_acao"
+            value="resumo"
+            ${!isBusy ? '' : 'disabled'}
+          >
+            Atualizar resumo
+          </button>
+          <button
+            type="submit"
+            class="internal-primary-action"
+            name="relatorio_acao"
+            value="csv"
+            ${!isBusy ? '' : 'disabled'}
+          >
+            Exportar CSV
+          </button>
+        </div>
+      </form>
+
+      <p class="internal-list-message${relatorio.statusCode ? ' is-error' : ''}" role="status">
+        ${escapeHtml(relatorio.message)}
+      </p>
+
+      ${relatorio.summary
+        ? `
+          <div class="internal-report-summary-grid">
+            ${renderRelatorioSummaryCards(relatorio.summary)}
+          </div>
+        `
+        : ''}
+    </section>
+  `;
+}
+
 function renderStatusOptions() {
   return statusOptions
     .map((status) => `<option value="${escapeHtml(status)}">${escapeHtml(formatStatusLabel(status))}</option>`)
     .join('');
+}
+
+function renderStatusFilterOptions(selectedValue = '') {
+  return `
+    <option value="">Todos os status</option>
+    ${statusOptions
+    .map((status) => `
+      <option value="${escapeHtml(status)}" ${selectedValue === status ? 'selected' : ''}>
+        ${escapeHtml(formatStatusLabel(status))}
+      </option>
+    `)
+    .join('')}
+  `;
+}
+
+function renderPriorityFilterOptions(selectedValue = '') {
+  return `
+    <option value="">Todas as prioridades</option>
+    ${priorityOptions
+    .map((priority) => `
+      <option value="${escapeHtml(priority)}" ${selectedValue === priority ? 'selected' : ''}>
+        ${escapeHtml(formatPriorityLabel(priority))}
+      </option>
+    `)
+    .join('')}
+  `;
+}
+
+function renderProblemTypeFilterOptions(selectedValue = '') {
+  return `
+    <option value="">Todos os tipos</option>
+    ${Object.keys(problemTypeLabels)
+    .map((problemType) => `
+      <option value="${escapeHtml(problemType)}" ${selectedValue === problemType ? 'selected' : ''}>
+        ${escapeHtml(formatProblemTypeLabel(problemType))}
+      </option>
+    `)
+    .join('')}
+  `;
 }
 
 function renderList(items) {
@@ -2940,6 +3199,7 @@ function renderInternalIluminacaoShell(root, state) {
             </div>
 
             <div class="internal-workspace">
+              ${renderRelatorioPanel(state)}
               ${renderSolicitacoesPanel(state)}
 
               <div class="internal-detail-grid">
@@ -3177,6 +3437,119 @@ async function fetchSolicitacoesInternas(offset = 0, options = {}) {
       ? 'Listagem somente leitura carregada com campos mínimos.'
       : 'Nenhuma solicitação encontrada nesta página.'
   });
+}
+
+function getRelatorioFriendlyErrorMessage(statusCode) {
+  if (statusCode === 401) {
+    return 'Sessao expirada. Entre novamente para gerar o relatorio.';
+  }
+
+  if (statusCode === 403) {
+    return 'Relatorio indisponivel para este perfil.';
+  }
+
+  if (statusCode === 404) {
+    return 'Relatorio indisponivel nesta versao. Verifique se a API interna foi atualizada.';
+  }
+
+  if (statusCode === 422) {
+    return 'Periodo ou filtros invalidos para o relatorio.';
+  }
+
+  if (statusCode === 503) {
+    return 'Servico temporariamente indisponivel para gerar o relatorio.';
+  }
+
+  return 'Nao foi possivel concluir o relatorio agora.';
+}
+
+function extractDownloadFilename(response, fallbackName) {
+  const header = response.headers.get('content-disposition') || '';
+  const match = header.match(/filename=\"([^\"]+)\"/i);
+  return match && match[1] ? match[1] : fallbackName;
+}
+
+function buildRelatorioFallbackFilename(filters = {}) {
+  const dataInicio = normalizeRelatorioDateValue(filters.dataInicio);
+  const dataFim = normalizeRelatorioDateValue(filters.dataFim);
+
+  if (dataInicio && dataFim) {
+    return `relatorio_iluminacao_${dataInicio}_${dataFim}.csv`;
+  }
+
+  if (dataInicio) {
+    return `relatorio_iluminacao_desde_${dataInicio}.csv`;
+  }
+
+  if (dataFim) {
+    return `relatorio_iluminacao_ate_${dataFim}.csv`;
+  }
+
+  return 'relatorio_iluminacao_geral.csv';
+}
+
+async function fetchRelatorioSolicitacoesResumo(filters) {
+  const response = await fetch(buildRelatorioSolicitacoesResumoUrl(filters), {
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json'
+    }
+  });
+
+  if (!response.ok) {
+    return {
+      status: response.status === 401 ? 'expired' : 'error',
+      statusCode: response.status,
+      message: getRelatorioFriendlyErrorMessage(response.status),
+      summary: null
+    };
+  }
+
+  const payload = await response.json();
+
+  if (!isValidRelatorioResumoPayload(payload)) {
+    return {
+      status: 'error',
+      statusCode: response.status,
+      message: 'Resumo do relatorio em formato inesperado.',
+      summary: null
+    };
+  }
+
+  return {
+    status: 'success',
+    statusCode: response.status,
+    message: 'Resumo administrativo atualizado.',
+    summary: payload
+  };
+}
+
+async function fetchRelatorioSolicitacoesCsv(filters) {
+  const fallbackName = buildRelatorioFallbackFilename(filters);
+  const response = await fetch(buildRelatorioSolicitacoesCsvUrl(filters), {
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      Accept: 'text/csv'
+    }
+  });
+
+  if (!response.ok) {
+    return {
+      status: response.status === 401 ? 'expired' : 'error',
+      statusCode: response.status,
+      message: getRelatorioFriendlyErrorMessage(response.status)
+    };
+  }
+
+  return {
+    status: 'success',
+    statusCode: response.status,
+    message: 'Relatorio exportado com sucesso.',
+    blob: await response.blob(),
+    filename: extractDownloadFilename(response, fallbackName)
+  };
 }
 
 async function fetchSolicitacaoDetail(solicitacaoId) {
@@ -5081,6 +5454,170 @@ function clearSolicitacaoDetail(root, state) {
   });
 }
 
+function readRelatorioFormState(form, currentRelatorio = createRelatorioState()) {
+  const formData = new FormData(form);
+
+  return createRelatorioState({
+    ...currentRelatorio,
+    dataInicio: normalizeRelatorioDateValue(formData.get('data_inicio')),
+    dataFim: normalizeRelatorioDateValue(formData.get('data_fim')),
+    statusFilter: String(formData.get('status') || '').trim(),
+    prioridadeFilter: String(formData.get('prioridade') || '').trim(),
+    tipoFilter: String(formData.get('tipo') || '').trim()
+  });
+}
+
+function syncRelatorioForm(root, state, form) {
+  renderApp(root, {
+    ...state,
+    relatorio: readRelatorioFormState(form, state.relatorio || createRelatorioState())
+  });
+}
+
+function downloadRelatorioBlob(blob, filename) {
+  const objectUrl = window.URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = objectUrl;
+  anchor.download = filename;
+  anchor.rel = 'noopener noreferrer';
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  window.URL.revokeObjectURL(objectUrl);
+}
+
+async function submitRelatorio(root, state, form, action) {
+  const currentRelatorio = state.relatorio || createRelatorioState();
+  const relatorio = readRelatorioFormState(form, currentRelatorio);
+  const validationMessage = getRelatorioValidationMessage(relatorio);
+
+  if (!canViewRelatorio(state)) {
+    renderApp(root, {
+      ...state,
+      relatorio: createRelatorioState({
+        ...relatorio,
+        statusCode: 403,
+        message: 'Relatorio indisponivel para este perfil.'
+      })
+    });
+    return;
+  }
+
+  if (validationMessage) {
+    renderApp(root, {
+      ...state,
+      relatorio: createRelatorioState({
+        ...relatorio,
+        statusCode: 422,
+        message: validationMessage
+      })
+    });
+    return;
+  }
+
+  const loadingRelatorio = createRelatorioState({
+    ...relatorio,
+    exportStatus: action === 'csv' ? 'submitting' : 'idle',
+    summaryStatus: action === 'resumo' ? 'loading' : currentRelatorio.summaryStatus,
+    message: action === 'csv'
+      ? 'Preparando exportacao CSV...'
+      : 'Atualizando resumo administrativo...',
+    summary: currentRelatorio.summary
+  });
+
+  renderApp(root, {
+    ...state,
+    relatorio: loadingRelatorio
+  });
+
+  try {
+    if (action === 'csv') {
+      const result = await fetchRelatorioSolicitacoesCsv(relatorio);
+
+      if (result.status === 'expired') {
+        renderApp(root, createSessionState({
+          sessionState: 'unauthenticated',
+          statusCode: 401,
+          message: 'Sessao expirada ao gerar o relatorio. Faca login novamente.',
+          hasChecked: true,
+          relatorio: createRelatorioState({
+            ...relatorio,
+            statusCode: 401,
+            message: result.message
+          })
+        }));
+        return;
+      }
+
+      if (result.status !== 'success') {
+        renderApp(root, {
+          ...state,
+          relatorio: createRelatorioState({
+            ...relatorio,
+            exportStatus: 'error',
+            statusCode: result.statusCode,
+            message: result.message,
+            summary: currentRelatorio.summary
+          })
+        });
+        return;
+      }
+
+      downloadRelatorioBlob(result.blob, result.filename);
+      renderApp(root, {
+        ...state,
+        relatorio: createRelatorioState({
+          ...relatorio,
+          exportStatus: 'success',
+          statusCode: result.statusCode,
+          message: result.message,
+          summary: currentRelatorio.summary
+        })
+      });
+      return;
+    }
+
+    const result = await fetchRelatorioSolicitacoesResumo(relatorio);
+
+    if (result.status === 'expired') {
+      renderApp(root, createSessionState({
+        sessionState: 'unauthenticated',
+        statusCode: 401,
+        message: 'Sessao expirada ao consultar o resumo. Faca login novamente.',
+        hasChecked: true,
+        relatorio: createRelatorioState({
+          ...relatorio,
+          statusCode: 401,
+          message: result.message
+        })
+      }));
+      return;
+    }
+
+    renderApp(root, {
+      ...state,
+      relatorio: createRelatorioState({
+        ...relatorio,
+        summaryStatus: result.status === 'success' ? 'ready' : 'error',
+        statusCode: result.statusCode,
+        message: result.message,
+        summary: result.summary
+      })
+    });
+  } catch {
+    renderApp(root, {
+      ...state,
+      relatorio: createRelatorioState({
+        ...relatorio,
+        exportStatus: action === 'csv' ? 'error' : 'idle',
+        summaryStatus: action === 'resumo' ? 'error' : 'idle',
+        message: 'Falha temporaria de conexao ao gerar o relatorio.',
+        summary: currentRelatorio.summary
+      })
+    });
+  }
+}
+
 async function verifySession(root) {
   renderApp(root, initialSessionState);
 
@@ -5366,6 +5903,15 @@ if (root) {
     const target = event.target;
 
     if (
+      target instanceof HTMLInputElement
+      && target.form instanceof HTMLFormElement
+      && target.form.matches('[data-relatorio-form]')
+    ) {
+      syncRelatorioForm(root, currentState, target.form);
+      return;
+    }
+
+    if (
       target instanceof HTMLTextAreaElement
       && target.matches('[data-observacao-textarea]')
     ) {
@@ -5394,6 +5940,15 @@ if (root) {
 
     if (
       target instanceof HTMLSelectElement
+      && target.form instanceof HTMLFormElement
+      && target.form.matches('[data-relatorio-form]')
+    ) {
+      syncRelatorioForm(root, currentState, target.form);
+      return;
+    }
+
+    if (
+      target instanceof HTMLSelectElement
       && target.matches('[data-status-select]')
     ) {
       updateStatusFormControls(target);
@@ -5410,6 +5965,18 @@ if (root) {
 
   root.addEventListener('submit', (event) => {
     const target = event.target;
+
+    if (
+      target instanceof HTMLFormElement
+      && target.matches('[data-relatorio-form]')
+    ) {
+      event.preventDefault();
+      const action = event.submitter instanceof HTMLButtonElement
+        ? event.submitter.value
+        : 'resumo';
+      submitRelatorio(root, currentState, target, action);
+      return;
+    }
 
     if (
       target instanceof HTMLFormElement

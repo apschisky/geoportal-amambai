@@ -10,6 +10,9 @@ from app.dependencies import auth_dependencies
 from app.dependencies.auth_dependencies import get_current_authenticated_session
 from app.main import app as main_app
 from app.schemas.iluminacao import (
+    IluminacaoRelatorioResumoInternoResponse,
+    IluminacaoRelatorioSolicitacaoInternaItem,
+    IluminacaoRelatorioSolicitacoesInternasResult,
     IluminacaoSolicitacaoHistoricoInternoItem,
     IluminacaoSolicitacaoHistoricoInternoResult,
     IluminacaoSolicitacaoInternaItem,
@@ -26,6 +29,12 @@ from app.services.iluminacao_service import DATABASE_UNAVAILABLE_MESSAGE
 
 
 INTERNAL_SOLICITACOES_PATH = "/api/internal/iluminacao/solicitacoes"
+INTERNAL_RELATORIO_SOLICITACOES_CSV_PATH = (
+    "/api/internal/iluminacao/relatorios/solicitacoes.csv"
+)
+INTERNAL_RELATORIO_SOLICITACOES_RESUMO_PATH = (
+    "/api/internal/iluminacao/relatorios/solicitacoes/resumo"
+)
 INTERNAL_SOLICITACAO_DETAIL_ROUTE = (
     "/api/internal/iluminacao/solicitacoes/{solicitacao_id}"
 )
@@ -62,6 +71,7 @@ EXPECTED_ATUALIZAR_STATUS_PERMISSION = "iluminacao.solicitacoes.atualizar_status
 EXPECTED_ATUALIZAR_PRIORIDADE_PERMISSION = (
     "iluminacao.solicitacoes.atualizar_prioridade"
 )
+EXPECTED_RELATORIO_PERMISSION = "admin.usuarios.ler"
 EXPIRES_AT = datetime(2030, 5, 27, 13, 0, tzinfo=UTC)
 CREATED_AT = datetime(2026, 5, 20, 10, 30, tzinfo=UTC)
 UPDATED_AT = datetime(2026, 5, 21, 8, 15, tzinfo=UTC)
@@ -159,6 +169,23 @@ def fake_prioridade_item(
         id=10,
         prioridade=prioridade,
         atualizado_em=UPDATED_AT,
+    )
+
+
+def fake_relatorio_item() -> IluminacaoRelatorioSolicitacaoInternaItem:
+    return IluminacaoRelatorioSolicitacaoInternaItem(
+        protocolo="IP-2026-000010",
+        status="aberta",
+        prioridade="normal",
+        tipo_problema="lampada_apagada",
+        poste_id="POSTE-010",
+        origem="geoportal_publico",
+        localizacao_tipo="poste_mapa",
+        criado_em=CREATED_AT,
+        atualizado_em=UPDATED_AT,
+        finalizado_em=None,
+        duplicidade_suspeita=False,
+        tempo_finalizacao_segundos=None,
     )
 
 
@@ -306,6 +333,314 @@ def test_internal_solicitacoes_ativos_false_and_absent_preserve_full_listing(
     assert response_absent.status_code == 200
     assert service_calls[0]["ativos"] is False
     assert service_calls[1]["ativos"] is None
+
+
+def test_internal_relatorio_csv_returns_200_for_admin_permission(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    calls: dict[str, object] = {}
+    service_calls: dict[str, object] = {}
+
+    def fake_has_permission(usuario_id: int, permission_code: str) -> bool:
+        calls.update(
+            {
+                "usuario_id": usuario_id,
+                "permission_code": permission_code,
+            }
+        )
+        return True
+
+    def fake_listar_relatorio_solicitacoes_internas(
+        **kwargs: object,
+    ) -> IluminacaoRelatorioSolicitacoesInternasResult:
+        service_calls.update(kwargs)
+        return IluminacaoRelatorioSolicitacoesInternasResult(
+            items=[fake_relatorio_item()],
+        )
+
+    monkeypatch.setattr(auth_dependencies, "has_permission", fake_has_permission)
+    monkeypatch.setattr(
+        internal_iluminacao,
+        "listar_relatorio_solicitacoes_internas",
+        fake_listar_relatorio_solicitacoes_internas,
+    )
+    client = TestClient(app)
+
+    response = client.get(
+        INTERNAL_RELATORIO_SOLICITACOES_CSV_PATH,
+        params={
+            "status": "aberta",
+            "prioridade": "normal",
+            "tipo": "lampada_apagada",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/csv")
+    assert (
+        response.headers["content-disposition"]
+        == 'attachment; filename="relatorio_iluminacao_geral.csv"'
+    )
+    assert calls == {
+        "usuario_id": 7,
+        "permission_code": EXPECTED_RELATORIO_PERMISSION,
+    }
+    assert service_calls == {
+        "data_inicio": None,
+        "data_fim": None,
+        "status": "aberta",
+        "prioridade": "normal",
+        "tipo_problema": TipoProblemaIluminacao.lampada_apagada,
+    }
+    assert "protocolo,status,prioridade,tipo_problema" in response.text
+    assert "IP-2026-000010,aberta,normal,lampada_apagada" in response.text
+    for forbidden in (
+        "nome_solicitante",
+        "contato_solicitante",
+        "observacao",
+        "descricao",
+        "DATABASE_URL",
+        "session_secret",
+    ):
+        assert forbidden not in response.text
+
+
+def test_internal_relatorio_resumo_returns_200_for_admin_permission(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    calls: dict[str, object] = {}
+
+    def fake_has_permission(usuario_id: int, permission_code: str) -> bool:
+        calls.update(
+            {
+                "usuario_id": usuario_id,
+                "permission_code": permission_code,
+            }
+        )
+        return True
+
+    monkeypatch.setattr(auth_dependencies, "has_permission", fake_has_permission)
+    monkeypatch.setattr(
+        internal_iluminacao,
+        "listar_relatorio_solicitacoes_internas",
+        lambda **kwargs: IluminacaoRelatorioSolicitacoesInternasResult(
+            items=[fake_relatorio_item()]
+        ),
+    )
+    monkeypatch.setattr(
+        internal_iluminacao,
+        "resumir_relatorio_solicitacoes_internas",
+        lambda items: IluminacaoRelatorioResumoInternoResponse(
+            total=1,
+            abertas=1,
+            em_triagem=0,
+            em_andamento=0,
+            resolvidas=0,
+            canceladas=0,
+            indeferidas=0,
+            nao_localizadas=0,
+            por_prioridade={"normal": 1},
+            por_tipo_problema={"lampada_apagada": 1},
+        ),
+    )
+    client = TestClient(app)
+
+    response = client.get(INTERNAL_RELATORIO_SOLICITACOES_RESUMO_PATH)
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "total": 1,
+        "abertas": 1,
+        "em_triagem": 0,
+        "em_andamento": 0,
+        "resolvidas": 0,
+        "canceladas": 0,
+        "indeferidas": 0,
+        "nao_localizadas": 0,
+        "por_prioridade": {"normal": 1},
+        "por_tipo_problema": {"lampada_apagada": 1},
+    }
+    assert calls == {
+        "usuario_id": 7,
+        "permission_code": EXPECTED_RELATORIO_PERMISSION,
+    }
+
+
+def test_internal_relatorio_csv_returns_403_without_admin_permission(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    permission_calls: list[str] = []
+
+    def fake_has_permission(usuario_id: int, permission_code: str) -> bool:
+        permission_calls.append(permission_code)
+        return permission_code != EXPECTED_RELATORIO_PERMISSION
+
+    monkeypatch.setattr(auth_dependencies, "has_permission", fake_has_permission)
+    client = TestClient(app)
+
+    forbidden = client.get(
+        INTERNAL_RELATORIO_SOLICITACOES_CSV_PATH,
+        params={},
+    )
+    assert forbidden.status_code == 403
+    assert EXPECTED_RELATORIO_PERMISSION in permission_calls
+
+
+def test_internal_relatorio_resumo_returns_422_for_invalid_period(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+
+    def fail_invalid_period(**kwargs: object) -> IluminacaoRelatorioSolicitacoesInternasResult:
+        raise ValueError("data_fim must be greater than or equal to data_inicio")
+
+    monkeypatch.setattr(
+        internal_iluminacao,
+        "listar_relatorio_solicitacoes_internas",
+        fail_invalid_period,
+    )
+    client = TestClient(app)
+
+    invalid = client.get(
+        INTERNAL_RELATORIO_SOLICITACOES_RESUMO_PATH,
+        params={"data_inicio": "2026-06-30", "data_fim": "2026-06-01"},
+    )
+
+    assert invalid.status_code == 422
+    assert invalid.json() == {"detail": "Invalid query parameters"}
+
+
+def test_internal_relatorio_csv_returns_401_without_session() -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        lambda: (_ for _ in ()).throw(
+            HTTPException(status_code=401, detail="Not authenticated")
+        )
+    )
+    client = TestClient(app)
+
+    response = client.get(INTERNAL_RELATORIO_SOLICITACOES_CSV_PATH)
+
+    assert response.status_code == 401
+
+
+def test_internal_relatorio_resumo_returns_503_with_sanitized_message(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+
+    def fail_with_database_error(
+        **kwargs: object,
+    ) -> IluminacaoRelatorioSolicitacoesInternasResult:
+        raise DatabaseUnavailableError(DATABASE_UNAVAILABLE_MESSAGE)
+
+    monkeypatch.setattr(
+        internal_iluminacao,
+        "listar_relatorio_solicitacoes_internas",
+        fail_with_database_error,
+    )
+    client = TestClient(app)
+
+    response = client.get(INTERNAL_RELATORIO_SOLICITACOES_RESUMO_PATH)
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": DATABASE_UNAVAILABLE_MESSAGE}
+    for forbidden in (
+        "DATABASE_URL",
+        "db.internal",
+        "senha",
+        "token",
+        "cookie",
+        "traceback",
+    ):
+        assert forbidden not in response.text
+
+
+def test_internal_relatorio_csv_accepts_single_date_filters(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    service_calls: list[dict[str, object]] = []
+
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+    monkeypatch.setattr(
+        internal_iluminacao,
+        "listar_relatorio_solicitacoes_internas",
+        lambda **kwargs: service_calls.append(kwargs)
+        or IluminacaoRelatorioSolicitacoesInternasResult(items=[fake_relatorio_item()]),
+    )
+    client = TestClient(app)
+
+    desde_response = client.get(
+        INTERNAL_RELATORIO_SOLICITACOES_CSV_PATH,
+        params={"data_inicio": "2026-06-01"},
+    )
+    ate_response = client.get(
+        INTERNAL_RELATORIO_SOLICITACOES_CSV_PATH,
+        params={"data_fim": "2026-06-30"},
+    )
+
+    assert desde_response.status_code == 200
+    assert (
+        desde_response.headers["content-disposition"]
+        == 'attachment; filename="relatorio_iluminacao_desde_2026-06-01.csv"'
+    )
+    assert ate_response.status_code == 200
+    assert (
+        ate_response.headers["content-disposition"]
+        == 'attachment; filename="relatorio_iluminacao_ate_2026-06-30.csv"'
+    )
+    assert service_calls == [
+        {
+            "data_inicio": datetime(2026, 6, 1, tzinfo=UTC).date(),
+            "data_fim": None,
+            "status": None,
+            "prioridade": None,
+            "tipo_problema": None,
+        },
+        {
+            "data_inicio": None,
+            "data_fim": datetime(2026, 6, 30, tzinfo=UTC).date(),
+            "status": None,
+            "prioridade": None,
+            "tipo_problema": None,
+        },
+    ]
 
 
 def test_internal_solicitacao_detail_returns_200_for_authenticated_user_with_permission(
@@ -2503,6 +2838,8 @@ def test_internal_iluminacao_router_uses_permission_without_hardcoded_login() ->
     route_paths = {route.path for route in internal_iluminacao.router.routes}
 
     assert INTERNAL_SOLICITACOES_PATH in route_paths
+    assert INTERNAL_RELATORIO_SOLICITACOES_CSV_PATH in route_paths
+    assert INTERNAL_RELATORIO_SOLICITACOES_RESUMO_PATH in route_paths
     assert INTERNAL_SOLICITACAO_DETAIL_ROUTE in route_paths
     assert INTERNAL_SOLICITACAO_HISTORICO_ROUTE in route_paths
     assert INTERNAL_SOLICITACAO_OBSERVACOES_ROUTE in route_paths
@@ -2512,11 +2849,13 @@ def test_internal_iluminacao_router_uses_permission_without_hardcoded_login() ->
     assert "require_permission(LIST_INTERNAL_ILUMINACAO_OBSERVACOES_PERMISSION)" in source
     assert "require_permission(CREATE_INTERNAL_ILUMINACAO_OBSERVACAO_PERMISSION)" in source
     assert "require_permission(UPDATE_INTERNAL_ILUMINACAO_STATUS_PERMISSION)" in source
+    assert "require_permission(EXPORT_INTERNAL_ILUMINACAO_RELATORIO_PERMISSION)" in source
     assert EXPECTED_PERMISSION in source
     assert EXPECTED_HISTORICO_PERMISSION in source
     assert EXPECTED_OBSERVACOES_PERMISSION in source
     assert EXPECTED_COMENTAR_PERMISSION in source
     assert EXPECTED_ATUALIZAR_STATUS_PERMISSION in source
+    assert EXPECTED_RELATORIO_PERMISSION in source
     assert "admin.homologacao" not in source
     assert "login ==" not in source
     assert "require_internal_mutating_request_header" in source

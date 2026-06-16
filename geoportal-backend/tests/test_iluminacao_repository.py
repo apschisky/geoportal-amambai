@@ -11,6 +11,7 @@ from app.repositories.iluminacao_repository import (
     get_solicitacao_publica_por_protocolo,
     list_historico_solicitacao_interna,
     list_observacoes_solicitacao_interna,
+    list_relatorio_solicitacoes_internas,
     list_solicitacoes_internas,
     solicitacao_interna_existe,
     update_status_solicitacao_interna,
@@ -265,6 +266,24 @@ def observacao_solicitacao_row() -> dict[str, Any]:
         "usuario_nome": "Administrador Interno",
         "criado_em": datetime(2026, 5, 20, 12, 30),
         "editado_em": None,
+    }
+
+
+def relatorio_solicitacao_row(**overrides: Any) -> dict[str, Any]:
+    return {
+        "protocolo": "IP-2026-000010",
+        "status": "aberta",
+        "prioridade": "normal",
+        "tipo_problema": "lampada_apagada",
+        "poste_id": "POSTE-010",
+        "origem": "geoportal_publico",
+        "localizacao_tipo": "poste_mapa",
+        "criado_em": datetime(2026, 5, 20, 10, 30),
+        "atualizado_em": datetime(2026, 5, 21, 8, 15),
+        "finalizado_em": None,
+        "duplicidade_suspeita": False,
+        "tempo_finalizacao_segundos": None,
+        **overrides,
     }
 
 
@@ -627,6 +646,102 @@ def test_list_solicitacoes_internas_rejects_invalid_pagination_without_sql() -> 
             raise AssertionError("invalid pagination should be rejected")
 
     assert engine.connection.statement is None
+
+
+def test_list_relatorio_solicitacoes_internas_uses_only_sanitized_columns() -> None:
+    engine = FakeEngine([relatorio_solicitacao_row()])
+
+    response = list_relatorio_solicitacoes_internas(
+        data_inicio=datetime(2026, 6, 1, 0, 0),
+        data_fim_exclusive=datetime(2026, 7, 1, 0, 0),
+        engine=engine,
+    )
+
+    sql = str(engine.connection.statement)
+    assert response.items[0].protocolo == "IP-2026-000010"
+    for expected in (
+        "protocolo",
+        "status",
+        "prioridade",
+        "tipo_problema",
+        "poste_id",
+        "origem",
+        "localizacao_tipo",
+        "criado_em",
+        "atualizado_em",
+        "finalizado_em",
+        "duplicidade_suspeita",
+        "tempo_finalizacao_segundos",
+    ):
+        assert expected in sql
+    for forbidden in (
+        "nome_solicitante",
+        "contato_solicitante",
+        "descricao",
+        "observacoes_localizacao",
+        "ponto_referencia",
+        "poste_proximo_informado",
+        "latitude",
+        "longitude",
+        "geom",
+        "SELECT *",
+    ):
+        assert forbidden not in sql
+
+
+def test_list_relatorio_solicitacoes_internas_uses_bind_params_and_filters() -> None:
+    engine = FakeEngine([relatorio_solicitacao_row()])
+    created_from = datetime(2026, 6, 1, 0, 0)
+    created_to = datetime(2026, 7, 1, 0, 0)
+
+    list_relatorio_solicitacoes_internas(
+        data_inicio=created_from,
+        data_fim_exclusive=created_to,
+        status=StatusSolicitacaoIluminacao.em_triagem,
+        prioridade="alta",
+        tipo_problema=TipoProblemaIluminacao.lampada_apagada,
+        engine=engine,
+    )
+
+    sql = str(engine.connection.statement)
+    assert engine.connection.params == {
+        "data_inicio": created_from,
+        "data_fim_exclusive": created_to,
+        "status": "em_triagem",
+        "prioridade": "alta",
+        "tipo_problema": "lampada_apagada",
+    }
+    for expected in (
+        "deleted_at IS NULL",
+        "CAST(:data_inicio AS timestamp) IS NULL",
+        "criado_em >= CAST(:data_inicio AS timestamp)",
+        "CAST(:data_fim_exclusive AS timestamp) IS NULL",
+        "criado_em < CAST(:data_fim_exclusive AS timestamp)",
+        "status = CAST(:status AS varchar)",
+        "prioridade = CAST(:prioridade AS varchar)",
+        "tipo_problema = CAST(:tipo_problema AS varchar)",
+    ):
+        assert expected in sql
+    for value in ("em_triagem", "alta", "lampada_apagada"):
+        assert value not in sql
+
+
+def test_list_relatorio_solicitacoes_internas_accepts_empty_period() -> None:
+    engine = FakeEngine([relatorio_solicitacao_row()])
+
+    list_relatorio_solicitacoes_internas(
+        data_inicio=None,
+        data_fim_exclusive=None,
+        engine=engine,
+    )
+
+    assert engine.connection.params == {
+        "data_inicio": None,
+        "data_fim_exclusive": None,
+        "status": None,
+        "prioridade": None,
+        "tipo_problema": None,
+    }
 
 
 def test_get_solicitacao_interna_por_id_uses_bind_param_and_postgis_transform() -> None:

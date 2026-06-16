@@ -1,10 +1,11 @@
-from datetime import datetime
+from datetime import date, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
 
 from app.dependencies.auth_dependencies import require_internal_mutating_request_header
 from app.dependencies.auth_dependencies import require_permission
 from app.schemas.iluminacao import (
+    IluminacaoRelatorioResumoInternoResponse,
     IluminacaoSolicitacaoHistoricoInternoResponse,
     IluminacaoSolicitacaoInternaItem,
     IluminacaoSolicitacaoObservacaoInternaCreate,
@@ -23,10 +24,14 @@ from app.services.exceptions import DatabaseUnavailableError
 from app.services.iluminacao_service import criar_observacao_solicitacao_interna
 from app.services.iluminacao_service import atualizar_status_solicitacao_interna
 from app.services.iluminacao_service import atualizar_prioridade_solicitacao_interna
+from app.services.iluminacao_service import build_relatorio_solicitacoes_csv
 from app.services.iluminacao_service import listar_historico_solicitacao_interna
 from app.services.iluminacao_service import listar_observacoes_solicitacao_interna
+from app.services.iluminacao_service import listar_relatorio_solicitacoes_internas
 from app.services.iluminacao_service import listar_solicitacoes_internas
+from app.services.iluminacao_service import montar_nome_arquivo_relatorio_solicitacoes
 from app.services.iluminacao_service import obter_solicitacao_interna_por_id
+from app.services.iluminacao_service import resumir_relatorio_solicitacoes_internas
 from app.services.iluminacao_service import SolicitacaoInternaNotFoundError
 from app.services.iluminacao_service import (
     SolicitacaoInternaPrioridadeTerminalStatusError,
@@ -48,6 +53,7 @@ UPDATE_INTERNAL_ILUMINACAO_STATUS_PERMISSION = (
 UPDATE_INTERNAL_ILUMINACAO_PRIORIDADE_PERMISSION = (
     "iluminacao.solicitacoes.atualizar_prioridade"
 )
+EXPORT_INTERNAL_ILUMINACAO_RELATORIO_PERMISSION = "admin.usuarios.ler"
 
 router = APIRouter(prefix="/api/internal/iluminacao", tags=["internal-iluminacao"])
 
@@ -101,6 +107,92 @@ def list_internal_solicitacoes(
         offset=offset,
         total=result.total,
     )
+
+
+@router.get("/relatorios/solicitacoes.csv")
+def export_internal_solicitacoes_report_csv(
+    data_inicio: date | None = Query(default=None),
+    data_fim: date | None = Query(default=None),
+    status_filter: StatusSolicitacaoIluminacao | None = Query(
+        default=None,
+        alias="status",
+    ),
+    prioridade: str | None = Query(default=None, min_length=1, max_length=40),
+    tipo_problema: TipoProblemaIluminacao | None = Query(default=None, alias="tipo"),
+    _current_session: AuthenticatedCurrentSession = Depends(
+        require_permission(EXPORT_INTERNAL_ILUMINACAO_RELATORIO_PERMISSION)
+    ),
+) -> Response:
+    try:
+        result = listar_relatorio_solicitacoes_internas(
+            data_inicio=data_inicio,
+            data_fim=data_fim,
+            status=status_filter,
+            prioridade=prioridade,
+            tipo_problema=tipo_problema,
+        )
+        csv_content = build_relatorio_solicitacoes_csv(result.items)
+        filename = montar_nome_arquivo_relatorio_solicitacoes(
+            data_inicio=data_inicio,
+            data_fim=data_fim,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid query parameters",
+        ) from exc
+    except DatabaseUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
+    return Response(
+        content=csv_content,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
+    )
+
+
+@router.get(
+    "/relatorios/solicitacoes/resumo",
+    response_model=IluminacaoRelatorioResumoInternoResponse,
+)
+def get_internal_solicitacoes_report_summary(
+    data_inicio: date | None = Query(default=None),
+    data_fim: date | None = Query(default=None),
+    status_filter: StatusSolicitacaoIluminacao | None = Query(
+        default=None,
+        alias="status",
+    ),
+    prioridade: str | None = Query(default=None, min_length=1, max_length=40),
+    tipo_problema: TipoProblemaIluminacao | None = Query(default=None, alias="tipo"),
+    _current_session: AuthenticatedCurrentSession = Depends(
+        require_permission(EXPORT_INTERNAL_ILUMINACAO_RELATORIO_PERMISSION)
+    ),
+) -> IluminacaoRelatorioResumoInternoResponse:
+    try:
+        result = listar_relatorio_solicitacoes_internas(
+            data_inicio=data_inicio,
+            data_fim=data_fim,
+            status=status_filter,
+            prioridade=prioridade,
+            tipo_problema=tipo_problema,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid query parameters",
+        ) from exc
+    except DatabaseUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
+    return resumir_relatorio_solicitacoes_internas(result.items)
 
 
 @router.get(

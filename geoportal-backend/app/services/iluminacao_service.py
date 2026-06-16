@@ -1,4 +1,6 @@
-from datetime import datetime
+import csv
+from datetime import date, datetime, time, timedelta
+from io import StringIO
 import re
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -9,6 +11,9 @@ from app.schemas.iluminacao import (
     IluminacaoConsultaPublicResponse,
     IluminacaoConsultaRepositoryRecord,
     IluminacaoConsultaRequest,
+    IluminacaoRelatorioResumoInternoResponse,
+    IluminacaoRelatorioSolicitacaoInternaItem,
+    IluminacaoRelatorioSolicitacoesInternasResult,
     IluminacaoSolicitacaoHistoricoInternoResult,
     IluminacaoSolicitacaoInternaItem,
     IluminacaoSolicitacaoObservacaoInternaItem,
@@ -68,6 +73,21 @@ TERMINAL_STATUS_SOLICITACAO = {
 }
 VALID_STATUS_SOLICITACAO = {status.value for status in StatusSolicitacaoIluminacao}
 VALID_PRIORIDADE_SOLICITACAO = {"baixa", "normal", "alta", "urgente"}
+RELATORIO_MAX_DAYS = 366
+RELATORIO_CSV_HEADERS = (
+    "protocolo",
+    "status",
+    "prioridade",
+    "tipo_problema",
+    "poste_id",
+    "origem",
+    "localizacao_tipo",
+    "criado_em",
+    "atualizado_em",
+    "finalizado_em",
+    "duplicidade_suspeita",
+    "tempo_finalizacao_segundos",
+)
 
 
 class SolicitacaoInternaNotFoundError(RuntimeError):
@@ -256,6 +276,162 @@ def listar_solicitacoes_internas(
         )
     except (SQLAlchemyError, RuntimeError) as exc:
         raise DatabaseUnavailableError(DATABASE_UNAVAILABLE_MESSAGE) from exc
+
+
+def _validate_relatorio_periodo(
+    data_inicio: date | None,
+    data_fim: date | None,
+) -> tuple[datetime | None, datetime | None]:
+    if data_inicio is None and data_fim is None:
+        return None, None
+
+    if data_inicio is not None and data_fim is not None and data_fim < data_inicio:
+        raise ValueError("data_fim must be greater than or equal to data_inicio")
+
+    if data_inicio is not None and data_fim is not None:
+        period_days = (data_fim - data_inicio).days + 1
+        if period_days > RELATORIO_MAX_DAYS:
+            raise ValueError("period exceeds maximum allowed days")
+
+    inicio = (
+        datetime.combine(data_inicio, time.min)
+        if data_inicio is not None
+        else None
+    )
+    fim_exclusive = (
+        datetime.combine(data_fim + timedelta(days=1), time.min)
+        if data_fim is not None
+        else None
+    )
+    return inicio, fim_exclusive
+
+
+def _normalize_relatorio_prioridade(prioridade: str | None) -> str | None:
+    normalized = _normalize_optional_filter(prioridade)
+    if normalized is None:
+        return None
+    if normalized not in VALID_PRIORIDADE_SOLICITACAO:
+        raise ValueError("prioridade must be one of allowed values")
+    return normalized
+
+
+def listar_relatorio_solicitacoes_internas(
+    *,
+    data_inicio: date | None = None,
+    data_fim: date | None = None,
+    status: StatusSolicitacaoIluminacao | None = None,
+    prioridade: str | None = None,
+    tipo_problema: TipoProblemaIluminacao | None = None,
+) -> IluminacaoRelatorioSolicitacoesInternasResult:
+    inicio, fim_exclusive = _validate_relatorio_periodo(data_inicio, data_fim)
+
+    try:
+        return iluminacao_repository.list_relatorio_solicitacoes_internas(
+            data_inicio=inicio,
+            data_fim_exclusive=fim_exclusive,
+            status=status,
+            prioridade=_normalize_relatorio_prioridade(prioridade),
+            tipo_problema=tipo_problema,
+        )
+    except (SQLAlchemyError, RuntimeError) as exc:
+        raise DatabaseUnavailableError(DATABASE_UNAVAILABLE_MESSAGE) from exc
+
+
+def _format_relatorio_datetime(value: datetime | None) -> str:
+    return value.isoformat() if value is not None else ""
+
+
+def build_relatorio_solicitacoes_csv(
+    items: list[IluminacaoRelatorioSolicitacaoInternaItem],
+) -> str:
+    buffer = StringIO()
+    buffer.write("\ufeff")
+    writer = csv.writer(buffer, lineterminator="\n")
+    writer.writerow(RELATORIO_CSV_HEADERS)
+
+    for item in items:
+        writer.writerow(
+            [
+                item.protocolo,
+                item.status,
+                item.prioridade,
+                item.tipo_problema,
+                item.poste_id or "",
+                item.origem,
+                item.localizacao_tipo,
+                _format_relatorio_datetime(item.criado_em),
+                _format_relatorio_datetime(item.atualizado_em),
+                _format_relatorio_datetime(item.finalizado_em),
+                "sim" if item.duplicidade_suspeita else "nao",
+                (
+                    int(item.tempo_finalizacao_segundos)
+                    if item.tempo_finalizacao_segundos is not None
+                    else ""
+                ),
+            ]
+        )
+
+    return buffer.getvalue()
+
+
+def montar_nome_arquivo_relatorio_solicitacoes(
+    data_inicio: date | None,
+    data_fim: date | None,
+) -> str:
+    if data_inicio is None and data_fim is None:
+        return "relatorio_iluminacao_geral.csv"
+
+    if data_inicio is not None and data_fim is None:
+        return f"relatorio_iluminacao_desde_{data_inicio.isoformat()}.csv"
+
+    if data_inicio is None and data_fim is not None:
+        return f"relatorio_iluminacao_ate_{data_fim.isoformat()}.csv"
+
+    return f"relatorio_iluminacao_{data_inicio.isoformat()}_{data_fim.isoformat()}.csv"
+
+
+def resumir_relatorio_solicitacoes_internas(
+    items: list[IluminacaoRelatorioSolicitacaoInternaItem],
+) -> IluminacaoRelatorioResumoInternoResponse:
+    status_counts = {
+        "aberta": 0,
+        "em_triagem": 0,
+        "em_andamento": 0,
+        "resolvida": 0,
+        "cancelada": 0,
+        "indeferida": 0,
+        "nao_localizado": 0,
+    }
+    por_prioridade: dict[str, int] = {}
+    por_tipo_problema: dict[str, int] = {}
+
+    for item in items:
+        if item.status == "aberta":
+            status_counts["aberta"] += 1
+        elif item.status == "em_triagem":
+            status_counts["em_triagem"] += 1
+        elif item.status in {"encaminhada", "em_execucao", "aguardando_material"}:
+            status_counts["em_andamento"] += 1
+        elif item.status in status_counts:
+            status_counts[item.status] += 1
+
+        por_prioridade[item.prioridade] = por_prioridade.get(item.prioridade, 0) + 1
+        por_tipo_problema[item.tipo_problema] = (
+            por_tipo_problema.get(item.tipo_problema, 0) + 1
+        )
+
+    return IluminacaoRelatorioResumoInternoResponse(
+        total=len(items),
+        abertas=status_counts["aberta"],
+        em_triagem=status_counts["em_triagem"],
+        em_andamento=status_counts["em_andamento"],
+        resolvidas=status_counts["resolvida"],
+        canceladas=status_counts["cancelada"],
+        indeferidas=status_counts["indeferida"],
+        nao_localizadas=status_counts["nao_localizado"],
+        por_prioridade=por_prioridade,
+        por_tipo_problema=por_tipo_problema,
+    )
 
 
 def obter_solicitacao_interna_por_id(

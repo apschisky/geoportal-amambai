@@ -13,6 +13,8 @@ from app.schemas.iluminacao import (
     IluminacaoSolicitacaoObservacaoInternaItem,
     IluminacaoSolicitacaoObservacoesInternasResult,
     IluminacaoSolicitacaoPrioridadeInternaItem,
+    IluminacaoRelatorioSolicitacaoInternaItem,
+    IluminacaoRelatorioSolicitacoesInternasResult,
     IluminacaoSolicitacaoCreate,
     IluminacaoSolicitacaoResponse,
     IluminacaoSolicitacaoStatusInternaItem,
@@ -384,6 +386,81 @@ def list_solicitacoes_internas(
             for row in rows
         ],
         total=int(total_row["total"]),
+    )
+
+
+def list_relatorio_solicitacoes_internas(
+    *,
+    data_inicio: datetime | None,
+    data_fim_exclusive: datetime | None,
+    status: StatusSolicitacaoIluminacao | None = None,
+    prioridade: str | None = None,
+    tipo_problema: TipoProblemaIluminacao | None = None,
+    engine: Engine | None = None,
+) -> IluminacaoRelatorioSolicitacoesInternasResult:
+    db_engine = engine or get_engine()
+    status_value = status.value if status is not None else None
+    tipo_problema_value = tipo_problema.value if tipo_problema is not None else None
+
+    statement = text(
+        """
+        SELECT
+            protocolo,
+            status,
+            prioridade,
+            tipo_problema,
+            poste_id,
+            origem,
+            localizacao_tipo,
+            criado_em,
+            atualizado_em,
+            finalizado_em,
+            duplicidade_suspeita,
+            CASE
+                WHEN finalizado_em IS NULL THEN NULL
+                ELSE EXTRACT(EPOCH FROM (finalizado_em - criado_em))
+            END AS tempo_finalizacao_segundos
+        FROM mod_iluminacao.solicitacoes
+        WHERE deleted_at IS NULL
+          AND (
+              CAST(:data_inicio AS timestamp) IS NULL
+              OR criado_em >= CAST(:data_inicio AS timestamp)
+          )
+          AND (
+              CAST(:data_fim_exclusive AS timestamp) IS NULL
+              OR criado_em < CAST(:data_fim_exclusive AS timestamp)
+          )
+          AND (
+              CAST(:status AS varchar) IS NULL
+              OR status = CAST(:status AS varchar)
+          )
+          AND (
+              CAST(:prioridade AS varchar) IS NULL
+              OR prioridade = CAST(:prioridade AS varchar)
+          )
+          AND (
+              CAST(:tipo_problema AS varchar) IS NULL
+              OR tipo_problema = CAST(:tipo_problema AS varchar)
+          )
+        ORDER BY criado_em ASC, protocolo ASC
+        """
+    )
+    params = {
+        "data_inicio": data_inicio,
+        "data_fim_exclusive": data_fim_exclusive,
+        "status": status_value,
+        "prioridade": prioridade,
+        "tipo_problema": tipo_problema_value,
+    }
+
+    with db_engine.begin() as connection:
+        rows = connection.execute(statement, params).mappings().all()
+
+    return IluminacaoRelatorioSolicitacoesInternasResult(
+        items=[
+            IluminacaoRelatorioSolicitacaoInternaItem.model_validate(dict(row))
+            for row in rows
+        ],
     )
 
 
