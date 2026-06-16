@@ -59,12 +59,14 @@ Use o harness abaixo quando a necessidade operacional for apenas reiniciar e val
 ```powershell
 .\scripts\deploy\backend-restart-validate-service.ps1 -Environment Homologacao -Validate
 .\scripts\deploy\backend-restart-validate-service.ps1 -Environment Homologacao -Restart -Validate
+.\scripts\deploy\backend-restart-validate-service.ps1 -Environment InternaProducao -Validate
+.\scripts\deploy\backend-restart-validate-service.ps1 -Environment InternaProducao -Restart -Validate
 .\scripts\deploy\backend-restart-validate-service.ps1 -Environment Producao -Validate -CheckPublicProxy
 .\scripts\deploy\backend-restart-validate-service.ps1 -Environment Producao -Restart -Validate -CheckPublicProxy
 .\scripts\deploy\backend-restart-validate-service.ps1 -Environment Producao -Restart -Validate -CheckPublicProxy -Force
 ```
 
-Nota para producao interna: `GeoportalAPIInternaProducao` foi criado e validado operacionalmente em `http://127.0.0.1:8003`, com `ExpectedEnvironment=producao` e `IsInternalRuntime=true`. Antes de usar qualquer comando do harness versionado para gerenciar esse ambiente, confirmar se o script reconhece explicitamente `InternaProducao`; se nao reconhecer, a atualizacao do harness deve ser etapa propria e revisada. Essa atualizacao nao deve instalar servico, alterar Apache, tocar `.env`, aplicar migrations ou trocar `/api/internal/` por si so.
+`InternaProducao` corresponde a `GeoportalAPIInternaProducao`, validando a porta local `8003` e `http://127.0.0.1:8003/api/health`. O uso preferencial e do harness versionado acima, em vez de `Restart-Service` manual. `Producao` continua reservado a API publica em `127.0.0.1:8001`; para a API interna publicada em `/api/internal/`, use `-Environment InternaProducao`.
 
 ## Harness de segurança
 

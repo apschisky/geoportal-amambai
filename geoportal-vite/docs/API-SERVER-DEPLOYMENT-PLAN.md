@@ -908,6 +908,14 @@ Servico Windows/NSSM da producao interna:
 - servico: `GeoportalAPIInternaProducao`;
 - script operacional no servidor: `C:\apps\geoportal-api\scripts\run-producao-interna-service.ps1`;
 - arquivo operacional de ambiente no servidor: `C:\apps\geoportal-api\env\producao-interna.env`.
+- harness versionado para restart/validacao: `.\scripts\deploy\backend-restart-validate-service.ps1 -Environment InternaProducao -Restart -Validate`.
+
+Uso operacional minimo do harness:
+
+- `InternaProducao` -> `GeoportalAPIInternaProducao` em `127.0.0.1:8003`;
+- `Producao` continua reservado a API publica em `127.0.0.1:8001`;
+- preferir o harness versionado para restart/validacao, em vez de `Restart-Service` manual;
+- o proxy HTTPS publicado de `/api/internal/` continua responsabilidade do Apache e nao e alterado por esse harness.
 
 O conteudo do arquivo de ambiente e qualquer segredo associado nao devem ser registrados em documentacao.
 

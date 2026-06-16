@@ -2,7 +2,7 @@
 .SYNOPSIS
 Reinicia e valida servicos da Geoportal API sem executar deploy.
 .PARAMETER Environment
-Ambiente alvo. Valores permitidos: Homologacao, InternaHomologacao ou Producao.
+Ambiente alvo. Valores permitidos: Homologacao, InternaHomologacao, Producao ou InternaProducao.
 .PARAMETER Restart
 Quando informado, reinicia apenas o servico do ambiente selecionado.
 .PARAMETER Validate
@@ -10,12 +10,12 @@ Quando informado, valida endpoints locais do ambiente selecionado.
 .PARAMETER CheckPublicProxy
 Quando informado, valida endpoints publicos. Permitido somente para Producao.
 .PARAMETER Force
-Confirma reinicio de Producao sem prompt interativo.
+Confirma reinicio de ambientes de producao sem prompt interativo.
 #>
 
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('Homologacao', 'InternaHomologacao', 'Producao')]
+    [ValidateSet('Homologacao', 'InternaHomologacao', 'Producao', 'InternaProducao')]
     [string]$Environment,
 
     [switch]$Restart,
@@ -56,31 +56,51 @@ function Get-EnvironmentConfig {
         }
     }
 
+    if ($Name -eq 'Producao') {
+        return [PSCustomObject]@{
+            Name = 'Producao'
+            ServiceName = 'GeoportalAPIProducao'
+            LocalBaseUrl = 'http://127.0.0.1:8001'
+            Port = 8001
+            ExpectedEnvironment = 'producao'
+            PublicBaseUrl = 'https://geoserver.amambai.ms.gov.br'
+            IsInternalRuntime = $false
+        }
+    }
+
     return [PSCustomObject]@{
-        Name = 'Producao'
-        ServiceName = 'GeoportalAPIProducao'
-        LocalBaseUrl = 'http://127.0.0.1:8001'
-        Port = 8001
+        Name = 'InternaProducao'
+        ServiceName = 'GeoportalAPIInternaProducao'
+        LocalBaseUrl = 'http://127.0.0.1:8003'
+        Port = 8003
         ExpectedEnvironment = 'producao'
         PublicBaseUrl = 'https://geoserver.amambai.ms.gov.br'
-        IsInternalRuntime = $false
+        IsInternalRuntime = $true
     }
 }
 
 function Confirm-ProductionRestart {
     param(
+        [object]$Config,
         [switch]$Force
     )
 
     if ($Force) {
-        Write-Host 'Confirmacao de producao recebida via -Force.' -ForegroundColor Yellow
+        Write-Host "Confirmacao de $($Config.Name) recebida via -Force." -ForegroundColor Yellow
         return
     }
 
-    Write-Host 'Voce esta prestes a reiniciar producao.' -ForegroundColor Yellow
+    $targetLabel = if ($Config.Name -eq 'InternaProducao') {
+        'a API interna de producao'
+    }
+    else {
+        'a API publica de producao'
+    }
+
+    Write-Host "Voce esta prestes a reiniciar $targetLabel." -ForegroundColor Yellow
     $confirmation = Read-Host 'Digite REINICIAR para confirmar'
     if ($confirmation -ne 'REINICIAR') {
-        throw 'Reinicio de producao cancelado pelo operador.'
+        throw "Reinicio de $($Config.Name) cancelado pelo operador."
     }
 }
 
@@ -276,8 +296,8 @@ try {
         throw 'CheckPublicProxy e permitido somente para Producao.'
     }
 
-    if ($Restart -and $config.Name -eq 'Producao') {
-        Confirm-ProductionRestart -Force:$Force
+    if ($Restart -and ($config.Name -eq 'Producao' -or $config.Name -eq 'InternaProducao')) {
+        Confirm-ProductionRestart -Config $config -Force:$Force
     }
 
     if ($Restart) {
