@@ -605,7 +605,7 @@ Recomendacao:
 
 Finalidade: permitir correcao administrativa de status, volta de fase e reabertura de chamado terminal sem enfraquecer o fluxo normal da manutencao.
 
-Estado atual: o backend local foi implementado e testado no commit `313afd8 Implementa correcao administrativa de status`, documentado no commit `da4be5c Documenta implementacao local da correcao de status` e validado em servidor/ambiente real da API interna de producao. Ainda nao ha frontend administrativo para acionar `status-correcao`; a validacao real foi feita por chamada direta autenticada via API/PowerShell.
+Estado atual: o backend foi implementado e validado, e a UI administrativa restrita para `status-correcao` foi implementada no frontend interno no commit `e18fb8d Adiciona UI administrativa para correcao de status`. A tela foi publicada/validada em producao interna, com painel separado `Ações administrativas` no detalhe da solicitacao, visibilidade condicionada a `iluminacao.solicitacoes.corrigir_status`, validacao client-side para justificativa (trim, minimo de 10 e maximo de 1000 caracteres), checkbox de ciencia e chamada do endpoint com `credentials: "include"` e header `X-Geoportal-Internal-Request: 1`. A validacao real foi feita em `https://geoserver.amambai.ms.gov.br/interno/` com `admin.producao` e `manutencao.producao`, sem alterar o backend como fonte de verdade.
 
 Este endpoint e separado de `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`. O fluxo normal continua sem volta de fase e sem saida de status terminal.
 
@@ -721,6 +721,13 @@ Testes locais confirmados no commit `313afd8`:
 - `tests/test_bootstrap_internal_maintenance_profile_admin.py`: 8 passed.
 - Suite completa backend: 660 passed, 2 warnings.
 - Warning conhecido: `DeprecationWarning` relacionado a `HTTP_422_UNPROCESSABLE_ENTITY`, nao bloqueante.
+
+Testes e build da UI administrativa no commit `e18fb8d`:
+
+- `npm.cmd test -- --run src/internal-iluminacao-shell.test.js`: 1 arquivo passou, 42 testes passaram.
+- `npm.cmd test -- --run`: 6 arquivos passaram, 129 testes passaram.
+- `npm.cmd run build`: sucesso, Vite transformou 233 modulos.
+- Assets gerados localmente: `dist/interno/index.html`, `dist/assets/interno-5nMdqyri.css` e `dist/assets/interno-DRNqoJ3A.js`, alem dos demais assets Vite (`main-*`, `image-*`, `geoportal-routes-*`).
 
 Validacao real em servidor/producao interna:
 

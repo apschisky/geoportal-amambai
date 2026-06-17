@@ -253,7 +253,7 @@ Bloqueadores de seguranca para essa ativacao:
 - [x] correcao administrativa de status validada por API direta em producao interna com permissao propria `iluminacao.solicitacoes.corrigir_status`, sem conceder a permissao ao perfil `manutencao-iluminacao`;
 - [x] validacao negativa zero-write de `status-correcao` confirmou 403/422/404 esperados sem alterar `status`, `atualizado_em` ou `finalizado_em` do chamado teste/controlado;
 - [x] tentativa de bootstrap da permissao com role runtime bloqueada por falta de privilegio em `mod_auth.permissoes`, confirmando menor privilegio; criacao/vinculo executados por procedimento operacional controlado com backup previo;
-- [ ] frontend administrativo de `status-correcao` deve ser restrito a `iluminacao.solicitacoes.corrigir_status`, separado do fluxo normal, com modal de confirmacao forte, justificativa obrigatoria e sem exposicao para `manutencao-iluminacao`;
+- [x] frontend administrativo de `status-correcao` foi implementado e validado em producao interna, restrito a `iluminacao.solicitacoes.corrigir_status`, separado do fluxo normal, com modal de confirmacao forte, justificativa obrigatoria, recarga de detalhe/historico e sem exposicao para `manutencao-iluminacao`;
 - [ ] console, logs e documentacao sem senha, token, cookie, observacoes reais ou dados pessoais reais.
 
 ## 13. Monitoramento e resposta a incidentes
