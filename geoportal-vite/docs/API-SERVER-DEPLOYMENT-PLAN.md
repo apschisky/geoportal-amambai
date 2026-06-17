@@ -1189,11 +1189,12 @@ Ordem recomendada apos o marco de 2026-06-12:
 5. Monitorar logs sem registrar senha, token, cookie, observacoes reais ou dados pessoais desnecessarios.
 6. Planejar tela administrativa de usuarios, perfis e permissoes antes de ampliar a operacao.
 7. Manter o contrato de `/api/internal/auth/me` enxuto e sanitizado, evitando incluir segredos ou dados pessoais desnecessarios.
-8. Planejar mapa operacional, anexos, dashboard e correcao administrativa apenas em etapas separadas.
+8. Planejar mapa operacional, anexos e dashboard apenas em etapas separadas.
+9. Validar em servidor a correcao administrativa de status ja implementada localmente no backend antes de qualquer uso operacional.
 
 ### Pendencias futuras fora do MVP
 
-- Reabertura/correcao administrativa: fluxo separado, permissao propria, justificativa obrigatoria e auditoria forte.
+- Reabertura/correcao administrativa: backend local implementado no commit `313afd8 Implementa correcao administrativa de status`, com fluxo separado, permissao propria `iluminacao.solicitacoes.corrigir_status`, justificativa obrigatoria e auditoria forte. Ainda falta pull no servidor, testes focados, bootstrap controlado da permissao (`modulo = 'iluminacao'`, `chave = 'solicitacoes.corrigir_status'`), confirmacao de que `manutencao-iluminacao` nao recebeu a permissao, restart da API interna pelo harness, chamada direta autenticada em chamado teste/controlado e posterior planejamento de frontend administrativo.
 - Mapa operacional: posicao/poste, coordenadas, rota ate poste, permissoes e privacidade.
 - Dashboard: indicadores reais, SLA, prioridades, produtividade e atrasos.
 - Anexos/fotos: inventario separado, armazenamento, seguranca e limites.

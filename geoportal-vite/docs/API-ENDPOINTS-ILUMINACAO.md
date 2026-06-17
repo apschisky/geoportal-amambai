@@ -468,11 +468,11 @@ Status terminais na primeira versao:
 - `indeferida`;
 - `nao_localizado`.
 
-Regras de transicao:
+Regras de transicao do PATCH normal:
 
 - Status terminal nao deve sair para outro status nesta primeira versao.
-- Reabertura ou correcao administrativa deve ficar para fluxo separado futuro, com decisao explicita.
-- Se futuramente houver reabertura, avaliar `acao='reabertura'` e/ou `origem_acao='ajuste_administrativo'`, valores ja aceitos pelo historico, mas fora da primeira implementacao.
+- Reabertura ou correcao administrativa fica fora do PATCH normal e foi implementada localmente em contrato separado, ainda pendente de validacao em servidor.
+- O fluxo administrativo separado usa `acao='reabertura'` quando aplicavel e `origem_acao='ajuste_administrativo'`, respeitando os valores ja aceitos pelo historico.
 - Se o novo status for igual ao atual, retornar `200 OK` idempotente sem novo `UPDATE` e sem novo historico.
 
 Regra de `finalizado_em`:
@@ -592,29 +592,33 @@ Recomendacao:
 - A validacao confirmou o comportamento atomico esperado pela aplicacao: UPDATE de status e INSERT em historico caminham juntos, sem alteracao de prioridade, dados publicos, geometria, dados do solicitante, `deleted_at` ou `deleted_reason`.
 - Producao, producao interna, Apache/proxy, frontend/tela interna, migrations, schema, `.env` versionado e NSSM nao foram alterados nesta etapa, exceto restart controlado do servico interno de homologacao ja existente. Nenhum endpoint de reabertura/correcao, endpoint de anexos, usuario novo, perfil novo ou role nova foi criado; a API publica permaneceu preservada.
 
-**Decisao futura: correcao/reversao de status**
+**Decisao consolidada: correcao/reversao de status**
 
 - Correcao ou reversao de status por erro operacional nao entra no `PATCH status` normal.
-- Esse fluxo deve ser separado, muito controlado, com justificativa obrigatoria e permissao especifica diferente de `iluminacao.solicitacoes.atualizar_status`.
-- A permissao deve ser restrita a poucos perfis autorizados, nao a todos os perfis que operam o fluxo normal.
-- Deve ter auditoria propria no historico e, conforme contrato futuro, pode usar `origem_acao='ajuste_administrativo'` e/ou `acao='reabertura'` quando aplicavel, sempre respeitando os valores permitidos pela migration.
-- Esse fluxo deve ser documentado e implementado em etapa separada. Nao liberar reabertura no PATCH normal e nao permitir que a tela futura replique a regra livremente; a regra deve permanecer no backend.
+- O backend local desse fluxo foi implementado no commit `313afd8 Implementa correcao administrativa de status`, em endpoint separado e com justificativa obrigatoria.
+- A permissao especifica e `iluminacao.solicitacoes.corrigir_status`, diferente de `iluminacao.solicitacoes.atualizar_status`.
+- A permissao deve ficar restrita a poucos perfis autorizados; o perfil `manutencao-iluminacao` nao deve recebe-la.
+- A auditoria fica no historico com `origem_acao='ajuste_administrativo'`, `acao='reabertura'` quando aplicavel e `acao='alteracao_status'` nas demais correcoes administrativas.
+- Esse fluxo ainda precisa de validacao em servidor, bootstrap real da permissao e frontend administrativo. Nao liberar reabertura no PATCH normal e nao permitir que a tela futura replique a regra livremente; a regra deve permanecer no backend.
 
-### `PATCH /api/internal/iluminacao/solicitacoes/{id}/status-correcao` (planejado)
+### `PATCH /api/internal/iluminacao/solicitacoes/{id}/status-correcao` (implementado localmente)
 
 Finalidade: permitir correcao administrativa de status, volta de fase e reabertura de chamado terminal sem enfraquecer o fluxo normal da manutencao.
 
-Este endpoint planejado deve ser separado de `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`. O fluxo normal continua sem volta de fase e sem saida de status terminal.
+Estado atual: o backend local foi implementado e testado no commit `313afd8 Implementa correcao administrativa de status`. O endpoint ainda nao foi validado em servidor/ambiente real, ainda nao houve deploy/restart da API interna para esse contrato, a permissao ainda nao foi criada/vinculada em homologacao/producao por bootstrap operacional e ainda nao ha frontend administrativo para acionar `status-correcao`.
 
-Permissao planejada:
+Este endpoint e separado de `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`. O fluxo normal continua sem volta de fase e sem saida de status terminal.
 
-- Permissao efetiva esperada pela aplicacao: `iluminacao.solicitacoes.corrigir_status`.
+Permissao:
+
+- Permissao efetiva da aplicacao: `iluminacao.solicitacoes.corrigir_status`.
 - Representacao real em `mod_auth.permissoes`: `modulo = 'iluminacao'` e `chave = 'solicitacoes.corrigir_status'`.
+- A permissao foi adicionada ao bootstrap administrativo local no commit `313afd8`, mas ainda precisa ser executada/validada em homologacao e producao interna.
 - Nao reutilizar `iluminacao.solicitacoes.atualizar_status`.
 - Nao conceder essa permissao ao perfil `manutencao-iluminacao`.
 - Restringir a perfil administrativo/autorizado, com menor privilegio.
 
-Payload planejado v1:
+Payload v1:
 
 ```json
 {
@@ -646,40 +650,40 @@ Campos proibidos:
 - SQL, role, GRANT, token, senha, cookie, hash, `session_secret`, `DATABASE_URL`;
 - qualquer campo extra.
 
-Validacao planejada:
+Validacao implementada localmente:
 
 - `novo_status` obrigatorio e dentro dos valores reais de `mod_iluminacao.solicitacoes.status`.
 - `justificativa` obrigatoria, com trim seguro, minimo de 10 caracteres apos trim e maximo de 1000 caracteres.
 - Payload com campo extra deve retornar `422`.
-- Status igual ao atual deve retornar `200 OK` idempotente, sem novo UPDATE e sem novo historico, ou `409` se a equipe optar por exigir justificativa apenas quando houver mudanca real; a decisao recomendada e `200 OK` idempotente para manter consistencia com o fluxo normal.
+- Status igual ao atual retorna `200 OK` idempotente, sem novo UPDATE, sem alteracao de `finalizado_em` e sem novo historico.
 
-Regras de negocio propostas:
+Regras de negocio implementadas localmente:
 
 - Correcao entre status ativos e permitida somente por esse endpoint administrativo. Exemplos: `em_execucao -> encaminhada`, `aguardando_material -> em_execucao`, `encaminhada -> em_triagem`.
-- Reabertura de terminal e permitida somente para status ativos controlados: preferencialmente `em_triagem`, `em_execucao` ou `aguardando_material`.
-- Evitar reabrir diretamente para `aberta`, salvo decisao administrativa explicita e justificativa forte, para nao parecer reset invisivel do chamado.
+- Reabertura de terminal e permitida somente para status ativos controlados: `em_triagem`, `em_execucao` ou `aguardando_material`.
+- Reabrir terminal diretamente para `aberta` ou `encaminhada` e bloqueado na v1.
 - Correcao entre terminais, como `cancelada -> indeferida`, deve ser permitida apenas se houver erro administrativo claro; manter `finalizado_em` preenchido e registrar historico.
 - Nao alterar prioridade nesse endpoint.
 - Nao criar observacao interna separada automaticamente; a justificativa fica no historico administrativo.
 - Nao alterar dados pessoais, protocolo, geometria, `deleted_at` ou `deleted_reason`.
 
-Regra recomendada para `finalizado_em`:
+Regra implementada localmente para `finalizado_em`:
 
 - Ao reabrir de status terminal para status ativo, definir `finalizado_em = NULL`, porque o chamado deixa de estar finalizado.
 - O encerramento anterior deve permanecer auditavel no historico.
-- Quando o chamado for finalizado novamente pelo fluxo normal, `finalizado_em` recebe novo timestamp.
 - Em correcao entre status ativos, manter `finalizado_em = NULL`.
 - Em correcao de status ativo para terminal, preencher `finalizado_em = now()`.
-- Em correcao entre status terminais, manter `finalizado_em` existente, salvo se a implementacao futura documentar uma regra administrativa explicita para recalculo.
+- Em correcao entre status terminais, manter `finalizado_em` existente.
 - Se houver necessidade de preservar multiplos ciclos de fechamento de forma analitica, planejar relatorio/historico de ciclos em etapa futura, sem migration nesta fase documental.
 
-Historico/auditoria:
+Historico/auditoria implementados localmente:
 
 - Inserir evento em `mod_iluminacao.solicitacoes_historico` na mesma transacao do UPDATE.
 - Gravar `status_anterior`, `status_novo`, `usuario_id`, `usuario_nome` quando disponivel de forma segura e `observacao_resumida` com a justificativa.
-- Diferenciar evento administrativo do evento normal. Recomendacao: usar `origem_acao='ajuste_administrativo'`.
-- Para `acao`, preferir `reabertura` quando o status anterior for terminal e o novo status for ativo, se o valor ja for aceito pelo schema. Para outras correcoes, preferir `correcao_status` se o schema permitir; caso contrario, usar valor existente semanticamente aceito somente apos documentar a decisao.
-- Antes de implementar, confirmar se os valores de `acao` e `origem_acao` ja sao aceitos em producao/homologacao. Se nao forem, planejar migration separada, com backup, rollback e validacao.
+- Diferenciar evento administrativo do evento normal com `origem_acao='ajuste_administrativo'`.
+- Usar `acao='reabertura'` quando o status anterior for terminal e o novo status for ativo.
+- Usar `acao='alteracao_status'` nas demais correcoes administrativas.
+- Nao foi criado valor dedicado `acao='correcao_status'` nesta v1, evitando migration estrutural.
 
 Erros esperados:
 
@@ -700,24 +704,39 @@ Resposta planejada:
     "status": "em_execucao",
     "atualizado_em": "...",
     "finalizado_em": null
-  },
-  "correcao": {
-    "tipo": "reabertura"
   }
 }
 ```
 
-Subfases recomendadas:
+Testes locais confirmados no commit `313afd8`:
 
-1. Revisao humana deste contrato e confirmacao dos valores permitidos em `solicitacoes_historico`.
-2. Inventario local/homologacao do schema de `acao`, `origem_acao`, `status_anterior` e `status_novo`.
-3. Implementacao backend local com testes de router, service e repository.
-4. Migration apenas se o schema real nao aceitar os valores administrativos necessarios.
-5. GRANT minimo por coluna em homologacao: `UPDATE` apenas em `status`, `atualizado_em` e `finalizado_em`; `INSERT` em historico; `USAGE` na sequence se necessario.
-6. Validacao operacional em homologacao com chamado teste/controlado.
-7. Ajuste frontend administrativo, oculto para manutencao.
-8. Validacao de relatorio e listagem ativa apos reabertura.
-9. Publicacao controlada em producao interna com backup, rollback e checklist.
+- `tests/test_iluminacao_service.py`: 59 passed.
+- `tests/test_iluminacao_repository.py`: 44 passed.
+- `tests/test_internal_iluminacao_solicitacoes_router.py`: 79 passed, 2 warnings.
+- `tests/test_bootstrap_internal_admin_profile_admin.py`: 16 passed.
+- `tests/test_bootstrap_internal_maintenance_profile_admin.py`: 8 passed.
+- Suite completa backend: 660 passed, 2 warnings.
+- Warning conhecido: `DeprecationWarning` relacionado a `HTTP_422_UNPROCESSABLE_ENTITY`, nao bloqueante.
+
+Pendencias para validacao em servidor/ambiente real:
+
+- Fazer pull do commit `313afd8` no servidor.
+- Rodar testes focados no servidor antes de restart.
+- Executar bootstrap administrativo controlado para criar/vincular `modulo = 'iluminacao'` e `chave = 'solicitacoes.corrigir_status'` ao perfil administrativo/autorizado.
+- Validar que `manutencao-iluminacao` continua sem `iluminacao.solicitacoes.corrigir_status`.
+- Reiniciar a API interna correta com o harness operacional.
+- Validar o endpoint por chamada direta autenticada, com header `X-Geoportal-Internal-Request: 1`, em chamado teste/controlado.
+- Testar reabertura/correcao em chamado teste antes de qualquer uso administrativo real.
+- Planejar frontend administrativo somente apos validacao da API em servidor.
+
+Subfases recomendadas restantes:
+
+1. Validar backend em servidor/homologacao com chamado teste/controlado.
+2. Criar/vincular permissao real por bootstrap administrativo controlado.
+3. Confirmar GRANT minimo por coluna em homologacao/producao interna: `UPDATE` apenas em `status`, `atualizado_em` e `finalizado_em`; `INSERT` em historico; `USAGE` na sequence se necessario.
+4. Validar relatorio e listagem ativa apos reabertura/correcao.
+5. Ajustar frontend administrativo, oculto para manutencao.
+6. Publicar em producao interna somente com backup, rollback e checklist.
 
 Inventario tecnico local para implementacao futura:
 
@@ -727,19 +746,19 @@ Inventario tecnico local para implementacao futura:
 - A constraint de `origem_acao` ja aceita `ajuste_administrativo`.
 - A constraint de `acao` ja aceita `reabertura`, mas nao ha evidencia local de que aceite `correcao_status`. Para evitar migration imediata, a primeira implementacao pode usar `acao='reabertura'` em terminal -> ativo e `acao='alteracao_status'` com `origem_acao='ajuste_administrativo'` nas demais correcoes administrativas, desde que essa decisao seja confirmada pela revisao humana. Se a equipe quiser valor dedicado `correcao_status`, sera necessaria migration de constraint.
 - `mod_iluminacao.solicitacoes_observacoes` nao deve ser usada para esse fluxo. A justificativa administrativa deve ficar em `solicitacoes_historico.observacao_resumida`; observacoes livres continuam como registro operacional separado, nao como trilha de auditoria de correcao.
-- O repository atual de status usa `SELECT ... FOR UPDATE`, `UPDATE` de `status`, `atualizado_em` e `finalizado_em`, e `INSERT` no historico dentro de `engine.begin()`. O futuro metodo deve ser separado, mas reutilizar esse padrao transacional.
-- A alteracao normal de status ja trata status igual como idempotente sem novo historico. A correcao administrativa deve preservar esse comportamento, salvo decisao explicita em contrario.
+- O repository de status usa `SELECT ... FOR UPDATE`, `UPDATE` de `status`, `atualizado_em` e `finalizado_em`, e `INSERT` no historico dentro de `engine.begin()`. O metodo local de correcao administrativa foi implementado separado do PATCH normal e reutiliza esse padrao transacional.
+- A alteracao normal de status ja trata status igual como idempotente sem novo historico. A correcao administrativa local preserva esse comportamento.
 - O inventario real de homologacao confirmou que `mod_auth.permissoes` nao possui coluna `codigo`; o identificador efetivo da permissao e composto por `lower(btrim(modulo)) || '.' || lower(btrim(chave))`.
-- A permissao planejada ainda nao existe em homologacao: a consulta por `modulo = 'iluminacao'` e `chave = 'solicitacoes.corrigir_status'` retornou zero linhas.
-- Como a permissao ainda nao esta cadastrada, nenhum perfil a possui em homologacao.
-- A permissao planejada `iluminacao.solicitacoes.corrigir_status` deve ser criada/vinculada em etapa operacional separada, preferencialmente por script administrativo idempotente ou seed controlado seguindo o padrao existente, sem conceder ao perfil `manutencao-iluminacao`.
+- A permissao ainda nao existe em homologacao: a consulta por `modulo = 'iluminacao'` e `chave = 'solicitacoes.corrigir_status'` retornou zero linhas antes da implementacao local.
+- Como a permissao ainda nao esta cadastrada em homologacao/producao, nenhum perfil real a possui nesses ambientes.
+- A permissao `iluminacao.solicitacoes.corrigir_status` foi adicionada ao bootstrap administrativo local no commit `313afd8`, mas ainda deve ser criada/vinculada em servidor por execucao controlada do script administrativo. O perfil `manutencao-iluminacao` deve permanecer sem essa permissao.
 
 Classificacao de migration neste inventario:
 
 - Migration estrutural em `mod_iluminacao.solicitacoes`: aparentemente nao necessaria pelo codigo/migrations locais.
 - Migration estrutural em `mod_iluminacao.solicitacoes_historico`: nao necessaria se a v1 aceitar `reabertura` e `alteracao_status` + `origem_acao='ajuste_administrativo'`; necessaria apenas se for exigido novo valor dedicado `acao='correcao_status'`.
-- Migration/seed/script de permissao: necessario em ciclo separado, porque a permissao (`modulo = 'iluminacao'`, `chave = 'solicitacoes.corrigir_status'`) precisa existir e ser vinculada somente a perfil administrativo/autorizado.
-- Confirmacao em banco real/homologacao continua obrigatoria antes de implementar, pois o inventario local le migrations/codigo versionado e nao consulta o banco.
+- Migration/seed/script de permissao: necessario em ciclo operacional de servidor, porque a permissao (`modulo = 'iluminacao'`, `chave = 'solicitacoes.corrigir_status'`) precisa existir e ser vinculada somente a perfil administrativo/autorizado.
+- Confirmacao em banco real/homologacao continua obrigatoria antes de validar em ambiente real, pois a implementacao local nao executou SQL nem alterou banco.
 
 GRANTs minimos previstos para homologacao/producao interna:
 
