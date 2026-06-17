@@ -608,7 +608,8 @@ Este endpoint planejado deve ser separado de `PATCH /api/internal/iluminacao/sol
 
 Permissao planejada:
 
-- `iluminacao.solicitacoes.corrigir_status`.
+- Permissao efetiva esperada pela aplicacao: `iluminacao.solicitacoes.corrigir_status`.
+- Representacao real em `mod_auth.permissoes`: `modulo = 'iluminacao'` e `chave = 'solicitacoes.corrigir_status'`.
 - Nao reutilizar `iluminacao.solicitacoes.atualizar_status`.
 - Nao conceder essa permissao ao perfil `manutencao-iluminacao`.
 - Restringir a perfil administrativo/autorizado, com menor privilegio.
@@ -728,13 +729,16 @@ Inventario tecnico local para implementacao futura:
 - `mod_iluminacao.solicitacoes_observacoes` nao deve ser usada para esse fluxo. A justificativa administrativa deve ficar em `solicitacoes_historico.observacao_resumida`; observacoes livres continuam como registro operacional separado, nao como trilha de auditoria de correcao.
 - O repository atual de status usa `SELECT ... FOR UPDATE`, `UPDATE` de `status`, `atualizado_em` e `finalizado_em`, e `INSERT` no historico dentro de `engine.begin()`. O futuro metodo deve ser separado, mas reutilizar esse padrao transacional.
 - A alteracao normal de status ja trata status igual como idempotente sem novo historico. A correcao administrativa deve preservar esse comportamento, salvo decisao explicita em contrario.
-- A permissao planejada `iluminacao.solicitacoes.corrigir_status` nao aparece nos scripts administrativos locais de bootstrap inspecionados. Ela deve ser criada/vinculada em etapa operacional separada, preferencialmente por script administrativo idempotente ou seed controlado seguindo o padrao existente, sem conceder ao perfil `manutencao-iluminacao`.
+- O inventario real de homologacao confirmou que `mod_auth.permissoes` nao possui coluna `codigo`; o identificador efetivo da permissao e composto por `lower(btrim(modulo)) || '.' || lower(btrim(chave))`.
+- A permissao planejada ainda nao existe em homologacao: a consulta por `modulo = 'iluminacao'` e `chave = 'solicitacoes.corrigir_status'` retornou zero linhas.
+- Como a permissao ainda nao esta cadastrada, nenhum perfil a possui em homologacao.
+- A permissao planejada `iluminacao.solicitacoes.corrigir_status` deve ser criada/vinculada em etapa operacional separada, preferencialmente por script administrativo idempotente ou seed controlado seguindo o padrao existente, sem conceder ao perfil `manutencao-iluminacao`.
 
 Classificacao de migration neste inventario:
 
 - Migration estrutural em `mod_iluminacao.solicitacoes`: aparentemente nao necessaria pelo codigo/migrations locais.
 - Migration estrutural em `mod_iluminacao.solicitacoes_historico`: nao necessaria se a v1 aceitar `reabertura` e `alteracao_status` + `origem_acao='ajuste_administrativo'`; necessaria apenas se for exigido novo valor dedicado `acao='correcao_status'`.
-- Migration/seed/script de permissao: necessario em ciclo separado, porque a permissao `iluminacao.solicitacoes.corrigir_status` precisa existir e ser vinculada somente a perfil administrativo/autorizado.
+- Migration/seed/script de permissao: necessario em ciclo separado, porque a permissao (`modulo = 'iluminacao'`, `chave = 'solicitacoes.corrigir_status'`) precisa existir e ser vinculada somente a perfil administrativo/autorizado.
 - Confirmacao em banco real/homologacao continua obrigatoria antes de implementar, pois o inventario local le migrations/codigo versionado e nao consulta o banco.
 
 GRANTs minimos previstos para homologacao/producao interna:
@@ -742,9 +746,16 @@ GRANTs minimos previstos para homologacao/producao interna:
 - `SELECT` em `mod_iluminacao.solicitacoes`;
 - `UPDATE` preferencialmente por coluna em `mod_iluminacao.solicitacoes(status, atualizado_em, finalizado_em)`;
 - `INSERT` em `mod_iluminacao.solicitacoes_historico`;
-- `USAGE`/`SELECT` na sequence de `solicitacoes_historico`, se necessario pelo modelo de permissao do PostgreSQL usado no ambiente;
+- `USAGE` na sequence `mod_iluminacao.solicitacoes_historico_id_seq` para `INSERT` com `DEFAULT`/`nextval`;
+- `SELECT` na sequence somente se houver necessidade operacional de leitura direta da sequence;
 - `SELECT` em `mod_auth.usuarios`, `mod_auth.usuario_perfis`, `mod_auth.perfis`, `mod_auth.perfil_permissoes` e `mod_auth.permissoes` para autenticacao/autorizacao;
 - `SELECT` e, no ciclo de bootstrap controlado, `INSERT` nas tabelas de `mod_auth` necessarias para criar permissao/vinculo, nunca como privilegio permanente amplo da role runtime sem revisao.
+
+Confirmacao real de homologacao para GRANTs:
+
+- `geoportal_api_homolog` ja possui `SELECT/UPDATE` por coluna em `mod_iluminacao.solicitacoes.status`, `mod_iluminacao.solicitacoes.atualizado_em` e `mod_iluminacao.solicitacoes.finalizado_em`.
+- `geoportal_api_homolog` ja possui `INSERT` e `SELECT` em `mod_iluminacao.solicitacoes_historico`.
+- A sequence `mod_iluminacao.solicitacoes_historico_id_seq` foi validada com `USAGE = true` e `SELECT = false`. Isso nao bloqueia `INSERT` com valor default; `USAGE` e suficiente para o `nextval` implicito.
 
 SQLs somente leitura recomendados para confirmacao em homologacao antes da implementacao:
 
@@ -776,7 +787,7 @@ ORDER BY n.nspname, c.relname, con.conname;
 ```
 
 ```sql
-SELECT modulo, chave, descricao, ativo
+SELECT modulo, chave, descricao
 FROM mod_auth.permissoes
 WHERE lower(modulo) = 'iluminacao'
 ORDER BY modulo, chave;
