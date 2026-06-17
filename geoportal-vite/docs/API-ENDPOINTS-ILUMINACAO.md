@@ -600,6 +600,124 @@ Recomendacao:
 - Deve ter auditoria propria no historico e, conforme contrato futuro, pode usar `origem_acao='ajuste_administrativo'` e/ou `acao='reabertura'` quando aplicavel, sempre respeitando os valores permitidos pela migration.
 - Esse fluxo deve ser documentado e implementado em etapa separada. Nao liberar reabertura no PATCH normal e nao permitir que a tela futura replique a regra livremente; a regra deve permanecer no backend.
 
+### `PATCH /api/internal/iluminacao/solicitacoes/{id}/status-correcao` (planejado)
+
+Finalidade: permitir correcao administrativa de status, volta de fase e reabertura de chamado terminal sem enfraquecer o fluxo normal da manutencao.
+
+Este endpoint planejado deve ser separado de `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`. O fluxo normal continua sem volta de fase e sem saida de status terminal.
+
+Permissao planejada:
+
+- `iluminacao.solicitacoes.corrigir_status`.
+- Nao reutilizar `iluminacao.solicitacoes.atualizar_status`.
+- Nao conceder essa permissao ao perfil `manutencao-iluminacao`.
+- Restringir a perfil administrativo/autorizado, com menor privilegio.
+
+Payload planejado v1:
+
+```json
+{
+  "novo_status": "em_execucao",
+  "justificativa": "Correcao administrativa: chamado reaberto para continuidade do atendimento."
+}
+```
+
+Decisao sobre `tipo_correcao`: nao incluir no payload da v1. O backend deve inferir se a operacao e `reabertura`, `volta_fase` ou `correcao_status` a partir do status atual e do `novo_status`. Isso reduz a chance de o cliente declarar um tipo incoerente com a transicao. Se a operacao futura precisar expor esse tipo, recomenda-se retornar o tipo calculado na resposta ou gravar no historico, nao aceitar como autoridade do frontend.
+
+Campos aceitos:
+
+- `novo_status`;
+- `justificativa`.
+
+Campos proibidos:
+
+- `status`;
+- `status_anterior`;
+- `usuario_id`;
+- `usuario_nome`;
+- `finalizado_em`;
+- `protocolo`;
+- `prioridade`;
+- `geom`, `latitude`, `longitude`;
+- dados do solicitante;
+- campos de sessao;
+- campos de auditoria;
+- SQL, role, GRANT, token, senha, cookie, hash, `session_secret`, `DATABASE_URL`;
+- qualquer campo extra.
+
+Validacao planejada:
+
+- `novo_status` obrigatorio e dentro dos valores reais de `mod_iluminacao.solicitacoes.status`.
+- `justificativa` obrigatoria, com trim seguro, minimo de 10 caracteres apos trim e maximo de 1000 caracteres.
+- Payload com campo extra deve retornar `422`.
+- Status igual ao atual deve retornar `200 OK` idempotente, sem novo UPDATE e sem novo historico, ou `409` se a equipe optar por exigir justificativa apenas quando houver mudanca real; a decisao recomendada e `200 OK` idempotente para manter consistencia com o fluxo normal.
+
+Regras de negocio propostas:
+
+- Correcao entre status ativos e permitida somente por esse endpoint administrativo. Exemplos: `em_execucao -> encaminhada`, `aguardando_material -> em_execucao`, `encaminhada -> em_triagem`.
+- Reabertura de terminal e permitida somente para status ativos controlados: preferencialmente `em_triagem`, `em_execucao` ou `aguardando_material`.
+- Evitar reabrir diretamente para `aberta`, salvo decisao administrativa explicita e justificativa forte, para nao parecer reset invisivel do chamado.
+- Correcao entre terminais, como `cancelada -> indeferida`, deve ser permitida apenas se houver erro administrativo claro; manter `finalizado_em` preenchido e registrar historico.
+- Nao alterar prioridade nesse endpoint.
+- Nao criar observacao interna separada automaticamente; a justificativa fica no historico administrativo.
+- Nao alterar dados pessoais, protocolo, geometria, `deleted_at` ou `deleted_reason`.
+
+Regra recomendada para `finalizado_em`:
+
+- Ao reabrir de status terminal para status ativo, definir `finalizado_em = NULL`, porque o chamado deixa de estar finalizado.
+- O encerramento anterior deve permanecer auditavel no historico.
+- Quando o chamado for finalizado novamente pelo fluxo normal, `finalizado_em` recebe novo timestamp.
+- Em correcao entre status ativos, manter `finalizado_em = NULL`.
+- Em correcao de status ativo para terminal, preencher `finalizado_em = now()`.
+- Em correcao entre status terminais, manter `finalizado_em` existente, salvo se a implementacao futura documentar uma regra administrativa explicita para recalculo.
+- Se houver necessidade de preservar multiplos ciclos de fechamento de forma analitica, planejar relatorio/historico de ciclos em etapa futura, sem migration nesta fase documental.
+
+Historico/auditoria:
+
+- Inserir evento em `mod_iluminacao.solicitacoes_historico` na mesma transacao do UPDATE.
+- Gravar `status_anterior`, `status_novo`, `usuario_id`, `usuario_nome` quando disponivel de forma segura e `observacao_resumida` com a justificativa.
+- Diferenciar evento administrativo do evento normal. Recomendacao: usar `origem_acao='ajuste_administrativo'`.
+- Para `acao`, preferir `reabertura` quando o status anterior for terminal e o novo status for ativo, se o valor ja for aceito pelo schema. Para outras correcoes, preferir `correcao_status` se o schema permitir; caso contrario, usar valor existente semanticamente aceito somente apos documentar a decisao.
+- Antes de implementar, confirmar se os valores de `acao` e `origem_acao` ja sao aceitos em producao/homologacao. Se nao forem, planejar migration separada, com backup, rollback e validacao.
+
+Erros esperados:
+
+- `401` sem sessao.
+- `403` sem permissao `iluminacao.solicitacoes.corrigir_status`.
+- `403` sem header `X-Geoportal-Internal-Request: 1`.
+- `404` para solicitacao inexistente ou soft-deletada.
+- `409` para correcao administrativa proibida pelo estado atual.
+- `422` para payload invalido, status invalido, justificativa invalida ou campos extras.
+- `503` para erro de banco sanitizado.
+
+Resposta planejada:
+
+```json
+{
+  "solicitacao": {
+    "id": 18,
+    "status": "em_execucao",
+    "atualizado_em": "...",
+    "finalizado_em": null
+  },
+  "correcao": {
+    "tipo": "reabertura"
+  }
+}
+```
+
+Subfases recomendadas:
+
+1. Revisao humana deste contrato e confirmacao dos valores permitidos em `solicitacoes_historico`.
+2. Inventario local/homologacao do schema de `acao`, `origem_acao`, `status_anterior` e `status_novo`.
+3. Implementacao backend local com testes de router, service e repository.
+4. Migration apenas se o schema real nao aceitar os valores administrativos necessarios.
+5. GRANT minimo por coluna em homologacao: `UPDATE` apenas em `status`, `atualizado_em` e `finalizado_em`; `INSERT` em historico; `USAGE` na sequence se necessario.
+6. Validacao operacional em homologacao com chamado teste/controlado.
+7. Ajuste frontend administrativo, oculto para manutencao.
+8. Validacao de relatorio e listagem ativa apos reabertura.
+9. Publicacao controlada em producao interna com backup, rollback e checklist.
+
 ### `PATCH /api/internal/iluminacao/solicitacoes/{id}/prioridade` (implementado)
 
 Finalidade: alterar a prioridade operacional de uma solicitacao interna de Iluminacao Publica, sem substituir o status e sem afetar o Geoportal publico.

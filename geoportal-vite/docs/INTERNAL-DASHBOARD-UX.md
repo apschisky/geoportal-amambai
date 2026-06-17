@@ -640,6 +640,8 @@ Estado atual da matriz de fase/status: `aberta -> em_triagem` continua permitido
 
 Esse ajuste ja foi publicado e validado em operacao controlada: a manutencao conseguiu iniciar atendimento direto a partir de `aberta`, o historico foi registrado normalmente e o chamado continuou na listagem ativa, sem preenchimento de `finalizado_em` e sem qualquer flexibilizacao de reabertura ou retorno de status terminal.
 
+Planejamento de UX para correcao administrativa: volta de fase, correcao de status e reabertura de terminal nao devem aparecer na visao de manutencao. A acao futura deve ficar em area administrativa/autorizada, depender de permissao propria (`iluminacao.solicitacoes.corrigir_status`) e chamar contrato backend separado, planejado como `PATCH /api/internal/iluminacao/solicitacoes/{id}/status-correcao`. A interface deve exigir justificativa, explicar que a operacao e administrativa e nao permitir alteracao silenciosa. Ao reabrir terminal para status ativo, a regra recomendada e o backend limpar `finalizado_em`, preservando o encerramento anterior no historico.
+
 Relatorio administrativo atual: a exportacao de solicitacoes/servicos foi implementada por endpoint backend autorizado, nao como exportacao simples da tabela renderizada no frontend. A versao 1 aceita relatorio geral sem datas ou filtros opcionais por `data_inicio`, `data_fim`, status, prioridade e tipo, inclui campos sanitizados como protocolo, status, prioridade, tipo, poste, origem, localizacao, datas de abertura/atualizacao/finalizacao, duplicidade suspeita e tempo ate finalizacao em segundos, e exclui por padrao nome, telefone/WhatsApp, observacoes internas livres, descricao livre e coordenadas quando houver risco de dados pessoais. A exportacao continua administrativa, nao disponivel para manutencao, e o frontend apenas aciona o contrato backend. A shell administrativa atual tambem ja orienta que datas sao opcionais e que a ausencia delas gera recorte geral.
 
 Card mobile conceitual para ate 20 solicitacoes:
@@ -678,5 +680,5 @@ Este documento complementa:
 - Definir roteiro operacional para uso em campo: quando alterar status, quando alterar prioridade e como escrever observacoes internas sem dados pessoais desnecessarios.
 - Planejar mapa operacional amplo como etapa separada, com contrato de coordenadas/postes, permissao, privacidade e fallback sem rota externa.
 - Planejar dashboard real com indicadores derivados do backend, evitando calculos criticos apenas no frontend.
-- Planejar correcao/reabertura administrativa de status terminal como fluxo separado, com permissao propria, justificativa forte e auditoria.
+- Planejar correcao/reabertura administrativa de status terminal como fluxo separado, com permissao propria, justificativa forte, auditoria e backend como autoridade unica da regra. A UX administrativa deve consumir o contrato separado e a manutencao deve continuar usando apenas a alteracao normal de fase/status.
 - Planejar anexos/fotos em etapa propria, com limites, armazenamento, antivirus/validacao, privacidade e rollback.
