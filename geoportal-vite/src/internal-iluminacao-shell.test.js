@@ -6,8 +6,10 @@ import {
   buildRelatorioSolicitacoesCsvUrl,
   buildInternalWhatsappUrl,
   buildSolicitacoesUrl,
+  buildUpdateSolicitacaoStatusCorrecaoUrl,
   canViewRelatorio,
   canUpdatePrioridade,
+  canCorrectStatus,
   createDetalheState,
   createSessionState,
   createRelatorioState,
@@ -15,9 +17,11 @@ import {
   fetchRelatorioSolicitacoesResumo,
   fetchSolicitacoesInternas,
   fetchUpdateSolicitacaoStatus,
+  fetchUpdateSolicitacaoStatusCorrecao,
   fetchUpdateSolicitacaoPrioridade,
   getPrioridadeFormValidationMessage,
   getRelatorioValidationMessage,
+  getStatusCorrectionFormValidationMessage,
   isMaintenanceLikeUser,
   normalizeSolicitacaoCoordinate,
   renderCoordinateRouteSection,
@@ -25,6 +29,7 @@ import {
   renderObservacoesPanel,
   renderRelatorioPanel,
   renderPriorityUpdatePanel,
+  renderStatusCorrectionPanel,
   renderSessionBox,
   renderSolicitacaoDetailLoaded,
   renderSolicitacoesPanel,
@@ -37,6 +42,7 @@ const prioridadePermission = 'iluminacao.solicitacoes.atualizar_prioridade';
 const readPermission = 'iluminacao.solicitacoes.ler';
 const commentPermission = 'iluminacao.solicitacoes.comentar';
 const statusPermission = 'iluminacao.solicitacoes.atualizar_status';
+const statusCorrectionPermission = 'iluminacao.solicitacoes.corrigir_status';
 const adminUsersReadPermission = 'admin.usuarios.ler';
 
 function authenticatedState(permissions = [], overrides = {}) {
@@ -283,6 +289,149 @@ describe('internal prioridade UI', () => {
     fetchMock.mockResolvedValueOnce(jsonResponse(422, {}));
     await expect(fetchUpdateSolicitacaoPrioridade(10, 'alta', 'Justificativa')).resolves
       .toMatchObject({ status: 'error', statusCode: 422 });
+  });
+});
+
+describe('internal correcao administrativa de status', () => {
+  it('renderiza acao administrativa apenas com permissao especifica', () => {
+    const detail = loadedDetail();
+    const withoutPermission = renderStatusCorrectionPanel(authenticatedState(), detail);
+    const withPermission = renderStatusCorrectionPanel(
+      authenticatedState([statusCorrectionPermission]),
+      detail
+    );
+
+    expect(canCorrectStatus(authenticatedState())).toBe(false);
+    expect(withoutPermission).toBe('');
+    expect(canCorrectStatus(authenticatedState([statusCorrectionPermission]))).toBe(true);
+    expect(withPermission).toContain('Ações administrativas');
+    expect(withPermission).toContain('Corrigir status administrativamente');
+    expect(withPermission).not.toContain('data-status-correction-form');
+  });
+
+  it('renderiza painel de confirmacao forte quando aberto', () => {
+    const detail = createDetalheState({
+      status: 'loaded',
+      item: {
+        id: 10,
+        prioridadeKey: 'normal',
+        statusKey: 'aberta'
+      },
+      statusCorrectionForm: {
+        open: true,
+        selectedStatus: 'em_execucao',
+        justificativa: 'Correcao administrativa segura',
+        confirmed: true
+      }
+    });
+    const html = renderStatusCorrectionPanel(
+      authenticatedState([statusCorrectionPermission]),
+      detail
+    );
+
+    expect(html).toContain('data-status-correction-form');
+    expect(html).toContain('Correção administrativa de status');
+    expect(html).toContain('Confirmar correção administrativa');
+    expect(html).toContain('data-status-correction-confirmation');
+  });
+
+  it('bloqueia justificativa curta e mesmo status no cliente', () => {
+    expect(getStatusCorrectionFormValidationMessage(
+      'aberta',
+      'em_execucao',
+      ' curta ',
+      true
+    )).toContain('ao menos 10 caracteres');
+    expect(getStatusCorrectionFormValidationMessage(
+      'aberta',
+      'aberta',
+      'Justificativa administrativa',
+      true
+    )).toContain('diferente do atual');
+    expect(getStatusCorrectionFormValidationMessage(
+      'aberta',
+      'em_execucao',
+      'Justificativa administrativa',
+      false
+    )).toContain('Confirme ciência');
+    expect(getStatusCorrectionFormValidationMessage(
+      'aberta',
+      'em_execucao',
+      'Justificativa administrativa',
+      true
+    )).toBe('');
+  });
+
+  it('envia PATCH de correcao com header mutavel obrigatorio e payload restrito', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse(200, {
+        solicitacao: {
+          id: 10,
+          status: 'em_execucao',
+          atualizado_em: '2026-06-17T10:00:00Z',
+          finalizado_em: null
+        }
+      })
+    );
+
+    const result = await fetchUpdateSolicitacaoStatusCorrecao(
+      10,
+      'em_execucao',
+      'Correcao administrativa segura'
+    );
+
+    expect(buildUpdateSolicitacaoStatusCorrecaoUrl(10)).toBe(
+      '/api/internal/iluminacao/solicitacoes/10/status-correcao'
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      '/api/internal/iluminacao/solicitacoes/10/status-correcao'
+    );
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({
+      method: 'PATCH',
+      credentials: 'include',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        [INTERNAL_MUTATING_REQUEST_HEADER]: '1'
+      }
+    });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      novo_status: 'em_execucao',
+      justificativa: 'Correcao administrativa segura'
+    });
+    expect(result).toMatchObject({
+      status: 'success',
+      open: false
+    });
+  });
+
+  it('traduz erros de correcao administrativa para mensagens amigaveis', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(401, {}));
+    await expect(fetchUpdateSolicitacaoStatusCorrecao(10, 'em_execucao', 'Justificativa'))
+      .resolves.toMatchObject({ status: 'expired', statusCode: 401 });
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(403, {}));
+    await expect(fetchUpdateSolicitacaoStatusCorrecao(10, 'em_execucao', 'Justificativa'))
+      .resolves.toMatchObject({ status: 'error', statusCode: 403 });
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(404, {}));
+    await expect(fetchUpdateSolicitacaoStatusCorrecao(10, 'em_execucao', 'Justificativa'))
+      .resolves.toMatchObject({ status: 'error', statusCode: 404 });
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(409, {}));
+    await expect(fetchUpdateSolicitacaoStatusCorrecao(10, 'em_execucao', 'Justificativa'))
+      .resolves.toMatchObject({ status: 'error', statusCode: 409 });
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(422, {}));
+    await expect(fetchUpdateSolicitacaoStatusCorrecao(10, 'em_execucao', 'Justificativa'))
+      .resolves.toMatchObject({ status: 'error', statusCode: 422 });
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(503, {}));
+    await expect(fetchUpdateSolicitacaoStatusCorrecao(10, 'em_execucao', 'Justificativa'))
+      .resolves.toMatchObject({ status: 'error', statusCode: 503 });
   });
 });
 

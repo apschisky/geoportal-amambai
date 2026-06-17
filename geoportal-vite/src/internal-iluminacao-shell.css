@@ -1317,6 +1317,18 @@ textarea:disabled {
   resize: none;
 }
 
+.internal-status-form .internal-checkbox-field {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.internal-status-form .internal-checkbox-field input {
+  margin-top: 3px;
+}
+
 .internal-status-form select:focus,
 .internal-status-form textarea:focus,
 .internal-observation-form textarea:focus {

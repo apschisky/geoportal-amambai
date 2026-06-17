@@ -29,6 +29,8 @@ const OBSERVACAO_MIN_LENGTH = 3;
 const OBSERVACAO_MAX_LENGTH = 2000;
 const STATUS_OBSERVACAO_MIN_LENGTH = 3;
 const STATUS_OBSERVACAO_MAX_LENGTH = 1000;
+const STATUS_CORRECAO_JUSTIFICATIVA_MIN_LENGTH = 10;
+const STATUS_CORRECAO_JUSTIFICATIVA_MAX_LENGTH = 1000;
 const PRIORIDADE_OBSERVACAO_MIN_LENGTH = 3;
 const PRIORIDADE_OBSERVACAO_MAX_LENGTH = 1000;
 const INTERNAL_MUTATING_REQUEST_HEADER = 'X-Geoportal-Internal-Request';
@@ -81,6 +83,7 @@ const PERMISSIONS = {
   iluminacaoComment: 'iluminacao.solicitacoes.comentar',
   iluminacaoStatus: 'iluminacao.solicitacoes.atualizar_status',
   iluminacaoPriority: 'iluminacao.solicitacoes.atualizar_prioridade',
+  iluminacaoStatusCorrection: 'iluminacao.solicitacoes.corrigir_status',
   adminUsersRead: 'admin.usuarios.ler',
   adminProfilesRead: 'admin.perfis.ler',
   adminPermissionsRead: 'admin.permissoes.ler'
@@ -384,6 +387,19 @@ function createStatusFormState(overrides = {}) {
   };
 }
 
+function createStatusCorrectionFormState(overrides = {}) {
+  return {
+    status: 'idle',
+    open: false,
+    selectedStatus: '',
+    justificativa: '',
+    confirmed: false,
+    statusCode: null,
+    message: 'Correção administrativa disponível apenas para perfil autorizado.',
+    ...overrides
+  };
+}
+
 function createPrioridadeFormState(overrides = {}) {
   return {
     status: 'idle',
@@ -416,6 +432,9 @@ function createDetalheState(overrides = {}) {
   const observacoes = createObservacoesState(overrides.observacoes || {});
   const observacaoForm = createObservacaoFormState(overrides.observacaoForm || {});
   const statusForm = createStatusFormState(overrides.statusForm || {});
+  const statusCorrectionForm = createStatusCorrectionFormState(
+    overrides.statusCorrectionForm || {}
+  );
   const prioridadeForm = createPrioridadeFormState(overrides.prioridadeForm || {});
 
   return {
@@ -428,12 +447,14 @@ function createDetalheState(overrides = {}) {
     observacoes,
     observacaoForm,
     statusForm,
+    statusCorrectionForm,
     prioridadeForm,
     ...overrides,
     historico,
     observacoes,
     observacaoForm,
     statusForm,
+    statusCorrectionForm,
     prioridadeForm
   };
 }
@@ -879,19 +900,24 @@ export {
   buildInternalWhatsappUrl,
   buildSolicitacoesUrl,
   buildUpdateSolicitacaoPrioridadeUrl,
+  buildUpdateSolicitacaoStatusCorrecaoUrl,
   canViewRelatorio,
   canUpdatePrioridade,
+  canCorrectStatus,
   createDetalheState,
   createSessionState,
   createRelatorioState,
   createPrioridadeFormState,
+  createStatusCorrectionFormState,
   fetchRelatorioSolicitacoesCsv,
   fetchRelatorioSolicitacoesResumo,
   fetchSolicitacoesInternas,
   fetchUpdateSolicitacaoStatus,
+  fetchUpdateSolicitacaoStatusCorrecao,
   fetchUpdateSolicitacaoPrioridade,
   getPrioridadeFormValidationMessage,
   getRelatorioValidationMessage,
+  getStatusCorrectionFormValidationMessage,
   isMaintenanceLikeUser,
   normalizeSolicitacaoCoordinate,
   renderCoordinateRouteSection,
@@ -899,6 +925,7 @@ export {
   renderObservacoesPanel,
   renderRelatorioPanel,
   renderPriorityUpdatePanel,
+  renderStatusCorrectionPanel,
   renderSessionBox,
   renderSolicitacaoDetailLoaded,
   renderSolicitacoesPanel,
@@ -1141,6 +1168,51 @@ function getStatusFormValidationMessage(currentStatus, selectedStatus, observaca
     || getStatusObservacaoValidationMessage(observacao);
 }
 
+function normalizeStatusCorrectionJustificativaInput(value) {
+  return String(value || '').trim();
+}
+
+function getStatusCorrectionSelectionValidationMessage(currentStatus, selectedStatus) {
+  if (!selectedStatus) {
+    return 'Selecione o novo status administrativo.';
+  }
+
+  if (!statusOptions.includes(selectedStatus)) {
+    return 'Status inválido para correção administrativa.';
+  }
+
+  if (selectedStatus === currentStatus) {
+    return 'Selecione um status diferente do atual.';
+  }
+
+  return '';
+}
+
+function getStatusCorrectionJustificativaValidationMessage(value) {
+  const normalized = normalizeStatusCorrectionJustificativaInput(value);
+
+  if (normalized.length < STATUS_CORRECAO_JUSTIFICATIVA_MIN_LENGTH) {
+    return 'Informe justificativa com ao menos 10 caracteres após remover espaços.';
+  }
+
+  if (normalized.length > STATUS_CORRECAO_JUSTIFICATIVA_MAX_LENGTH) {
+    return 'A justificativa deve ter no máximo 1000 caracteres após remover espaços.';
+  }
+
+  return '';
+}
+
+function getStatusCorrectionFormValidationMessage(
+  currentStatus,
+  selectedStatus,
+  justificativa,
+  confirmed = true
+) {
+  return getStatusCorrectionSelectionValidationMessage(currentStatus, selectedStatus)
+    || getStatusCorrectionJustificativaValidationMessage(justificativa)
+    || (confirmed ? '' : 'Confirme ciência antes de corrigir status administrativamente.');
+}
+
 function normalizePrioridadeObservacaoInput(value) {
   return String(value || '').trim();
 }
@@ -1229,6 +1301,10 @@ function buildUpdateSolicitacaoStatusUrl(solicitacaoId) {
   return `${buildSolicitacaoDetailUrl(solicitacaoId)}/status`;
 }
 
+function buildUpdateSolicitacaoStatusCorrecaoUrl(solicitacaoId) {
+  return `${buildSolicitacaoDetailUrl(solicitacaoId)}/status-correcao`;
+}
+
 function buildUpdateSolicitacaoPrioridadeUrl(solicitacaoId) {
   return `${buildSolicitacaoDetailUrl(solicitacaoId)}/prioridade`;
 }
@@ -1311,6 +1387,11 @@ function canUpdateStatus(state) {
 function canUpdatePrioridade(state) {
   return state.sessionState === 'authenticated'
     && hasPermission(state, PERMISSIONS.iluminacaoPriority);
+}
+
+function canCorrectStatus(state) {
+  return state.sessionState === 'authenticated'
+    && hasPermission(state, PERMISSIONS.iluminacaoStatusCorrection);
 }
 
 function canViewRelatorio(state) {
@@ -2494,6 +2575,21 @@ function renderAllowedStatusOptions(currentStatus, selectedStatus) {
     .join('');
 }
 
+function renderStatusCorrectionOptions(currentStatus, selectedStatus) {
+  return statusOptions
+    .map((status) => {
+      const disabled = status === currentStatus ? 'disabled' : '';
+      const selected = selectedStatus === status ? 'selected' : '';
+
+      return `
+        <option value="${escapeHtml(status)}" ${selected} ${disabled}>
+          ${escapeHtml(formatStatusLabel(status))}
+        </option>
+      `;
+    })
+    .join('');
+}
+
 function renderPriorityOptions(currentPriority, selectedPriority) {
   return priorityOptions
     .map((priority) => {
@@ -2799,6 +2895,140 @@ function renderStatusUpdatePanel(state, detail) {
   `;
 }
 
+function renderStatusCorrectionPanel(state, detail) {
+  if (!canCorrectStatus(state)) {
+    return '';
+  }
+
+  const formState = detail.statusCorrectionForm || createStatusCorrectionFormState();
+  const hasLoadedDetail = detail.status === 'loaded' && detail.item;
+  const currentStatus = hasLoadedDetail ? detail.item.statusKey : '';
+  const normalizedLength = normalizeStatusCorrectionJustificativaInput(
+    formState.justificativa
+  ).length;
+  const validationMessage = getStatusCorrectionFormValidationMessage(
+    currentStatus,
+    formState.selectedStatus,
+    formState.justificativa,
+    formState.confirmed
+  );
+  const isSubmitting = formState.status === 'submitting';
+  const canSubmit = hasLoadedDetail
+    && formState.open
+    && !validationMessage
+    && !isSubmitting;
+  const messageClass = formState.status === 'error'
+    ? ' is-error'
+    : formState.status === 'success'
+      ? ' is-success'
+      : '';
+
+  return `
+    <article class="internal-card internal-status-card internal-action-card">
+      <div class="internal-history-heading">
+        <div>
+          <h3>Ações administrativas</h3>
+          <p>Correção excepcional de status com auditoria e justificativa obrigatória.</p>
+        </div>
+        <span class="internal-pill">Administrativo</span>
+      </div>
+      <p class="internal-sensitive-note">
+        Correção administrativa de status: esta ação é auditável e pode reabrir chamados finalizados.
+      </p>
+      <dl>
+        <div>
+          <dt>Status atual</dt>
+          <dd>${escapeHtml(formatStatusLabel(currentStatus))}</dd>
+        </div>
+      </dl>
+      ${formState.open
+        ? `
+          <form
+            class="internal-status-form"
+            data-status-correction-form
+            data-current-status="${escapeHtml(currentStatus)}"
+          >
+            <label for="internal-status-correction-next">
+              Novo status
+              <select
+                id="internal-status-correction-next"
+                name="novo_status"
+                data-status-correction-select
+                aria-describedby="internal-status-correction-help"
+                ${isSubmitting ? 'disabled' : ''}
+              >
+                <option value="">Selecione</option>
+                ${renderStatusCorrectionOptions(currentStatus, formState.selectedStatus)}
+              </select>
+            </label>
+            <label for="internal-status-correction-justificativa">
+              Justificativa obrigatória
+              <textarea
+                id="internal-status-correction-justificativa"
+                name="justificativa"
+                data-status-correction-justificativa-textarea
+                rows="5"
+                maxlength="${escapeHtml(STATUS_CORRECAO_JUSTIFICATIVA_MAX_LENGTH)}"
+                placeholder="Informe a justificativa administrativa da correção"
+                aria-describedby="internal-status-correction-help internal-status-correction-counter"
+                ${isSubmitting ? 'disabled' : ''}
+              >${escapeHtml(formState.justificativa)}</textarea>
+            </label>
+            <label class="internal-checkbox-field">
+              <input
+                type="checkbox"
+                name="confirmado"
+                value="1"
+                data-status-correction-confirmation
+                ${formState.confirmed ? 'checked' : ''}
+                ${isSubmitting ? 'disabled' : ''}
+              >
+              Confirmo que esta correção administrativa será registrada no histórico.
+            </label>
+            <div class="internal-observation-form-footer">
+              <span id="internal-status-correction-counter" data-status-correction-counter>
+                ${escapeHtml(normalizedLength)}/${escapeHtml(STATUS_CORRECAO_JUSTIFICATIVA_MAX_LENGTH)}
+              </span>
+              <span id="internal-status-correction-help" data-status-correction-validation>
+                ${escapeHtml(validationMessage || 'Pronto para confirmar a correção administrativa.')}
+              </span>
+            </div>
+            <div class="internal-list-actions">
+              <button
+                type="submit"
+                class="internal-primary-action"
+                data-status-correction-submit
+                ${canSubmit ? '' : 'disabled'}
+              >
+                ${isSubmitting ? 'Confirmando correção...' : 'Confirmar correção administrativa'}
+              </button>
+              <button
+                type="button"
+                class="internal-secondary-action"
+                data-action="cancel-status-correction"
+                ${isSubmitting ? 'disabled' : ''}
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
+        `
+        : `
+          <button
+            type="button"
+            class="internal-secondary-action"
+            data-action="open-status-correction"
+          >
+            Corrigir status administrativamente
+          </button>
+        `}
+      <p class="internal-form-message${messageClass}" role="status">
+        ${escapeHtml(formState.message)}
+      </p>
+    </article>
+  `;
+}
+
 function renderCoordinateRouteSection(item) {
   if (!item.hasCoordinates || !item.coordinates) {
     return `
@@ -2967,6 +3197,7 @@ function renderSolicitacaoDetailLoaded(state, detail) {
     ${renderOperationalMapPanel(item)}
     ${renderStatusUpdatePanel(state, detail)}
     ${renderPriorityUpdatePanel(state, detail)}
+    ${renderStatusCorrectionPanel(state, detail)}
     ${renderHistoricoPanel(state, detail)}
     ${renderObservacoesPanel(state, detail)}
   `;
@@ -4129,6 +4360,121 @@ async function fetchUpdateSolicitacaoStatus(solicitacaoId, status, observacao) {
   });
 }
 
+async function fetchUpdateSolicitacaoStatusCorrecao(
+  solicitacaoId,
+  novoStatus,
+  justificativa
+) {
+  const response = await fetch(buildUpdateSolicitacaoStatusCorrecaoUrl(solicitacaoId), {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      [INTERNAL_MUTATING_REQUEST_HEADER]: '1'
+    },
+    body: JSON.stringify({
+      novo_status: novoStatus,
+      justificativa
+    })
+  });
+
+  if (response.status === 401) {
+    return createStatusCorrectionFormState({
+      status: 'expired',
+      open: true,
+      statusCode: response.status,
+      message: 'Sessão expirada. Faça login novamente.'
+    });
+  }
+
+  if (response.status === 403) {
+    return createStatusCorrectionFormState({
+      status: 'error',
+      open: true,
+      statusCode: response.status,
+      message: 'Você não tem permissão para corrigir status administrativamente ou a requisição interna foi recusada.'
+    });
+  }
+
+  if (response.status === 404) {
+    return createStatusCorrectionFormState({
+      status: 'error',
+      open: true,
+      statusCode: response.status,
+      message: 'Solicitação não encontrada.'
+    });
+  }
+
+  if (response.status === 409) {
+    return createStatusCorrectionFormState({
+      status: 'error',
+      open: true,
+      statusCode: response.status,
+      message: 'Correção administrativa não permitida para o estado atual da solicitação.'
+    });
+  }
+
+  if (response.status === 422) {
+    return createStatusCorrectionFormState({
+      status: 'error',
+      open: true,
+      statusCode: response.status,
+      message: 'Dados inválidos. Confira o novo status e a justificativa.'
+    });
+  }
+
+  if (response.status === 503) {
+    return createStatusCorrectionFormState({
+      status: 'error',
+      open: true,
+      statusCode: response.status,
+      message: 'Serviço indisponível. Tente novamente ou acione o suporte.'
+    });
+  }
+
+  if (response.status !== 200) {
+    return createStatusCorrectionFormState({
+      status: 'error',
+      open: true,
+      statusCode: response.status,
+      message: 'Não foi possível corrigir o status administrativamente neste momento.'
+    });
+  }
+
+  let payload = null;
+
+  try {
+    payload = await response.json();
+  } catch {
+    return createStatusCorrectionFormState({
+      status: 'error',
+      open: true,
+      statusCode: response.status,
+      message: 'Resposta de correção administrativa em formato inesperado.'
+    });
+  }
+
+  if (!isValidStatusUpdateResponsePayload(payload)) {
+    return createStatusCorrectionFormState({
+      status: 'error',
+      open: true,
+      statusCode: response.status,
+      message: 'Resposta de correção administrativa em formato inesperado.'
+    });
+  }
+
+  return createStatusCorrectionFormState({
+    status: 'success',
+    open: false,
+    selectedStatus: '',
+    justificativa: '',
+    confirmed: false,
+    statusCode: response.status,
+    message: 'Correção administrativa aplicada. Detalhe e histórico foram recarregados.'
+  });
+}
+
 async function fetchUpdateSolicitacaoPrioridade(solicitacaoId, prioridade, observacao) {
   const response = await fetch(buildUpdateSolicitacaoPrioridadeUrl(solicitacaoId), {
     method: 'PATCH',
@@ -4453,6 +4799,40 @@ async function loadSolicitacaoHistorico(root, state, offset = 0) {
   }
 }
 
+function openStatusCorrectionPanel(root, state) {
+  const detail = state.detalhe || createDetalheState();
+
+  if (detail.status !== 'loaded' || !detail.item || !canCorrectStatus(state)) {
+    return;
+  }
+
+  renderApp(root, {
+    ...state,
+    detalhe: {
+      ...detail,
+      statusCorrectionForm: createStatusCorrectionFormState({
+        ...(detail.statusCorrectionForm || {}),
+        status: 'idle',
+        open: true,
+        statusCode: null,
+        message: 'Revise status atual, novo status e justificativa antes de confirmar.'
+      })
+    }
+  });
+}
+
+function cancelStatusCorrectionPanel(root, state) {
+  const detail = state.detalhe || createDetalheState();
+
+  renderApp(root, {
+    ...state,
+    detalhe: {
+      ...detail,
+      statusCorrectionForm: createStatusCorrectionFormState()
+    }
+  });
+}
+
 async function loadSolicitacaoObservacoes(root, state, offset = 0) {
   const detail = state.detalhe || createDetalheState();
   const solicitacaoId = detail.item && Number.isInteger(detail.item.id)
@@ -4634,6 +5014,44 @@ function updatePrioridadeFormControls(control) {
 
   if (validation) {
     validation.textContent = validationMessage || 'Pronto para atualizar a prioridade.';
+  }
+
+  if (submit instanceof HTMLButtonElement) {
+    submit.disabled = Boolean(validationMessage);
+  }
+}
+
+function updateStatusCorrectionFormControls(control) {
+  const form = control.closest('[data-status-correction-form]');
+
+  if (!(form instanceof HTMLFormElement)) {
+    return;
+  }
+
+  const currentStatus = form.dataset.currentStatus || '';
+  const select = form.querySelector('[data-status-correction-select]');
+  const textarea = form.querySelector('[data-status-correction-justificativa-textarea]');
+  const checkbox = form.querySelector('[data-status-correction-confirmation]');
+  const selectedStatus = select instanceof HTMLSelectElement ? select.value : '';
+  const justificativa = textarea instanceof HTMLTextAreaElement ? textarea.value : '';
+  const confirmed = checkbox instanceof HTMLInputElement ? checkbox.checked : false;
+  const normalizedLength = normalizeStatusCorrectionJustificativaInput(justificativa).length;
+  const validationMessage = getStatusCorrectionFormValidationMessage(
+    currentStatus,
+    selectedStatus,
+    justificativa,
+    confirmed
+  );
+  const counter = form.querySelector('[data-status-correction-counter]');
+  const validation = form.querySelector('[data-status-correction-validation]');
+  const submit = form.querySelector('[data-status-correction-submit]');
+
+  if (counter) {
+    counter.textContent = `${normalizedLength}/${STATUS_CORRECAO_JUSTIFICATIVA_MAX_LENGTH}`;
+  }
+
+  if (validation) {
+    validation.textContent = validationMessage || 'Pronto para confirmar a correção administrativa.';
   }
 
   if (submit instanceof HTMLButtonElement) {
@@ -4874,7 +5292,9 @@ async function submitStatusUpdate(root, state, form) {
         historico,
         observacoes: detail.observacoes || createObservacoesState(),
         observacaoForm: detail.observacaoForm || createObservacaoFormState(),
-        statusForm: nextFormState
+        statusForm: nextFormState,
+        prioridadeForm: detail.prioridadeForm || createPrioridadeFormState(),
+        statusCorrectionForm: detail.statusCorrectionForm || createStatusCorrectionFormState()
       }
     });
   } catch {
@@ -5012,7 +5432,8 @@ async function submitListStatusUpdate(root, state, form) {
           observacoes: nextDetail.observacoes || createObservacoesState(),
           observacaoForm: nextDetail.observacaoForm || createObservacaoFormState(),
           statusForm: nextFormState,
-          prioridadeForm: nextDetail.prioridadeForm || createPrioridadeFormState()
+          prioridadeForm: nextDetail.prioridadeForm || createPrioridadeFormState(),
+          statusCorrectionForm: nextDetail.statusCorrectionForm || createStatusCorrectionFormState()
         }
         : nextDetail;
     }
@@ -5255,7 +5676,8 @@ async function submitPrioridadeUpdate(root, state, form) {
         observacoes: detail.observacoes || createObservacoesState(),
         observacaoForm: detail.observacaoForm || createObservacaoFormState(),
         statusForm: detail.statusForm || createStatusFormState(),
-        prioridadeForm: nextFormState
+        prioridadeForm: nextFormState,
+        statusCorrectionForm: detail.statusCorrectionForm || createStatusCorrectionFormState()
       }
     });
   } catch {
@@ -5268,6 +5690,249 @@ async function submitPrioridadeUpdate(root, state, form) {
           selectedPriority,
           observacao: rawObservacao,
           message: 'Falha temporária de conexão ao atualizar prioridade.'
+        })
+      }
+    });
+  }
+}
+
+async function submitStatusCorrectionUpdate(root, state, form) {
+  const detail = state.detalhe || createDetalheState();
+  const formState = detail.statusCorrectionForm || createStatusCorrectionFormState();
+  const solicitacaoId = detail.item && Number.isInteger(detail.item.id)
+    ? detail.item.id
+    : detail.solicitacaoId;
+  const formData = new FormData(form);
+  const currentStatus = detail.item ? detail.item.statusKey : '';
+  const selectedStatus = String(formData.get('novo_status') || '').trim();
+  const rawJustificativa = String(formData.get('justificativa') || '');
+  const normalizedJustificativa = normalizeStatusCorrectionJustificativaInput(
+    rawJustificativa
+  );
+  const confirmed = formData.get('confirmado') === '1';
+
+  if (formState.status === 'submitting') {
+    return;
+  }
+
+  if (!canCorrectStatus(state)) {
+    renderApp(root, {
+      ...state,
+      detalhe: {
+        ...detail,
+        statusCorrectionForm: createStatusCorrectionFormState({
+          status: 'error',
+          open: true,
+          statusCode: state.sessionState === 'authenticated' ? 403 : null,
+          selectedStatus,
+          justificativa: rawJustificativa,
+          confirmed,
+          message: state.sessionState === 'authenticated'
+            ? 'Correção administrativa indisponível para este perfil.'
+            : 'A correção não foi enviada porque a sessão ainda não foi autenticada.'
+        })
+      }
+    });
+    return;
+  }
+
+  if (detail.status !== 'loaded' || !Number.isInteger(solicitacaoId) || solicitacaoId < 1) {
+    renderApp(root, {
+      ...state,
+      detalhe: {
+        ...detail,
+        statusCorrectionForm: createStatusCorrectionFormState({
+          status: 'error',
+          open: true,
+          statusCode: 422,
+          selectedStatus,
+          justificativa: rawJustificativa,
+          confirmed,
+          message: 'Selecione uma solicitação válida antes de corrigir status.'
+        })
+      }
+    });
+    return;
+  }
+
+  const validationMessage = getStatusCorrectionFormValidationMessage(
+    currentStatus,
+    selectedStatus,
+    rawJustificativa,
+    confirmed
+  );
+
+  if (validationMessage) {
+    renderApp(root, {
+      ...state,
+      detalhe: {
+        ...detail,
+        statusCorrectionForm: createStatusCorrectionFormState({
+          status: 'error',
+          open: true,
+          selectedStatus,
+          justificativa: rawJustificativa,
+          confirmed,
+          message: validationMessage
+        })
+      }
+    });
+    return;
+  }
+
+  const loadingDetail = {
+    ...detail,
+    statusCorrectionForm: createStatusCorrectionFormState({
+      status: 'submitting',
+      open: true,
+      selectedStatus,
+      justificativa: rawJustificativa,
+      confirmed,
+      message: 'Confirmando correção administrativa...'
+    })
+  };
+
+  renderApp(root, {
+    ...state,
+    detalhe: loadingDetail
+  });
+
+  try {
+    const nextFormState = await fetchUpdateSolicitacaoStatusCorrecao(
+      solicitacaoId,
+      selectedStatus,
+      normalizedJustificativa
+    );
+
+    if (nextFormState.status === 'expired') {
+      renderApp(root, createSessionState({
+        sessionState: 'unauthenticated',
+        statusCode: 401,
+        message: 'Sessão expirada ao tentar corrigir status. Faça login novamente.',
+        hasChecked: true,
+        detalhe: {
+          ...loadingDetail,
+          statusCorrectionForm: nextFormState
+        }
+      }));
+      return;
+    }
+
+    if (nextFormState.status !== 'success') {
+      renderApp(root, {
+        ...state,
+        detalhe: {
+          ...detail,
+          statusCorrectionForm: {
+            ...nextFormState,
+            selectedStatus,
+            justificativa: rawJustificativa,
+            confirmed
+          }
+        }
+      });
+      return;
+    }
+
+    let solicitacoes = state.solicitacoes || createSolicitacoesState();
+    let refreshedDetail = null;
+    let historico = detail.historico || createHistoricoState();
+
+    try {
+      refreshedDetail = await fetchSolicitacaoDetail(solicitacaoId);
+    } catch {
+      refreshedDetail = createDetalheState({
+        status: 'error',
+        solicitacaoId,
+        message: 'Correção aplicada, mas não foi possível recarregar o detalhe automaticamente.'
+      });
+    }
+
+    if (refreshedDetail.status === 'expired') {
+      renderApp(root, createSessionState({
+        sessionState: 'unauthenticated',
+        statusCode: 401,
+        message: 'Sessão expirada ao recarregar o detalhe. Faça login novamente.',
+        hasChecked: true,
+        detalhe: {
+          ...loadingDetail,
+          statusCorrectionForm: nextFormState
+        }
+      }));
+      return;
+    }
+
+    if (canListSolicitacoes(state)) {
+      try {
+        solicitacoes = await fetchSolicitacoesInternas(
+          solicitacoes.offset || 0,
+          getSolicitacoesListOptions(state)
+        );
+      } catch {
+        solicitacoes = createSolicitacoesState({
+          status: 'error',
+          offset: solicitacoes.offset || 0,
+          message: 'Correção aplicada, mas não foi possível recarregar a listagem automaticamente.'
+        });
+      }
+    }
+
+    if (canViewHistorico(state)) {
+      try {
+        historico = await fetchSolicitacaoHistorico(solicitacaoId, historico.offset || 0);
+      } catch {
+        historico = createHistoricoState({
+          status: 'error',
+          offset: historico.offset || 0,
+          message: 'Correção aplicada, mas não foi possível recarregar o histórico automaticamente.'
+        });
+      }
+
+      if (historico.status === 'expired') {
+        renderApp(root, createSessionState({
+          sessionState: 'unauthenticated',
+          statusCode: 401,
+          message: 'Sessão expirada ao recarregar o histórico. Faça login novamente.',
+          hasChecked: true,
+          detalhe: {
+            ...loadingDetail,
+            historico,
+            statusCorrectionForm: nextFormState
+          }
+        }));
+        return;
+      }
+    }
+
+    const baseDetail = refreshedDetail.status === 'loaded'
+      ? refreshedDetail
+      : detail;
+
+    renderApp(root, {
+      ...state,
+      solicitacoes,
+      detalhe: {
+        ...baseDetail,
+        historico,
+        observacoes: detail.observacoes || createObservacoesState(),
+        observacaoForm: detail.observacaoForm || createObservacaoFormState(),
+        statusForm: detail.statusForm || createStatusFormState(),
+        prioridadeForm: detail.prioridadeForm || createPrioridadeFormState(),
+        statusCorrectionForm: nextFormState
+      }
+    });
+  } catch {
+    renderApp(root, {
+      ...state,
+      detalhe: {
+        ...detail,
+        statusCorrectionForm: createStatusCorrectionFormState({
+          status: 'error',
+          open: true,
+          selectedStatus,
+          justificativa: rawJustificativa,
+          confirmed,
+          message: 'Falha temporária de conexão ao corrigir status administrativamente.'
         })
       }
     });
@@ -6001,6 +6666,22 @@ if (root) {
 
     if (
       target instanceof HTMLElement
+      && target.matches('[data-action="open-status-correction"]')
+    ) {
+      openStatusCorrectionPanel(root, currentState);
+      return;
+    }
+
+    if (
+      target instanceof HTMLElement
+      && target.matches('[data-action="cancel-status-correction"]')
+    ) {
+      cancelStatusCorrectionPanel(root, currentState);
+      return;
+    }
+
+    if (
+      target instanceof HTMLElement
       && target.matches('[data-action="load-historico"], [data-action="previous-historico"], [data-action="next-historico"]')
     ) {
       const requestedOffset = Number.parseInt(target.dataset.offset || '0', 10);
@@ -6054,6 +6735,14 @@ if (root) {
       && target.matches('[data-prioridade-observacao-textarea]')
     ) {
       updatePrioridadeFormControls(target);
+      return;
+    }
+
+    if (
+      target instanceof HTMLTextAreaElement
+      && target.matches('[data-status-correction-justificativa-textarea]')
+    ) {
+      updateStatusCorrectionFormControls(target);
     }
   });
 
@@ -6082,6 +6771,17 @@ if (root) {
       && target.matches('[data-prioridade-select]')
     ) {
       updatePrioridadeFormControls(target);
+      return;
+    }
+
+    if (
+      (target instanceof HTMLSelectElement || target instanceof HTMLInputElement)
+      && (
+        target.matches('[data-status-correction-select]')
+          || target.matches('[data-status-correction-confirmation]')
+      )
+    ) {
+      updateStatusCorrectionFormControls(target);
     }
   });
 
@@ -6151,6 +6851,15 @@ if (root) {
     ) {
       event.preventDefault();
       submitPrioridadeUpdate(root, currentState, target);
+      return;
+    }
+
+    if (
+      target instanceof HTMLFormElement
+      && target.matches('[data-status-correction-form]')
+    ) {
+      event.preventDefault();
+      submitStatusCorrectionUpdate(root, currentState, target);
     }
   });
 }
