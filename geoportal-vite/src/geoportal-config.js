@@ -326,6 +326,7 @@ export const LEGEND_CONFIG = {
 
 // Configuração de formulário Google Forms para solicitação de reparo de postes
 export const POSTE_FORM_CONFIG = {
+  enabled: false,
   baseUrl: 'https://docs.google.com/forms/d/e/1FAIpQLSfCB1x7yPaO_jDwqHhDjTi67JdTrMzTAZYxGQ_Vtyo7n9TSjQ/viewform?usp=pp_url',
   fields: {
     identificacaoPoste: 'entry.1055006444',

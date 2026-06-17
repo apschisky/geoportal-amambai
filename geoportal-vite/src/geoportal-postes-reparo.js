@@ -3,7 +3,7 @@
 
 import { toLonLat, transform } from 'ol/proj.js';
 import { buildGoogleMapsRouteUrl } from './geoportal-routes.js';
-import { ILUMINACAO_API_TEST_CONFIG } from './geoportal-config.js';
+import { ILUMINACAO_API_TEST_CONFIG, POSTE_FORM_CONFIG } from './geoportal-config.js';
 import { escapeHtml, fetchWithTimeout } from './geoportal-utils.js';
 
 let iluminacaoApiTestButtonHandlerReady = false;
@@ -1224,11 +1224,13 @@ export function createPostePopupHTML(properties, coordinate, formBaseUrl, formFi
   const routeUrl = buildGoogleMapsRouteUrl(destinationLonLat);
   
   // Constrói a URL do formulário
-  const formUrl = buildPosteRepairFormUrl(
-    { identificacaoPoste: id, coordenadas: coords },
-    formBaseUrl,
-    formFields
-  );
+  const formUrl = POSTE_FORM_CONFIG.enabled
+    ? buildPosteRepairFormUrl(
+      { identificacaoPoste: id, coordenadas: coords },
+      formBaseUrl,
+      formFields
+    )
+    : '';
   
   // Constrói o HTML do popup
   const apiTestButtonHtml = ILUMINACAO_API_TEST_CONFIG.enabled
@@ -1245,6 +1247,16 @@ export function createPostePopupHTML(properties, coordinate, formBaseUrl, formFi
           <i class="fa-solid fa-flask" style="margin-right:6px;"></i>${escapeHtml(ILUMINACAO_API_TEST_CONFIG.buttonLabel)}
         </button>
       </div>`
+    : '';
+
+  const googleFormsButtonHtml = POSTE_FORM_CONFIG.enabled
+    ? `
+        <a class="poste-popup-action poste-popup-action-repair" href="${formUrl}"
+           target="_blank"
+           rel="noopener noreferrer"
+           style="display:inline-block;padding:8px 16px;background:#25d366;color:#fff;text-decoration:none;border-radius:4px;font-weight:bold;cursor:pointer;">
+          <i class="fa-brands fa-whatsapp" style="margin-right:6px;"></i>Solicitar Reparo
+        </a>`
     : '';
 
   const html = `
@@ -1269,12 +1281,7 @@ export function createPostePopupHTML(properties, coordinate, formBaseUrl, formFi
         </tr>
       </table>
       <div class="poste-popup-actions" style="margin-top:12px;text-align:center;">
-        <a class="poste-popup-action poste-popup-action-repair" href="${formUrl}" 
-           target="_blank" 
-           rel="noopener noreferrer"
-           style="display:inline-block;padding:8px 16px;background:#25d366;color:#fff;text-decoration:none;border-radius:4px;font-weight:bold;cursor:pointer;">
-          <i class="fa-brands fa-whatsapp" style="margin-right:6px;"></i>Solicitar Reparo
-        </a>
+        ${googleFormsButtonHtml}
         <a class="poste-popup-action poste-popup-action-route" href="${routeUrl}"
            target="_blank"
            rel="noopener noreferrer">
