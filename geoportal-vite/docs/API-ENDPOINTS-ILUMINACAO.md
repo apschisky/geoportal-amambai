@@ -762,18 +762,36 @@ Validacao real em servidor/producao interna:
 - A validacao confirmou permissao especifica, manutencao sem permissao, endpoint acessivel apos restart da API interna, reabertura terminal -> ativo, `finalizado_em` limpo para `NULL`, prioridade preservada, historico `acao='reabertura'`, `origem_acao='ajuste_administrativo'` e justificativa preservada em `observacao_resumida`.
 - Escopo nao executado: nao houve frontend para `status-correcao`, migration estrutural, alteracao em Apache, alteracao em NSSM fora do restart controlado do servico, alteracao de `.env`, exposicao de segredo, concessao da permissao ao perfil `manutencao-iluminacao` ou validacao por interface grafica. O chamado teste/controlado ficou em `em_execucao` apos a validacao.
 
+Validacao negativa zero-write em producao interna:
+
+- Commit documental anterior: `5980a82 Documenta validacao real da correcao de status`.
+- Ambiente: API interna de producao em `https://geoserver.amambai.ms.gov.br/api/internal/`, servico `GeoportalAPIInternaProducao`, porta local `8003`.
+- Chamado teste/controlado: `id=1`, protocolo `IP-2026-000001`.
+- Estado antes dos testes negativos: `status=em_execucao`, `prioridade=normal`, `atualizado_em=2026-06-17T14:42:48.101169-04:00` e `finalizado_em` nulo/vazio.
+- Autorizacao confirmada: `admin.producao` possuia `iluminacao.solicitacoes.corrigir_status`; `manutencao.producao` nao possuia `iluminacao.solicitacoes.corrigir_status`.
+- Cenarios negativos executados por API/PowerShell sem escrita esperada:
+  - `admin.producao` sem header `X-Geoportal-Internal-Request`: HTTP 403.
+  - `admin.producao` com payload contendo campo extra: HTTP 422.
+  - `admin.producao` com justificativa curta: HTTP 422.
+  - `admin.producao` com status inexistente: HTTP 422.
+  - `admin.producao` com solicitacao inexistente `999999999`: HTTP 404.
+  - `manutencao.producao` sem permissao `iluminacao.solicitacoes.corrigir_status`: HTTP 403.
+- Ausencia de mutacao confirmada apos os testes: `status` permaneceu `em_execucao`, `atualizado_em` permaneceu `2026-06-17T14:42:48.101169-04:00` e `finalizado_em` permaneceu nulo/vazio.
+- Sessoes encerradas ao final: logout admin OK e logout manutencao OK.
+- Decisao tecnica: nao executar nesta etapa os cenarios `terminal -> aberta` e `terminal -> encaminhada`, ambos esperados como HTTP 409, porque exigiriam alterar novamente o chamado teste/controlado para status terminal antes da tentativa bloqueada. Esses cenarios permanecem cobertos por testes automatizados; por seguranca operacional, a validacao negativa em producao foi limitada aos cenarios zero-write.
+
 Pendencias apos a validacao em servidor:
 
 - Revisar se o chamado teste/controlado deve permanecer em `em_execucao` ou ser finalizado/corrigido em ciclo operacional separado.
 - Planejar frontend administrativo para expor `status-correcao` apenas a perfil autorizado.
-- Antes do frontend, validar cenarios negativos por API: sem permissao, sem header, terminal -> `aberta`, terminal -> `encaminhada` e payload invalido.
+- Antes do frontend, decidir se os cenarios `terminal -> aberta` e `terminal -> encaminhada` precisam de nova validacao manual em producao ou se a cobertura automatizada e a validacao zero-write sao suficientes.
 - Documentar qualquer nova validacao operacional.
 - Liberar uso operacional para administradores somente apos os bloqueios negativos e o fluxo visual administrativo serem validados.
 
 Subfases recomendadas restantes:
 
-1. Validar cenarios negativos do endpoint por chamada direta autenticada.
-2. Revisar o estado operacional do chamado teste/controlado usado na validacao.
+1. Revisar o estado operacional do chamado teste/controlado usado na validacao.
+2. Avaliar se os cenarios `terminal -> aberta` e `terminal -> encaminhada` exigem validacao manual adicional.
 3. Planejar e implementar frontend administrativo, oculto para manutencao.
 4. Validar relatorio e listagem ativa apos reabertura/correcao.
 5. Liberar uso administrativo somente com orientacao operacional, auditoria e checklist.
