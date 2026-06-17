@@ -250,6 +250,8 @@ Bloqueadores de seguranca para essa ativacao:
 - [ ] cookie de sessao validado em HTTPS sem copiar valores (`HttpOnly`, `Secure`, `SameSite`);
 - [x] perfis do piloto com menor privilegio validados, incluindo `manutencao-iluminacao` sem `admin.*` e sem `iluminacao.solicitacoes.atualizar_prioridade`;
 - [x] mutacoes internas validadas com sessao, permissao e `X-Geoportal-Internal-Request: 1`, incluindo observacao interna, alteracao normal de status e alteracao de prioridade;
+- [x] correcao administrativa de status validada por API direta em producao interna com permissao propria `iluminacao.solicitacoes.corrigir_status`, sem conceder a permissao ao perfil `manutencao-iluminacao`;
+- [x] tentativa de bootstrap da permissao com role runtime bloqueada por falta de privilegio em `mod_auth.permissoes`, confirmando menor privilegio; criacao/vinculo executados por procedimento operacional controlado com backup previo;
 - [ ] console, logs e documentacao sem senha, token, cookie, observacoes reais ou dados pessoais reais.
 
 ## 13. Monitoramento e resposta a incidentes

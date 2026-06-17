@@ -471,7 +471,7 @@ Status terminais na primeira versao:
 Regras de transicao do PATCH normal:
 
 - Status terminal nao deve sair para outro status nesta primeira versao.
-- Reabertura ou correcao administrativa fica fora do PATCH normal e foi implementada localmente em contrato separado, ainda pendente de validacao em servidor.
+- Reabertura ou correcao administrativa fica fora do PATCH normal e foi implementada/validada em contrato separado de producao interna.
 - O fluxo administrativo separado usa `acao='reabertura'` quando aplicavel e `origem_acao='ajuste_administrativo'`, respeitando os valores ja aceitos pelo historico.
 - Se o novo status for igual ao atual, retornar `200 OK` idempotente sem novo `UPDATE` e sem novo historico.
 
@@ -599,13 +599,13 @@ Recomendacao:
 - A permissao especifica e `iluminacao.solicitacoes.corrigir_status`, diferente de `iluminacao.solicitacoes.atualizar_status`.
 - A permissao deve ficar restrita a poucos perfis autorizados; o perfil `manutencao-iluminacao` nao deve recebe-la.
 - A auditoria fica no historico com `origem_acao='ajuste_administrativo'`, `acao='reabertura'` quando aplicavel e `acao='alteracao_status'` nas demais correcoes administrativas.
-- Esse fluxo ainda precisa de validacao em servidor, bootstrap real da permissao e frontend administrativo. Nao liberar reabertura no PATCH normal e nao permitir que a tela futura replique a regra livremente; a regra deve permanecer no backend.
+- Esse fluxo ja foi validado em producao interna por chamada direta autenticada. Ainda precisa de frontend administrativo e validacoes negativas antes de uso operacional amplo. Nao liberar reabertura no PATCH normal e nao permitir que a tela futura replique a regra livremente; a regra deve permanecer no backend.
 
-### `PATCH /api/internal/iluminacao/solicitacoes/{id}/status-correcao` (implementado localmente)
+### `PATCH /api/internal/iluminacao/solicitacoes/{id}/status-correcao` (validado em producao interna)
 
 Finalidade: permitir correcao administrativa de status, volta de fase e reabertura de chamado terminal sem enfraquecer o fluxo normal da manutencao.
 
-Estado atual: o backend local foi implementado e testado no commit `313afd8 Implementa correcao administrativa de status`. O endpoint ainda nao foi validado em servidor/ambiente real, ainda nao houve deploy/restart da API interna para esse contrato, a permissao ainda nao foi criada/vinculada em homologacao/producao por bootstrap operacional e ainda nao ha frontend administrativo para acionar `status-correcao`.
+Estado atual: o backend local foi implementado e testado no commit `313afd8 Implementa correcao administrativa de status`, documentado no commit `da4be5c Documenta implementacao local da correcao de status` e validado em servidor/ambiente real da API interna de producao. Ainda nao ha frontend administrativo para acionar `status-correcao`; a validacao real foi feita por chamada direta autenticada via API/PowerShell.
 
 Este endpoint e separado de `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`. O fluxo normal continua sem volta de fase e sem saida de status terminal.
 
@@ -613,7 +613,11 @@ Permissao:
 
 - Permissao efetiva da aplicacao: `iluminacao.solicitacoes.corrigir_status`.
 - Representacao real em `mod_auth.permissoes`: `modulo = 'iluminacao'` e `chave = 'solicitacoes.corrigir_status'`.
-- A permissao foi adicionada ao bootstrap administrativo local no commit `313afd8`, mas ainda precisa ser executada/validada em homologacao e producao interna.
+- A permissao foi adicionada ao bootstrap administrativo local no commit `313afd8`.
+- Em producao interna, a tentativa inicial de bootstrap com a role runtime da API falhou com permissao negada em `mod_auth.permissoes`, resultado coerente com menor privilegio.
+- A permissao foi criada/vinculada por procedimento operacional controlado, com backup previo, usando usuario administrativo PostgreSQL; nao registrar senha nem `DATABASE_URL`.
+- O perfil `administrador-interno-geoportal` recebeu `iluminacao.solicitacoes.corrigir_status`.
+- O perfil `manutencao-iluminacao` nao recebeu a permissao; a conferencia retornou zero linhas para esse perfil.
 - Nao reutilizar `iluminacao.solicitacoes.atualizar_status`.
 - Nao conceder essa permissao ao perfil `manutencao-iluminacao`.
 - Restringir a perfil administrativo/autorizado, com menor privilegio.
@@ -718,25 +722,61 @@ Testes locais confirmados no commit `313afd8`:
 - Suite completa backend: 660 passed, 2 warnings.
 - Warning conhecido: `DeprecationWarning` relacionado a `HTTP_422_UNPROCESSABLE_ENTITY`, nao bloqueante.
 
-Pendencias para validacao em servidor/ambiente real:
+Validacao real em servidor/producao interna:
 
-- Fazer pull do commit `313afd8` no servidor.
-- Rodar testes focados no servidor antes de restart.
-- Executar bootstrap administrativo controlado para criar/vincular `modulo = 'iluminacao'` e `chave = 'solicitacoes.corrigir_status'` ao perfil administrativo/autorizado.
-- Validar que `manutencao-iluminacao` continua sem `iluminacao.solicitacoes.corrigir_status`.
-- Reiniciar a API interna correta com o harness operacional.
-- Validar o endpoint por chamada direta autenticada, com header `X-Geoportal-Internal-Request: 1`, em chamado teste/controlado.
-- Testar reabertura/correcao em chamado teste antes de qualquer uso administrativo real.
-- Planejar frontend administrativo somente apos validacao da API em servidor.
+- Commits envolvidos: `313afd8 Implementa correcao administrativa de status` e `da4be5c Documenta implementacao local da correcao de status`.
+- Estado do servidor apos pull/restart: HEAD em `da4be5c`, `origin/main` atualizado e working tree limpo.
+- Servico validado: `GeoportalAPIInternaProducao`, porta `8003`.
+- Harness usado: `scripts/deploy/backend-restart-validate-service.ps1 -Environment InternaProducao -Restart -Validate`.
+- Validacoes de runtime: `/api/health` OK, `/api/version` OK com `environment=producao` e `/api/internal/auth/me` retornando 401 sem sessao.
+- Backup previo do procedimento de permissao: `C:\apps\geoportal-api\backups\manual\pre_status_correcao_mod_auth_20260617_143551.sql`.
+- A validacao autenticada usou sessao administrativa real de `admin.producao`, sem registrar senha, token ou cookie.
+- `/api/internal/auth/me` autenticado confirmou `authenticated=true`, `login=admin.producao` e permissao `iluminacao.solicitacoes.corrigir_status`.
+- Chamado teste/controlado: `id=1`, protocolo `IP-2026-000001`.
+- Estado antes: `status=resolvida`, `prioridade=normal`, `atualizado_em=2026-06-15T15:23:16.854660-04:00` e `finalizado_em` preenchido por estado terminal anterior.
+- Payload usado:
+
+```json
+{
+  "novo_status": "em_execucao",
+  "justificativa": "Correcao administrativa controlada para validacao tecnica do endpoint status-correcao."
+}
+```
+
+- Resposta do PATCH:
+
+```json
+{
+  "solicitacao": {
+    "id": 1,
+    "status": "em_execucao",
+    "atualizado_em": "2026-06-17T14:42:48.101169-04:00",
+    "finalizado_em": null
+  }
+}
+```
+
+- Estado depois: `status=em_execucao`, `prioridade=normal`, `atualizado_em=2026-06-17T14:42:48.101169-04:00` e `finalizado_em=NULL`.
+- Historico confirmado via API: `id=6`, `solicitacao_id=1`, `acao=reabertura`, `status_anterior=resolvida`, `status_novo=em_execucao`, `usuario_id=1`, `origem_acao=ajuste_administrativo`, `observacao_resumida` com a justificativa da validacao e `criado_em=2026-06-17T14:42:48.101169-04:00`.
+- Logout confirmado ao final (`LOGOUT_OK`).
+- A validacao confirmou permissao especifica, manutencao sem permissao, endpoint acessivel apos restart da API interna, reabertura terminal -> ativo, `finalizado_em` limpo para `NULL`, prioridade preservada, historico `acao='reabertura'`, `origem_acao='ajuste_administrativo'` e justificativa preservada em `observacao_resumida`.
+- Escopo nao executado: nao houve frontend para `status-correcao`, migration estrutural, alteracao em Apache, alteracao em NSSM fora do restart controlado do servico, alteracao de `.env`, exposicao de segredo, concessao da permissao ao perfil `manutencao-iluminacao` ou validacao por interface grafica. O chamado teste/controlado ficou em `em_execucao` apos a validacao.
+
+Pendencias apos a validacao em servidor:
+
+- Revisar se o chamado teste/controlado deve permanecer em `em_execucao` ou ser finalizado/corrigido em ciclo operacional separado.
+- Planejar frontend administrativo para expor `status-correcao` apenas a perfil autorizado.
+- Antes do frontend, validar cenarios negativos por API: sem permissao, sem header, terminal -> `aberta`, terminal -> `encaminhada` e payload invalido.
+- Documentar qualquer nova validacao operacional.
+- Liberar uso operacional para administradores somente apos os bloqueios negativos e o fluxo visual administrativo serem validados.
 
 Subfases recomendadas restantes:
 
-1. Validar backend em servidor/homologacao com chamado teste/controlado.
-2. Criar/vincular permissao real por bootstrap administrativo controlado.
-3. Confirmar GRANT minimo por coluna em homologacao/producao interna: `UPDATE` apenas em `status`, `atualizado_em` e `finalizado_em`; `INSERT` em historico; `USAGE` na sequence se necessario.
+1. Validar cenarios negativos do endpoint por chamada direta autenticada.
+2. Revisar o estado operacional do chamado teste/controlado usado na validacao.
+3. Planejar e implementar frontend administrativo, oculto para manutencao.
 4. Validar relatorio e listagem ativa apos reabertura/correcao.
-5. Ajustar frontend administrativo, oculto para manutencao.
-6. Publicar em producao interna somente com backup, rollback e checklist.
+5. Liberar uso administrativo somente com orientacao operacional, auditoria e checklist.
 
 Inventario tecnico local para implementacao futura:
 
@@ -749,15 +789,14 @@ Inventario tecnico local para implementacao futura:
 - O repository de status usa `SELECT ... FOR UPDATE`, `UPDATE` de `status`, `atualizado_em` e `finalizado_em`, e `INSERT` no historico dentro de `engine.begin()`. O metodo local de correcao administrativa foi implementado separado do PATCH normal e reutiliza esse padrao transacional.
 - A alteracao normal de status ja trata status igual como idempotente sem novo historico. A correcao administrativa local preserva esse comportamento.
 - O inventario real de homologacao confirmou que `mod_auth.permissoes` nao possui coluna `codigo`; o identificador efetivo da permissao e composto por `lower(btrim(modulo)) || '.' || lower(btrim(chave))`.
-- A permissao ainda nao existe em homologacao: a consulta por `modulo = 'iluminacao'` e `chave = 'solicitacoes.corrigir_status'` retornou zero linhas antes da implementacao local.
-- Como a permissao ainda nao esta cadastrada em homologacao/producao, nenhum perfil real a possui nesses ambientes.
-- A permissao `iluminacao.solicitacoes.corrigir_status` foi adicionada ao bootstrap administrativo local no commit `313afd8`, mas ainda deve ser criada/vinculada em servidor por execucao controlada do script administrativo. O perfil `manutencao-iluminacao` deve permanecer sem essa permissao.
+- A consulta inicial em homologacao por `modulo = 'iluminacao'` e `chave = 'solicitacoes.corrigir_status'` retornou zero linhas antes da implementacao local.
+- A permissao `iluminacao.solicitacoes.corrigir_status` foi adicionada ao bootstrap administrativo local no commit `313afd8` e criada/vinculada em producao interna por procedimento operacional controlado. O perfil `manutencao-iluminacao` permaneceu sem essa permissao.
 
 Classificacao de migration neste inventario:
 
 - Migration estrutural em `mod_iluminacao.solicitacoes`: aparentemente nao necessaria pelo codigo/migrations locais.
 - Migration estrutural em `mod_iluminacao.solicitacoes_historico`: nao necessaria se a v1 aceitar `reabertura` e `alteracao_status` + `origem_acao='ajuste_administrativo'`; necessaria apenas se for exigido novo valor dedicado `acao='correcao_status'`.
-- Migration/seed/script de permissao: necessario em ciclo operacional de servidor, porque a permissao (`modulo = 'iluminacao'`, `chave = 'solicitacoes.corrigir_status'`) precisa existir e ser vinculada somente a perfil administrativo/autorizado.
+- Migration/seed/script de permissao: o procedimento operacional de producao interna ja criou/vinculou a permissao ao perfil administrativo/autorizado; novas bases ou homologacao devem repetir procedimento idempotente equivalente, sem conceder a permissao ao perfil `manutencao-iluminacao`.
 - Confirmacao em banco real/homologacao continua obrigatoria antes de validar em ambiente real, pois a implementacao local nao executou SQL nem alterou banco.
 
 GRANTs minimos previstos para homologacao/producao interna:
