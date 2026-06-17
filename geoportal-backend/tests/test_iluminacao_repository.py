@@ -14,6 +14,7 @@ from app.repositories.iluminacao_repository import (
     list_relatorio_solicitacoes_internas,
     list_solicitacoes_internas,
     solicitacao_interna_existe,
+    update_status_correcao_solicitacao_interna,
     update_status_solicitacao_interna,
 )
 from app.schemas.iluminacao import IluminacaoSolicitacaoCreate
@@ -193,6 +194,80 @@ class FakeUpdateStatusEngine:
     def begin(self) -> FakeUpdateStatusBegin:
         self.begin_count += 1
         self.begin_context = FakeUpdateStatusBegin(self.connection)
+        return self.begin_context
+
+
+class FakeUpdateStatusCorrecaoConnection(FakeConnection):
+    def __init__(
+        self,
+        *,
+        current_status: str | None = "resolvida",
+        fail_history: bool = False,
+    ) -> None:
+        super().__init__(status_solicitacao_row(status=current_status or "resolvida"))
+        self.current_status = current_status
+        self.fail_history = fail_history
+
+    def execute(self, statement: TextClause, params: dict[str, Any]) -> FakeResult:
+        self.statement = statement
+        self.params = params
+        self.statements.append(statement)
+        self.params_history.append(params)
+
+        sql = str(statement)
+        if "FOR UPDATE" in sql:
+            if self.current_status is None:
+                return FakeResult(None)
+            return FakeResult(
+                status_solicitacao_row(
+                    status=self.current_status,
+                    finalizado=self.current_status in {"resolvida", "cancelada", "indeferida", "nao_localizado"},
+                )
+            )
+        if "UPDATE mod_iluminacao.solicitacoes" in sql:
+            finalizado = bool(params["status_novo_terminal"])
+            if params["status_atual_terminal"] and params["status_novo_terminal"]:
+                finalizado = True
+            return FakeResult(
+                status_solicitacao_row(
+                    status=params["status_novo"],
+                    finalizado=finalizado,
+                )
+            )
+        if "INSERT INTO mod_iluminacao.solicitacoes_historico" in sql:
+            if self.fail_history:
+                raise RuntimeError("history insert failed with SQL details")
+            return FakeResult({"id": 1})
+        raise AssertionError(f"unexpected SQL statement: {sql}")
+
+
+class FakeUpdateStatusCorrecaoBegin(FakeBegin):
+    def __init__(self, connection: FakeUpdateStatusCorrecaoConnection) -> None:
+        super().__init__(connection)
+        self.rolled_back = False
+
+    def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
+        self.rolled_back = exc_type is not None
+        return None
+
+
+class FakeUpdateStatusCorrecaoEngine:
+    def __init__(
+        self,
+        *,
+        current_status: str | None = "resolvida",
+        fail_history: bool = False,
+    ) -> None:
+        self.connection = FakeUpdateStatusCorrecaoConnection(
+            current_status=current_status,
+            fail_history=fail_history,
+        )
+        self.begin_count = 0
+        self.begin_context: FakeUpdateStatusCorrecaoBegin | None = None
+
+    def begin(self) -> FakeUpdateStatusCorrecaoBegin:
+        self.begin_count += 1
+        self.begin_context = FakeUpdateStatusCorrecaoBegin(self.connection)
         return self.begin_context
 
 
@@ -1377,6 +1452,296 @@ def test_update_status_solicitacao_interna_rejects_invalid_input_without_sql() -
     ):
         try:
             update_status_solicitacao_interna(engine=engine, **kwargs)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("invalid input should be rejected")
+
+    assert engine.begin_count == 0
+    assert engine.connection.statement is None
+
+
+VALID_STATUS_SET = {
+    "aberta",
+    "em_triagem",
+    "encaminhada",
+    "em_execucao",
+    "aguardando_material",
+    "resolvida",
+    "cancelada",
+    "indeferida",
+    "nao_localizado",
+}
+TERMINAL_STATUS_SET = {"resolvida", "cancelada", "indeferida", "nao_localizado"}
+ALLOWED_REOPEN_STATUS_SET = {"em_triagem", "em_execucao", "aguardando_material"}
+
+
+def test_update_status_correcao_solicitacao_interna_reopens_terminal_with_history() -> None:
+    engine = FakeUpdateStatusCorrecaoEngine(current_status="resolvida")
+
+    result = update_status_correcao_solicitacao_interna(
+        solicitacao_id=10,
+        status_novo="em_execucao",
+        valid_statuses=VALID_STATUS_SET,
+        terminal_statuses=TERMINAL_STATUS_SET,
+        allowed_reopen_statuses=ALLOWED_REOPEN_STATUS_SET,
+        justificativa_resumida="Correcao administrativa para continuidade.",
+        usuario_id="7",
+        usuario_nome=None,
+        engine=engine,
+    )
+
+    assert engine.begin_count == 1
+    assert len(engine.connection.statements) == 3
+    assert engine.connection.params_history[1] == {
+        "solicitacao_id": 10,
+        "status_novo": "em_execucao",
+        "status_atual_terminal": True,
+        "status_novo_terminal": False,
+    }
+    assert engine.connection.params_history[2] == {
+        "solicitacao_id": 10,
+        "acao": "reabertura",
+        "status_anterior": "resolvida",
+        "status_novo": "em_execucao",
+        "usuario_id": "7",
+        "usuario_nome": None,
+        "origem_acao": "ajuste_administrativo",
+        "observacao_resumida": "Correcao administrativa para continuidade.",
+    }
+
+    select_sql = str(engine.connection.statements[0])
+    update_sql = str(engine.connection.statements[1])
+    historico_sql = str(engine.connection.statements[2])
+    update_set_clause = update_sql.split("WHERE", maxsplit=1)[0]
+    combined_sql = (select_sql + update_sql + historico_sql).upper()
+
+    assert "FOR UPDATE" in select_sql
+    assert "UPDATE mod_iluminacao.solicitacoes" in update_sql
+    assert "status = :status_novo" in update_sql
+    assert "atualizado_em = now()" in update_sql
+    assert "finalizado_em = CASE" in update_sql
+    assert "status_atual_terminal" in update_sql
+    assert "status_novo_terminal" in update_sql
+    assert "INSERT INTO mod_iluminacao.solicitacoes_historico" in historico_sql
+    assert "origem_acao" in historico_sql
+    assert "observacao_resumida" in historico_sql
+    assert "SELECT *" not in combined_sql
+    assert "DELETE FROM" not in combined_sql
+    for forbidden in (
+        "protocolo",
+        "geom",
+        "descricao",
+        "nome_solicitante",
+        "contato_solicitante",
+        "prioridade =",
+        "deleted_at",
+        "deleted_reason",
+    ):
+        assert forbidden not in update_set_clause
+    for value in (
+        "Correcao administrativa",
+        "em_execucao",
+        "resolvida",
+        "reabertura",
+        "ajuste_administrativo",
+    ):
+        assert value not in update_sql
+        assert value not in historico_sql
+    assert result.outcome == "updated"
+    assert result.solicitacao is not None
+    assert result.solicitacao.status == "em_execucao"
+    assert result.solicitacao.finalizado_em is None
+
+
+def test_update_status_correcao_solicitacao_interna_sets_finalizado_for_active_to_terminal() -> None:
+    engine = FakeUpdateStatusCorrecaoEngine(current_status="em_execucao")
+
+    result = update_status_correcao_solicitacao_interna(
+        solicitacao_id=10,
+        status_novo="cancelada",
+        valid_statuses=VALID_STATUS_SET,
+        terminal_statuses=TERMINAL_STATUS_SET,
+        allowed_reopen_statuses=ALLOWED_REOPEN_STATUS_SET,
+        justificativa_resumida="Correcao administrativa para encerramento.",
+        usuario_id="7",
+        engine=engine,
+    )
+
+    assert result.outcome == "updated"
+    assert result.solicitacao is not None
+    assert result.solicitacao.status == "cancelada"
+    assert result.solicitacao.finalizado_em == datetime(2026, 5, 21, 9, 30)
+    assert engine.connection.params_history[1]["status_atual_terminal"] is False
+    assert engine.connection.params_history[1]["status_novo_terminal"] is True
+    assert engine.connection.params_history[2]["acao"] == "alteracao_status"
+    assert (
+        engine.connection.params_history[2]["origem_acao"]
+        == "ajuste_administrativo"
+    )
+
+
+def test_update_status_correcao_solicitacao_interna_keeps_finalizado_between_terminals() -> None:
+    engine = FakeUpdateStatusCorrecaoEngine(current_status="cancelada")
+
+    result = update_status_correcao_solicitacao_interna(
+        solicitacao_id=10,
+        status_novo="indeferida",
+        valid_statuses=VALID_STATUS_SET,
+        terminal_statuses=TERMINAL_STATUS_SET,
+        allowed_reopen_statuses=ALLOWED_REOPEN_STATUS_SET,
+        justificativa_resumida="Correcao administrativa entre terminais.",
+        usuario_id="7",
+        engine=engine,
+    )
+
+    assert result.outcome == "updated"
+    assert result.solicitacao is not None
+    assert result.solicitacao.status == "indeferida"
+    assert result.solicitacao.finalizado_em == datetime(2026, 5, 21, 9, 30)
+    assert engine.connection.params_history[2]["acao"] == "alteracao_status"
+
+
+def test_update_status_correcao_solicitacao_interna_blocks_terminal_to_aberta_or_encaminhada() -> None:
+    for target_status in ("aberta", "encaminhada"):
+        engine = FakeUpdateStatusCorrecaoEngine(current_status="resolvida")
+
+        result = update_status_correcao_solicitacao_interna(
+            solicitacao_id=10,
+            status_novo=target_status,
+            valid_statuses=VALID_STATUS_SET,
+            terminal_statuses=TERMINAL_STATUS_SET,
+            allowed_reopen_statuses=ALLOWED_REOPEN_STATUS_SET,
+            justificativa_resumida="Correcao administrativa bloqueada.",
+            usuario_id="7",
+            engine=engine,
+        )
+
+        assert result.outcome == "invalid_transition"
+        assert result.status_atual == "resolvida"
+        assert result.solicitacao is None
+        assert len(engine.connection.statements) == 1
+
+
+def test_update_status_correcao_solicitacao_interna_is_idempotent_without_update_or_history() -> None:
+    engine = FakeUpdateStatusCorrecaoEngine(current_status="resolvida")
+
+    result = update_status_correcao_solicitacao_interna(
+        solicitacao_id=10,
+        status_novo="resolvida",
+        valid_statuses=VALID_STATUS_SET,
+        terminal_statuses=TERMINAL_STATUS_SET,
+        allowed_reopen_statuses=ALLOWED_REOPEN_STATUS_SET,
+        justificativa_resumida="Correcao administrativa idempotente.",
+        usuario_id="7",
+        engine=engine,
+    )
+
+    assert result.outcome == "idempotent"
+    assert result.solicitacao is not None
+    assert result.solicitacao.status == "resolvida"
+    assert len(engine.connection.statements) == 1
+
+
+def test_update_status_correcao_solicitacao_interna_returns_not_found_without_update() -> None:
+    engine = FakeUpdateStatusCorrecaoEngine(current_status=None)
+
+    result = update_status_correcao_solicitacao_interna(
+        solicitacao_id=999,
+        status_novo="em_execucao",
+        valid_statuses=VALID_STATUS_SET,
+        terminal_statuses=TERMINAL_STATUS_SET,
+        allowed_reopen_statuses=ALLOWED_REOPEN_STATUS_SET,
+        justificativa_resumida="Correcao administrativa segura.",
+        usuario_id="7",
+        engine=engine,
+    )
+
+    assert result.outcome == "not_found"
+    assert result.solicitacao is None
+    assert len(engine.connection.statements) == 1
+
+
+def test_update_status_correcao_solicitacao_interna_rolls_back_when_history_fails() -> None:
+    engine = FakeUpdateStatusCorrecaoEngine(
+        current_status="resolvida",
+        fail_history=True,
+    )
+
+    try:
+        update_status_correcao_solicitacao_interna(
+            solicitacao_id=10,
+            status_novo="em_execucao",
+            valid_statuses=VALID_STATUS_SET,
+            terminal_statuses=TERMINAL_STATUS_SET,
+            allowed_reopen_statuses=ALLOWED_REOPEN_STATUS_SET,
+            justificativa_resumida="Correcao administrativa com rollback.",
+            usuario_id="7",
+            engine=engine,
+        )
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("history failure should propagate to trigger rollback")
+
+    assert engine.begin_count == 1
+    assert engine.begin_context is not None
+    assert engine.begin_context.rolled_back is True
+    assert len(engine.connection.statements) == 3
+
+
+def test_update_status_correcao_solicitacao_interna_rejects_invalid_input_without_sql() -> None:
+    engine = FakeUpdateStatusCorrecaoEngine()
+
+    for kwargs in (
+        {
+            "solicitacao_id": 0,
+            "status_novo": "em_execucao",
+            "valid_statuses": VALID_STATUS_SET,
+            "terminal_statuses": TERMINAL_STATUS_SET,
+            "allowed_reopen_statuses": ALLOWED_REOPEN_STATUS_SET,
+            "justificativa_resumida": "Correcao administrativa.",
+            "usuario_id": "7",
+        },
+        {
+            "solicitacao_id": 10,
+            "status_novo": "status_inexistente",
+            "valid_statuses": VALID_STATUS_SET,
+            "terminal_statuses": TERMINAL_STATUS_SET,
+            "allowed_reopen_statuses": ALLOWED_REOPEN_STATUS_SET,
+            "justificativa_resumida": "Correcao administrativa.",
+            "usuario_id": "7",
+        },
+        {
+            "solicitacao_id": 10,
+            "status_novo": "em_execucao",
+            "valid_statuses": VALID_STATUS_SET,
+            "terminal_statuses": TERMINAL_STATUS_SET,
+            "allowed_reopen_statuses": ALLOWED_REOPEN_STATUS_SET,
+            "justificativa_resumida": " ab ",
+            "usuario_id": "7",
+        },
+        {
+            "solicitacao_id": 10,
+            "status_novo": "em_execucao",
+            "valid_statuses": VALID_STATUS_SET,
+            "terminal_statuses": TERMINAL_STATUS_SET,
+            "allowed_reopen_statuses": ALLOWED_REOPEN_STATUS_SET,
+            "justificativa_resumida": "a" * 1001,
+            "usuario_id": "7",
+        },
+        {
+            "solicitacao_id": 10,
+            "status_novo": "em_execucao",
+            "valid_statuses": VALID_STATUS_SET,
+            "terminal_statuses": TERMINAL_STATUS_SET,
+            "allowed_reopen_statuses": ALLOWED_REOPEN_STATUS_SET,
+            "justificativa_resumida": "Correcao administrativa.",
+            "usuario_id": " ",
+        },
+    ):
+        try:
+            update_status_correcao_solicitacao_interna(engine=engine, **kwargs)
         except ValueError:
             pass
         else:

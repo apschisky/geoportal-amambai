@@ -1588,3 +1588,232 @@ def test_atualizar_status_solicitacao_interna_converts_database_error_to_safe_er
     assert "db.internal" not in message
     assert "senha" not in message.lower()
     assert "UPDATE" not in message
+
+
+def test_corrigir_status_solicitacao_interna_reopens_terminal_with_admin_origin(
+    monkeypatch,
+) -> None:
+    calls: dict[str, object] = {}
+
+    def fake_update_status_correcao_solicitacao_interna(
+        solicitacao_id: int,
+        *,
+        status_novo: str,
+        valid_statuses: set[str],
+        terminal_statuses: set[str],
+        allowed_reopen_statuses: set[str],
+        justificativa_resumida: str,
+        usuario_id: str,
+        usuario_nome: str | None = None,
+    ) -> object:
+        calls.update(
+            {
+                "solicitacao_id": solicitacao_id,
+                "status_novo": status_novo,
+                "valid_statuses": valid_statuses,
+                "terminal_statuses": terminal_statuses,
+                "allowed_reopen_statuses": allowed_reopen_statuses,
+                "justificativa_resumida": justificativa_resumida,
+                "usuario_id": usuario_id,
+                "usuario_nome": usuario_nome,
+            }
+        )
+        return iluminacao_service.iluminacao_repository.UpdateStatusCorrecaoSolicitacaoInternaResult(
+            outcome=(
+                iluminacao_service.iluminacao_repository
+                .STATUS_CORRECAO_OUTCOME_UPDATED
+            ),
+            solicitacao=status_solicitacao_item(status_novo),
+        )
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "update_status_correcao_solicitacao_interna",
+        fake_update_status_correcao_solicitacao_interna,
+    )
+
+    response = iluminacao_service.corrigir_status_solicitacao_interna(
+        10,
+        novo_status=StatusSolicitacaoIluminacao.em_execucao,
+        justificativa="  Correcao administrativa para continuidade.  ",
+        usuario_id=7,
+        usuario_nome=None,
+    )
+
+    assert response.status == "em_execucao"
+    assert response.finalizado_em is None
+    assert calls == {
+        "solicitacao_id": 10,
+        "status_novo": "em_execucao",
+        "valid_statuses": iluminacao_service.VALID_STATUS_SOLICITACAO,
+        "terminal_statuses": iluminacao_service.TERMINAL_STATUS_SOLICITACAO,
+        "allowed_reopen_statuses": {
+            "em_triagem",
+            "em_execucao",
+            "aguardando_material",
+        },
+        "justificativa_resumida": "Correcao administrativa para continuidade.",
+        "usuario_id": "7",
+        "usuario_nome": None,
+    }
+
+
+def test_corrigir_status_solicitacao_interna_allows_idempotent_status(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "update_status_correcao_solicitacao_interna",
+        lambda *args, **kwargs: (
+            iluminacao_service.iluminacao_repository.UpdateStatusCorrecaoSolicitacaoInternaResult(
+                outcome=(
+                    iluminacao_service.iluminacao_repository
+                    .STATUS_CORRECAO_OUTCOME_IDEMPOTENT
+                ),
+                solicitacao=status_solicitacao_item("resolvida"),
+            )
+        ),
+    )
+
+    response = iluminacao_service.corrigir_status_solicitacao_interna(
+        10,
+        novo_status="resolvida",
+        justificativa="Correcao administrativa idempotente.",
+        usuario_id=7,
+    )
+
+    assert response.status == "resolvida"
+
+
+def test_corrigir_status_solicitacao_interna_raises_safe_not_found(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "update_status_correcao_solicitacao_interna",
+        lambda *args, **kwargs: (
+            iluminacao_service.iluminacao_repository.UpdateStatusCorrecaoSolicitacaoInternaResult(
+                outcome=(
+                    iluminacao_service.iluminacao_repository
+                    .STATUS_CORRECAO_OUTCOME_NOT_FOUND
+                )
+            )
+        ),
+    )
+
+    with pytest.raises(iluminacao_service.SolicitacaoInternaNotFoundError) as exc_info:
+        iluminacao_service.corrigir_status_solicitacao_interna(
+            999,
+            novo_status="em_execucao",
+            justificativa="Correcao administrativa segura.",
+            usuario_id=7,
+        )
+
+    assert str(exc_info.value) == "Solicitacao nao encontrada."
+
+
+def test_corrigir_status_solicitacao_interna_rejects_terminal_to_aberta(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "update_status_correcao_solicitacao_interna",
+        lambda *args, **kwargs: (
+            iluminacao_service.iluminacao_repository.UpdateStatusCorrecaoSolicitacaoInternaResult(
+                outcome=(
+                    iluminacao_service.iluminacao_repository
+                    .STATUS_CORRECAO_OUTCOME_INVALID_TRANSITION
+                )
+            )
+        ),
+    )
+
+    with pytest.raises(
+        iluminacao_service.SolicitacaoInternaStatusCorrecaoError
+    ) as exc_info:
+        iluminacao_service.corrigir_status_solicitacao_interna(
+            10,
+            novo_status="aberta",
+            justificativa="Correcao administrativa bloqueada.",
+            usuario_id=7,
+        )
+
+    assert str(exc_info.value) == "Correcao administrativa de status invalida."
+
+
+def test_corrigir_status_solicitacao_interna_rejects_invalid_input(
+    monkeypatch,
+) -> None:
+    def fail_if_called(*args: object, **kwargs: object) -> None:
+        raise AssertionError("repository should not be called")
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "update_status_correcao_solicitacao_interna",
+        fail_if_called,
+    )
+
+    for kwargs in (
+        {
+            "solicitacao_id": 0,
+            "novo_status": "em_execucao",
+            "justificativa": "Correcao administrativa.",
+            "usuario_id": 7,
+        },
+        {
+            "solicitacao_id": 10,
+            "novo_status": "rejeitada",
+            "justificativa": "Correcao administrativa.",
+            "usuario_id": 7,
+        },
+        {
+            "solicitacao_id": 10,
+            "novo_status": "em_execucao",
+            "justificativa": " curta ",
+            "usuario_id": 7,
+        },
+        {
+            "solicitacao_id": 10,
+            "novo_status": "em_execucao",
+            "justificativa": "a" * 1001,
+            "usuario_id": 7,
+        },
+        {
+            "solicitacao_id": 10,
+            "novo_status": "em_execucao",
+            "justificativa": "Correcao administrativa.",
+            "usuario_id": 0,
+        },
+    ):
+        with pytest.raises(ValueError):
+            iluminacao_service.corrigir_status_solicitacao_interna(**kwargs)
+
+
+def test_corrigir_status_solicitacao_interna_converts_database_error_to_safe_error(
+    monkeypatch,
+) -> None:
+    def fail_with_database_error(*args: object, **kwargs: object) -> None:
+        raise SQLAlchemyError(
+            "could not connect using DATABASE_URL on host db.internal:5432 UPDATE"
+        )
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "update_status_correcao_solicitacao_interna",
+        fail_with_database_error,
+    )
+
+    with pytest.raises(DatabaseUnavailableError) as exc_info:
+        iluminacao_service.corrigir_status_solicitacao_interna(
+            10,
+            novo_status="em_execucao",
+            justificativa="Correcao administrativa segura.",
+            usuario_id=7,
+        )
+
+    message = str(exc_info.value)
+    assert message == "Servico temporariamente indisponivel. Tente novamente mais tarde."
+    assert "DATABASE_URL" not in message
+    assert "db.internal" not in message
+    assert "senha" not in message.lower()
+    assert "UPDATE" not in message

@@ -177,6 +177,7 @@ def test_maintenance_permissions_are_minimal_and_do_not_include_admin_or_priorit
     }
     assert not any(permission.startswith("admin.") for permission in permission_codes)
     assert "iluminacao.solicitacoes.atualizar_prioridade" not in permission_codes
+    assert "iluminacao.solicitacoes.corrigir_status" not in permission_codes
 
 
 def test_script_rejects_password_cli_argument_without_printing_it() -> None:

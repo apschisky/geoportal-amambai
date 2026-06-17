@@ -43,6 +43,9 @@ SOLICITACAO_DUPLICADA_ATIVA_MESSAGE = (
 
 SOLICITACAO_INTERNA_NOT_FOUND_MESSAGE = "Solicitacao nao encontrada."
 SOLICITACAO_STATUS_TRANSITION_INVALID_MESSAGE = "Transicao de status invalida."
+SOLICITACAO_STATUS_CORRECAO_INVALID_MESSAGE = (
+    "Correcao administrativa de status invalida."
+)
 SOLICITACAO_PRIORIDADE_TERMINAL_STATUS_MESSAGE = (
     "Prioridade nao pode ser alterada em status finalizado."
 )
@@ -72,6 +75,12 @@ TERMINAL_STATUS_SOLICITACAO = {
     "nao_localizado",
 }
 VALID_STATUS_SOLICITACAO = {status.value for status in StatusSolicitacaoIluminacao}
+ACTIVE_STATUS_SOLICITACAO = VALID_STATUS_SOLICITACAO - TERMINAL_STATUS_SOLICITACAO
+ALLOWED_REOPEN_STATUS_SOLICITACAO = {
+    "em_triagem",
+    "em_execucao",
+    "aguardando_material",
+}
 VALID_PRIORIDADE_SOLICITACAO = {"baixa", "normal", "alta", "urgente"}
 RELATORIO_MAX_DAYS = 366
 RELATORIO_CSV_HEADERS = (
@@ -95,6 +104,10 @@ class SolicitacaoInternaNotFoundError(RuntimeError):
 
 
 class SolicitacaoInternaStatusTransitionError(RuntimeError):
+    pass
+
+
+class SolicitacaoInternaStatusCorrecaoError(RuntimeError):
     pass
 
 
@@ -529,6 +542,15 @@ def _normalize_status_update_observacao(observacao: str) -> str:
     return normalized
 
 
+def _normalize_status_correcao_justificativa(justificativa: str) -> str:
+    normalized = justificativa.strip()
+    if len(normalized) < 10:
+        raise ValueError("justificativa must have at least 10 characters")
+    if len(normalized) > 1000:
+        raise ValueError("justificativa exceeds maximum length")
+    return normalized
+
+
 def _normalize_status_solicitacao(
     status: StatusSolicitacaoIluminacao | str,
 ) -> str:
@@ -622,6 +644,53 @@ def atualizar_status_solicitacao_interna(
     if result.outcome == iluminacao_repository.STATUS_UPDATE_OUTCOME_INVALID_TRANSITION:
         raise SolicitacaoInternaStatusTransitionError(
             SOLICITACAO_STATUS_TRANSITION_INVALID_MESSAGE
+        )
+
+    if result.solicitacao is None:
+        raise DatabaseUnavailableError(DATABASE_UNAVAILABLE_MESSAGE)
+
+    return result.solicitacao
+
+
+def corrigir_status_solicitacao_interna(
+    solicitacao_id: int,
+    *,
+    novo_status: StatusSolicitacaoIluminacao | str,
+    justificativa: str,
+    usuario_id: int,
+    usuario_nome: str | None = None,
+) -> IluminacaoSolicitacaoStatusInternaItem:
+    if solicitacao_id < 1:
+        raise ValueError("solicitacao_id must be greater than or equal to 1")
+    if usuario_id < 1:
+        raise ValueError("usuario_id must be greater than or equal to 1")
+
+    status_novo = _normalize_status_solicitacao(novo_status)
+    justificativa_normalizada = _normalize_status_correcao_justificativa(justificativa)
+
+    try:
+        result = iluminacao_repository.update_status_correcao_solicitacao_interna(
+            solicitacao_id,
+            status_novo=status_novo,
+            valid_statuses=VALID_STATUS_SOLICITACAO,
+            terminal_statuses=TERMINAL_STATUS_SOLICITACAO,
+            allowed_reopen_statuses=ALLOWED_REOPEN_STATUS_SOLICITACAO,
+            justificativa_resumida=justificativa_normalizada,
+            usuario_id=str(usuario_id),
+            usuario_nome=usuario_nome,
+        )
+    except (SQLAlchemyError, RuntimeError) as exc:
+        raise DatabaseUnavailableError(DATABASE_UNAVAILABLE_MESSAGE) from exc
+
+    if result.outcome == iluminacao_repository.STATUS_CORRECAO_OUTCOME_NOT_FOUND:
+        raise SolicitacaoInternaNotFoundError(SOLICITACAO_INTERNA_NOT_FOUND_MESSAGE)
+
+    if (
+        result.outcome
+        == iluminacao_repository.STATUS_CORRECAO_OUTCOME_INVALID_TRANSITION
+    ):
+        raise SolicitacaoInternaStatusCorrecaoError(
+            SOLICITACAO_STATUS_CORRECAO_INVALID_MESSAGE
         )
 
     if result.solicitacao is None:

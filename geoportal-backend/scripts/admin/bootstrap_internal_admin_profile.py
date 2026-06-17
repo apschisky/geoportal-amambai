@@ -48,6 +48,11 @@ INITIAL_ADMIN_PERMISSIONS: tuple[AdminPermissionSeed, ...] = (
         "auth.me",
         "Consultar endpoint tecnico de autenticacao/autorizacao atual.",
     ),
+    AdminPermissionSeed(
+        "iluminacao",
+        "solicitacoes.corrigir_status",
+        "Corrigir administrativamente status de solicitacoes de Iluminacao Publica.",
+    ),
 )
 
 

@@ -285,6 +285,20 @@ class IluminacaoSolicitacaoStatusInternaUpdate(BaseModel):
         return value
 
 
+class IluminacaoSolicitacaoStatusCorrecaoInternaUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    novo_status: StatusSolicitacaoIluminacao
+    justificativa: str = Field(min_length=10, max_length=1000)
+
+    @field_validator("justificativa", mode="before")
+    @classmethod
+    def strip_justificativa(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip()
+        return value
+
+
 class IluminacaoSolicitacaoStatusInternaItem(BaseModel):
     id: int
     status: str

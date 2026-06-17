@@ -13,6 +13,7 @@ from app.schemas.iluminacao import (
     IluminacaoSolicitacaoObservacoesInternasResponse,
     IluminacaoSolicitacaoPrioridadeInternaResponse,
     IluminacaoSolicitacaoPrioridadeInternaUpdate,
+    IluminacaoSolicitacaoStatusCorrecaoInternaUpdate,
     IluminacaoSolicitacaoStatusInternaResponse,
     IluminacaoSolicitacaoStatusInternaUpdate,
     IluminacaoSolicitacoesInternasResponse,
@@ -25,6 +26,7 @@ from app.services.iluminacao_service import criar_observacao_solicitacao_interna
 from app.services.iluminacao_service import atualizar_status_solicitacao_interna
 from app.services.iluminacao_service import atualizar_prioridade_solicitacao_interna
 from app.services.iluminacao_service import build_relatorio_solicitacoes_csv
+from app.services.iluminacao_service import corrigir_status_solicitacao_interna
 from app.services.iluminacao_service import listar_historico_solicitacao_interna
 from app.services.iluminacao_service import listar_observacoes_solicitacao_interna
 from app.services.iluminacao_service import listar_relatorio_solicitacoes_internas
@@ -37,6 +39,7 @@ from app.services.iluminacao_service import (
     SolicitacaoInternaPrioridadeTerminalStatusError,
 )
 from app.services.iluminacao_service import SolicitacaoInternaStatusTransitionError
+from app.services.iluminacao_service import SolicitacaoInternaStatusCorrecaoError
 
 
 LIST_INTERNAL_ILUMINACAO_SOLICITACOES_PERMISSION = "iluminacao.solicitacoes.ler"
@@ -52,6 +55,9 @@ UPDATE_INTERNAL_ILUMINACAO_STATUS_PERMISSION = (
 )
 UPDATE_INTERNAL_ILUMINACAO_PRIORIDADE_PERMISSION = (
     "iluminacao.solicitacoes.atualizar_prioridade"
+)
+CORRIGIR_INTERNAL_ILUMINACAO_STATUS_PERMISSION = (
+    "iluminacao.solicitacoes.corrigir_status"
 )
 EXPORT_INTERNAL_ILUMINACAO_RELATORIO_PERMISSION = "admin.usuarios.ler"
 
@@ -374,6 +380,50 @@ def update_internal_solicitacao_status(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Invalid status transition",
+        ) from exc
+    except DatabaseUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
+    return IluminacaoSolicitacaoStatusInternaResponse(solicitacao=solicitacao)
+
+
+@router.patch(
+    "/solicitacoes/{solicitacao_id}/status-correcao",
+    response_model=IluminacaoSolicitacaoStatusInternaResponse,
+)
+def correct_internal_solicitacao_status(
+    payload: IluminacaoSolicitacaoStatusCorrecaoInternaUpdate,
+    solicitacao_id: int = Path(ge=1),
+    current_session: AuthenticatedCurrentSession = Depends(
+        require_permission(CORRIGIR_INTERNAL_ILUMINACAO_STATUS_PERMISSION)
+    ),
+    _internal_request: None = Depends(require_internal_mutating_request_header),
+) -> IluminacaoSolicitacaoStatusInternaResponse:
+    try:
+        solicitacao = corrigir_status_solicitacao_interna(
+            solicitacao_id,
+            novo_status=payload.novo_status,
+            justificativa=payload.justificativa,
+            usuario_id=current_session.usuario_id,
+            usuario_nome=None,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid payload",
+        ) from exc
+    except SolicitacaoInternaNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Not found",
+        ) from exc
+    except SolicitacaoInternaStatusCorrecaoError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Invalid administrative status correction",
         ) from exc
     except DatabaseUnavailableError as exc:
         raise HTTPException(
