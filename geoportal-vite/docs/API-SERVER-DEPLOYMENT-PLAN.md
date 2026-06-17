@@ -1190,7 +1190,7 @@ Ordem recomendada apos o marco de 2026-06-12:
 6. Planejar tela administrativa de usuarios, perfis e permissoes antes de ampliar a operacao.
 7. Manter o contrato de `/api/internal/auth/me` enxuto e sanitizado, evitando incluir segredos ou dados pessoais desnecessarios.
 8. Planejar mapa operacional, anexos e dashboard apenas em etapas separadas.
-9. Validar cenarios negativos e frontend administrativo antes de qualquer uso operacional amplo da correcao administrativa de status.
+9. Decidir sobre validacao manual adicional dos cenarios negativos que exigiriam escrita, e implementar frontend administrativo antes de qualquer uso operacional amplo da correcao administrativa de status.
 
 ### Pendencias futuras fora do MVP
 

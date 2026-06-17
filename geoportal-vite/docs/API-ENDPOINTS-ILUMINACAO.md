@@ -599,7 +599,7 @@ Recomendacao:
 - A permissao especifica e `iluminacao.solicitacoes.corrigir_status`, diferente de `iluminacao.solicitacoes.atualizar_status`.
 - A permissao deve ficar restrita a poucos perfis autorizados; o perfil `manutencao-iluminacao` nao deve recebe-la.
 - A auditoria fica no historico com `origem_acao='ajuste_administrativo'`, `acao='reabertura'` quando aplicavel e `acao='alteracao_status'` nas demais correcoes administrativas.
-- Esse fluxo ja foi validado em producao interna por chamada direta autenticada. Ainda precisa de frontend administrativo e validacoes negativas antes de uso operacional amplo. Nao liberar reabertura no PATCH normal e nao permitir que a tela futura replique a regra livremente; a regra deve permanecer no backend.
+- Esse fluxo ja foi validado em producao interna por chamada direta autenticada e por validacao negativa zero-write. Ainda precisa de frontend administrativo restrito e decisao sobre validacao manual adicional dos bloqueios `terminal -> aberta` e `terminal -> encaminhada` antes de uso operacional amplo. Nao liberar reabertura no PATCH normal e nao permitir que a tela futura replique a regra livremente; a regra deve permanecer no backend.
 
 ### `PATCH /api/internal/iluminacao/solicitacoes/{id}/status-correcao` (validado em producao interna)
 
@@ -787,6 +787,23 @@ Pendencias apos a validacao em servidor:
 - Antes do frontend, decidir se os cenarios `terminal -> aberta` e `terminal -> encaminhada` precisam de nova validacao manual em producao ou se a cobertura automatizada e a validacao zero-write sao suficientes.
 - Documentar qualquer nova validacao operacional.
 - Liberar uso operacional para administradores somente apos os bloqueios negativos e o fluxo visual administrativo serem validados.
+
+Planejamento do frontend administrativo restrito:
+
+- Visibilidade: renderizar a acao somente quando `usuario.permissoes` contiver `iluminacao.solicitacoes.corrigir_status`.
+- Nao renderizar para `manutencao-iluminacao`, `manutencao.producao` ou qualquer usuario sem a permissao especifica.
+- Local da UI: colocar a acao apenas no detalhe da solicitacao, em bloco separado, por exemplo `Acoes administrativas` -> `Corrigir status administrativamente`.
+- Nao misturar com o fluxo normal `Alterar status operacional`; o usuario deve perceber a diferenca entre fluxo operacional e fluxo administrativo auditavel.
+- Confirmacao forte: usar modal com titulo `Correcao administrativa de status`, alerta de que a acao e administrativa, auditavel e pode reabrir chamados finalizados, status atual, novo status, justificativa obrigatoria, checkbox ou confirmacao textual de ciencia, botao primario `Confirmar correcao administrativa` e botao secundario `Cancelar`.
+- Justificativa na UI: aplicar trim, exigir minimo de 10 caracteres e maximo de 1000 caracteres, impedir envio vazio e deixar claro que o backend continua sendo a fonte de verdade.
+- Status disponiveis: listar valores conforme contrato do backend, sem inventar matriz paralela no frontend. Bloqueios conhecidos continuam no backend: `terminal -> aberta`, `terminal -> encaminhada`, payload invalido, ausencia do header mutavel e ausencia de permissao.
+- Chamada HTTP: enviar `PATCH /api/internal/iluminacao/solicitacoes/{id}/status-correcao` com `credentials: "include"`, `Content-Type: application/json`, `Accept: application/json` e `X-Geoportal-Internal-Request: 1`.
+- Tratamento de erros: `401` indica sessao expirada e deve orientar novo login; `403` indica usuario sem permissao ou requisicao sem header interno; `404` indica solicitacao nao encontrada; `409` indica correcao administrativa nao permitida para o estado atual; `422` indica dados invalidos; `503` indica indisponibilidade temporaria.
+- Pos-sucesso: recarregar detalhe, historico, status exibido e `finalizado_em`, exibir mensagem de sucesso e evitar recarregar a pagina inteira se nao for necessario.
+- Auditoria visual: no historico, destacar quando `acao='reabertura'` e `origem_acao='ajuste_administrativo'`, diferenciando de `origem_acao='usuario_interno'`.
+- Testes frontend futuros: nao renderizar sem permissao, renderizar com permissao, bloquear justificativa curta, enviar `X-Geoportal-Internal-Request: 1`, tratar `401`, `403`, `404`, `409`, `422`, sucesso com recarga de detalhe/historico e garantir que manutencao nao ve a acao.
+- Nao escopo da primeira UI: administracao de usuarios, perfis e permissoes, dashboard avancado, edicao direta de banco, atalho para manutencao e acao em lote.
+- Ordem futura de implementacao: localizar componentes atuais do detalhe de Iluminacao; identificar helper de API interna; adicionar funcao client para `status-correcao`; criar componente administrativo isolado; condicionar por permissao; adicionar modal com justificativa; tratar erros; recarregar detalhe/historico; adicionar testes; executar build local; validar manualmente em ambiente local; fazer deploy controlado.
 
 Subfases recomendadas restantes:
 
