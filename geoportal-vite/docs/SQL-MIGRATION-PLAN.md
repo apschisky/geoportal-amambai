@@ -87,6 +87,10 @@ Nota sobre prioridade operacional: a inspecao real de homologacao confirmou que 
 
 Para ativacao em producao interna, a comparacao entre `amambaiGis_homologacao` e `amambaiGis` deve ocorrer antes de qualquer SQL. Nao copiar banco inteiro de homologacao para producao e nao criar migration apenas para "confirmar" schema existente. Se `amambaiGis` ja tiver coluna, default, constraints, historico e acao de prioridade equivalentes aos validados em homologacao, a etapa correta e registrar a validacao e aplicar somente GRANTs minimos necessarios, quando faltarem. O runbook operacional completo esta em `docs/API-SERVER-DEPLOYMENT-PLAN.md`, secao "Plano operacional para producao interna controlada de Iluminacao".
 
+Nota sobre correcao administrativa de status: o inventario local das migrations indica que `mod_iluminacao.solicitacoes` ja possui `status`, `atualizado_em`, `finalizado_em` anulavel e `deleted_at`, e que `mod_iluminacao.solicitacoes_historico` ja possui `status_anterior`, `status_novo`, `usuario_id`, `usuario_nome`, `origem_acao`, `observacao_resumida` e `criado_em`. A constraint de `origem_acao` ja aceita `ajuste_administrativo`; a constraint de `acao` aceita `reabertura`, mas nao ha evidencia local de `correcao_status`. Portanto, nao criar migration estrutural apenas para implementar `status-correcao` se a v1 usar `reabertura` para terminal -> ativo e `alteracao_status` com `origem_acao='ajuste_administrativo'` para demais correcoes. Criar migration somente se a revisao humana exigir novo valor dedicado `acao='correcao_status'` ou se a consulta do schema real mostrar divergencia.
+
+A permissao planejada `iluminacao.solicitacoes.corrigir_status` e dado operacional de autorizacao, nao lacuna estrutural do schema. Se ela nao existir em homologacao/producao interna, preferir seed/script administrativo idempotente e revisado, seguindo o padrao dos bootstraps existentes, em vez de migration estrutural vazia. O perfil `manutencao-iluminacao` nao deve receber essa permissao.
+
 ## 6. Ordem de execucao
 
 Sequencia recomendada:

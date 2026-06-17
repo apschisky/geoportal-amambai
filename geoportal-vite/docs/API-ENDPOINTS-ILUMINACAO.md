@@ -718,6 +718,82 @@ Subfases recomendadas:
 8. Validacao de relatorio e listagem ativa apos reabertura.
 9. Publicacao controlada em producao interna com backup, rollback e checklist.
 
+Inventario tecnico local para implementacao futura:
+
+- `mod_iluminacao.solicitacoes` ja possui `status varchar(40) NOT NULL`, `finalizado_em timestamptz NULL`, `atualizado_em timestamptz NOT NULL`, `deleted_at timestamptz NULL` e constraint de status com todos os valores atuais (`aberta`, `em_triagem`, `encaminhada`, `em_execucao`, `aguardando_material`, `nao_localizado`, `resolvida`, `indeferida`, `cancelada`).
+- A coluna `finalizado_em` e anulavel, portanto a regra terminal -> ativo com `finalizado_em = NULL` nao indica necessidade de migration estrutural na tabela principal.
+- `mod_iluminacao.solicitacoes_historico` ja possui `status_anterior`, `status_novo`, `usuario_id`, `usuario_nome`, `origem_acao`, `observacao_resumida` e `criado_em`, cobrindo os campos minimos de auditoria da correcao administrativa.
+- A constraint de `origem_acao` ja aceita `ajuste_administrativo`.
+- A constraint de `acao` ja aceita `reabertura`, mas nao ha evidencia local de que aceite `correcao_status`. Para evitar migration imediata, a primeira implementacao pode usar `acao='reabertura'` em terminal -> ativo e `acao='alteracao_status'` com `origem_acao='ajuste_administrativo'` nas demais correcoes administrativas, desde que essa decisao seja confirmada pela revisao humana. Se a equipe quiser valor dedicado `correcao_status`, sera necessaria migration de constraint.
+- `mod_iluminacao.solicitacoes_observacoes` nao deve ser usada para esse fluxo. A justificativa administrativa deve ficar em `solicitacoes_historico.observacao_resumida`; observacoes livres continuam como registro operacional separado, nao como trilha de auditoria de correcao.
+- O repository atual de status usa `SELECT ... FOR UPDATE`, `UPDATE` de `status`, `atualizado_em` e `finalizado_em`, e `INSERT` no historico dentro de `engine.begin()`. O futuro metodo deve ser separado, mas reutilizar esse padrao transacional.
+- A alteracao normal de status ja trata status igual como idempotente sem novo historico. A correcao administrativa deve preservar esse comportamento, salvo decisao explicita em contrario.
+- A permissao planejada `iluminacao.solicitacoes.corrigir_status` nao aparece nos scripts administrativos locais de bootstrap inspecionados. Ela deve ser criada/vinculada em etapa operacional separada, preferencialmente por script administrativo idempotente ou seed controlado seguindo o padrao existente, sem conceder ao perfil `manutencao-iluminacao`.
+
+Classificacao de migration neste inventario:
+
+- Migration estrutural em `mod_iluminacao.solicitacoes`: aparentemente nao necessaria pelo codigo/migrations locais.
+- Migration estrutural em `mod_iluminacao.solicitacoes_historico`: nao necessaria se a v1 aceitar `reabertura` e `alteracao_status` + `origem_acao='ajuste_administrativo'`; necessaria apenas se for exigido novo valor dedicado `acao='correcao_status'`.
+- Migration/seed/script de permissao: necessario em ciclo separado, porque a permissao `iluminacao.solicitacoes.corrigir_status` precisa existir e ser vinculada somente a perfil administrativo/autorizado.
+- Confirmacao em banco real/homologacao continua obrigatoria antes de implementar, pois o inventario local le migrations/codigo versionado e nao consulta o banco.
+
+GRANTs minimos previstos para homologacao/producao interna:
+
+- `SELECT` em `mod_iluminacao.solicitacoes`;
+- `UPDATE` preferencialmente por coluna em `mod_iluminacao.solicitacoes(status, atualizado_em, finalizado_em)`;
+- `INSERT` em `mod_iluminacao.solicitacoes_historico`;
+- `USAGE`/`SELECT` na sequence de `solicitacoes_historico`, se necessario pelo modelo de permissao do PostgreSQL usado no ambiente;
+- `SELECT` em `mod_auth.usuarios`, `mod_auth.usuario_perfis`, `mod_auth.perfis`, `mod_auth.perfil_permissoes` e `mod_auth.permissoes` para autenticacao/autorizacao;
+- `SELECT` e, no ciclo de bootstrap controlado, `INSERT` nas tabelas de `mod_auth` necessarias para criar permissao/vinculo, nunca como privilegio permanente amplo da role runtime sem revisao.
+
+SQLs somente leitura recomendados para confirmacao em homologacao antes da implementacao:
+
+```sql
+SELECT table_schema, table_name
+FROM information_schema.tables
+WHERE table_schema IN ('mod_iluminacao', 'mod_auth')
+ORDER BY table_schema, table_name;
+```
+
+```sql
+SELECT table_schema, table_name, column_name, data_type, is_nullable, column_default
+FROM information_schema.columns
+WHERE table_schema IN ('mod_iluminacao', 'mod_auth')
+ORDER BY table_schema, table_name, ordinal_position;
+```
+
+```sql
+SELECT n.nspname AS schema_name,
+       c.relname AS table_name,
+       con.conname AS constraint_name,
+       con.contype AS constraint_type,
+       pg_get_constraintdef(con.oid) AS definition
+FROM pg_constraint con
+JOIN pg_class c ON c.oid = con.conrelid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname IN ('mod_iluminacao', 'mod_auth')
+ORDER BY n.nspname, c.relname, con.conname;
+```
+
+```sql
+SELECT modulo, chave, descricao, ativo
+FROM mod_auth.permissoes
+WHERE lower(modulo) = 'iluminacao'
+ORDER BY modulo, chave;
+```
+
+PowerShell seguro para o operador rodar leitura em homologacao, sem senha na linha de comando:
+
+```powershell
+$PSQL = "C:\Users\Anderson\OneDrive\Documentos\postgres_pref\bin\psql.exe"
+$HostDb = "127.0.0.1"
+$PortDb = "5434"
+$DbName = "amambaiGis_homologacao"
+$UserDb = "postgres"
+
+& $PSQL -h $HostDb -p $PortDb -U $UserDb -d $DbName -W -c "SELECT current_database(), current_user, inet_server_addr(), inet_server_port();"
+```
+
 ### `PATCH /api/internal/iluminacao/solicitacoes/{id}/prioridade` (implementado)
 
 Finalidade: alterar a prioridade operacional de uma solicitacao interna de Iluminacao Publica, sem substituir o status e sem afetar o Geoportal publico.
