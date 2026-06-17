@@ -1,67 +1,64 @@
 # Geoportal de Amambai - MS
 
-Geoportal web municipal desenvolvido para Amambai/MS como parte de trabalho acadêmico/TCC. O projeto evoluiu para uma arquitetura baseada em Vite, OpenLayers e JavaScript ES Modules, com integração a serviços públicos WMS/WFS do GeoServer/PostGIS.
+Geoportal web municipal desenvolvido para Amambai/MS como parte de trabalho academico/TCC. O projeto evoluiu para uma arquitetura baseada em Vite, OpenLayers e JavaScript ES Modules, com integracao a servicos publicos WMS/WFS do GeoServer/PostGIS e, em paralelo, a um ambiente interno controlado para operacao municipal.
 
-## Link de produção
+## Links principais
 
-https://geoportal.amambai.ms.gov.br
+- Geoportal publico: `https://geoportal.amambai.ms.gov.br/`
+- Area interna: `https://geoserver.amambai.ms.gov.br/interno/`
+- API publica: `https://geoserver.amambai.ms.gov.br/api/`
+- API interna: `https://geoserver.amambai.ms.gov.br/api/internal/`
 
-## Autores
+## Estado atual do projeto
 
-- Ana Carla de Queiroz Paiva¹ (Prefeitura Municipal de Fortaleza, ORCID: https://orcid.org/0009-0006-8826-6285)
-- Anderson Pschisky² (Prefeitura Municipal de Amambai-MS, ORCID: https://orcid.org/0009-0007-0768-1135)
-- Daniel Luan P. Espindola³ (Prefeitura Municipal de Amambai-MS, ORCID: https://orcid.org/0000-0000-0000-0000)
-- Eduardo Augusto Andreatta⁴ (Prefeitura de Santo André, ORCID: https://orcid.org/0009-4886-1598)
-- Rafael Alves Esteves Julio⁵ (UFABC, ORCID: https://orcid.org/0009-0005-9434-8570)
-- Rafael Ronconi Bezerra⁶ (Prefeitura Municipal de Porto Velho, ORCID: https://orcid.org/0000-0002-2692-5752)
-- Orientador: Alexandro Gularte Schafer (ORCID: https://orcid.org/0000-0001-8700-0860)
+O projeto hoje opera com separacao entre ambiente publico e ambiente interno.
 
-## Resumo
+No publico, o Geoportal continua responsavel por mapa, camadas, busca, locais de interesse, rotas externas, geolocalizacao, impressao e fluxo publico de solicitacao de reparo.
 
-O webmapping permite a visualização e a gestão de dados geográficos online, promovendo eficiência administrativa, transparência e planejamento urbano. Este projeto propõe um geoportal para o município de Amambai-MS, centralizando dados espaciais em uma plataforma interativa e replicável, utilizando tecnologias abertas.
+No interno, o primeiro modulo validado e o de Iluminacao Publica, com:
 
-## Funcionalidades atuais
+- login e logout internos;
+- sessao por cookie HttpOnly;
+- `GET /api/internal/auth/me` com `authenticated`, `usuario_id`, `login`, `nome`, `perfis` e `permissoes`;
+- listagem administrativa completa;
+- listagem ativa para manutencao com `ativos=true`;
+- detalhe da solicitacao;
+- historico e observacoes sob demanda;
+- criacao de observacao interna;
+- alteracao normal de status;
+- alteracao de prioridade operacional;
+- coordenadas, rota Google Maps e mapa operacional simples no detalhe;
+- relatorio administrativo sanitizado em CSV e resumo JSON.
 
-- Visualização de camadas temáticas via GeoServer.
+## Funcionalidades publicas atuais
+
+- Visualizacao de camadas tematicas via GeoServer.
 - Mapas base.
 - Painel de camadas.
-- Barra pública com menus.
+- Barra publica com menus.
 - Locais de interesse.
-- Serviços.
-- Busca por endereço, BIC, postes e imóveis/fazendas quando aplicável.
+- Servicos.
+- Busca por endereco, BIC, postes e imoveis/fazendas quando aplicavel.
 - Popups informativos.
 - Rotas externas via Google Maps.
-- Farmácias com destaque de plantão.
-- Postes com solicitação de reparo via formulário externo provisório.
-- Medição de distância e área.
-- Geolocalização.
-- Impressão.
-- Legendas dinâmicas.
+- Farmacias com destaque de plantao.
+- Postes com solicitacao de reparo via formulario externo provisoriamente mantido.
+- Medicao de distancia e area.
+- Geolocalizacao.
+- Impressao.
+- Legendas dinamicas.
 - Layout responsivo/mobile.
-- Documentação técnica em `geoportal-vite/docs/`.
 
-## Tecnologias utilizadas
+## Estrutura principal
 
-- [Vite](https://vitejs.dev/)
-- [OpenLayers](https://openlayers.org/)
-- JavaScript ES Modules
-- GeoServer/PostGIS via WMS/WFS públicos
-- HTML e CSS
+- `geoportal-vite/`: frontend atual do Geoportal e da shell interna.
+- `geoportal-backend/`: backend FastAPI das APIs publica e interna.
+- `geoportal-vite/docs/`: documentacao tecnica e operacional consolidada.
+- `scripts/`: harnesses e rotinas operacionais versionadas.
 
-## Estrutura atual
+## Como rodar localmente o frontend
 
-- `geoportal-vite/`: projeto atual do Geoportal.
-- `geoportal-vite/src/`: módulos JavaScript da aplicação.
-- `geoportal-vite/docs/`: documentação técnica e planejamento.
-- `geoportal-vite/public/`: assets públicos.
-- `geoportal-vite/index.html`: entrada da aplicação.
-- `geoportal-vite/style.css`: estilos globais.
-- `geoportal-vite/package.json`: scripts e dependências do projeto.
-- Arquivos antigos fora de `geoportal-vite/` foram removidos do versionamento público.
-
-## Como rodar localmente
-
-Pré-requisito: Node.js instalado.
+Pre-requisito: Node.js instalado.
 
 ```bash
 git clone https://github.com/apschisky/geoportal-amambai.git
@@ -70,36 +67,31 @@ npm install
 npm run dev
 ```
 
-O Vite indicará a URL local no terminal.
-
-## Como gerar build
+## Build do frontend
 
 ```bash
 npm run build
 ```
 
-A pasta `dist/` é gerada localmente e não deve ser versionada.
+A pasta `dist/` e gerada localmente e nao deve ser versionada.
 
-## Testes
+## Testes do frontend
 
 ```bash
 npm test
 ```
 
-## Segurança e dados sensíveis
+## Seguranca e dados sensiveis
 
-- Não versionar `.env`, backups, dumps SQL, credenciais, chaves, senhas, arquivos `.backup`, `.sql`, `.docx` ou dados internos.
-- Endpoints WMS/WFS públicos do GeoServer aparecem no front-end porque são necessários para o funcionamento do Geoportal público.
-- Futuras APIs internas, login e módulos operacionais devem ser desenvolvidos em ambiente separado/homologação e com credenciais fora do Git.
+- Nao versionar `.env`, backups, dumps SQL, credenciais, chaves, senhas, arquivos `.backup`, `.sql`, `.docx` ou dados internos.
+- Endpoints WMS/WFS publicos do GeoServer aparecem no frontend porque sao necessarios ao funcionamento do Geoportal publico.
+- O frontend interno nao armazena token em `localStorage` ou `sessionStorage`; a sessao usa cookie HttpOnly e a autorizacao real continua no backend.
+- Evolucoes internas devem continuar passando por homologacao, backup, rollback e publicacao controlada, sem credenciais no Git.
 
-## Documentação
+## Documentacao
 
-Os documentos técnicos ficam em `geoportal-vite/docs/`, incluindo arquitetura, segurança, banco, API futura, permissões, módulo de iluminação pública e governança documental.
+Os documentos tecnicos ficam em `geoportal-vite/docs/`, incluindo arquitetura, seguranca, deploy, runtime interno/publico, autenticacao/autorizacao, modulo interno de Iluminacao Publica, migracoes e governanca documental.
 
-## Licença
+## Licenca
 
-Este projeto está licenciado sob a licença Creative Commons Atribuição 4.0 Internacional (CC BY 4.0).
-
-## Créditos
-
-Projeto desenvolvido no contexto do trabalho "A Importância do Webmapping para Amambai, Mato Grosso do Sul: Concepção e Replicabilidade", com uso de tecnologias abertas e serviços geográficos para apoio à gestão municipal e à transparência pública.
+Este projeto esta licenciado sob a licenca Creative Commons Atribuicao 4.0 Internacional (CC BY 4.0).

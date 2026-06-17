@@ -333,7 +333,7 @@ Este documento nao implementa configuracao. Ele apenas registra decisoes futuras
 
 ## 12.3. Checklist Local da Shell Inicial em `/interno/`
 
-A Fase 1 criou uma shell frontend isolada da primeira tela interna minima em `/interno/`, com entrada multi-page no Vite. Esta shell e apenas estrutural: nao consome API interna, nao implementa login real, nao manipula cookie ou token, nao executa `POST` ou `PATCH` e nao carrega dados reais.
+Nota historica: esta secao registra apenas o primeiro marco estrutural da shell em `/interno/`, quando ela ainda era somente um esqueleto visual. Ela nao descreve mais o estado atual publicado. O estado consolidado mais recente aparece nas secoes posteriores deste documento, incluindo login/logout, listagem, detalhe, historico, observacoes, status, prioridade, `ativos=true`, coordenadas, rota, mapa simples e relatorio administrativo.
 
 Arquivos da shell:
 
@@ -423,7 +423,7 @@ Registro de implementacao visual: a Fase 2A evoluiu a shell em `/interno/` para 
 
 ## 12.4. Contrato planejado de sessao e permissoes da shell `/interno/`
 
-O contrato desta secao foi usado na primeira integracao real da shell `/interno/` com autenticacao no commit `a6849dd`. A integracao ficou limitada a `GET /api/internal/auth/me`, sem implementar login real, sem chamar `/api/internal/auth/login`, sem manipular token manualmente, sem usar `localStorage` ou `sessionStorage` para token e sem executar `POST` ou `PATCH`.
+Nota historica: esta secao registra o primeiro contrato usado na integracao inicial de sessao. Ela permanece relevante para entender a evolucao da shell, mas nao substitui o contrato atual validado de `/api/internal/auth/me`, que hoje retorna `authenticated`, `usuario_id`, `login`, `nome`, `perfis` e `permissoes`.
 
 A verificacao de sessao existente com `GET /api/internal/auth/me` deve continuar sendo a unica chamada real da shell ate a validacao ponta a ponta em ambiente controlado. Listagem real, detalhe real, observacoes, alteracao de status, dashboard, mapa operacional, proxy, producao interna e botao de login no Geoportal publico permanecem fora desta etapa.
 
@@ -468,7 +468,7 @@ Contrato real usado pela primeira integracao da shell, sem dados reais nesta doc
 }
 ```
 
-A shell deve validar esse contrato real e nao deve esperar `usuario.nome`, `usuario.login`, `sessao.expira_em` ou `modulos`, porque esses campos ainda nao fazem parte de `GET /api/internal/auth/me`.
+Naquela etapa inicial, a shell precisava validar apenas esse contrato minimo. No estado atual publicado, `GET /api/internal/auth/me` ja foi enriquecido com `login`, `nome` e `perfis` sanitizados, mantendo compatibilidade com o fallback antigo quando necessario.
 
 Resposta conceitual futura, se o backend evoluir o contrato em etapa propria:
 
@@ -526,7 +526,7 @@ Riscos e controles:
 
 ## 12.5. Validacao operacional da integracao `GET /api/internal/auth/me`
 
-A shell interna `/interno/` implementada no commit `a6849dd` chama somente `GET /api/internal/auth/me`, usa `credentials: "include"` e valida o contrato real do backend: `authenticated`, `usuario_id` e `permissoes`. Ela nao implementa login, nao chama `/api/internal/auth/login`, nao armazena token, nao usa `localStorage` ou `sessionStorage` para token, nao executa `POST` ou `PATCH`, nao carrega listagem, dashboard ou mapa e preserva o Geoportal publico.
+Nota historica: os paragrafos iniciais desta secao registram a validacao da primeira integracao de sessao. O estado atual e mais amplo: a shell ja implementa login, logout, listagem, detalhe, historico, observacoes, alteracao de status, alteracao de prioridade, listagem ativa para manutencao, coordenadas, rota, mapa simples e relatorio administrativo, sempre preservando `credentials: "include"` e sem armazenar token em `localStorage` ou `sessionStorage`.
 
 Validacao frontend local em desenvolvimento:
 
@@ -637,6 +637,8 @@ Diretrizes implementadas neste ciclo UX:
 Regra atual implementada na visao de manutencao: a listagem de campo consome `GET /api/internal/iluminacao/solicitacoes?ativos=true`, para que o backend oculte status terminais antes da paginacao e evite confusao operacional. `ativos=true` exclui `resolvida`, `cancelada`, `indeferida` e `nao_localizado`; ausencia do filtro ou `ativos=false` mantem a listagem completa para perfis autorizados. A comparacao visual no frontend normaliza tanto status tecnico quanto status ja formatado, cobrindo `resolvida`/`Resolvida`, `cancelada`/`Cancelada`, `indeferida`/`Indeferida` e `nao_localizado`/`Não localizado`, como defesa complementar. A visao administrativa/perfil completo continua exibindo todos os chamados para auditoria, conferencia e futura volta de fase controlada.
 
 Estado atual da matriz de fase/status: `aberta -> em_triagem` continua permitido no fluxo normal e `aberta -> em_execucao` passou a ser destino permitido pela matriz backend para a operacao enxuta atual. Isso reduz cliques desnecessarios quando a mesma pessoa recebe e executa o atendimento. `em_triagem` continua opcional e `encaminhada` continua disponivel para fluxos com repasse. Volta de fase/reabertura permanece fora deste ciclo.
+
+Esse ajuste ja foi publicado e validado em operacao controlada: a manutencao conseguiu iniciar atendimento direto a partir de `aberta`, o historico foi registrado normalmente e o chamado continuou na listagem ativa, sem preenchimento de `finalizado_em` e sem qualquer flexibilizacao de reabertura ou retorno de status terminal.
 
 Relatorio administrativo atual: a exportacao de solicitacoes/servicos foi implementada por endpoint backend autorizado, nao como exportacao simples da tabela renderizada no frontend. A versao 1 aceita relatorio geral sem datas ou filtros opcionais por `data_inicio`, `data_fim`, status, prioridade e tipo, inclui campos sanitizados como protocolo, status, prioridade, tipo, poste, origem, localizacao, datas de abertura/atualizacao/finalizacao, duplicidade suspeita e tempo ate finalizacao em segundos, e exclui por padrao nome, telefone/WhatsApp, observacoes internas livres, descricao livre e coordenadas quando houver risco de dados pessoais. A exportacao continua administrativa, nao disponivel para manutencao, e o frontend apenas aciona o contrato backend. A shell administrativa atual tambem ja orienta que datas sao opcionais e que a ausencia delas gera recorte geral.
 

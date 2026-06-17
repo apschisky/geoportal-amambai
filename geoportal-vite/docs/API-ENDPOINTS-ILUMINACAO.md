@@ -459,6 +459,8 @@ Matriz conservadora de transicoes da primeira versao:
 
 Refino operacional aprovado: `em_triagem` continua existindo e continua disponivel quando a triagem separada fizer sentido, mas deixa de ser etapa obrigatoria para toda solicitacao. Em operacao enxuta, a mesma pessoa/equipe pode levar `aberta -> em_execucao` diretamente pelo fluxo normal, mantendo justificativa, permissao atual e historico obrigatorio. `encaminhada` continua disponivel e volta de fase/reabertura continua fora deste ciclo.
 
+Estado operacional atual: a transicao `aberta -> em_execucao` foi implementada, publicada e validada em chamado teste/controlado no ambiente publicado. A validacao confirmou historico `alteracao_status` normal, `finalizado_em` permanecendo nulo por se tratar de status nao terminal, chamado mantendo-se ativo e sem qualquer volta de fase ou reabertura administrativa neste ciclo.
+
 Status terminais na primeira versao:
 
 - `resolvida`;

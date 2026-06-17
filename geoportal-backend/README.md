@@ -1,5 +1,11 @@
 ﻿# Geoportal Backend
 
+## Estado atual consolidado
+
+O estado atual ja nao e mais apenas prova de conceito local. O projeto possui API publica em producao, runtime interno de homologacao, runtime interno de producao, autenticacao interna por cookie HttpOnly, GET /api/internal/auth/me com identificacao sanitizada do usuario e endpoints internos de Iluminacao para listagem, detalhe, historico, observacoes, status, prioridade e relatorio administrativo.
+
+As secoes abaixo preservam o historico de implantacao incremental e continuam uteis para rastreabilidade, mas varias entradas descrevem marcos anteriores ja superados.
+
 Prova de conceito local e segura da futura API do Geoportal de Amambai, iniciando pelo modulo de Iluminacao Publica / Manutencao de Postes.
 
 Esta etapa nao conecta banco de dados, nao implementa autenticacao real, nao usa dados de producao e nao integra com o Geoportal publico em producao.
