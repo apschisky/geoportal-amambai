@@ -12,6 +12,10 @@ O objetivo e garantir que novas funcionalidades internas sejam criadas de forma 
 
 O Geoportal Interno deve evoluir como portal unico multi-modulo. A shell inicial em `/interno/` nasceu visualmente focada em Iluminacao Publica porque esse e o primeiro modulo interno, mas a evolucao recomendada e transformar a tela em uma base comum do `Geoportal Interno`, com Iluminacao Publica como modulo ativo.
 
+Para manter consistencia terminologica, este documento considera o `Dashboard geral do Geoportal Interno` como a tela consolidada e inicial do portal, enquanto os endpoints `GET /api/internal/iluminacao/dashboard/*` continuam sendo contratos especificos do modulo Iluminacao Publica para widgets e agregados read-only. A implementacao futura do dashboard geral pode consumir esses widgets quando aplicavel, mas nao deve ser descrita como uma pagina exclusiva de Iluminacao.
+
+Diretriz complementar para a futura UX: o item lateral atualmente chamado `Inicio` deve evoluir para `Dashboard`, e apos o login essa deve ser a tela inicial do Geoportal Interno. O modulo `Iluminacao Publica` permanece como area operacional propria, preservando resumo pequeno contextual, relatorio, lista, detalhe, historico, observacoes, alteracao normal de status, acoes administrativas restritas e rota/mapa operacional. O Dashboard geral nao deve criar, nesta fase, endpoints transversais como `/api/internal/dashboard/resumo`, `/api/internal/dashboard/widgets` ou `/api/internal/dashboard/series`; os endpoints atuais `/api/internal/iluminacao/dashboard/*` continuam corretos como fonte de widgets do modulo Iluminacao. Endpoints gerais agregadores ficam reservados para quando houver pelo menos um segundo modulo real com dados proprios.
+
 O layout comum deve prever:
 
 - topo com nome do Geoportal Interno e identificacao de ambiente;
@@ -255,6 +259,7 @@ Observacoes registradas:
 - `iluminacao.solicitacoes.ler` permanece obrigatoria para acesso a listagem, detalhe e mapa operacional;
 - `iluminacao.dashboard.ler` e recomendada como permissao especifica para o Dashboard gerencial, separando leitura consolidada de operacoes detalhadas;
 - `iluminacao.relatorios.ler` continua reservada para exportacao e relatorios mais amplos, sem conflitar com leitura do dashboard.
+- usuarios sem `iluminacao.dashboard.ler`, incluindo `manutencao-iluminacao`, nao devem ver widgets gerenciais de Iluminacao no Dashboard geral; devem continuar vendo somente o fluxo operacional autorizado.
 
 #### Dados que nao devem aparecer
 

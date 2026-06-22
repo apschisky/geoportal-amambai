@@ -6,6 +6,8 @@ Este documento registra o desenho inicial da proxima fase do modulo de Iluminaca
 
 O modulo interno deve permitir a gestao das solicitacoes de iluminacao publica registradas pelo Geoportal.
 
+Importante para a terminologia deste plano: o `Dashboard geral do Geoportal Interno` e a tela consolidada do portal, enquanto o modulo Iluminacao Publica continua sendo o fornecedor operacional e dos widgets read-only relacionados a sua area. Os endpoints `GET /api/internal/iluminacao/dashboard/*` nao definem por si so uma pagina exclusiva de dashboard para Iluminacao; eles sao parte do contrato do modulo quando a tela geral decidir consumir esses agregados.
+
 Objetivos principais:
 
 - apoiar triagem, acompanhamento, execucao e encerramento das solicitacoes;

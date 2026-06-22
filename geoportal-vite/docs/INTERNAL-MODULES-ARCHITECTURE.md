@@ -79,16 +79,18 @@ A area interna deve continuar separada da area publica. O Geoportal publico perm
 
 ## 3.2. Tela Inicial, Resumos e Indicadores
 
-Apos o login, o usuario podera cair em uma tela inicial do Geoportal Interno. Essa tela deve exibir cards ou resumos apenas dos modulos aos quais o usuario tem permissao.
+Apos o login, o usuario deve cair em uma tela inicial do Geoportal Interno. O item lateral atualmente chamado `Inicio` deve evoluir para `Dashboard`, deixando claro que a primeira tela e o `Dashboard geral do Geoportal Interno`, e nao uma pagina exclusiva do modulo Iluminacao Publica. Essa tela deve exibir cards, widgets ou resumos apenas dos modulos aos quais o usuario tem permissao.
+
+Os modulos podem fornecer widgets ou agregados especificos para essa tela geral. No caso de Iluminacao Publica, os endpoints `GET /api/internal/iluminacao/dashboard/*` continuam sendo fontes corretas de widgets do modulo, nao a definicao completa da tela geral. Nao criar nesta fase endpoints gerais como `/api/internal/dashboard/resumo`, `/api/internal/dashboard/widgets` ou `/api/internal/dashboard/series`; esses agregadores transversais ficam como possibilidade futura, quando houver pelo menos um segundo modulo real com dados proprios.
 
 Exemplos de resumo por modulo:
 
 - Iluminacao Publica: chamados abertos, em triagem, encaminhados, em execucao, aguardando material, resolvidos, cancelados, pendentes ou atrasados.
 - Alvaras, Viabilidade, Meio Ambiente, Limpeza de Lotes e outros modulos futuros: indicadores equivalentes, definidos conforme a regra de negocio de cada modulo.
 
-Para administradores ou gestores gerais, o painel podera consolidar indicadores de todos os modulos permitidos. Para usuarios operacionais, o painel deve mostrar somente o modulo ou os modulos permitidos, sem expor dados ou acoes fora de sua funcao.
+Para administradores ou gestores gerais, o painel podera consolidar indicadores de todos os modulos permitidos. Para usuarios operacionais, o painel deve mostrar somente o modulo ou os modulos permitidos, sem expor dados ou acoes fora de sua funcao. Usuarios sem `iluminacao.dashboard.ler`, como o perfil `manutencao-iluminacao`, nao devem ver widgets gerenciais de Iluminacao Publica no Dashboard geral; devem continuar vendo apenas o fluxo operacional permitido.
 
-Dashboard, resumos, estatisticas e endpoints agregados sao evolucao futura. Eles nao fazem parte da shell inicial em `/interno/` nem da proxima integracao minima, e nao devem ser criados sem contrato, permissao, revisao de seguranca e validacao de menor privilegio.
+O modulo Iluminacao Publica continua sendo a area operacional: deve preservar resumo pequeno contextual, relatorio, lista, detalhe, historico, observacoes, alteracao normal de status, acoes administrativas restritas e rota/mapa operacional conforme permissao. O Dashboard geral nao substitui essa area operacional; ele apenas organiza a entrada do portal e, futuramente, pode consumir widgets autorizados dos modulos.
 
 ## 3.3. Mapas Operacionais Internos
 
