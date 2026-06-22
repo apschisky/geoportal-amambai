@@ -218,19 +218,30 @@ Este plano registra a etapa seguinte ao MVP operacional do modulo Iluminacao Pub
 - o backend continua sendo a fonte da verdade para contagem e filtros;
 - nenhum endpoint de dashboard deve depender de calculo critico exclusivo no frontend.
 
-#### Backend read-only local implementado
+#### Marco operacional do Dashboard read-only em produção interna
 
-Marco local: os endpoints internos read-only do Dashboard de Iluminacao foram implementados localmente no backend, sem frontend e sem deploy:
+Marco publicado: o commit `ebc5798` registrou a implantacao e validacao dos endpoints read-only do Dashboard de Iluminacao na API interna de producao, sem frontend do dashboard ainda implementado.
+
+Endpoints validados:
 
 - `GET /api/internal/iluminacao/dashboard/resumo`;
 - `GET /api/internal/iluminacao/dashboard/ranking`;
 - `GET /api/internal/iluminacao/dashboard/series`.
 
-Todos exigem sessao interna e `require_permission("iluminacao.dashboard.ler")`. Os filtros aceitos sao `data_inicio`, `data_fim`, `status`, `prioridade`, `tipo`, `ativos` no resumo, `limit` no ranking e `granularidade=dia|semana|mes` nas series. Os retornos sao agregados e sanitizados: nao incluem nome do solicitante, contato, WhatsApp, descricao livre, observacoes internas, historico administrativo ou coordenadas.
+Validacao registrada:
 
-O ranking de postes usa `poste_id` real. `top_bairros` permanece vazio nesta versao porque o schema real nao possui campo proprio de bairro/regiao; essa lacuna deve ser resolvida por contrato de dados futuro, nao por inferencia a partir de texto livre.
+- `git pull --ff-only` levou o servidor para `HEAD`/`origin/main` em `ebc5798` com working tree clean;
+- os testes focados no servidor passaram com `197 passed, 3 warnings` e a suite completa com `675 passed, 3 warnings`;
+- a permissao `iluminacao.dashboard.ler` foi criada com `id=18` e vinculada apenas ao perfil `administrador-interno-geoportal`;
+- o restart controlado da API interna foi executado via `scripts/deploy/backend-restart-validate-service.ps1 -Environment InternaProducao -Restart -Validate`;
+- os endpoints responderam com `401` sem sessao, `200` com `admin.producao`, `403` com `manutencao.producao` e `422` para granularidade invalida;
+- os retornos continuam agregados e sanitizados, sem nome do solicitante, contato, WhatsApp, e-mail, descricao livre, observacoes internas, historico administrativo, coordenadas ou endereco completo.
 
-Pendencia operacional: antes de publicar em servidor, criar/conceder de forma controlada a permissao `modulo='iluminacao'`, `chave='dashboard.ler'` para perfil gerencial/administrativo adequado, mantendo `manutencao-iluminacao` sem essa permissao. Nao houve migration, SQL, GRANT ou alteracao de banco nesta etapa local.
+Observacoes registradas:
+
+- `top_bairros` permanece vazio na v1 porque o schema atual nao possui campo confiavel de bairro/regiao;
+- a regra de `atrasadas` usa chamados ativos com mais de 7 dias na v1;
+- o Dashboard continua como etapa separada do mapa operacional amplo e do frontend visual ainda nao publicado.
 
 #### Tratamento de ausencia de dados
 

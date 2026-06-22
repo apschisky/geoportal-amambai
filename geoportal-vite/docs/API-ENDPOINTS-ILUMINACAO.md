@@ -274,7 +274,20 @@ Contrato implementado localmente para MVP read-only:
 - `granularidade` invalida retorna `422`;
 - permanece read-only e protegido pelo backend.
 
-Pendencia operacional antes de deploy: criar/conceder de forma controlada a permissao efetiva `iluminacao.dashboard.ler` (`modulo='iluminacao'`, `chave='dashboard.ler'`) ao perfil gerencial/administrativo adequado, sem conceder automaticamente ao perfil `manutencao-iluminacao`. Nao houve migration, SQL ou concessao real nesta implementacao local.
+#### Validação operacional em produção interna (marco `ebc5798`)
+
+- O servidor foi alinhado com `git pull --ff-only` e ficou em `HEAD`/`origin/main` em `ebc5798`, com working tree clean.
+- Os testes focados no servidor foram executados antes do restart: `tests/test_internal_iluminacao_solicitacoes_router.py`, `tests/test_iluminacao_service.py` e `tests/test_iluminacao_repository.py`, com resultado `197 passed, 3 warnings`.
+- A suíte completa do backend no servidor foi validada com `675 passed, 3 warnings`.
+- Antes dos testes, o processo foi executado com ambiente isolado para evitar interferencia da configuracao operacional real: `APP_ENV=development`, `API_DEBUG=true`, `ALLOWED_ORIGINS=[http://localhost:5195,http://127.0.0.1:5195]`, `GEOPORTAL_INTERNAL_ROUTES_ENABLED=false`. Depois, o ambiente foi restaurado para produção interna: `APP_ENV=producao`, `API_DEBUG=false`, `ALLOWED_ORIGINS=[https://geoserver.amambai.ms.gov.br,https://geoportal.amambai.ms.gov.br]`, `GEOPORTAL_INTERNAL_ROUTES_ENABLED=true`.
+- A permissão `iluminacao.dashboard.ler` foi criada em produção interna com `id=18`, `modulo='iluminacao'`, `chave='dashboard.ler'`, `descricao='Ler dashboard gerencial interno de solicitacoes de Iluminacao Publica.'`, `ativo=true`.
+- A permissão foi concedida apenas ao perfil `administrador-interno-geoportal` e não ao perfil `manutencao-iluminacao`; a consulta para o perfil de manutencao retornou `0 linhas`.
+- O backup manual anterior à alteração foi registrado em `C:\apps\geoportal-api\backups\manual\pre_dashboard_ler_mod_auth_20260622_101948.sql`.
+- O restart controlado da API interna de produção foi executado com `scripts/deploy/backend-restart-validate-service.ps1 -Environment InternaProducao -Restart -Validate` e a confirmação humana digitada foi `REINICIAR`.
+- A validação HTTP em produção interna confirmou: sem sessão, `GET /api/internal/iluminacao/dashboard/resumo` retornou `401`; com `admin.producao`, `GET /api/internal/iluminacao/dashboard/resumo` retornou `200` com `total=7`, `abertas=5`, `em_triagem=0`, `em_execucao=1`, `encaminhadas=1`, `finalizadas=0`, `urgentes=0`, `atrasadas=6`, `tempo_medio_resolucao_segundos=null`, `por_status` e `por_prioridade` conforme a resposta validada; com `manutencao.producao`, o mesmo endpoint retornou `403`.
+- `GET /api/internal/iluminacao/dashboard/ranking` retornou `200` com `top_postes` contendo 6 postes (`3405`, `3784`, `3786`, `3911`, `4014`, `4067`) e `top_bairros` vazio na v1, conforme o schema atual.
+- `GET /api/internal/iluminacao/dashboard/series?granularidade=semana` retornou `200` com pontos semanais validados; `GET /api/internal/iluminacao/dashboard/series?granularidade=hora` retornou `422`.
+- Os endpoints continuam read-only e sanitizados: não retornam nome do solicitante, telefone, WhatsApp, e-mail, descrição livre, observações internas, histórico administrativo, coordenadas ou endereço completo.
 
 ### `GET /api/internal/iluminacao/relatorios/solicitacoes.csv`
 
