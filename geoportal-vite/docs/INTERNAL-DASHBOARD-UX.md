@@ -144,6 +144,124 @@ Homologacao deve ser usada antes de qualquer alteracao em producao.
 - A tela inicial futura do portal deve mostrar cards apenas dos modulos permitidos ao usuario.
 - Gestores gerais podem ter resumo consolidado de varios modulos, preferencialmente em modo leitura.
 
+### Plano recomendado para Dashboard e Mapa gerencial interno
+
+Este plano registra a etapa seguinte ao MVP operacional do modulo Iluminacao Publica, sem alterar codigo, banco, API funcional ou build. O objetivo e oferecer ao secretario/administracao uma visao consolidada do modulo interno, mantendo a separacao entre leitura gerencial e operacao detalhada.
+
+#### Objetivo da tela
+
+- apoiar acompanhamento rapido de chamados ativos, atrasados, urgentes e finalizados;
+- permitir leitura rapida por status, prioridade, bairro/regiao e periodo;
+- facilitar decisao do gestor sem expor dados sensiveis fora do ambiente interno.
+
+#### Publico-alvo interno
+
+- secretaria/adminitracao;
+- gestores do modulo;
+- perfis autorizados para leitura consolidada;
+- usuarios sem permissao operacional continuao nao devem ver botoes de alteracao de status ou correcoes administrativas.
+
+#### Diferenca entre Dashboard interno e visualizacao publica
+
+- O Dashboard interno usa dados operacionais autenticados e controlados por permissao.
+- A visualizacao publica continua limitada a consultas publicas minimizadas, sem dados internos, coordenadas sensiveis, observacoes internas, historico administrativo ou contato completo.
+- O Dashboard nao substitui a consulta publica nem a tela de detalhe operacional.
+
+#### Estrutura proposta para o MVP
+
+- Aba `Dashboard`: cards, graficos, rankings e resumo por periodo.
+- Aba `Mapa`: agrupamento territorial, filtros por status/tipo/regiao e acesso ao detalhe da solicitacao.
+
+#### Indicadores do MVP
+
+- total de solicitacoes abertas;
+- total de solicitacoes em andamento;
+- total de solicitacoes finalizadas no periodo;
+- chamadas urgentes;
+- chamadas atrasadas;
+- distribuicao por status;
+- distribuicao por prioridade;
+- distribuicao por tipo de problema;
+- top 5 bairros/regioes com mais ocorrencias;
+- top 5 postes com maior reincidencia, quando o dado for operacionalmente valido.
+
+#### Filtros do MVP
+
+- periodo (`data_inicio`, `data_fim`);
+- status;
+- prioridade;
+- tipo de problema;
+- bairro/regiao;
+- poste_id (quando houver necessidade operacional);
+- escopo de chamada (`ativos` ou `todos`), desde que o backend decida a regra.
+
+#### Graficos do MVP
+
+- grafico de linha ou barra para evolucao semanal/mensal;
+- grafico de pizza ou barra para distribuicao por status;
+- grafico de barra para distribuicao por prioridade;
+- grafico de barra para distribuicao por tipo de problema;
+- grafico de barra para ranking por bairro/regiao.
+
+#### Mapa do MVP
+
+- visualizacao de pontos agrupados por zona ou bairro;
+- cores por status;
+- filtro por status, prioridade e periodo;
+- clique para abrir detalhe interno apenas quando o usuario tiver permissao adequada;
+- sem mostrar dados pessoais, contato completo, observacoes internas ou historico administrativo no popup.
+
+#### Comportamento de atualizacao
+
+- atualizacao manual por botao `Atualizar`;
+- atualizacao automatica limitada, preferencialmente a cada 5 minutos no maximo;
+- o backend continua sendo a fonte da verdade para contagem e filtros;
+- nenhum endpoint de dashboard deve depender de calculo critico exclusivo no frontend.
+
+#### Tratamento de ausencia de dados
+
+- mostrar estado vazio com mensagem clara para periodo sem resultados;
+- manter cartoes com zero quando houver consulta valida sem registros;
+- diferenciar "sem dados" de "erro de API";
+- nao mostrar stack trace, SQL, host ou segredo.
+
+#### Permissoes necessarias
+
+- `iluminacao.solicitacoes.ler` permanece obrigatoria para acesso a listagem, detalhe e mapa operacional;
+- `iluminacao.dashboard.ler` e recomendada como permissao especifica para o Dashboard gerencial, separando leitura consolidada de operacoes detalhadas;
+- `iluminacao.relatorios.ler` continua reservada para exportacao e relatorios mais amplos, sem conflitar com leitura do dashboard.
+
+#### Dados que nao devem aparecer
+
+- nome completo do solicitante, salvo justificativa operacional ponderada;
+- telefone/WhatsApp completo;
+- observacoes internas livres;
+- descricao livre detalhada do cidadao;
+- coordenadas exatas em telas nao autorizadas;
+- dados administrativos sensiveis fora do contexto da solicitacao.
+
+#### Riscos de privacidade
+
+- vazamento de dados pessoais em popup, cards ou exportacao;
+- uso indevido de coordenadas para quem nao precisa;
+- exibicao de texto livre sem sanitizacao;
+- agregacao insuficiente que permita reidentificacao de solicitacoes isoladas.
+
+#### Riscos operacionais
+
+- endpoints agregados com custo alto em consultas frequentes;
+- inconsistencia entre filtros do frontend e regras do backend;
+- sobrecarregar o navegador com muitos pontos no mapa;
+- uso de cache ruim para contagens e rankings.
+
+#### Estrategia por fases
+
+1. definir endpoints read-only agregados no backend;
+2. validar contagens, filtros e recortes temporais;
+3. publicar dashboard com leitura apenas para perfis autorizados;
+4. validar mapa com pontos agrupados e detalhe restrito;
+5. ampliar para indicadores e ranking com revisao operacional.
+
 ### Lista de solicitacoes
 
 - Tabela paginada.

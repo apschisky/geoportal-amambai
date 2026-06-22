@@ -238,6 +238,37 @@ Filtro implementado para a visao de manutencao: `ativos=true`. O objetivo e faze
 
 Erros: 401 sem sessao, 403 sem permissao, 422 para query invalida e 503 generico se o banco estiver indisponivel, sem expor SQL, traceback, host, role, segredo ou `DATABASE_URL`.
 
+### `GET /api/internal/iluminacao/dashboard/resumo`
+
+Finalidade: fornecer resumo gerencial interno do modulo de Iluminacao Publica para a aba `Dashboard`, sem expor dados pessoais nem depender de calculos do frontend.
+
+Contrato proposto para MVP:
+
+- exige sessao autenticada e `iluminacao.dashboard.ler` (ou permissao equivalente validada no backend);
+- aceita filtros opcionais `data_inicio`, `data_fim`, `status`, `prioridade`, `tipo` e `ativos`;
+- retorna contadores sanitizados como `total`, `abertas`, `em_andamento`, `finalizadas`, `urgentes`, `atrasadas`, `por_status`, `por_prioridade` e `por_tipo`;
+- nao retorna nome, contato, telefone/WhatsApp, descricao livre, observacoes internas, coordenadas sensiveis nem dados administrativos fora do contexto do resumo.
+
+### `GET /api/internal/iluminacao/dashboard/ranking`
+
+Finalidade: fornecer ranking interno por bairro/regiao e por poste para a aba `Dashboard`.
+
+Contrato proposto para MVP:
+
+- exige a mesma permissao de leitura consolidada do dashboard;
+- aceita `data_inicio`, `data_fim`, `status`, `prioridade`, `tipo` e `limit`;
+- retorna top-bairros e top-postes com contagem agregada e sem expor dados pessoais.
+
+### `GET /api/internal/iluminacao/dashboard/series`
+
+Finalidade: retornar series temporais para graficos de evolucao do dashboard.
+
+Contrato proposto para MVP:
+
+- aceita `data_inicio`, `data_fim`, `granularidade` (`dia`, `semana`, `mes`) e `status` opcional;
+- retorna series com contagens por periodo;
+- deve permanecer read-only e protegido por backend.
+
 ### `GET /api/internal/iluminacao/relatorios/solicitacoes.csv`
 
 Finalidade: exportar relatorio administrativo sanitizado de solicitacoes/servicos de Iluminacao Publica. O endpoint nao depende da tabela visivel no frontend e consulta o backend diretamente com filtros de periodo antes de montar o CSV.
@@ -257,6 +288,8 @@ Contrato atual:
 ### `GET /api/internal/iluminacao/relatorios/solicitacoes/resumo`
 
 Finalidade: retornar resumo administrativo JSON do mesmo recorte temporal do CSV, sem exportacao de dados pessoais e sem depender da tabela paginada do frontend.
+
+Este endpoint continua como leitura administrativa separada do dashboard, e deve permanecer restrito a perfil autorizado, sem conflitar com o uso operacional da equipe de campo.
 
 Contrato atual:
 
