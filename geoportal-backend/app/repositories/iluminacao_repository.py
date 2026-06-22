@@ -6,6 +6,11 @@ from sqlalchemy.engine import Engine
 
 from app.core.database import get_engine
 from app.schemas.iluminacao import (
+    IluminacaoDashboardRankingInternoResponse,
+    IluminacaoDashboardRankingItem,
+    IluminacaoDashboardResumoInternoResponse,
+    IluminacaoDashboardSeriesInternoResponse,
+    IluminacaoDashboardSeriesPonto,
     IluminacaoConsultaRepositoryRecord,
     IluminacaoSolicitacaoHistoricoInternoItem,
     IluminacaoSolicitacaoHistoricoInternoResult,
@@ -473,6 +478,267 @@ def list_relatorio_solicitacoes_internas(
         items=[
             IluminacaoRelatorioSolicitacaoInternaItem.model_validate(dict(row))
             for row in rows
+        ],
+    )
+
+
+_DASHBOARD_FILTER_SQL = """
+WHERE deleted_at IS NULL
+  AND (
+      CAST(:data_inicio AS timestamp) IS NULL
+      OR criado_em >= CAST(:data_inicio AS timestamp)
+  )
+  AND (
+      CAST(:data_fim_exclusive AS timestamp) IS NULL
+      OR criado_em < CAST(:data_fim_exclusive AS timestamp)
+  )
+  AND (
+      CAST(:status AS varchar) IS NULL
+      OR status = CAST(:status AS varchar)
+  )
+  AND (
+      CAST(:prioridade AS varchar) IS NULL
+      OR prioridade = CAST(:prioridade AS varchar)
+  )
+  AND (
+      CAST(:tipo_problema AS varchar) IS NULL
+      OR tipo_problema = CAST(:tipo_problema AS varchar)
+  )
+  AND (
+      CAST(:ativos AS boolean) IS NOT TRUE
+      OR status NOT IN (
+          'resolvida',
+          'cancelada',
+          'indeferida',
+          'nao_localizado'
+      )
+  )
+"""
+
+
+def _dashboard_params(
+    *,
+    data_inicio: datetime | None,
+    data_fim_exclusive: datetime | None,
+    status: StatusSolicitacaoIluminacao | None,
+    prioridade: str | None,
+    tipo_problema: TipoProblemaIluminacao | None,
+    ativos: bool | None = None,
+) -> dict[str, object]:
+    return {
+        "data_inicio": data_inicio,
+        "data_fim_exclusive": data_fim_exclusive,
+        "status": status.value if status is not None else None,
+        "prioridade": prioridade,
+        "tipo_problema": tipo_problema.value if tipo_problema is not None else None,
+        "ativos": ativos,
+    }
+
+
+def get_dashboard_resumo_interno(
+    *,
+    data_inicio: datetime | None,
+    data_fim_exclusive: datetime | None,
+    status: StatusSolicitacaoIluminacao | None = None,
+    prioridade: str | None = None,
+    tipo_problema: TipoProblemaIluminacao | None = None,
+    ativos: bool | None = None,
+    engine: Engine | None = None,
+) -> IluminacaoDashboardResumoInternoResponse:
+    db_engine = engine or get_engine()
+    params = _dashboard_params(
+        data_inicio=data_inicio,
+        data_fim_exclusive=data_fim_exclusive,
+        status=status,
+        prioridade=prioridade,
+        tipo_problema=tipo_problema,
+        ativos=ativos,
+    )
+    summary_statement = text(
+        f"""
+        SELECT
+            COUNT(*) AS total,
+            COUNT(*) FILTER (WHERE status = 'aberta') AS abertas,
+            COUNT(*) FILTER (WHERE status = 'em_triagem') AS em_triagem,
+            COUNT(*) FILTER (WHERE status = 'em_execucao') AS em_execucao,
+            COUNT(*) FILTER (WHERE status = 'encaminhada') AS encaminhadas,
+            COUNT(*) FILTER (
+                WHERE status IN ('resolvida', 'cancelada', 'indeferida', 'nao_localizado')
+            ) AS finalizadas,
+            COUNT(*) FILTER (WHERE prioridade = 'urgente') AS urgentes,
+            COUNT(*) FILTER (
+                WHERE status NOT IN ('resolvida', 'cancelada', 'indeferida', 'nao_localizado')
+                  AND criado_em < (CURRENT_TIMESTAMP - INTERVAL '7 days')
+            ) AS atrasadas,
+            AVG(EXTRACT(EPOCH FROM (finalizado_em - criado_em))) FILTER (
+                WHERE finalizado_em IS NOT NULL
+            ) AS tempo_medio_resolucao_segundos
+        FROM mod_iluminacao.solicitacoes
+        {_DASHBOARD_FILTER_SQL}
+        """
+    )
+    status_statement = text(
+        f"""
+        SELECT status AS chave, COUNT(*) AS total
+        FROM mod_iluminacao.solicitacoes
+        {_DASHBOARD_FILTER_SQL}
+        GROUP BY status
+        ORDER BY status ASC
+        """
+    )
+    prioridade_statement = text(
+        f"""
+        SELECT prioridade AS chave, COUNT(*) AS total
+        FROM mod_iluminacao.solicitacoes
+        {_DASHBOARD_FILTER_SQL}
+        GROUP BY prioridade
+        ORDER BY prioridade ASC
+        """
+    )
+    tipo_statement = text(
+        f"""
+        SELECT tipo_problema AS chave, COUNT(*) AS total
+        FROM mod_iluminacao.solicitacoes
+        {_DASHBOARD_FILTER_SQL}
+        GROUP BY tipo_problema
+        ORDER BY tipo_problema ASC
+        """
+    )
+
+    with db_engine.begin() as connection:
+        summary_row = connection.execute(summary_statement, params).mappings().one()
+        status_rows = connection.execute(status_statement, params).mappings().all()
+        prioridade_rows = connection.execute(prioridade_statement, params).mappings().all()
+        tipo_rows = connection.execute(tipo_statement, params).mappings().all()
+
+    return IluminacaoDashboardResumoInternoResponse(
+        total=int(summary_row["total"] or 0),
+        abertas=int(summary_row["abertas"] or 0),
+        em_triagem=int(summary_row["em_triagem"] or 0),
+        em_execucao=int(summary_row["em_execucao"] or 0),
+        encaminhadas=int(summary_row["encaminhadas"] or 0),
+        finalizadas=int(summary_row["finalizadas"] or 0),
+        urgentes=int(summary_row["urgentes"] or 0),
+        atrasadas=int(summary_row["atrasadas"] or 0),
+        tempo_medio_resolucao_segundos=(
+            float(summary_row["tempo_medio_resolucao_segundos"])
+            if summary_row["tempo_medio_resolucao_segundos"] is not None
+            else None
+        ),
+        por_status={str(row["chave"]): int(row["total"]) for row in status_rows},
+        por_prioridade={
+            str(row["chave"]): int(row["total"]) for row in prioridade_rows
+        },
+        por_tipo={str(row["chave"]): int(row["total"]) for row in tipo_rows},
+    )
+
+
+def get_dashboard_ranking_interno(
+    *,
+    data_inicio: datetime | None,
+    data_fim_exclusive: datetime | None,
+    status: StatusSolicitacaoIluminacao | None = None,
+    prioridade: str | None = None,
+    tipo_problema: TipoProblemaIluminacao | None = None,
+    limit: int = 10,
+    engine: Engine | None = None,
+) -> IluminacaoDashboardRankingInternoResponse:
+    if limit < 1 or limit > 20:
+        raise ValueError("limit must be between 1 and 20")
+
+    db_engine = engine or get_engine()
+    params = {
+        **_dashboard_params(
+            data_inicio=data_inicio,
+            data_fim_exclusive=data_fim_exclusive,
+            status=status,
+            prioridade=prioridade,
+            tipo_problema=tipo_problema,
+        ),
+        "limit": limit,
+    }
+    postes_statement = text(
+        f"""
+        SELECT poste_id AS chave, COUNT(*) AS total
+        FROM mod_iluminacao.solicitacoes
+        {_DASHBOARD_FILTER_SQL}
+          AND poste_id IS NOT NULL
+          AND btrim(poste_id) <> ''
+        GROUP BY poste_id
+        ORDER BY total DESC, poste_id ASC
+        LIMIT :limit
+        """
+    )
+
+    with db_engine.begin() as connection:
+        poste_rows = connection.execute(postes_statement, params).mappings().all()
+
+    return IluminacaoDashboardRankingInternoResponse(
+        top_bairros=[],
+        top_postes=[
+            IluminacaoDashboardRankingItem(
+                chave=str(row["chave"]),
+                total=int(row["total"]),
+            )
+            for row in poste_rows
+        ],
+    )
+
+
+def get_dashboard_series_interno(
+    *,
+    data_inicio: datetime | None,
+    data_fim_exclusive: datetime | None,
+    granularidade: str,
+    status: StatusSolicitacaoIluminacao | None = None,
+    engine: Engine | None = None,
+) -> IluminacaoDashboardSeriesInternoResponse:
+    db_engine = engine or get_engine()
+    params = {
+        **_dashboard_params(
+            data_inicio=data_inicio,
+            data_fim_exclusive=data_fim_exclusive,
+            status=status,
+            prioridade=None,
+            tipo_problema=None,
+        ),
+        "granularidade": granularidade,
+    }
+    statement = text(
+        f"""
+        SELECT
+            to_char(
+                date_trunc(CAST(:granularidade AS text), criado_em),
+                'YYYY-MM-DD'
+            ) AS periodo,
+            status,
+            COUNT(*) AS total
+        FROM mod_iluminacao.solicitacoes
+        {_DASHBOARD_FILTER_SQL}
+        GROUP BY periodo, status
+        ORDER BY periodo ASC, status ASC
+        """
+    )
+
+    with db_engine.begin() as connection:
+        rows = connection.execute(statement, params).mappings().all()
+
+    grouped: dict[str, dict[str, int]] = {}
+    for row in rows:
+        periodo = str(row["periodo"])
+        status_key = str(row["status"])
+        grouped.setdefault(periodo, {})
+        grouped[periodo][status_key] = int(row["total"])
+
+    return IluminacaoDashboardSeriesInternoResponse(
+        granularidade=granularidade,
+        pontos=[
+            IluminacaoDashboardSeriesPonto(
+                periodo=periodo,
+                total=sum(status_counts.values()),
+                por_status=status_counts,
+            )
+            for periodo, status_counts in grouped.items()
         ],
     )
 

@@ -5,6 +5,9 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, st
 from app.dependencies.auth_dependencies import require_internal_mutating_request_header
 from app.dependencies.auth_dependencies import require_permission
 from app.schemas.iluminacao import (
+    IluminacaoDashboardRankingInternoResponse,
+    IluminacaoDashboardResumoInternoResponse,
+    IluminacaoDashboardSeriesInternoResponse,
     IluminacaoRelatorioResumoInternoResponse,
     IluminacaoSolicitacaoHistoricoInternoResponse,
     IluminacaoSolicitacaoInternaItem,
@@ -32,6 +35,9 @@ from app.services.iluminacao_service import listar_observacoes_solicitacao_inter
 from app.services.iluminacao_service import listar_relatorio_solicitacoes_internas
 from app.services.iluminacao_service import listar_solicitacoes_internas
 from app.services.iluminacao_service import montar_nome_arquivo_relatorio_solicitacoes
+from app.services.iluminacao_service import obter_dashboard_ranking_interno
+from app.services.iluminacao_service import obter_dashboard_resumo_interno
+from app.services.iluminacao_service import obter_dashboard_series_interno
 from app.services.iluminacao_service import obter_solicitacao_interna_por_id
 from app.services.iluminacao_service import resumir_relatorio_solicitacoes_internas
 from app.services.iluminacao_service import SolicitacaoInternaNotFoundError
@@ -60,6 +66,7 @@ CORRIGIR_INTERNAL_ILUMINACAO_STATUS_PERMISSION = (
     "iluminacao.solicitacoes.corrigir_status"
 )
 EXPORT_INTERNAL_ILUMINACAO_RELATORIO_PERMISSION = "admin.usuarios.ler"
+READ_INTERNAL_ILUMINACAO_DASHBOARD_PERMISSION = "iluminacao.dashboard.ler"
 
 router = APIRouter(prefix="/api/internal/iluminacao", tags=["internal-iluminacao"])
 
@@ -199,6 +206,119 @@ def get_internal_solicitacoes_report_summary(
         ) from exc
 
     return resumir_relatorio_solicitacoes_internas(result.items)
+
+
+@router.get(
+    "/dashboard/resumo",
+    response_model=IluminacaoDashboardResumoInternoResponse,
+)
+def get_internal_dashboard_summary(
+    data_inicio: date | None = Query(default=None),
+    data_fim: date | None = Query(default=None),
+    status_filter: StatusSolicitacaoIluminacao | None = Query(
+        default=None,
+        alias="status",
+    ),
+    prioridade: str | None = Query(default=None, min_length=1, max_length=40),
+    tipo_problema: TipoProblemaIluminacao | None = Query(default=None, alias="tipo"),
+    ativos: bool | None = Query(default=None),
+    _current_session: AuthenticatedCurrentSession = Depends(
+        require_permission(READ_INTERNAL_ILUMINACAO_DASHBOARD_PERMISSION)
+    ),
+) -> IluminacaoDashboardResumoInternoResponse:
+    try:
+        return obter_dashboard_resumo_interno(
+            data_inicio=data_inicio,
+            data_fim=data_fim,
+            status=status_filter,
+            prioridade=prioridade,
+            tipo_problema=tipo_problema,
+            ativos=ativos,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid query parameters",
+        ) from exc
+    except DatabaseUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/dashboard/ranking",
+    response_model=IluminacaoDashboardRankingInternoResponse,
+)
+def get_internal_dashboard_ranking(
+    data_inicio: date | None = Query(default=None),
+    data_fim: date | None = Query(default=None),
+    status_filter: StatusSolicitacaoIluminacao | None = Query(
+        default=None,
+        alias="status",
+    ),
+    prioridade: str | None = Query(default=None, min_length=1, max_length=40),
+    tipo_problema: TipoProblemaIluminacao | None = Query(default=None, alias="tipo"),
+    limit: int = Query(default=10, ge=1, le=20),
+    _current_session: AuthenticatedCurrentSession = Depends(
+        require_permission(READ_INTERNAL_ILUMINACAO_DASHBOARD_PERMISSION)
+    ),
+) -> IluminacaoDashboardRankingInternoResponse:
+    try:
+        return obter_dashboard_ranking_interno(
+            data_inicio=data_inicio,
+            data_fim=data_fim,
+            status=status_filter,
+            prioridade=prioridade,
+            tipo_problema=tipo_problema,
+            limit=limit,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid query parameters",
+        ) from exc
+    except DatabaseUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/dashboard/series",
+    response_model=IluminacaoDashboardSeriesInternoResponse,
+)
+def get_internal_dashboard_series(
+    data_inicio: date | None = Query(default=None),
+    data_fim: date | None = Query(default=None),
+    granularidade: str = Query(default="dia", min_length=1, max_length=10),
+    status_filter: StatusSolicitacaoIluminacao | None = Query(
+        default=None,
+        alias="status",
+    ),
+    _current_session: AuthenticatedCurrentSession = Depends(
+        require_permission(READ_INTERNAL_ILUMINACAO_DASHBOARD_PERMISSION)
+    ),
+) -> IluminacaoDashboardSeriesInternoResponse:
+    try:
+        return obter_dashboard_series_interno(
+            data_inicio=data_inicio,
+            data_fim=data_fim,
+            granularidade=granularidade,
+            status=status_filter,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid query parameters",
+        ) from exc
+    except DatabaseUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
 
 
 @router.get(

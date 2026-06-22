@@ -8,6 +8,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.core.config import settings
 from app.repositories import iluminacao_repository
 from app.schemas.iluminacao import (
+    IluminacaoDashboardRankingInternoResponse,
+    IluminacaoDashboardResumoInternoResponse,
+    IluminacaoDashboardSeriesInternoResponse,
     IluminacaoConsultaPublicResponse,
     IluminacaoConsultaRepositoryRecord,
     IluminacaoConsultaRequest,
@@ -83,6 +86,12 @@ ALLOWED_REOPEN_STATUS_SOLICITACAO = {
 }
 VALID_PRIORIDADE_SOLICITACAO = {"baixa", "normal", "alta", "urgente"}
 RELATORIO_MAX_DAYS = 366
+DASHBOARD_RANKING_MAX_LIMIT = 20
+DASHBOARD_GRANULARIDADES = {
+    "dia": "day",
+    "semana": "week",
+    "mes": "month",
+}
 RELATORIO_CSV_HEADERS = (
     "protocolo",
     "status",
@@ -445,6 +454,84 @@ def resumir_relatorio_solicitacoes_internas(
         por_prioridade=por_prioridade,
         por_tipo_problema=por_tipo_problema,
     )
+
+
+def obter_dashboard_resumo_interno(
+    *,
+    data_inicio: date | None = None,
+    data_fim: date | None = None,
+    status: StatusSolicitacaoIluminacao | None = None,
+    prioridade: str | None = None,
+    tipo_problema: TipoProblemaIluminacao | None = None,
+    ativos: bool | None = None,
+) -> IluminacaoDashboardResumoInternoResponse:
+    inicio, fim_exclusive = _validate_relatorio_periodo(data_inicio, data_fim)
+
+    try:
+        return iluminacao_repository.get_dashboard_resumo_interno(
+            data_inicio=inicio,
+            data_fim_exclusive=fim_exclusive,
+            status=status,
+            prioridade=_normalize_relatorio_prioridade(prioridade),
+            tipo_problema=tipo_problema,
+            ativos=ativos,
+        )
+    except (SQLAlchemyError, RuntimeError) as exc:
+        raise DatabaseUnavailableError(DATABASE_UNAVAILABLE_MESSAGE) from exc
+
+
+def obter_dashboard_ranking_interno(
+    *,
+    data_inicio: date | None = None,
+    data_fim: date | None = None,
+    status: StatusSolicitacaoIluminacao | None = None,
+    prioridade: str | None = None,
+    tipo_problema: TipoProblemaIluminacao | None = None,
+    limit: int = 10,
+) -> IluminacaoDashboardRankingInternoResponse:
+    if limit < 1 or limit > DASHBOARD_RANKING_MAX_LIMIT:
+        raise ValueError("limit must be between 1 and 20")
+
+    inicio, fim_exclusive = _validate_relatorio_periodo(data_inicio, data_fim)
+
+    try:
+        return iluminacao_repository.get_dashboard_ranking_interno(
+            data_inicio=inicio,
+            data_fim_exclusive=fim_exclusive,
+            status=status,
+            prioridade=_normalize_relatorio_prioridade(prioridade),
+            tipo_problema=tipo_problema,
+            limit=limit,
+        )
+    except (SQLAlchemyError, RuntimeError) as exc:
+        raise DatabaseUnavailableError(DATABASE_UNAVAILABLE_MESSAGE) from exc
+
+
+def obter_dashboard_series_interno(
+    *,
+    data_inicio: date | None = None,
+    data_fim: date | None = None,
+    granularidade: str = "dia",
+    status: StatusSolicitacaoIluminacao | None = None,
+) -> IluminacaoDashboardSeriesInternoResponse:
+    granularidade_normalizada = _normalize_optional_filter(granularidade) or "dia"
+
+    if granularidade_normalizada not in DASHBOARD_GRANULARIDADES:
+        raise ValueError("granularidade must be dia, semana or mes")
+
+    inicio, fim_exclusive = _validate_relatorio_periodo(data_inicio, data_fim)
+
+    try:
+        response = iluminacao_repository.get_dashboard_series_interno(
+            data_inicio=inicio,
+            data_fim_exclusive=fim_exclusive,
+            granularidade=DASHBOARD_GRANULARIDADES[granularidade_normalizada],
+            status=status,
+        )
+    except (SQLAlchemyError, RuntimeError) as exc:
+        raise DatabaseUnavailableError(DATABASE_UNAVAILABLE_MESSAGE) from exc
+
+    return response.model_copy(update={"granularidade": granularidade_normalizada})
 
 
 def obter_solicitacao_interna_por_id(

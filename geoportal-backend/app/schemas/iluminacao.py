@@ -208,6 +208,42 @@ class IluminacaoRelatorioResumoInternoResponse(BaseModel):
     por_tipo_problema: dict[str, int]
 
 
+class IluminacaoDashboardResumoInternoResponse(BaseModel):
+    total: int
+    abertas: int
+    em_triagem: int
+    em_execucao: int
+    encaminhadas: int
+    finalizadas: int
+    urgentes: int
+    atrasadas: int
+    tempo_medio_resolucao_segundos: float | None = None
+    por_status: dict[str, int]
+    por_prioridade: dict[str, int]
+    por_tipo: dict[str, int]
+
+
+class IluminacaoDashboardRankingItem(BaseModel):
+    chave: str
+    total: int
+
+
+class IluminacaoDashboardRankingInternoResponse(BaseModel):
+    top_bairros: list[IluminacaoDashboardRankingItem]
+    top_postes: list[IluminacaoDashboardRankingItem]
+
+
+class IluminacaoDashboardSeriesPonto(BaseModel):
+    periodo: str
+    total: int
+    por_status: dict[str, int]
+
+
+class IluminacaoDashboardSeriesInternoResponse(BaseModel):
+    granularidade: str
+    pontos: list[IluminacaoDashboardSeriesPonto]
+
+
 class IluminacaoSolicitacaoHistoricoInternoItem(BaseModel):
     id: int
     solicitacao_id: int

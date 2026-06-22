@@ -7,6 +7,9 @@ from app.repositories.iluminacao_repository import (
     create_observacao_solicitacao_interna,
     create_solicitacao,
     existe_solicitacao_ativa_para_poste,
+    get_dashboard_ranking_interno,
+    get_dashboard_resumo_interno,
+    get_dashboard_series_interno,
     get_solicitacao_interna_por_id,
     get_solicitacao_publica_por_protocolo,
     list_historico_solicitacao_interna,
@@ -91,6 +94,60 @@ class FakeEngine:
         row: dict[str, Any] | list[dict[str, Any]] | None = DEFAULT_ROW,
     ) -> None:
         self.connection = FakeConnection(row)
+
+    def begin(self) -> FakeBegin:
+        return FakeBegin(self.connection)
+
+
+class FakeDashboardConnection(FakeConnection):
+    def execute(self, statement: TextClause, params: dict[str, Any]) -> FakeResult:
+        self.statement = statement
+        self.params = params
+        self.statements.append(statement)
+        self.params_history.append(params)
+        sql = str(statement)
+
+        if "COUNT(*) FILTER" in sql:
+            return FakeResult(
+                {
+                    "total": 3,
+                    "abertas": 1,
+                    "em_triagem": 0,
+                    "em_execucao": 1,
+                    "encaminhadas": 0,
+                    "finalizadas": 1,
+                    "urgentes": 1,
+                    "atrasadas": 0,
+                    "tempo_medio_resolucao_segundos": 3600.0,
+                }
+            )
+        if "GROUP BY status" in sql:
+            return FakeResult(
+                [
+                    {"chave": "aberta", "total": 1},
+                    {"chave": "resolvida", "total": 1},
+                ]
+            )
+        if "GROUP BY prioridade" in sql:
+            return FakeResult([{"chave": "normal", "total": 2}])
+        if "GROUP BY tipo_problema" in sql:
+            return FakeResult([{"chave": "lampada_apagada", "total": 3}])
+        if "GROUP BY poste_id" in sql:
+            return FakeResult([{"chave": "POSTE-010", "total": 2}])
+        if "GROUP BY periodo, status" in sql:
+            return FakeResult(
+                [
+                    {"periodo": "2026-06-01", "status": "aberta", "total": 1},
+                    {"periodo": "2026-06-01", "status": "em_execucao", "total": 2},
+                ]
+            )
+
+        return FakeResult([])
+
+
+class FakeDashboardEngine:
+    def __init__(self) -> None:
+        self.connection = FakeDashboardConnection([])
 
     def begin(self) -> FakeBegin:
         return FakeBegin(self.connection)
@@ -762,6 +819,105 @@ def test_list_relatorio_solicitacoes_internas_uses_only_sanitized_columns() -> N
         "SELECT *",
     ):
         assert forbidden not in sql
+
+
+def test_get_dashboard_resumo_interno_uses_only_sanitized_columns_and_bind_params() -> None:
+    engine = FakeDashboardEngine()
+    created_from = datetime(2026, 6, 1, 0, 0)
+    created_to = datetime(2026, 7, 1, 0, 0)
+
+    response = get_dashboard_resumo_interno(
+        data_inicio=created_from,
+        data_fim_exclusive=created_to,
+        status=StatusSolicitacaoIluminacao.aberta,
+        prioridade="urgente",
+        tipo_problema=TipoProblemaIluminacao.lampada_apagada,
+        ativos=True,
+        engine=engine,
+    )
+
+    all_sql = "\n".join(str(statement) for statement in engine.connection.statements)
+    assert response.total == 3
+    assert response.abertas == 1
+    assert response.por_status == {"aberta": 1, "resolvida": 1}
+    assert response.por_prioridade == {"normal": 2}
+    assert response.por_tipo == {"lampada_apagada": 3}
+    assert engine.connection.params_history[0] == {
+        "data_inicio": created_from,
+        "data_fim_exclusive": created_to,
+        "status": "aberta",
+        "prioridade": "urgente",
+        "tipo_problema": "lampada_apagada",
+        "ativos": True,
+    }
+    for expected in (
+        "deleted_at IS NULL",
+        "COUNT(*) FILTER",
+        "status NOT IN",
+        "GROUP BY status",
+        "GROUP BY prioridade",
+        "GROUP BY tipo_problema",
+    ):
+        assert expected in all_sql
+    for forbidden in (
+        "nome_solicitante",
+        "contato_solicitante",
+        "descricao",
+        "observacoes_localizacao",
+        "latitude",
+        "longitude",
+        "geom",
+        "SELECT *",
+    ):
+        assert forbidden not in all_sql
+    for value in ("lampada_apagada",):
+        assert value not in str(engine.connection.statements[0])
+
+
+def test_get_dashboard_ranking_interno_returns_posts_and_empty_neighborhoods() -> None:
+    engine = FakeDashboardEngine()
+
+    response = get_dashboard_ranking_interno(
+        data_inicio=None,
+        data_fim_exclusive=None,
+        limit=5,
+        engine=engine,
+    )
+
+    sql = str(engine.connection.statement)
+    assert response.top_bairros == []
+    assert response.top_postes[0].chave == "POSTE-010"
+    assert response.top_postes[0].total == 2
+    assert engine.connection.params["limit"] == 5
+    assert "poste_id AS chave" in sql
+    assert "GROUP BY poste_id" in sql
+    assert "LIMIT :limit" in sql
+    assert "bairro" not in sql.lower()
+    assert "nome_solicitante" not in sql
+
+
+def test_get_dashboard_series_interno_groups_by_period_and_status() -> None:
+    engine = FakeDashboardEngine()
+
+    response = get_dashboard_series_interno(
+        data_inicio=None,
+        data_fim_exclusive=None,
+        granularidade="day",
+        status=StatusSolicitacaoIluminacao.aberta,
+        engine=engine,
+    )
+
+    sql = str(engine.connection.statement)
+    assert response.granularidade == "day"
+    assert response.pontos[0].periodo == "2026-06-01"
+    assert response.pontos[0].total == 3
+    assert response.pontos[0].por_status == {"aberta": 1, "em_execucao": 2}
+    assert engine.connection.params["granularidade"] == "day"
+    assert engine.connection.params["status"] == "aberta"
+    assert "date_trunc(CAST(:granularidade AS text), criado_em)" in sql
+    assert "GROUP BY periodo, status" in sql
+    assert "SELECT *" not in sql
+    assert "nome_solicitante" not in sql
 
 
 def test_list_relatorio_solicitacoes_internas_uses_bind_params_and_filters() -> None:

@@ -242,32 +242,39 @@ Erros: 401 sem sessao, 403 sem permissao, 422 para query invalida e 503 generico
 
 Finalidade: fornecer resumo gerencial interno do modulo de Iluminacao Publica para a aba `Dashboard`, sem expor dados pessoais nem depender de calculos do frontend.
 
-Contrato proposto para MVP:
+Contrato implementado localmente para MVP read-only:
 
-- exige sessao autenticada e `iluminacao.dashboard.ler` (ou permissao equivalente validada no backend);
+- exige sessao autenticada e `require_permission("iluminacao.dashboard.ler")`;
 - aceita filtros opcionais `data_inicio`, `data_fim`, `status`, `prioridade`, `tipo` e `ativos`;
-- retorna contadores sanitizados como `total`, `abertas`, `em_andamento`, `finalizadas`, `urgentes`, `atrasadas`, `por_status`, `por_prioridade` e `por_tipo`;
+- retorna contadores sanitizados como `total`, `abertas`, `em_triagem`, `em_execucao`, `encaminhadas`, `finalizadas`, `urgentes`, `atrasadas`, `tempo_medio_resolucao_segundos`, `por_status`, `por_prioridade` e `por_tipo`;
+- `atrasadas` considera chamados nao terminais com mais de 7 dias desde `criado_em`, como sinal gerencial inicial sujeito a calibragem operacional futura;
 - nao retorna nome, contato, telefone/WhatsApp, descricao livre, observacoes internas, coordenadas sensiveis nem dados administrativos fora do contexto do resumo.
 
 ### `GET /api/internal/iluminacao/dashboard/ranking`
 
 Finalidade: fornecer ranking interno por bairro/regiao e por poste para a aba `Dashboard`.
 
-Contrato proposto para MVP:
+Contrato implementado localmente para MVP read-only:
 
-- exige a mesma permissao de leitura consolidada do dashboard;
+- exige sessao autenticada e `require_permission("iluminacao.dashboard.ler")`;
 - aceita `data_inicio`, `data_fim`, `status`, `prioridade`, `tipo` e `limit`;
-- retorna top-bairros e top-postes com contagem agregada e sem expor dados pessoais.
+- limita `limit` entre 1 e 20;
+- retorna `top_postes` por `poste_id` valido, com `chave` e `total`;
+- retorna `top_bairros` como lista vazia nesta versao porque o schema real de Iluminacao nao possui campo proprio de bairro/regiao; nao inventar coluna nem derivar bairro por texto livre.
 
 ### `GET /api/internal/iluminacao/dashboard/series`
 
 Finalidade: retornar series temporais para graficos de evolucao do dashboard.
 
-Contrato proposto para MVP:
+Contrato implementado localmente para MVP read-only:
 
+- exige sessao autenticada e `require_permission("iluminacao.dashboard.ler")`;
 - aceita `data_inicio`, `data_fim`, `granularidade` (`dia`, `semana`, `mes`) e `status` opcional;
-- retorna series com contagens por periodo;
-- deve permanecer read-only e protegido por backend.
+- retorna `granularidade` e `pontos`, com `periodo`, `total` e `por_status`;
+- `granularidade` invalida retorna `422`;
+- permanece read-only e protegido pelo backend.
+
+Pendencia operacional antes de deploy: criar/conceder de forma controlada a permissao efetiva `iluminacao.dashboard.ler` (`modulo='iluminacao'`, `chave='dashboard.ler'`) ao perfil gerencial/administrativo adequado, sem conceder automaticamente ao perfil `manutencao-iluminacao`. Nao houve migration, SQL ou concessao real nesta implementacao local.
 
 ### `GET /api/internal/iluminacao/relatorios/solicitacoes.csv`
 

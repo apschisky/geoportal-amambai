@@ -4,6 +4,11 @@ import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.schemas.iluminacao import (
+    IluminacaoDashboardRankingInternoResponse,
+    IluminacaoDashboardRankingItem,
+    IluminacaoDashboardResumoInternoResponse,
+    IluminacaoDashboardSeriesInternoResponse,
+    IluminacaoDashboardSeriesPonto,
     IluminacaoConsultaRepositoryRecord,
     IluminacaoConsultaRequest,
     IluminacaoRelatorioSolicitacaoInternaItem,
@@ -828,6 +833,121 @@ def test_resumir_relatorio_solicitacoes_internas_aggregates_statuses_and_priorit
         "lampada_apagada": 3,
         "fiacao_aparente": 1,
     }
+
+
+def test_obter_dashboard_resumo_interno_normalizes_filters(monkeypatch) -> None:
+    calls: dict[str, object] = {}
+
+    def fake_get_dashboard_resumo_interno(**kwargs: object):
+        calls.update(kwargs)
+        return IluminacaoDashboardResumoInternoResponse(
+            total=0,
+            abertas=0,
+            em_triagem=0,
+            em_execucao=0,
+            encaminhadas=0,
+            finalizadas=0,
+            urgentes=0,
+            atrasadas=0,
+            tempo_medio_resolucao_segundos=None,
+            por_status={},
+            por_prioridade={},
+            por_tipo={},
+        )
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "get_dashboard_resumo_interno",
+        fake_get_dashboard_resumo_interno,
+    )
+
+    response = iluminacao_service.obter_dashboard_resumo_interno(
+        data_inicio=date(2026, 6, 1),
+        data_fim=date(2026, 6, 30),
+        status=StatusSolicitacaoIluminacao.aberta,
+        prioridade=" urgente ",
+        tipo_problema=TipoProblemaIluminacao.lampada_apagada,
+        ativos=True,
+    )
+
+    assert response.total == 0
+    assert calls == {
+        "data_inicio": datetime(2026, 6, 1, 0, 0),
+        "data_fim_exclusive": datetime(2026, 7, 1, 0, 0),
+        "status": StatusSolicitacaoIluminacao.aberta,
+        "prioridade": "urgente",
+        "tipo_problema": TipoProblemaIluminacao.lampada_apagada,
+        "ativos": True,
+    }
+
+
+def test_obter_dashboard_ranking_rejects_invalid_limit_and_priority(monkeypatch) -> None:
+    with pytest.raises(ValueError):
+        iluminacao_service.obter_dashboard_ranking_interno(limit=21)
+
+    with pytest.raises(ValueError):
+        iluminacao_service.obter_dashboard_ranking_interno(prioridade="critica")
+
+
+def test_obter_dashboard_series_maps_granularity(monkeypatch) -> None:
+    calls: dict[str, object] = {}
+
+    def fake_get_dashboard_series_interno(**kwargs: object):
+        calls.update(kwargs)
+        return IluminacaoDashboardSeriesInternoResponse(
+            granularidade="month",
+            pontos=[
+                IluminacaoDashboardSeriesPonto(
+                    periodo="2026-06-01",
+                    total=1,
+                    por_status={"aberta": 1},
+                )
+            ],
+        )
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "get_dashboard_series_interno",
+        fake_get_dashboard_series_interno,
+    )
+
+    response = iluminacao_service.obter_dashboard_series_interno(
+        granularidade="mes",
+        status=StatusSolicitacaoIluminacao.aberta,
+    )
+
+    assert response.granularidade == "mes"
+    assert calls["granularidade"] == "month"
+    assert calls["status"] == StatusSolicitacaoIluminacao.aberta
+
+
+def test_obter_dashboard_series_rejects_invalid_granularity() -> None:
+    with pytest.raises(ValueError):
+        iluminacao_service.obter_dashboard_series_interno(granularidade="hora")
+
+
+def test_obter_dashboard_resumo_converts_database_error_to_safe_error(
+    monkeypatch,
+) -> None:
+    def fail_with_database_error(*args: object, **kwargs: object) -> None:
+        raise SQLAlchemyError(
+            "could not connect using DATABASE_URL on host db.internal:5432 SELECT"
+        )
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "get_dashboard_resumo_interno",
+        fail_with_database_error,
+    )
+
+    with pytest.raises(DatabaseUnavailableError) as exc_info:
+        iluminacao_service.obter_dashboard_resumo_interno()
+
+    message = str(exc_info.value)
+    assert message == "Servico temporariamente indisponivel. Tente novamente mais tarde."
+    assert "DATABASE_URL" not in message
+    assert "db.internal" not in message
+    assert "SELECT" not in message
 
 
 def test_obter_solicitacao_interna_por_id_returns_found_item(monkeypatch) -> None:

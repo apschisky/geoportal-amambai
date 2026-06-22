@@ -24,7 +24,7 @@ O menu deve ser montado conforme permissoes efetivas do usuario autenticado. O f
 
 Perfis de leitura geral, como prefeito, gestor geral ou equivalentes, devem poder acessar resumos e indicadores dos modulos permitidos sem receber permissoes operacionais desnecessarias. Usuarios operacionais devem ver apenas o modulo ou os modulos autorizados. A administracao do sistema deve ser area propria, restrita a perfis autorizados.
 
-Registro historico do recorte inicial: dashboard, mapa operacional, endpoints de estatisticas, endpoints de mapa, proxy, producao interna e botao publico de login eram etapas futuras. Posteriormente, proxy e producao interna foram ativados de forma controlada; a shell tambem passou a exibir coordenadas, rota Google Maps e mapa simples no detalhe. Dashboard, mapa operacional amplo e endpoints agregados continuam fora do MVP.
+Registro historico do recorte inicial: dashboard, mapa operacional, endpoints de estatisticas, endpoints de mapa, proxy, producao interna e botao publico de login eram etapas futuras. Posteriormente, proxy e producao interna foram ativados de forma controlada; a shell tambem passou a exibir coordenadas, rota Google Maps e mapa simples no detalhe. O frontend de Dashboard e o mapa operacional amplo continuam fora do MVP visual; os endpoints agregados read-only de Dashboard ja foram implementados localmente no backend e ainda dependem de permissao operacional antes de deploy.
 
 ## 1.1. Recorte da Primeira Tela Interna Minima
 
@@ -73,7 +73,7 @@ A decisao de excluir dashboard, estatisticas e anexos da primeira tela minima re
 
 Correcao ou reversao administrativa de status sera fluxo futuro separado, muito controlado, com justificativa obrigatoria, permissao especifica restrita a poucos perfis autorizados, auditoria propria e regra no backend. Essa regra nao deve ser duplicada livremente no frontend. O frontend pode orientar a UX, ocultar acoes e explicar transicoes permitidas, mas a validacao real permanece na API.
 
-Anexos, upload de fotos, dashboard, estatisticas, proxy/Apache e producao interna ficam para etapas posteriores, com contrato, permissoes, GRANTs e validacoes proprias.
+Anexos, upload de fotos, frontend de dashboard, mapa operacional amplo e evolucoes estatisticas ficam para etapas posteriores, com contrato, permissoes, GRANTs e validacoes proprias. A base backend read-only do Dashboard ja existe localmente e deve ser validada em servidor somente apos criacao/concessao controlada de `iluminacao.dashboard.ler`.
 
 ## 2. Principio de nao interrupcao
 
@@ -217,6 +217,20 @@ Este plano registra a etapa seguinte ao MVP operacional do modulo Iluminacao Pub
 - atualizacao automatica limitada, preferencialmente a cada 5 minutos no maximo;
 - o backend continua sendo a fonte da verdade para contagem e filtros;
 - nenhum endpoint de dashboard deve depender de calculo critico exclusivo no frontend.
+
+#### Backend read-only local implementado
+
+Marco local: os endpoints internos read-only do Dashboard de Iluminacao foram implementados localmente no backend, sem frontend e sem deploy:
+
+- `GET /api/internal/iluminacao/dashboard/resumo`;
+- `GET /api/internal/iluminacao/dashboard/ranking`;
+- `GET /api/internal/iluminacao/dashboard/series`.
+
+Todos exigem sessao interna e `require_permission("iluminacao.dashboard.ler")`. Os filtros aceitos sao `data_inicio`, `data_fim`, `status`, `prioridade`, `tipo`, `ativos` no resumo, `limit` no ranking e `granularidade=dia|semana|mes` nas series. Os retornos sao agregados e sanitizados: nao incluem nome do solicitante, contato, WhatsApp, descricao livre, observacoes internas, historico administrativo ou coordenadas.
+
+O ranking de postes usa `poste_id` real. `top_bairros` permanece vazio nesta versao porque o schema real nao possui campo proprio de bairro/regiao; essa lacuna deve ser resolvida por contrato de dados futuro, nao por inferencia a partir de texto livre.
+
+Pendencia operacional: antes de publicar em servidor, criar/conceder de forma controlada a permissao `modulo='iluminacao'`, `chave='dashboard.ler'` para perfil gerencial/administrativo adequado, mantendo `manutencao-iluminacao` sem essa permissao. Nao houve migration, SQL, GRANT ou alteracao de banco nesta etapa local.
 
 #### Tratamento de ausencia de dados
 

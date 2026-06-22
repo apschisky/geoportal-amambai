@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 import inspect
 
 from fastapi import FastAPI, HTTPException
@@ -10,6 +10,11 @@ from app.dependencies import auth_dependencies
 from app.dependencies.auth_dependencies import get_current_authenticated_session
 from app.main import app as main_app
 from app.schemas.iluminacao import (
+    IluminacaoDashboardRankingInternoResponse,
+    IluminacaoDashboardRankingItem,
+    IluminacaoDashboardResumoInternoResponse,
+    IluminacaoDashboardSeriesInternoResponse,
+    IluminacaoDashboardSeriesPonto,
     IluminacaoRelatorioResumoInternoResponse,
     IluminacaoRelatorioSolicitacaoInternaItem,
     IluminacaoRelatorioSolicitacoesInternasResult,
@@ -35,6 +40,9 @@ INTERNAL_RELATORIO_SOLICITACOES_CSV_PATH = (
 INTERNAL_RELATORIO_SOLICITACOES_RESUMO_PATH = (
     "/api/internal/iluminacao/relatorios/solicitacoes/resumo"
 )
+INTERNAL_DASHBOARD_RESUMO_PATH = "/api/internal/iluminacao/dashboard/resumo"
+INTERNAL_DASHBOARD_RANKING_PATH = "/api/internal/iluminacao/dashboard/ranking"
+INTERNAL_DASHBOARD_SERIES_PATH = "/api/internal/iluminacao/dashboard/series"
 INTERNAL_SOLICITACAO_DETAIL_ROUTE = (
     "/api/internal/iluminacao/solicitacoes/{solicitacao_id}"
 )
@@ -79,6 +87,7 @@ EXPECTED_ATUALIZAR_PRIORIDADE_PERMISSION = (
 )
 EXPECTED_CORRIGIR_STATUS_PERMISSION = "iluminacao.solicitacoes.corrigir_status"
 EXPECTED_RELATORIO_PERMISSION = "admin.usuarios.ler"
+EXPECTED_DASHBOARD_PERMISSION = "iluminacao.dashboard.ler"
 EXPIRES_AT = datetime(2030, 5, 27, 13, 0, tzinfo=UTC)
 CREATED_AT = datetime(2026, 5, 20, 10, 30, tzinfo=UTC)
 UPDATED_AT = datetime(2026, 5, 21, 8, 15, tzinfo=UTC)
@@ -193,6 +202,45 @@ def fake_relatorio_item() -> IluminacaoRelatorioSolicitacaoInternaItem:
         finalizado_em=None,
         duplicidade_suspeita=False,
         tempo_finalizacao_segundos=None,
+    )
+
+
+def fake_dashboard_resumo() -> IluminacaoDashboardResumoInternoResponse:
+    return IluminacaoDashboardResumoInternoResponse(
+        total=3,
+        abertas=1,
+        em_triagem=0,
+        em_execucao=1,
+        encaminhadas=0,
+        finalizadas=1,
+        urgentes=1,
+        atrasadas=0,
+        tempo_medio_resolucao_segundos=3600.0,
+        por_status={"aberta": 1, "em_execucao": 1, "resolvida": 1},
+        por_prioridade={"normal": 2, "urgente": 1},
+        por_tipo={"lampada_apagada": 3},
+    )
+
+
+def fake_dashboard_ranking() -> IluminacaoDashboardRankingInternoResponse:
+    return IluminacaoDashboardRankingInternoResponse(
+        top_bairros=[],
+        top_postes=[
+            IluminacaoDashboardRankingItem(chave="POSTE-010", total=2),
+        ],
+    )
+
+
+def fake_dashboard_series() -> IluminacaoDashboardSeriesInternoResponse:
+    return IluminacaoDashboardSeriesInternoResponse(
+        granularidade="dia",
+        pontos=[
+            IluminacaoDashboardSeriesPonto(
+                periodo="2026-06-01",
+                total=2,
+                por_status={"aberta": 1, "em_execucao": 1},
+            )
+        ],
     )
 
 
@@ -648,6 +696,254 @@ def test_internal_relatorio_csv_accepts_single_date_filters(
             "tipo_problema": None,
         },
     ]
+
+
+def test_internal_dashboard_resumo_returns_200_for_dashboard_permission(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    calls: dict[str, object] = {}
+    service_calls: dict[str, object] = {}
+
+    def fake_has_permission(usuario_id: int, permission_code: str) -> bool:
+        calls.update(
+            {
+                "usuario_id": usuario_id,
+                "permission_code": permission_code,
+            }
+        )
+        return True
+
+    def fake_obter_dashboard_resumo_interno(**kwargs: object):
+        service_calls.update(kwargs)
+        return fake_dashboard_resumo()
+
+    monkeypatch.setattr(auth_dependencies, "has_permission", fake_has_permission)
+    monkeypatch.setattr(
+        internal_iluminacao,
+        "obter_dashboard_resumo_interno",
+        fake_obter_dashboard_resumo_interno,
+    )
+    client = TestClient(app)
+
+    response = client.get(
+        INTERNAL_DASHBOARD_RESUMO_PATH,
+        params={
+            "data_inicio": "2026-06-01",
+            "data_fim": "2026-06-30",
+            "status": "aberta",
+            "prioridade": "urgente",
+            "tipo": "lampada_apagada",
+            "ativos": "true",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 3
+    assert body["urgentes"] == 1
+    assert body["por_status"] == {"aberta": 1, "em_execucao": 1, "resolvida": 1}
+    assert calls == {
+        "usuario_id": 7,
+        "permission_code": EXPECTED_DASHBOARD_PERMISSION,
+    }
+    assert service_calls == {
+        "data_inicio": date(2026, 6, 1),
+        "data_fim": date(2026, 6, 30),
+        "status": "aberta",
+        "prioridade": "urgente",
+        "tipo_problema": TipoProblemaIluminacao.lampada_apagada,
+        "ativos": True,
+    }
+    for forbidden in (
+        "nome_solicitante",
+        "contato_solicitante",
+        "whatsapp",
+        "descricao",
+        "observacao",
+        "latitude",
+        "longitude",
+        "DATABASE_URL",
+        "session_secret",
+    ):
+        assert forbidden not in response.text
+
+
+def test_internal_dashboard_ranking_returns_200_and_limits_results(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    service_calls: dict[str, object] = {}
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: permission_code
+        == EXPECTED_DASHBOARD_PERMISSION,
+    )
+
+    def fake_obter_dashboard_ranking_interno(**kwargs: object):
+        service_calls.update(kwargs)
+        return fake_dashboard_ranking()
+
+    monkeypatch.setattr(
+        internal_iluminacao,
+        "obter_dashboard_ranking_interno",
+        fake_obter_dashboard_ranking_interno,
+    )
+    client = TestClient(app)
+
+    response = client.get(INTERNAL_DASHBOARD_RANKING_PATH, params={"limit": "5"})
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "top_bairros": [],
+        "top_postes": [{"chave": "POSTE-010", "total": 2}],
+    }
+    assert service_calls["limit"] == 5
+
+
+def test_internal_dashboard_series_returns_200_for_valid_granularity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    service_calls: dict[str, object] = {}
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+
+    def fake_obter_dashboard_series_interno(**kwargs: object):
+        service_calls.update(kwargs)
+        return fake_dashboard_series()
+
+    monkeypatch.setattr(
+        internal_iluminacao,
+        "obter_dashboard_series_interno",
+        fake_obter_dashboard_series_interno,
+    )
+    client = TestClient(app)
+
+    response = client.get(
+        INTERNAL_DASHBOARD_SERIES_PATH,
+        params={"granularidade": "dia", "status": "em_execucao"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["pontos"][0]["por_status"] == {
+        "aberta": 1,
+        "em_execucao": 1,
+    }
+    assert service_calls["granularidade"] == "dia"
+    assert service_calls["status"] == "em_execucao"
+
+
+def test_internal_dashboard_returns_401_without_session() -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        lambda: (_ for _ in ()).throw(
+            HTTPException(status_code=401, detail="Not authenticated")
+        )
+    )
+    client = TestClient(app)
+
+    response = client.get(INTERNAL_DASHBOARD_RESUMO_PATH)
+
+    assert response.status_code == 401
+
+
+def test_internal_dashboard_returns_403_without_dashboard_permission(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    permission_calls: list[str] = []
+
+    def fake_has_permission(usuario_id: int, permission_code: str) -> bool:
+        permission_calls.append(permission_code)
+        return False
+
+    monkeypatch.setattr(auth_dependencies, "has_permission", fake_has_permission)
+    client = TestClient(app)
+
+    response = client.get(INTERNAL_DASHBOARD_RESUMO_PATH)
+
+    assert response.status_code == 403
+    assert EXPECTED_DASHBOARD_PERMISSION in permission_calls
+
+
+def test_internal_dashboard_series_returns_422_for_invalid_granularity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+
+    def fake_invalid_granularity(**kwargs: object):
+        raise ValueError("granularidade must be dia, semana or mes")
+
+    monkeypatch.setattr(
+        internal_iluminacao,
+        "obter_dashboard_series_interno",
+        fake_invalid_granularity,
+    )
+    client = TestClient(app)
+
+    response = client.get(
+        INTERNAL_DASHBOARD_SERIES_PATH,
+        params={"granularidade": "hora"},
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "Invalid query parameters"}
+
+
+def test_internal_dashboard_resumo_returns_503_with_sanitized_message(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: True,
+    )
+
+    def fake_database_error(**kwargs: object):
+        raise DatabaseUnavailableError(DATABASE_UNAVAILABLE_MESSAGE)
+
+    monkeypatch.setattr(
+        internal_iluminacao,
+        "obter_dashboard_resumo_interno",
+        fake_database_error,
+    )
+    client = TestClient(app)
+
+    response = client.get(INTERNAL_DASHBOARD_RESUMO_PATH)
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": DATABASE_UNAVAILABLE_MESSAGE}
+    assert "DATABASE_URL" not in response.text
+    assert "traceback" not in response.text.lower()
 
 
 def test_internal_solicitacao_detail_returns_200_for_authenticated_user_with_permission(
@@ -3262,6 +3558,9 @@ def test_internal_iluminacao_router_uses_permission_without_hardcoded_login() ->
     assert INTERNAL_SOLICITACOES_PATH in route_paths
     assert INTERNAL_RELATORIO_SOLICITACOES_CSV_PATH in route_paths
     assert INTERNAL_RELATORIO_SOLICITACOES_RESUMO_PATH in route_paths
+    assert INTERNAL_DASHBOARD_RESUMO_PATH in route_paths
+    assert INTERNAL_DASHBOARD_RANKING_PATH in route_paths
+    assert INTERNAL_DASHBOARD_SERIES_PATH in route_paths
     assert INTERNAL_SOLICITACAO_DETAIL_ROUTE in route_paths
     assert INTERNAL_SOLICITACAO_HISTORICO_ROUTE in route_paths
     assert INTERNAL_SOLICITACAO_OBSERVACOES_ROUTE in route_paths
@@ -3274,6 +3573,7 @@ def test_internal_iluminacao_router_uses_permission_without_hardcoded_login() ->
     assert "require_permission(UPDATE_INTERNAL_ILUMINACAO_STATUS_PERMISSION)" in source
     assert "require_permission(CORRIGIR_INTERNAL_ILUMINACAO_STATUS_PERMISSION)" in source
     assert "require_permission(EXPORT_INTERNAL_ILUMINACAO_RELATORIO_PERMISSION)" in source
+    assert "require_permission(READ_INTERNAL_ILUMINACAO_DASHBOARD_PERMISSION)" in source
     assert EXPECTED_PERMISSION in source
     assert EXPECTED_HISTORICO_PERMISSION in source
     assert EXPECTED_OBSERVACOES_PERMISSION in source
@@ -3281,6 +3581,7 @@ def test_internal_iluminacao_router_uses_permission_without_hardcoded_login() ->
     assert EXPECTED_ATUALIZAR_STATUS_PERMISSION in source
     assert EXPECTED_CORRIGIR_STATUS_PERMISSION in source
     assert EXPECTED_RELATORIO_PERMISSION in source
+    assert EXPECTED_DASHBOARD_PERMISSION in source
     assert "admin.homologacao" not in source
     assert "login ==" not in source
     assert "require_internal_mutating_request_header" in source
