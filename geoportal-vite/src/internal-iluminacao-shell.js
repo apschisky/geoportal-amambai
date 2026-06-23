@@ -3,12 +3,14 @@ import Feature from 'ol/Feature.js';
 import Map from 'ol/Map.js';
 import View from 'ol/View.js';
 import Point from 'ol/geom/Point.js';
+import HeatmapLayer from 'ol/layer/Heatmap.js';
 import TileLayer from 'ol/layer/Tile.js';
 import VectorLayer from 'ol/layer/Vector.js';
 import { fromLonLat } from 'ol/proj.js';
 import OSM from 'ol/source/OSM.js';
 import VectorSource from 'ol/source/Vector.js';
 import CircleStyle from 'ol/style/Circle.js';
+import RegularShape from 'ol/style/RegularShape.js';
 import Fill from 'ol/style/Fill.js';
 import Stroke from 'ol/style/Stroke.js';
 import Style from 'ol/style/Style.js';
@@ -22,6 +24,12 @@ const INTERNAL_RELATORIO_SOLICITACOES_CSV_ENDPOINT =
   '/api/internal/iluminacao/relatorios/solicitacoes.csv';
 const INTERNAL_RELATORIO_SOLICITACOES_RESUMO_ENDPOINT =
   '/api/internal/iluminacao/relatorios/solicitacoes/resumo';
+const INTERNAL_DASHBOARD_RESUMO_ENDPOINT =
+  '/api/internal/iluminacao/dashboard/resumo';
+const INTERNAL_DASHBOARD_RANKING_ENDPOINT =
+  '/api/internal/iluminacao/dashboard/ranking';
+const INTERNAL_DASHBOARD_SERIES_SEMANAL_ENDPOINT =
+  '/api/internal/iluminacao/dashboard/series?granularidade=semana';
 const SOLICITACOES_PAGE_SIZE = 20;
 const HISTORICO_PAGE_SIZE = 20;
 const OBSERVACOES_PAGE_SIZE = 20;
@@ -84,6 +92,7 @@ const PERMISSIONS = {
   iluminacaoStatus: 'iluminacao.solicitacoes.atualizar_status',
   iluminacaoPriority: 'iluminacao.solicitacoes.atualizar_prioridade',
   iluminacaoStatusCorrection: 'iluminacao.solicitacoes.corrigir_status',
+  iluminacaoDashboard: 'iluminacao.dashboard.ler',
   adminUsersRead: 'admin.usuarios.ler',
   adminProfilesRead: 'admin.perfis.ler',
   adminPermissionsRead: 'admin.permissoes.ler'
@@ -91,10 +100,10 @@ const PERMISSIONS = {
 
 const plannedModules = [
   {
-    key: 'inicio',
+    key: 'dashboard',
     name: 'Início',
     description: 'Resumo futuro por permissões',
-    kind: 'planned'
+    kind: 'dashboard'
   },
   {
     key: 'iluminacao',
@@ -427,6 +436,25 @@ function createRelatorioState(overrides = {}) {
   };
 }
 
+function createDashboardState(overrides = {}) {
+  return {
+    status: 'idle',
+    filters: {
+      source: 'all',
+      status: 'all',
+      prioridade: 'all',
+      tipo: 'all',
+      mapMode: 'points'
+    },
+    statusCode: null,
+    message: 'Dashboard geral carregado conforme permissoes.',
+    resumo: null,
+    ranking: null,
+    series: null,
+    ...overrides
+  };
+}
+
 function createDetalheState(overrides = {}) {
   const historico = createHistoricoState(overrides.historico || {});
   const observacoes = createObservacoesState(overrides.observacoes || {});
@@ -472,6 +500,8 @@ const initialSessionState = {
   loginStatus: 'idle',
   loginMessage: '',
   loginValue: '',
+  activeModule: 'dashboard',
+  dashboard: createDashboardState(),
   relatorio: createRelatorioState(),
   solicitacoes: createSolicitacoesState(),
   detalhe: createDetalheState()
@@ -493,6 +523,8 @@ function createSessionState(overrides = {}) {
     loginValue: '',
     logoutStatus: 'idle',
     logoutMessage: '',
+    activeModule: 'dashboard',
+    dashboard: createDashboardState(),
     relatorio: createRelatorioState(),
     solicitacoes: createSolicitacoesState(),
     detalhe: createDetalheState(),
@@ -537,13 +569,21 @@ function getSessionStatusMeta(state) {
 
 let currentState = createSessionState();
 let operationalDetailMap = null;
+let dashboardMap = null;
 
 function renderApp(root, state) {
-  currentState = {
+  const normalizedState = {
     ...state,
+    dashboard: state.dashboard || createDashboardState(),
     solicitacoes: state.solicitacoes || createSolicitacoesState(),
     detalhe: state.detalhe || createDetalheState()
   };
+
+  currentState = {
+    ...normalizedState,
+    activeModule: resolveInitialActiveModule(normalizedState, state.activeModule)
+  };
+
   renderInternalIluminacaoShell(root, currentState);
 }
 
@@ -901,26 +941,32 @@ export {
   buildSolicitacoesUrl,
   buildUpdateSolicitacaoPrioridadeUrl,
   buildUpdateSolicitacaoStatusCorrecaoUrl,
+  canViewDashboardWidgets,
   canViewRelatorio,
   canUpdatePrioridade,
   canCorrectStatus,
+  createDashboardState,
   createDetalheState,
   createSessionState,
   createRelatorioState,
   createPrioridadeFormState,
   createStatusCorrectionFormState,
+  fetchDashboardGeralWidgets,
   fetchRelatorioSolicitacoesCsv,
   fetchRelatorioSolicitacoesResumo,
   fetchSolicitacoesInternas,
   fetchUpdateSolicitacaoStatus,
   fetchUpdateSolicitacaoStatusCorrecao,
   fetchUpdateSolicitacaoPrioridade,
+  getInternalActionTarget,
   getPrioridadeFormValidationMessage,
   getRelatorioValidationMessage,
   getStatusCorrectionFormValidationMessage,
   isMaintenanceLikeUser,
+  resolveInitialActiveModule,
   normalizeSolicitacaoCoordinate,
   renderCoordinateRouteSection,
+  renderDashboardPanel,
   renderModuleMenu,
   renderObservacoesPanel,
   renderRelatorioPanel,
@@ -929,6 +975,7 @@ export {
   renderSessionBox,
   renderSolicitacaoDetailLoaded,
   renderSolicitacoesPanel,
+  renderSummaryCards,
   renderStatusUpdatePanel,
   scrollToSolicitacaoDetailSection,
   shouldSyncRelatorioFormOnInput
@@ -1394,9 +1441,136 @@ function canCorrectStatus(state) {
     && hasPermission(state, PERMISSIONS.iluminacaoStatusCorrection);
 }
 
+function canViewDashboardWidgets(state) {
+  return state.sessionState === 'authenticated'
+    && hasPermission(state, PERMISSIONS.iluminacaoDashboard);
+}
+
+function canAccessIluminacaoModule(state) {
+  return state.sessionState === 'authenticated'
+    && hasPermission(state, PERMISSIONS.iluminacaoRead);
+}
+
+function resolveInitialActiveModule(state, requestedModule = state.activeModule) {
+  if (requestedModule === 'dashboard' && canViewDashboardWidgets(state)) {
+    return 'dashboard';
+  }
+
+  if (requestedModule === 'iluminacao' && canAccessIluminacaoModule(state)) {
+    return 'iluminacao';
+  }
+
+  if (canViewDashboardWidgets(state)) {
+    return 'dashboard';
+  }
+
+  if (canAccessIluminacaoModule(state)) {
+    return 'iluminacao';
+  }
+
+  return 'none';
+}
+
 function canViewRelatorio(state) {
   return state.sessionState === 'authenticated'
     && hasPermission(state, PERMISSIONS.adminUsersRead);
+}
+
+function normalizeDashboardCount(value) {
+  return Number.isFinite(Number(value)) ? Number(value) : 0;
+}
+
+function formatDashboardSeconds(value) {
+  const seconds = Number(value);
+
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    return 'Sem dados';
+  }
+
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.round((seconds % 3600) / 60);
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}min`;
+  }
+
+  return `${minutes}min`;
+}
+
+function normalizeDashboardMap(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .map(([key, count]) => [safeText(key, ''), normalizeDashboardCount(count)])
+      .filter(([key]) => Boolean(key))
+  );
+}
+
+function normalizeDashboardRankingItems(items) {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+
+  return items
+    .map((item) => ({
+      chave: safeText(item?.chave, ''),
+      total: normalizeDashboardCount(item?.total)
+    }))
+    .filter((item) => item.chave);
+}
+
+function normalizeDashboardSeriesPoints(points) {
+  if (!Array.isArray(points)) {
+    return [];
+  }
+
+  return points
+    .map((point) => ({
+      periodo: safeText(point?.periodo, ''),
+      total: normalizeDashboardCount(point?.total),
+      por_status: normalizeDashboardMap(point?.por_status)
+    }))
+    .filter((point) => point.periodo);
+}
+
+function normalizeDashboardResumo(payload) {
+  const source = payload && typeof payload === 'object' ? payload : {};
+
+  return {
+    total: normalizeDashboardCount(source.total),
+    abertas: normalizeDashboardCount(source.abertas),
+    em_triagem: normalizeDashboardCount(source.em_triagem),
+    em_execucao: normalizeDashboardCount(source.em_execucao),
+    encaminhadas: normalizeDashboardCount(source.encaminhadas),
+    finalizadas: normalizeDashboardCount(source.finalizadas),
+    urgentes: normalizeDashboardCount(source.urgentes),
+    atrasadas: normalizeDashboardCount(source.atrasadas),
+    tempo_medio_resolucao_segundos: source.tempo_medio_resolucao_segundos,
+    por_status: normalizeDashboardMap(source.por_status),
+    por_prioridade: normalizeDashboardMap(source.por_prioridade),
+    por_tipo: normalizeDashboardMap(source.por_tipo)
+  };
+}
+
+function normalizeDashboardRanking(payload) {
+  const source = payload && typeof payload === 'object' ? payload : {};
+
+  return {
+    top_bairros: normalizeDashboardRankingItems(source.top_bairros),
+    top_postes: normalizeDashboardRankingItems(source.top_postes)
+  };
+}
+
+function normalizeDashboardSeries(payload) {
+  const source = payload && typeof payload === 'object' ? payload : {};
+
+  return {
+    granularidade: safeText(source.granularidade, 'semana'),
+    pontos: normalizeDashboardSeriesPoints(source.pontos)
+  };
 }
 
 function isMaintenanceLikeUser(permissions = []) {
@@ -1410,6 +1584,17 @@ function isMaintenanceLikeUser(permissions = []) {
 }
 
 function getModuleView(module, state) {
+  if (module.kind === 'dashboard') {
+    const allowed = canViewDashboardWidgets(state);
+
+    return {
+      state: allowed ? 'allowed' : 'denied',
+      label: allowed ? 'Permitido' : 'Sem permissao',
+      enabled: allowed,
+      active: allowed && state.activeModule === module.key
+    };
+  }
+
   if (module.kind === 'permission') {
     if (state.sessionState === 'checking_session') {
       return {
@@ -1435,7 +1620,7 @@ function getModuleView(module, state) {
       state: allowed ? 'allowed' : 'denied',
       label: allowed ? 'Permitido' : 'Sem permissão',
       enabled: allowed,
-      active: allowed
+      active: allowed && state.activeModule === module.key
     };
   }
 
@@ -1485,17 +1670,28 @@ function getIluminacaoAccessMessage(state) {
 
 function renderModuleMenu(state) {
   const maintenanceMode = isMaintenanceLikeUser(state.permissions || []);
-  const modules = maintenanceMode
-    ? plannedModules.filter((module) => {
-      const view = getModuleView(module, state);
-      return view.enabled && view.active;
-    })
-    : plannedModules;
+  const modules = plannedModules.filter((module) => {
+    const view = getModuleView(module, state);
+
+    if (module.kind === 'dashboard') {
+      return view.enabled;
+    }
+
+    if (maintenanceMode) {
+      return view.enabled;
+    }
+
+    return true;
+  });
 
   return modules
     .map((module) => {
       const view = getModuleView(module, state);
       const hideStateLabel = maintenanceMode;
+      const moduleName = module.kind === 'dashboard' ? 'Dashboard' : module.name;
+      const moduleDescription = module.kind === 'dashboard'
+        ? 'Visao geral interna'
+        : module.description;
       const classes = [
         'internal-module-button',
         hideStateLabel ? 'is-maintenance-visible' : '',
@@ -1509,12 +1705,14 @@ function renderModuleMenu(state) {
         <button
           type="button"
           class="${classes}"
+          data-action="select-module"
+          data-module-key="${escapeHtml(module.key)}"
           ${ariaCurrent}
           ${disabled}
         >
           <span>
-            <strong>${escapeHtml(module.name)}</strong>
-            <small>${escapeHtml(module.description)}</small>
+            <strong>${escapeHtml(moduleName)}</strong>
+            <small>${escapeHtml(moduleDescription)}</small>
           </span>
           ${hideStateLabel ? '' : `<em>${escapeHtml(view.label)}</em>`}
         </button>
@@ -1583,6 +1781,457 @@ function renderSummaryCards(state) {
       </article>
     `)
     .join('');
+}
+
+function renderDashboardMetricCard(label, value, note = '', marker = '') {
+  return `
+    <article class="internal-dashboard-kpi">
+      <span>${marker ? `<i aria-hidden="true">${escapeHtml(marker)}</i>` : ''}${escapeHtml(label)}</span>
+      <strong>${escapeHtml(String(value))}</strong>
+      ${note ? `<small>${escapeHtml(note)}</small>` : ''}
+    </article>
+  `;
+}
+
+function renderDashboardBars(title, values, formatter = (value) => value) {
+  const entries = Object.entries(values || {});
+
+  if (entries.length === 0) {
+    return `
+      <article class="internal-dashboard-widget">
+        <h3>${escapeHtml(title)}</h3>
+        <p class="internal-list-message">Sem dados para este recorte.</p>
+      </article>
+    `;
+  }
+
+  const max = Math.max(...entries.map(([, value]) => normalizeDashboardCount(value)), 1);
+
+  return `
+    <article class="internal-dashboard-widget">
+      <h3>${escapeHtml(title)}</h3>
+      <div class="internal-dashboard-bars">
+        ${entries.map(([key, value]) => {
+    const count = normalizeDashboardCount(value);
+    const width = Math.max(6, Math.round((count / max) * 100));
+
+    return `
+          <div class="internal-dashboard-bar-row">
+            <span>${escapeHtml(formatter(key))}</span>
+            <div class="internal-dashboard-bar-track" aria-hidden="true">
+              <i style="width: ${width}%"></i>
+            </div>
+            <strong>${escapeHtml(String(count))}</strong>
+          </div>
+    `;
+  }).join('')}
+      </div>
+    </article>
+  `;
+}
+
+function renderDashboardRanking(title, items, emptyMessage) {
+  if (!items || items.length === 0) {
+    return `
+      <article class="internal-dashboard-widget">
+        <h3>${escapeHtml(title)}</h3>
+        <p class="internal-list-message">${escapeHtml(emptyMessage)}</p>
+      </article>
+    `;
+  }
+
+  return `
+    <article class="internal-dashboard-widget">
+      <h3>${escapeHtml(title)}</h3>
+      <ol class="internal-dashboard-ranking">
+        ${items.map((item) => `
+          <li>
+            <span>${escapeHtml(item.chave)}</span>
+            <strong>${escapeHtml(String(item.total))}</strong>
+          </li>
+        `).join('')}
+      </ol>
+    </article>
+  `;
+}
+
+function renderDashboardSeries(series) {
+  const points = Array.isArray(series?.pontos) ? series.pontos : [];
+
+  if (points.length === 0) {
+    return `
+      <article class="internal-dashboard-widget internal-dashboard-widget-wide">
+        <h3>Serie semanal</h3>
+        <p class="internal-list-message">Sem pontos semanais para exibir.</p>
+      </article>
+    `;
+  }
+
+  const max = Math.max(...points.map((point) => normalizeDashboardCount(point.total)), 1);
+
+  return `
+    <article class="internal-dashboard-widget internal-dashboard-widget-wide">
+      <h3>Serie semanal</h3>
+      <div class="internal-dashboard-series">
+        ${points.map((point) => {
+    const total = normalizeDashboardCount(point.total);
+    const width = Math.max(6, Math.round((total / max) * 100));
+
+    return `
+          <div class="internal-dashboard-series-row">
+            <span>${escapeHtml(point.periodo)}</span>
+            <div class="internal-dashboard-bar-track" aria-hidden="true">
+              <i style="width: ${width}%"></i>
+            </div>
+            <strong>${escapeHtml(String(total))}</strong>
+          </div>
+    `;
+  }).join('')}
+      </div>
+    </article>
+  `;
+}
+
+function getDashboardFilters(state) {
+  const dashboard = state.dashboard || createDashboardState();
+  const filters = dashboard.filters || {};
+
+  return {
+    source: safeText(filters.source, 'all') || 'all',
+    status: safeText(filters.status, 'all') || 'all',
+    prioridade: safeText(filters.prioridade, 'all') || 'all',
+    tipo: safeText(filters.tipo, 'all') || 'all',
+    mapMode: safeText(filters.mapMode, 'points') || 'points'
+  };
+}
+
+function getDashboardMapPoints(state) {
+  const listState = state.solicitacoes || createSolicitacoesState();
+  const items = Array.isArray(listState.items) ? listState.items : [];
+
+  return items
+    .filter((item) => item && item.hasCoordinates && item.coordinates)
+    .slice(0, SOLICITACOES_PAGE_SIZE);
+}
+
+function getDashboardFilterOptions(state) {
+  const points = getDashboardMapPoints(state);
+  const typeKeys = Array.from(new Set(
+    points
+      .map((item) => item.tipoProblemaKey)
+      .filter(Boolean)
+  )).sort();
+
+  return {
+    sources: [
+      { value: 'all', label: 'Todas as fontes' },
+      { value: 'iluminacao', label: 'Iluminacao Publica' }
+    ],
+    statuses: [
+      { value: 'all', label: 'Todos' },
+      { value: 'aberta', label: 'Aberta' },
+      { value: 'em_triagem', label: 'Em triagem' },
+      { value: 'em_execucao', label: 'Em execucao' },
+      { value: 'encaminhada', label: 'Encaminhada' },
+      { value: 'resolvida', label: 'Resolvida' },
+      { value: 'cancelada', label: 'Cancelada' },
+      { value: 'indeferida', label: 'Indeferida' },
+      { value: 'nao_localizado', label: 'Nao localizado' }
+    ],
+    prioridades: [
+      { value: 'all', label: 'Todas' },
+      { value: 'baixa', label: 'Baixa' },
+      { value: 'normal', label: 'Normal' },
+      { value: 'alta', label: 'Alta' },
+      { value: 'urgente', label: 'Urgente' }
+    ],
+    tipos: [
+      { value: 'all', label: 'Todos' },
+      ...typeKeys.map((key) => ({
+        value: key,
+        label: formatProblemTypeLabel(key)
+      }))
+    ],
+    mapModes: [
+      { value: 'points', label: 'Pontos' },
+      { value: 'heatmap', label: 'Calor' }
+    ]
+  };
+}
+
+function isDashboardMapPointVisible(item, filters) {
+  if (filters.source !== 'all' && filters.source !== 'iluminacao') {
+    return false;
+  }
+
+  if (filters.status !== 'all' && item.statusKey !== filters.status) {
+    return false;
+  }
+
+  if (filters.prioridade !== 'all' && item.prioridadeKey !== filters.prioridade) {
+    return false;
+  }
+
+  if (filters.tipo !== 'all' && item.tipoProblemaKey !== filters.tipo) {
+    return false;
+  }
+
+  return true;
+}
+
+function getFilteredDashboardMapPoints(state) {
+  const filters = getDashboardFilters(state);
+  return getDashboardMapPoints(state)
+    .filter((item) => isDashboardMapPointVisible(item, filters));
+}
+
+function getDashboardPointCounts(points, key) {
+  return points.reduce((accumulator, item) => {
+    const value = safeText(item[key], 'sem_informacao') || 'sem_informacao';
+    accumulator[value] = (accumulator[value] || 0) + 1;
+    return accumulator;
+  }, {});
+}
+
+function renderDashboardFilterSelect(name, label, options, selectedValue) {
+  return `
+    <label>
+      <span>${escapeHtml(label)}</span>
+      <select name="${escapeHtml(name)}" data-dashboard-filter>
+        ${options.map((option) => `
+          <option value="${escapeHtml(option.value)}" ${option.value === selectedValue ? 'selected' : ''}>${escapeHtml(option.label)}</option>
+        `).join('')}
+      </select>
+    </label>
+  `;
+}
+
+function renderDashboardFilters(state) {
+  const filters = getDashboardFilters(state);
+  const options = getDashboardFilterOptions(state);
+
+  return `
+    <form class="internal-dashboard-filter-form" data-dashboard-filter-form>
+      ${renderDashboardFilterSelect('source', 'Fonte', options.sources, filters.source)}
+      ${renderDashboardFilterSelect('status', 'Status', options.statuses, filters.status)}
+      ${renderDashboardFilterSelect('prioridade', 'Prioridade', options.prioridades, filters.prioridade)}
+      ${renderDashboardFilterSelect('tipo', 'Tipo', options.tipos, filters.tipo)}
+      ${renderDashboardFilterSelect('mapMode', 'Modo do mapa', options.mapModes, filters.mapMode)}
+      <p class="internal-dashboard-mode-help">Troque aqui entre Pontos e Calor.</p>
+    </form>
+  `;
+}
+
+function renderDashboardStatusLegend(points) {
+  const counts = getDashboardPointCounts(points, 'statusKey');
+  const entries = Object.entries(counts);
+
+  if (entries.length === 0) {
+    return '<p class="internal-muted-note">Sem ocorrencias visiveis para os filtros atuais.</p>';
+  }
+
+  return `
+    <div class="internal-dashboard-status-legend">
+      ${entries.map(([status, total]) => `
+        <span>
+          <i style="background: ${escapeHtml(getOperationalMapStatusColor(normalizeStatusKey(status)))}"></i>
+          ${escapeHtml(formatStatusLabel(status))}
+          <strong>${escapeHtml(String(normalizeDashboardCount(total)))}</strong>
+        </span>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderDashboardPrioritySummary(points) {
+  const counts = getDashboardPointCounts(points, 'prioridadeKey');
+  const priorities = ['urgente', 'alta', 'normal', 'baixa'];
+
+  return `
+    <dl class="internal-dashboard-quick-facts">
+      <div>
+        <dt>Ocorrencias visiveis</dt>
+        <dd>${escapeHtml(String(points.length))}</dd>
+      </div>
+      ${priorities.map((priority) => `
+        <div>
+          <dt>${escapeHtml(formatPriorityLabel(priority))}</dt>
+          <dd>${escapeHtml(String(counts[priority] || 0))}</dd>
+        </div>
+      `).join('')}
+    </dl>
+    <p class="internal-dashboard-priority-note">Prioridade altera tamanho, borda e halo dos pontos.</p>
+  `;
+}
+
+function renderDashboardTerritorialPanel(state) {
+  const allPoints = getDashboardMapPoints(state);
+  const filteredPoints = getFilteredDashboardMapPoints(state);
+  const filters = getDashboardFilters(state);
+  const mapModeLabel = filters.mapMode === 'heatmap' ? 'Calor' : 'Pontos';
+  const listState = state.solicitacoes || createSolicitacoesState();
+
+  if (allPoints.length === 0) {
+    const message = listState.status === 'ready'
+      ? 'Solicitacoes recentes carregadas ainda nao possuem coordenadas validas para o mapa.'
+      : 'Mapa territorial sera habilitado quando houver solicitacoes recentes com coordenadas carregadas.';
+
+    return `
+      <article class="internal-dashboard-map-card is-placeholder">
+        <div class="internal-dashboard-widget-heading">
+          <div>
+            <h3>Mapa territorial dos servicos</h3>
+            <p>Area preparada para ocorrencias georreferenciadas autorizadas.</p>
+          </div>
+          <span>Sem pontos</span>
+        </div>
+        <div class="internal-dashboard-map-placeholder" role="img" aria-label="Mapa territorial sem pontos carregados">
+          <strong>Mapa territorial</strong>
+          <p>${escapeHtml(message)}</p>
+        </div>
+      </article>
+    `;
+  }
+
+  return `
+    <article class="internal-dashboard-map-card">
+      <div class="internal-dashboard-widget-heading">
+        <div>
+          <h3>Mapa territorial dos servicos</h3>
+          <p>Ocorrencias carregadas pela listagem operacional autorizada.</p>
+        </div>
+        <span>${escapeHtml(mapModeLabel)} - ${escapeHtml(String(filteredPoints.length))}/${escapeHtml(String(allPoints.length))} visiveis</span>
+      </div>
+      <div
+        class="internal-dashboard-real-map"
+        data-dashboard-map
+        data-dashboard-map-mode="${escapeHtml(filters.mapMode)}"
+        role="img"
+        aria-label="Mapa cartografico com ocorrencias recentes carregadas"
+      ></div>
+    </article>
+  `;
+}
+function renderDashboardPanel(state) {
+  const dashboard = state.dashboard || createDashboardState();
+
+  if (state.sessionState !== 'authenticated') {
+    return `
+      <section class="internal-module-workspace" aria-labelledby="dashboard-title">
+        <div class="internal-section-heading">
+          <h2 id="dashboard-title">Dashboard do Geoportal Interno</h2>
+          <p>Visao geral dos servicos internos conforme suas permissoes.</p>
+        </div>
+        <article class="internal-state-card">
+          <h3>Login interno necessario</h3>
+          <p>Entre para visualizar os modulos e widgets liberados ao seu perfil.</p>
+        </article>
+      </section>
+    `;
+  }
+
+  if (!canViewDashboardWidgets(state)) {
+    return `
+      <section class="internal-module-workspace" aria-labelledby="dashboard-title">
+        <div class="internal-section-heading">
+          <h2 id="dashboard-title">Dashboard do Geoportal Interno</h2>
+          <p>Visao geral dos servicos internos conforme suas permissoes.</p>
+        </div>
+        <article class="internal-state-card">
+          <h3>Sem widgets gerenciais liberados</h3>
+          <p>Voce possui acesso aos modulos operacionais liberados. Selecione um modulo na lateral para iniciar.</p>
+        </article>
+      </section>
+    `;
+  }
+
+  if (dashboard.status === 'loading') {
+    return `
+      <section class="internal-module-workspace" aria-labelledby="dashboard-title">
+        <div class="internal-section-heading">
+          <h2 id="dashboard-title">Dashboard do Geoportal Interno</h2>
+          <p>Carregando indicadores do Dashboard geral.</p>
+        </div>
+        <article class="internal-state-card">
+          <h3>Carregando dashboard</h3>
+          <p>Buscando agregados internos sanitizados.</p>
+        </article>
+      </section>
+    `;
+  }
+
+  if (dashboard.status === 'error') {
+    return `
+      <section class="internal-module-workspace" aria-labelledby="dashboard-title">
+        <div class="internal-section-heading">
+          <h2 id="dashboard-title">Dashboard do Geoportal Interno</h2>
+          <p>Visao geral dos servicos internos conforme suas permissoes.</p>
+        </div>
+        <article class="internal-state-card is-warning">
+          <h3>Dashboard indisponivel</h3>
+          <p>${escapeHtml(dashboard.message || 'Nao foi possivel carregar os widgets agora.')}</p>
+        </article>
+      </section>
+    `;
+  }
+
+  const resumo = dashboard.resumo || normalizeDashboardResumo({});
+  const ranking = dashboard.ranking || normalizeDashboardRanking({});
+  const series = dashboard.series || normalizeDashboardSeries({});
+  const filteredMapPoints = getFilteredDashboardMapPoints(state);
+
+  return `
+    <section class="internal-module-workspace internal-dashboard-workspace" aria-labelledby="dashboard-title">
+      <div class="internal-section-heading internal-dashboard-title-row">
+        <h2 id="dashboard-title">Dashboard do Geoportal Interno</h2>
+        <p>Indicadores autorizados por modulo.</p>
+      </div>
+
+      <div class="internal-dashboard-hero">
+        <div>
+          <span>Painel consolidado</span>
+          <h3>Indicadores autorizados por modulo</h3>
+        </div>
+        <strong>Iluminacao Publica na v1</strong>
+      </div>
+
+      <div class="internal-dashboard-kpi-grid">
+        ${renderDashboardMetricCard('Total', resumo.total, 'Chamados', 'T')}
+        ${renderDashboardMetricCard('Abertas', resumo.abertas, 'Aguardando acao', 'A')}
+        ${renderDashboardMetricCard('Em triagem', resumo.em_triagem, 'Analise', 'T')}
+        ${renderDashboardMetricCard('Em execucao', resumo.em_execucao, 'Campo', 'E')}
+        ${renderDashboardMetricCard('Encaminhadas', resumo.encaminhadas, 'Direcionadas', 'N')}
+        ${renderDashboardMetricCard('Finalizadas', resumo.finalizadas, 'Concluidas', 'F')}
+        ${renderDashboardMetricCard('Atrasadas', resumo.atrasadas, 'Acompanhar', '!')}
+        ${renderDashboardMetricCard('Tempo medio', formatDashboardSeconds(resumo.tempo_medio_resolucao_segundos), 'Resolucao', 'M')}
+      </div>
+
+      <div class="internal-dashboard-territory-grid">
+        ${renderDashboardTerritorialPanel(state)}
+        <aside class="internal-dashboard-side-card" aria-label="Filtros e legenda do Dashboard">
+          <div class="internal-dashboard-widget-heading">
+            <div>
+              <h3>Filtros e legenda</h3>
+              <p>Recorte local sobre as ocorrencias carregadas.</p>
+            </div>
+            <span>Read-only</span>
+          </div>
+          ${renderDashboardFilters(state)}
+          ${renderDashboardStatusLegend(filteredMapPoints)}
+          ${renderDashboardPrioritySummary(filteredMapPoints)}
+        </aside>
+      </div>
+
+      <div class="internal-dashboard-widget-grid">
+        ${renderDashboardBars('Chamados por status', resumo.por_status, formatStatusLabel)}
+        ${renderDashboardBars('Chamados por prioridade', resumo.por_prioridade, formatPriorityLabel)}
+        ${renderDashboardBars('Chamados por tipo', resumo.por_tipo, formatProblemTypeLabel)}
+        ${renderDashboardRanking('Ranking de postes', ranking.top_postes, 'Nenhum poste agregado no recorte atual.')}
+        ${renderDashboardRanking('Bairros/regioes', ranking.top_bairros, 'Bairros/regioes ainda nao disponiveis no cadastro atual.')}
+        ${renderDashboardSeries(series)}
+      </div>
+    </section>
+  `;
 }
 
 function getRelatorioValidationMessage(relatorioState) {
@@ -3411,6 +4060,201 @@ function getOperationalMapStatusColor(statusKey) {
   return operationalMapStatusColors[statusKey] || '#2563eb';
 }
 
+function disposeDashboardMap() {
+  if (dashboardMap) {
+    dashboardMap.setTarget(undefined);
+    dashboardMap = null;
+  }
+}
+
+function getDashboardPriorityVisual(priorityKey) {
+  const priority = safeText(priorityKey, '').toLowerCase();
+
+  if (priority === 'urgente') {
+    return {
+      radiusDelta: 4,
+      strokeWidth: 4,
+      haloRadius: 20,
+      haloColor: 'rgba(200, 70, 60, 0.28)',
+      heatmapWeight: 1
+    };
+  }
+
+  if (priority === 'alta') {
+    return {
+      radiusDelta: 2,
+      strokeWidth: 4,
+      haloRadius: 17,
+      haloColor: 'rgba(217, 80, 69, 0.18)',
+      heatmapWeight: 0.82
+    };
+  }
+
+  if (priority === 'baixa') {
+    return {
+      radiusDelta: -1,
+      strokeWidth: 2,
+      haloRadius: 0,
+      haloColor: 'rgba(47, 125, 149, 0)',
+      heatmapWeight: 0.42
+    };
+  }
+
+  return {
+    radiusDelta: 0,
+    strokeWidth: 3,
+    haloRadius: 0,
+    haloColor: 'rgba(47, 125, 149, 0)',
+    heatmapWeight: 0.62
+  };
+}
+
+function getDashboardHeatmapWeight(item) {
+  return getDashboardPriorityVisual(item.prioridadeKey).heatmapWeight;
+}
+
+function getDashboardMapFeatureStyle(item) {
+  const markerColor = getOperationalMapStatusColor(item.statusKey);
+  const type = safeText(item.tipoProblemaKey || item.tipoProblema, '').toLowerCase();
+  const priorityVisual = getDashboardPriorityVisual(item.prioridadeKey);
+  const baseRadius = type.includes('poste') ? 9 : 10;
+  const markerRadius = Math.max(7, baseRadius + priorityVisual.radiusDelta);
+  const baseStyle = {
+    fill: new Fill({ color: markerColor }),
+    stroke: new Stroke({ color: '#ffffff', width: priorityVisual.strokeWidth })
+  };
+  const styles = [];
+
+  if (priorityVisual.haloRadius > 0) {
+    styles.push(new Style({
+      image: new CircleStyle({
+        radius: priorityVisual.haloRadius,
+        fill: new Fill({ color: priorityVisual.haloColor }),
+        stroke: new Stroke({ color: priorityVisual.haloColor, width: 1 })
+      })
+    }));
+  }
+
+  if (type.includes('piscando')) {
+    styles.push(new Style({
+      image: new RegularShape({
+        ...baseStyle,
+        points: 4,
+        radius: markerRadius,
+        angle: Math.PI / 4
+      })
+    }));
+    return styles;
+  }
+
+  if (type.includes('poste')) {
+    styles.push(new Style({
+      image: new RegularShape({
+        ...baseStyle,
+        points: 4,
+        radius: markerRadius,
+        angle: Math.PI / 4
+      })
+    }));
+    return styles;
+  }
+
+  if (type.includes('fotocelula') || type.includes('rele')) {
+    styles.push(new Style({
+      image: new RegularShape({
+        ...baseStyle,
+        points: 6,
+        radius: markerRadius
+      })
+    }));
+    return styles;
+  }
+
+  styles.push(new Style({
+    image: new CircleStyle({
+      radius: markerRadius,
+      ...baseStyle
+    })
+  }));
+  return styles;
+}
+function renderDashboardMapIntoTarget(target, points, mapMode = 'points') {
+  const features = points.map((item) => {
+    const feature = new Feature({
+      geometry: new Point(fromLonLat([item.coordinates.longitude, item.coordinates.latitude]))
+    });
+    feature.set('weight', getDashboardHeatmapWeight(item));
+    feature.setStyle(getDashboardMapFeatureStyle(item));
+    return feature;
+  });
+  const centers = features.map((feature) => feature.getGeometry().getCoordinates());
+  const center = centers.reduce((accumulator, coordinate) => [
+    accumulator[0] + coordinate[0],
+    accumulator[1] + coordinate[1]
+  ], [0, 0]).map((value) => value / centers.length);
+  const extent = centers.reduce((accumulator, coordinate) => [
+    Math.min(accumulator[0], coordinate[0]),
+    Math.min(accumulator[1], coordinate[1]),
+    Math.max(accumulator[2], coordinate[0]),
+    Math.max(accumulator[3], coordinate[1])
+  ], [Infinity, Infinity, -Infinity, -Infinity]);
+  const vectorSource = new VectorSource({ features });
+  const occurrenceLayer = mapMode === 'heatmap'
+    ? new HeatmapLayer({
+      source: vectorSource,
+      blur: 18,
+      radius: 14,
+      weight: 'weight'
+    })
+    : new VectorLayer({
+      source: vectorSource
+    });
+
+  dashboardMap = new Map({
+    target,
+    layers: [
+      new TileLayer({
+        source: new OSM()
+      }),
+      occurrenceLayer
+    ],
+    view: new View({
+      center,
+      zoom: OPERATIONAL_MAP_ZOOM - 1
+    }),
+    controls: []
+  });
+
+  if (features.length > 1) {
+    dashboardMap.getView().fit(extent, {
+      padding: [36, 36, 36, 36],
+      maxZoom: OPERATIONAL_MAP_ZOOM + 1
+    });
+  }
+
+  window.requestAnimationFrame(() => {
+    if (dashboardMap) {
+      dashboardMap.updateSize();
+    }
+  });
+}
+function syncDashboardMap(root, state) {
+  const target = root.querySelector('[data-dashboard-map]');
+  const points = getFilteredDashboardMapPoints(state);
+  const filters = getDashboardFilters(state);
+
+  disposeDashboardMap();
+
+  if (!target || points.length === 0) {
+    return;
+  }
+
+  try {
+    renderDashboardMapIntoTarget(target, points, filters.mapMode);
+  } catch {
+    target.innerHTML = '<p class="internal-map-fallback">Mapa indisponivel neste navegador.</p>';
+  }
+}
 function renderOperationalMapIntoTarget(target, item) {
   const center = fromLonLat([item.coordinates.longitude, item.coordinates.latitude]);
   const marker = new Feature({
@@ -3474,12 +4318,27 @@ function syncOperationalDetailMap(root, state) {
   }
 }
 
+function renderNoAvailableModulePanel() {
+  return `
+    <section class="internal-module-workspace" aria-labelledby="module-workspace-title">
+      <div class="internal-section-heading">
+        <h2 id="module-workspace-title">Nenhum modulo disponivel</h2>
+        <p>Seu perfil interno nao possui um modulo operacional liberado nesta versao.</p>
+      </div>
+      <div class="internal-empty-state">
+        <strong>Acesso restrito</strong>
+        <p>Solicite a revisao das permissoes internas caso precise operar algum modulo.</p>
+      </div>
+    </section>
+  `;
+}
+
 function renderInternalIluminacaoShell(root, state) {
   const stateInfo = SESSION_STATES[state.sessionState] || SESSION_STATES.technical_error;
   const maintenanceMode = isMaintenanceLikeUser(state.permissions || []);
 
   root.innerHTML = `
-    <main class="internal-page${maintenanceMode ? ' is-maintenance-mode' : ''}" aria-labelledby="internal-page-title">
+    <main class="internal-page${maintenanceMode ? ' is-maintenance-mode' : ''}${state.activeModule === 'dashboard' ? ' is-dashboard-mode' : ''}${state.activeModule === 'iluminacao' ? ' is-iluminacao-mode' : ''}" aria-labelledby="internal-page-title">
       <header class="internal-topbar">
         <div>
           <p class="internal-kicker">Homologação / Integração de sessão</p>
@@ -3514,7 +4373,7 @@ function renderInternalIluminacaoShell(root, state) {
         </aside>
 
         <section class="internal-content" aria-label="Conteúdo do módulo ativo">
-          ${maintenanceMode
+          ${currentState.activeModule !== 'iluminacao' || maintenanceMode
             ? ''
             : `
               <section class="internal-summary" aria-labelledby="summary-title">
@@ -3528,6 +4387,10 @@ function renderInternalIluminacaoShell(root, state) {
               </section>
             `}
 
+          ${currentState.activeModule === 'dashboard'
+    ? renderDashboardPanel(currentState)
+    : currentState.activeModule === 'iluminacao'
+      ? `
           <section class="internal-module-workspace" aria-labelledby="module-workspace-title">
             <div class="internal-section-heading">
               <h2 id="module-workspace-title">Solicitações de Iluminação</h2>
@@ -3549,6 +4412,8 @@ function renderInternalIluminacaoShell(root, state) {
               </div>
             </div>
           </section>
+    `
+      : renderNoAvailableModulePanel()}
         </section>
       </div>
 
@@ -3559,6 +4424,7 @@ function renderInternalIluminacaoShell(root, state) {
   `;
 
   syncOperationalDetailMap(root, state);
+  syncDashboardMap(root, state);
 }
 
 async function fetchCurrentSession() {
@@ -3698,6 +4564,102 @@ async function fetchLogoutInternalSession() {
     loggedOut: false,
     statusCode: response.status,
     message: 'Não foi possível encerrar a sessão agora.'
+  };
+}
+
+function dashboardErrorMessage(statusCode) {
+  if (statusCode === 401) {
+    return 'Sessao expirada. Faca login novamente para ver o dashboard.';
+  }
+
+  if (statusCode === 403) {
+    return 'Voce nao tem permissao para visualizar indicadores gerenciais deste modulo.';
+  }
+
+  if (statusCode === 404) {
+    return 'Dashboard indisponivel nesta versao da API interna.';
+  }
+
+  if (statusCode === 422) {
+    return 'Parametros invalidos para o dashboard.';
+  }
+
+  if (statusCode === 503) {
+    return 'Servico temporariamente indisponivel para carregar o dashboard.';
+  }
+
+  return 'Nao foi possivel carregar o dashboard agora.';
+}
+
+async function fetchDashboardJson(endpoint, normalizer) {
+  const response = await fetch(endpoint, {
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json'
+    }
+  });
+
+  if (response.status === 401) {
+    return {
+      status: 'unauthenticated',
+      statusCode: response.status,
+      message: dashboardErrorMessage(response.status)
+    };
+  }
+
+  if (!response.ok) {
+    return {
+      status: 'error',
+      statusCode: response.status,
+      message: dashboardErrorMessage(response.status)
+    };
+  }
+
+  const payload = await response.json();
+
+  return {
+    status: 'ready',
+    statusCode: response.status,
+    data: normalizer(payload)
+  };
+}
+
+async function fetchDashboardGeralWidgets() {
+  const resumo = await fetchDashboardJson(
+    INTERNAL_DASHBOARD_RESUMO_ENDPOINT,
+    normalizeDashboardResumo
+  );
+
+  if (resumo.status !== 'ready') {
+    return resumo;
+  }
+
+  const ranking = await fetchDashboardJson(
+    INTERNAL_DASHBOARD_RANKING_ENDPOINT,
+    normalizeDashboardRanking
+  );
+
+  if (ranking.status !== 'ready') {
+    return ranking;
+  }
+
+  const series = await fetchDashboardJson(
+    INTERNAL_DASHBOARD_SERIES_SEMANAL_ENDPOINT,
+    normalizeDashboardSeries
+  );
+
+  if (series.status !== 'ready') {
+    return series;
+  }
+
+  return {
+    status: 'ready',
+    statusCode: 200,
+    resumo: resumo.data,
+    ranking: ranking.data,
+    series: series.data,
+    message: 'Dashboard carregado.'
   };
 }
 
@@ -6254,6 +7216,28 @@ function syncRelatorioForm(root, state, form) {
   });
 }
 
+function readDashboardFilterFormState(form, currentDashboard = createDashboardState()) {
+  const formData = new FormData(form);
+
+  return createDashboardState({
+    ...currentDashboard,
+    filters: {
+      source: safeText(formData.get('source'), 'all') || 'all',
+      status: safeText(formData.get('status'), 'all') || 'all',
+      prioridade: safeText(formData.get('prioridade'), 'all') || 'all',
+      tipo: safeText(formData.get('tipo'), 'all') || 'all',
+      mapMode: safeText(formData.get('mapMode'), 'points') || 'points'
+    }
+  });
+}
+
+function syncDashboardFilterForm(root, state, form) {
+  renderApp(root, {
+    ...state,
+    dashboard: readDashboardFilterFormState(form, state.dashboard || createDashboardState())
+  });
+}
+
 function shouldSyncRelatorioFormOnInput(target) {
   return Boolean(
     target
@@ -6263,6 +7247,17 @@ function shouldSyncRelatorioFormOnInput(target) {
       && target.form.matches('[data-relatorio-form]')
       && target.type !== 'date'
   );
+}
+
+function getInternalActionTarget(target) {
+  if (!target || typeof target.closest !== 'function') {
+    return null;
+  }
+
+  const actionTarget = target.closest('[data-action]');
+  return actionTarget && typeof actionTarget.matches === 'function'
+    ? actionTarget
+    : null;
 }
 
 function downloadRelatorioBlob(blob, filename) {
@@ -6409,16 +7404,165 @@ async function submitRelatorio(root, state, form, action) {
   }
 }
 
+async function loadDashboard(root, state) {
+  const baseState = {
+    ...state,
+    activeModule: 'dashboard'
+  };
+
+  if (!canViewDashboardWidgets(baseState)) {
+    renderApp(root, {
+      ...baseState,
+      dashboard: createDashboardState({
+        status: 'idle',
+        message: 'Sem widgets gerenciais liberados para este perfil.'
+      })
+    });
+    return;
+  }
+
+  renderApp(root, {
+    ...baseState,
+    dashboard: createDashboardState({
+      status: 'loading',
+      message: 'Carregando indicadores do Dashboard geral.'
+    })
+  });
+
+  try {
+    const result = await fetchDashboardGeralWidgets();
+
+    if (result.status === 'unauthenticated') {
+      renderApp(root, createSessionState({
+        sessionState: 'unauthenticated',
+        statusCode: result.statusCode,
+        message: result.message,
+        hasChecked: true
+      }));
+      return;
+    }
+
+    if (result.status !== 'ready') {
+      renderApp(root, {
+        ...baseState,
+        dashboard: createDashboardState({
+          status: 'error',
+          statusCode: result.statusCode,
+          message: result.message
+        })
+      });
+      return;
+    }
+
+    let dashboardSolicitacoes = baseState.solicitacoes || createSolicitacoesState();
+
+    if (canListSolicitacoes(baseState)) {
+      try {
+        const solicitacoesResult = await fetchSolicitacoesInternas(
+          0,
+          getSolicitacoesListOptions(baseState)
+        );
+
+        if (solicitacoesResult.status === 'unauthenticated') {
+          renderApp(root, createSessionState({
+            sessionState: 'unauthenticated',
+            statusCode: 401,
+            message: 'Sessao expirada ao carregar o mapa territorial. Faca login novamente.',
+            hasChecked: true,
+            solicitacoes: solicitacoesResult
+          }));
+          return;
+        }
+
+        dashboardSolicitacoes = solicitacoesResult;
+      } catch {
+        dashboardSolicitacoes = createSolicitacoesState({
+          status: 'error',
+          message: 'Mapa territorial indisponivel temporariamente.'
+        });
+      }
+    }
+
+    renderApp(root, {
+      ...baseState,
+      solicitacoes: dashboardSolicitacoes,
+      dashboard: createDashboardState({
+        status: 'ready',
+        statusCode: result.statusCode,
+        message: result.message,
+        resumo: result.resumo,
+        ranking: result.ranking,
+        series: result.series
+      })
+    });
+  } catch {
+    renderApp(root, {
+      ...baseState,
+      dashboard: createDashboardState({
+        status: 'error',
+        message: 'Falha temporaria de conexao ao carregar o dashboard.'
+      })
+    });
+  }
+}
+
+async function selectModule(root, state, moduleKey) {
+  if (moduleKey === 'dashboard') {
+    if (canViewDashboardWidgets(state)) {
+      await loadDashboard(root, state);
+      return;
+    }
+
+    renderApp(root, {
+      ...state,
+      activeModule: resolveInitialActiveModule(state)
+    });
+    return;
+  }
+
+  if (moduleKey === 'iluminacao') {
+    const nextState = {
+      ...state,
+      activeModule: 'iluminacao'
+    };
+
+    renderApp(root, nextState);
+
+    if (canListSolicitacoes(nextState)) {
+      await loadSolicitacoes(root, nextState, nextState.solicitacoes?.offset || 0);
+    }
+  }
+}
+
 async function verifySession(root) {
   renderApp(root, initialSessionState);
 
   try {
     const nextState = await fetchCurrentSession();
-    renderApp(root, nextState);
+    if (nextState.sessionState === 'authenticated') {
+      const initialModule = resolveInitialActiveModule(nextState);
 
-    if (canListSolicitacoes(nextState)) {
-      await loadSolicitacoes(root, nextState, 0);
+      if (initialModule === 'dashboard') {
+        await loadDashboard(root, nextState);
+        return;
+      }
+
+      if (initialModule === 'iluminacao') {
+        await selectModule(root, {
+          ...nextState,
+          activeModule: 'iluminacao'
+        }, 'iluminacao');
+        return;
+      }
+
+      renderApp(root, {
+        ...nextState,
+        activeModule: initialModule
+      });
+      return;
     }
+
+    renderApp(root, nextState);
   } catch {
     renderApp(root, createSessionState({
       sessionState: 'technical_error',
@@ -6520,12 +7664,7 @@ async function submitLogin(root, form) {
       const confirmedState = await fetchCurrentSession();
 
       if (confirmedState.sessionState === 'authenticated') {
-        renderApp(root, confirmedState);
-
-        if (canListSolicitacoes(confirmedState)) {
-          await loadSolicitacoes(root, confirmedState, 0);
-        }
-
+        await loadDashboard(root, confirmedState);
         return;
       }
 
@@ -6612,7 +7751,7 @@ if (root) {
   verifySession(root);
 
   root.addEventListener('click', (event) => {
-    const target = event.target;
+    const target = getInternalActionTarget(event.target);
 
     if (
       target instanceof HTMLElement
@@ -6627,6 +7766,14 @@ if (root) {
       && target.matches('[data-action="logout"]')
     ) {
       logoutInternalSession(root, currentState);
+      return;
+    }
+
+    if (
+      target instanceof HTMLElement
+      && target.matches('[data-action="select-module"]')
+    ) {
+      selectModule(root, currentState, target.dataset.moduleKey || '');
       return;
     }
 
@@ -6755,6 +7902,15 @@ if (root) {
       && target.form.matches('[data-relatorio-form]')
     ) {
       syncRelatorioForm(root, currentState, target.form);
+      return;
+    }
+
+    if (
+      target instanceof HTMLSelectElement
+      && target.form instanceof HTMLFormElement
+      && target.form.matches('[data-dashboard-filter-form]')
+    ) {
+      syncDashboardFilterForm(root, currentState, target.form);
       return;
     }
 

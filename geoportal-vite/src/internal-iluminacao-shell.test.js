@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -7,24 +9,29 @@ import {
   buildInternalWhatsappUrl,
   buildSolicitacoesUrl,
   buildUpdateSolicitacaoStatusCorrecaoUrl,
+  canViewDashboardWidgets,
   canViewRelatorio,
   canUpdatePrioridade,
   canCorrectStatus,
+  createDashboardState,
   createDetalheState,
   createSessionState,
   createRelatorioState,
+  fetchDashboardGeralWidgets,
   fetchRelatorioSolicitacoesCsv,
   fetchRelatorioSolicitacoesResumo,
   fetchSolicitacoesInternas,
   fetchUpdateSolicitacaoStatus,
   fetchUpdateSolicitacaoStatusCorrecao,
   fetchUpdateSolicitacaoPrioridade,
+  getInternalActionTarget,
   getPrioridadeFormValidationMessage,
   getRelatorioValidationMessage,
   getStatusCorrectionFormValidationMessage,
   isMaintenanceLikeUser,
   normalizeSolicitacaoCoordinate,
   renderCoordinateRouteSection,
+  renderDashboardPanel,
   renderModuleMenu,
   renderObservacoesPanel,
   renderRelatorioPanel,
@@ -33,7 +40,9 @@ import {
   renderSessionBox,
   renderSolicitacaoDetailLoaded,
   renderSolicitacoesPanel,
+  renderSummaryCards,
   renderStatusUpdatePanel,
+  resolveInitialActiveModule,
   scrollToSolicitacaoDetailSection,
   shouldSyncRelatorioFormOnInput
 } from './internal-iluminacao-shell.js';
@@ -43,6 +52,7 @@ const readPermission = 'iluminacao.solicitacoes.ler';
 const commentPermission = 'iluminacao.solicitacoes.comentar';
 const statusPermission = 'iluminacao.solicitacoes.atualizar_status';
 const statusCorrectionPermission = 'iluminacao.solicitacoes.corrigir_status';
+const dashboardPermission = 'iluminacao.dashboard.ler';
 const adminUsersReadPermission = 'admin.usuarios.ler';
 
 function authenticatedState(permissions = [], overrides = {}) {
@@ -54,7 +64,7 @@ function authenticatedState(permissions = [], overrides = {}) {
 }
 
 function adminState() {
-  return authenticatedState([readPermission, adminUsersReadPermission]);
+  return authenticatedState([readPermission, adminUsersReadPermission, dashboardPermission]);
 }
 
 function loadedDetail(overrides = {}) {
@@ -146,7 +156,6 @@ describe('internal auth me UX', () => {
     expect(html).not.toContain('Perfis:');
   });
 });
-
 describe('internal detail UX helpers', () => {
   it('rola ate a secao de detalhe quando ela estiver presente', () => {
     const scrollSpy = vi.fn();
@@ -432,6 +441,401 @@ describe('internal correcao administrativa de status', () => {
     fetchMock.mockResolvedValueOnce(jsonResponse(503, {}));
     await expect(fetchUpdateSolicitacaoStatusCorrecao(10, 'em_execucao', 'Justificativa'))
       .resolves.toMatchObject({ status: 'error', statusCode: 503 });
+  });
+});
+
+describe('internal dashboard geral', () => {
+  function dashboardResumoPayload(overrides = {}) {
+    return {
+      total: 7,
+      abertas: 5,
+      em_triagem: 0,
+      em_execucao: 1,
+      encaminhadas: 1,
+      finalizadas: 0,
+      urgentes: 0,
+      atrasadas: 6,
+      tempo_medio_resolucao_segundos: null,
+      por_status: {
+        aberta: 5,
+        em_execucao: 1,
+        encaminhada: 1
+      },
+      por_prioridade: {
+        normal: 7
+      },
+      por_tipo: {
+        lampada_apagada: 7
+      },
+      ...overrides
+    };
+  }
+
+  function dashboardRankingPayload(overrides = {}) {
+    return {
+      top_bairros: [],
+      top_postes: [
+        { chave: '3405', total: 2 },
+        { chave: '4067', total: 1 }
+      ],
+      ...overrides
+    };
+  }
+
+  function dashboardSeriesPayload(overrides = {}) {
+    return {
+      granularidade: 'semana',
+      pontos: [
+        {
+          periodo: '2026-06-01',
+          total: 3,
+          por_status: { aberta: 2, em_execucao: 1 }
+        }
+      ],
+      ...overrides
+    };
+  }
+
+  it('substitui Inicio por Dashboard no menu lateral para usuario gerencial', () => {
+    const html = renderModuleMenu(authenticatedState([readPermission, dashboardPermission]));
+
+    expect(html).toContain('Dashboard');
+    expect(html).toContain('data-action="select-module"');
+    expect(html).toContain('data-module-key="dashboard"');
+    expect(html).not.toContain('data-module-key="inicio"');
+  });
+
+  it('usa Dashboard como tela inicial somente com permissao gerencial', () => {
+    const state = createSessionState({
+      sessionState: 'authenticated',
+      permissions: [readPermission, dashboardPermission]
+    });
+
+    expect(resolveInitialActiveModule(state)).toBe('dashboard');
+    expect(renderDashboardPanel(state)).toContain('Dashboard do Geoportal Interno');
+  });
+
+  it('envia usuario operacional sem dashboard direto para Iluminacao Publica', () => {
+    const state = createSessionState({
+      sessionState: 'authenticated',
+      permissions: [readPermission, statusPermission, commentPermission]
+    });
+    const menu = renderModuleMenu(state);
+
+    expect(resolveInitialActiveModule(state)).toBe('iluminacao');
+    expect(menu).not.toContain('data-module-key="dashboard"');
+    expect(menu).not.toContain('Dashboard');
+    expect(menu).toContain('data-module-key="iluminacao"');
+    expect(menu).toContain('Ilumina');
+  });
+
+  it('mostra estado seguro quando nao ha dashboard nem modulo permitido', () => {
+    const state = createSessionState({
+      sessionState: 'authenticated',
+      permissions: []
+    });
+    const menu = renderModuleMenu(state);
+
+    expect(resolveInitialActiveModule(state)).toBe('none');
+    expect(menu).not.toContain('data-module-key="dashboard"');
+    expect(menu).toContain('data-module-key="iluminacao"');
+    expect(menu).toContain('disabled');
+  });
+
+  it('marca Dashboard e Iluminacao Publica como navegacao alternavel na lateral', () => {
+    const dashboardState = createSessionState({
+      sessionState: 'authenticated',
+      activeModule: 'dashboard',
+      permissions: [readPermission, dashboardPermission]
+    });
+    const iluminacaoState = createSessionState({
+      sessionState: 'authenticated',
+      activeModule: 'iluminacao',
+      permissions: [readPermission, dashboardPermission]
+    });
+    const dashboardMenu = renderModuleMenu(dashboardState);
+    const iluminacaoMenu = renderModuleMenu(iluminacaoState);
+
+    expect(dashboardMenu).toContain('data-module-key="dashboard"');
+    expect(dashboardMenu).toContain('aria-current="page"');
+    expect(iluminacaoMenu).toContain('data-module-key="iluminacao"');
+    expect(iluminacaoMenu).toContain('Ilumina');
+    expect(iluminacaoMenu).toContain('aria-current="page"');
+  });
+
+  it('resolve a navegacao quando o clique acontece no texto interno do botao', () => {
+    const moduleButton = {
+      matches: vi.fn((selector) => selector === '[data-action="select-module"]'),
+      dataset: { moduleKey: 'iluminacao' }
+    };
+    const nestedText = {
+      closest: vi.fn((selector) => (selector === '[data-action]' ? moduleButton : null))
+    };
+
+    expect(getInternalActionTarget(nestedText)).toBe(moduleButton);
+    expect(nestedText.closest).toHaveBeenCalledWith('[data-action]');
+  });
+
+  it('mostra widgets de Iluminacao somente com iluminacao.dashboard.ler', () => {
+    const withoutPermission = createSessionState({
+      sessionState: 'authenticated',
+      permissions: [readPermission],
+      dashboard: createDashboardState({ status: 'idle' })
+    });
+    const withPermission = createSessionState({
+      sessionState: 'authenticated',
+      permissions: [readPermission, dashboardPermission],
+      dashboard: createDashboardState({
+        status: 'ready',
+        resumo: dashboardResumoPayload(),
+        ranking: dashboardRankingPayload(),
+        series: dashboardSeriesPayload()
+      })
+    });
+
+    expect(canViewDashboardWidgets(withoutPermission)).toBe(false);
+    expect(renderDashboardPanel(withoutPermission)).toContain('Sem widgets gerenciais liberados');
+    expect(renderDashboardPanel(withoutPermission)).not.toContain('Widgets gerenciais');
+
+    expect(canViewDashboardWidgets(withPermission)).toBe(true);
+    expect(renderDashboardPanel(withPermission)).toContain('Painel consolidado');
+    expect(renderDashboardPanel(withPermission)).toContain('Iluminacao Publica');
+    expect(renderDashboardPanel(withPermission)).toContain('Filtros e legenda');
+    expect(renderDashboardPanel(withPermission)).not.toContain('Widgets gerenciais');
+    expect(renderDashboardPanel(withPermission)).toContain('Ranking de postes');
+  });
+
+  it('chama os tres endpoints de dashboard com credentials include', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(200, dashboardResumoPayload()))
+      .mockResolvedValueOnce(jsonResponse(200, dashboardRankingPayload()))
+      .mockResolvedValueOnce(jsonResponse(200, dashboardSeriesPayload()));
+
+    const result = await fetchDashboardGeralWidgets();
+
+    expect(result.status).toBe('ready');
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/internal/iluminacao/dashboard/resumo');
+    expect(fetchMock.mock.calls[1][0]).toBe('/api/internal/iluminacao/dashboard/ranking');
+    expect(fetchMock.mock.calls[2][0]).toBe('/api/internal/iluminacao/dashboard/series?granularidade=semana');
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({
+      method: 'GET',
+      credentials: 'include'
+    });
+  });
+
+  it('nao chama endpoints de dashboard para usuario sem permissao quando renderiza estado seguro', () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    const html = renderDashboardPanel(createSessionState({
+      sessionState: 'authenticated',
+      permissions: [readPermission]
+    }));
+
+    expect(html).toContain('Selecione um modulo na lateral');
+    expect(html).not.toContain('Ranking de postes');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('trata erro 403 e 503 dos widgets sem quebrar a shell', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(403, {}));
+    await expect(fetchDashboardGeralWidgets()).resolves.toMatchObject({
+      status: 'error',
+      statusCode: 403,
+      message: expect.stringContaining('permissao')
+    });
+
+    fetchMock.mockReset();
+    fetchMock.mockResolvedValueOnce(jsonResponse(503, {}));
+    await expect(fetchDashboardGeralWidgets()).resolves.toMatchObject({
+      status: 'error',
+      statusCode: 503,
+      message: expect.stringContaining('indisponivel')
+    });
+  });
+
+  it('renderiza KPIs compactos e mapa territorial real a partir da listagem carregada', () => {
+    const html = renderDashboardPanel(createSessionState({
+      sessionState: 'authenticated',
+      permissions: [readPermission, dashboardPermission],
+      solicitacoes: solicitacoesReadyState([readPermission, dashboardPermission]).solicitacoes,
+      dashboard: createDashboardState({
+        status: 'ready',
+        resumo: dashboardResumoPayload(),
+        ranking: dashboardRankingPayload(),
+        series: dashboardSeriesPayload()
+      })
+    }));
+
+    expect(html).toContain('internal-dashboard-kpi-grid');
+    expect(html).toContain('internal-dashboard-territory-grid');
+    expect(html).toContain('Mapa territorial dos servicos');
+    expect(html).toContain('Ocorrencias carregadas pela listagem operacional autorizada.');
+    expect(html).toContain('internal-dashboard-real-map');
+    expect(html).toContain('data-dashboard-map');
+    expect(html).toContain('Pontos - 1/1 visiveis');
+    expect(html).toContain('Modo do mapa');
+    expect(html).toContain('Troque aqui entre Pontos e Calor.');
+    expect(html).toContain('Pontos');
+    expect(html).toContain('Calor');
+    expect(html).toContain('data-dashboard-map-mode="points"');
+    expect(html).toContain('Prioridade altera tamanho, borda e halo dos pontos.');
+    expect(html).not.toContain('Fonte: listagem operacional autorizada, limitada ao recorte carregado.');
+    expect(html).not.toContain('internal-dashboard-map-surface');
+    expect(html).not.toContain('internal-dashboard-map-point');
+    expect(html).not.toContain('-23.105');
+    expect(html).not.toContain('-55.225');
+  });
+
+  it('aplica filtros locais de status prioridade tipo e fonte sobre o recorte carregado', () => {
+    const solicitacoes = {
+      status: 'ready',
+      items: [
+        listItem({
+          id: 10,
+          status: 'Aberta',
+          statusKey: 'aberta',
+          prioridadeKey: 'normal',
+          tipoProblemaKey: 'lampada_apagada',
+          coordinates: { latitude: -23.105, longitude: -55.225 }
+        }),
+        listItem({
+          id: 11,
+          protocolo: 'IP-2026-000010',
+          status: 'Resolvida',
+          statusKey: 'resolvida',
+          prioridade: 'Alta',
+          prioridadeKey: 'alta',
+          tipoProblema: 'Poste apagado',
+          tipoProblemaKey: 'poste_apagado',
+          coordinates: { latitude: -23.11, longitude: -55.23 }
+        })
+      ],
+      total: 2,
+      limit: 20,
+      offset: 0,
+      message: 'Solicitacoes carregadas.'
+    };
+
+    const html = renderDashboardPanel(createSessionState({
+      sessionState: 'authenticated',
+      permissions: [readPermission, dashboardPermission],
+      solicitacoes,
+      dashboard: createDashboardState({
+        status: 'ready',
+        filters: {
+          source: 'iluminacao',
+          status: 'aberta',
+          prioridade: 'normal',
+          tipo: 'lampada_apagada',
+          mapMode: 'heatmap'
+        },
+        resumo: dashboardResumoPayload(),
+        ranking: dashboardRankingPayload(),
+        series: dashboardSeriesPayload()
+      })
+    }));
+
+    expect(html).toContain('data-dashboard-filter-form');
+    expect(html).toContain('Todas as fontes');
+    expect(html).toContain('Iluminacao Publica');
+    expect(html).toContain('L\u00e2mpada apagada');
+    expect(html).toContain('poste apagado');
+    expect(html).toContain('Calor - 1/2 visiveis');
+    expect(html).toContain('data-dashboard-map-mode="heatmap"');
+    expect(html).toContain('Ocorrencias visiveis');
+    expect(html).toContain('<dd>1</dd>');
+    expect(html).toContain('Aberta');
+    expect(html).not.toContain('Fonte territorial');
+    expect(html).not.toContain('Privacidade');
+  });
+
+  it('mostra placeholder seguro quando nao ha pontos territoriais carregados', () => {
+    const html = renderDashboardPanel(createSessionState({
+      sessionState: 'authenticated',
+      permissions: [dashboardPermission],
+      solicitacoes: createSessionState().solicitacoes,
+      dashboard: createDashboardState({
+        status: 'ready',
+        resumo: dashboardResumoPayload(),
+        ranking: dashboardRankingPayload(),
+        series: dashboardSeriesPayload()
+      })
+    }));
+
+    expect(html).toContain('Mapa territorial sera habilitado quando houver solicitacoes recentes com coordenadas carregadas.');
+    expect(html).toContain('internal-dashboard-map-placeholder');
+  });
+
+  it('mostra mensagem controlada quando top_bairros vem vazio', () => {
+    const html = renderDashboardPanel(createSessionState({
+      sessionState: 'authenticated',
+      permissions: [dashboardPermission],
+      dashboard: createDashboardState({
+        status: 'ready',
+        resumo: dashboardResumoPayload(),
+        ranking: dashboardRankingPayload({ top_bairros: [] }),
+        series: dashboardSeriesPayload()
+      })
+    }));
+
+    expect(html).toContain('Bairros/regioes ainda nao disponiveis no cadastro atual.');
+    expect(html).not.toContain('nome_solicitante');
+    expect(html).not.toContain('contato_solicitante');
+    expect(html).not.toContain('observacao_resumida');
+  });
+
+  it('nao usa storage do navegador para sessao ou token nos widgets', () => {
+    expect(fetchDashboardGeralWidgets.toString()).not.toContain('localStorage');
+    expect(fetchDashboardGeralWidgets.toString()).not.toContain('sessionStorage');
+    expect(renderDashboardPanel.toString()).not.toContain('localStorage');
+    expect(renderDashboardPanel.toString()).not.toContain('sessionStorage');
+  });
+
+  it('mantem estrutura CSS responsiva principal do Dashboard', () => {
+    const css = readFileSync(new URL('./internal-iluminacao-shell.css', import.meta.url), 'utf8');
+
+    expect(css).toContain('.internal-page.is-dashboard-mode .internal-shell-layout');
+    expect(css).toContain('.internal-page.is-iluminacao-mode .internal-shell-layout');
+    expect(css).toContain('width: min(1760px, 100%)');
+    expect(css).toContain('grid-template-rows: auto minmax(430px, 1fr)');
+    expect(css).toContain('@media (max-width: 920px)');
+    expect(css).toContain('grid-template-columns: 1fr');
+    expect(css).toContain('@media (max-width: 760px)');
+    expect(css).toContain('grid-template-columns: repeat(2, minmax(0, 1fr))');
+    expect(css).toContain('@media (max-width: 420px)');
+  });
+
+  it('mantem modo calor com OpenLayers Heatmap e prioridade como peso visual', () => {
+    const source = readFileSync(new URL('./internal-iluminacao-shell.js', import.meta.url), 'utf8');
+
+    expect(source).toContain("import HeatmapLayer from 'ol/layer/Heatmap.js';");
+    expect(source).toContain("weight: 'weight'");
+    expect(source).toContain('getDashboardHeatmapWeight');
+    expect(source).toContain('haloRadius');
+    expect(source).not.toContain('/solicitacoes/${id}');
+  });
+
+  it('mantem Iluminacao Publica como modulo operacional com resumo contextual e lista', () => {
+    const state = solicitacoesReadyState([readPermission, dashboardPermission]);
+    const summaryHtml = renderSummaryCards(state);
+    const listHtml = renderSolicitacoesPanel(state);
+
+    expect(summaryHtml).toContain('Total retornado pela listagem');
+    expect(listHtml).toContain('Solicita');
+    expect(listHtml).toContain('IP-2026-000009');
+    expect(listHtml).toContain('Ver detalhe');
+    expect(renderDashboardPanel({
+      ...state,
+      dashboard: createDashboardState({
+        status: 'ready',
+        resumo: dashboardResumoPayload(),
+        ranking: dashboardRankingPayload(),
+        series: dashboardSeriesPayload()
+      })
+    })).not.toContain('Lista operacional');
   });
 });
 
@@ -837,16 +1241,18 @@ describe('internal modo manutencao', () => {
       authenticatedState([readPermission, statusPermission, commentPermission])
     );
     const adminMenu = renderModuleMenu(
-      authenticatedState([readPermission, 'admin.usuarios.ler'])
+      authenticatedState([readPermission, 'admin.usuarios.ler', dashboardPermission])
     );
 
-    expect(maintenanceMenu).toContain('Iluminação Pública');
-    expect(maintenanceMenu).not.toContain('Início');
+    expect(maintenanceMenu).toContain('Ilumina');
+    expect(maintenanceMenu).not.toContain('data-module-key="inicio"');
+    expect(maintenanceMenu).not.toContain('Dashboard');
     expect(maintenanceMenu).not.toContain('Planejado');
     expect(maintenanceMenu).not.toContain('Permitido');
     expect(maintenanceMenu).not.toContain('Restrito');
-    expect(adminMenu).toContain('Início');
-    expect(adminMenu).toContain('Administração do Sistema');
+    expect(adminMenu).toContain('Dashboard');
+    expect(adminMenu).not.toContain('Inicio');
+    expect(adminMenu).toContain('Administra');
     expect(adminMenu).toContain('Planejado');
   });
 
