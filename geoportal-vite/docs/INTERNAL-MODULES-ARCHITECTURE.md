@@ -90,7 +90,9 @@ Exemplos de resumo por modulo:
 
 Para administradores ou gestores gerais, o painel podera consolidar indicadores de todos os modulos permitidos. Para usuarios operacionais, o painel deve mostrar somente o modulo ou os modulos permitidos, sem expor dados ou acoes fora de sua funcao. Usuarios sem `iluminacao.dashboard.ler`, como o perfil `manutencao-iluminacao`, nao devem ver widgets gerenciais de Iluminacao Publica no Dashboard geral; devem continuar vendo apenas o fluxo operacional permitido.
 
-O modulo Iluminacao Publica continua sendo a area operacional: deve preservar resumo pequeno contextual, relatorio, lista, detalhe, historico, observacoes, alteracao normal de status, acoes administrativas restritas e rota/mapa operacional conforme permissao. O Dashboard geral nao substitui essa area operacional; ele apenas organiza a entrada do portal e, futuramente, pode consumir widgets autorizados dos modulos.
+O modulo Iluminacao Publica continua sendo a area operacional: deve preservar resumo pequeno contextual, relatorio, lista, detalhe, historico, observacoes, alteracao normal de status, acoes administrativas restritas e rota/mapa operacional conforme permissao. O Dashboard geral nao substitui essa area operacional; ele apenas organiza a entrada do portal e, na v1 implementada, consome os widgets gerenciais do modulo Iluminacao Publica sem criar endpoints gerais `/api/internal/dashboard/*`.
+
+Estado real 2026-06-23: o Dashboard geral ja foi implementado no frontend interno e publicado manualmente. A tela e acessada por usuarios com `iluminacao.dashboard.ler`, exibe KPIs compactos, ranking, serie semanal, filtros e um mapa gerencial v1 baseado na listagem operacional autorizada; usuarios sem essa permissao permanecem no fluxo operacional e nao veem os widgets gerenciais do dashboard.
 
 ## 3.3. Mapas Operacionais Internos
 

@@ -2,6 +2,8 @@
 
 Este documento registra o roteiro seguro para implantacao controlada da API de Iluminacao Publica em servidor, ativacao gradual do front-end e rollback. Ele nao contem host real, IP interno, usuario, senha, caminho local, `DATABASE_URL` real ou credenciais.
 
+Atualizacao documental 2026-06-23: a etapa de Dashboard geral interno foi publicada manualmente no frontend estatico, sem alterar backend funcional, banco, SQL, migration, Apache, NSSM, `.env`, dependencias ou restart de servico. A validacao visual foi feita apos build local, empacotamento em `.rar` e extracao em `C:\apps\geoportal_interno`.
+
 A revisao defensiva da API publica atual esta em `docs/PUBLIC-API-SECURITY-REVIEW.md` e deve orientar validacoes periodicas de CORS, rate limit, logs, consulta publica e minimizacao de dados.
 
 ## 1. Estado atual validado

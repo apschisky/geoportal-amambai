@@ -438,14 +438,13 @@ O retorno `401` ao tentar acessar `/api/internal/auth/me` sem sessão é o compo
 - ✅ Endpoint interno acessível (401 esperado)
 - ✅ Porta 8002 continua não-exposta
 
-**Escopo Não Executado Nesta Etapa (Planejado para Futuro):**
+**Estado da etapa de Dashboard geral interno (commit `e5a488e`):**
 
-- ❌ Nenhum endpoint de login real foi criado
-- ❌ Nenhuma sessão autenticada foi testada
-- ❌ Nenhum GET para listagem de solicitações foi validado
-- ❌ Nenhuma rota mutável (POST/PATCH) foi tocada
-- ❌ Nenhum dashboard, mapa ou painel interno foi criado
-- ❌ Nenhum usuário, perfil, permissão ou role foi criado/alterado
+- ✅ O frontend interno `/interno/` passou a exibir um Dashboard geral implementado para usuarios com `iluminacao.dashboard.ler`.
+- ✅ A tela consome os endpoints de modulo `GET /api/internal/iluminacao/dashboard/resumo`, `GET /api/internal/iluminacao/dashboard/ranking` e `GET /api/internal/iluminacao/dashboard/series?granularidade=semana`.
+- ✅ O mapa gerencial v1 usa a listagem operacional autorizada ja carregada em memoria, com pontos/heatmap e limites de v1.
+- ✅ A publicação manual foi feita por build Vite, empacotamento em `.rar` e extracao em `C:\apps\geoportal_interno`.
+- ✅ Nao houve alteracao de backend funcional, banco, SQL, migration, Apache, NSSM, `.env`, dependencias, restart de backend ou deploy automatizado nesta etapa documental.
 
 **Próximos Passos Recomendados:**
 

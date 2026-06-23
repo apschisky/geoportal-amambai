@@ -4,6 +4,14 @@
 
 Este documento orienta a reuniao com o setor responsavel por Iluminacao Publica / Manutencao de Postes.
 
+### 1.1. Validacao atual do Dashboard geral interno (2026-06-23)
+
+- O frontend interno `/interno/` foi validado localmente com `npm.cmd test -- --run src/internal-iluminacao-shell.test.js` e `60 passed`.
+- A suite completa do frontend foi validada com `npm.cmd test -- --run` e `147 passed`.
+- O build Vite local foi validado com `npm.cmd run build` e retornou `OK` com `262 modulos transformados`.
+- A publicacao manual foi feita por build + `.rar` + extracao em `C:\apps\geoportal_interno`, sem alterar backend, banco, SQL, migration ou servico.
+- A diferenciação de permissao foi preservada: usuarios com `iluminacao.dashboard.ler` veem o Dashboard geral; usuarios sem essa permissao permanecem no fluxo operacional de Iluminacao Publica.
+
 O objetivo e validar o fluxo operacional real antes de criar banco, API, painel interno ou regras de permissao. A validacao evita que o Geoportal implemente protocolo, status, campos ou telas com regras diferentes da rotina do setor.
 
 Situacao: houve preenchimento inicial do fluxo em documento auxiliar `.docx`. As decisoes abaixo sao preliminares e devem ser confirmadas antes de qualquer implementacao, SQL, API ou mudanca no Geoportal publico.

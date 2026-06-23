@@ -4,6 +4,8 @@ Este documento detalha os endpoints conceituais da futura API/FastAPI para o mod
 
 Nota de interpretacao documental: os endpoints `GET /api/internal/iluminacao/dashboard/*` sao contratos do modulo Iluminacao Publica para agregados read-only e widgets gerenciais. Eles nao representam, por si mesmos, uma tela exclusiva de dashboard do modulo nem substituem o dashboard geral futuro do portal interno.
 
+Atualizacao documental 2026-06-23: o frontend interno `/interno/` ja implementa o Dashboard geral usando esses endpoints para widgets de Iluminacao Publica. Na v1, nao foi criado nenhum endpoint geral `/api/internal/dashboard/*`; a tela geral continua sendo uma consolidaçao do portal que usa os agregados de modulo ja existentes.
+
 ## 1. Objetivo
 
 Planejar os endpoints publicos e internos do modulo piloto de Iluminacao Publica, incluindo payloads conceituais, validacoes, permissoes, auditoria, erros e integracao com Geoportal publico e painel interno.

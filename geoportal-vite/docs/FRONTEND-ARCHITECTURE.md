@@ -8,6 +8,10 @@ O front-end do Geoportal e uma aplicacao modular baseada em Vite, OpenLayers e J
 
 As camadas principais sao exibidas por WMS. Consultas de atributos e selecao espacial usam GetFeatureInfo e WFS, conforme o fluxo: clique no mapa, busca textual, farmacias de plantao, postes e imoveis rurais. O front-end tambem integra servicos externos como Google Maps, WhatsApp e Google Forms.
 
+## 1.1. Shell interna e Dashboard geral
+
+O frontend interno da rota `/interno/` passa a ser gerenciado por [geoportal-vite/src/internal-iluminacao-shell.js](geoportal-vite/src/internal-iluminacao-shell.js) e pelo CSS associado. Na implementacao real, a shell monta a entrada interna do Geoportal, controla sessao e permissoes, preserva o fluxo operacional de Iluminacao Publica e exibe um Dashboard geral para usuarios com `iluminacao.dashboard.ler` com KPIs compactos, ranking, serie semanal, filtros e mapa gerencial v1. O mapa usa a listagem operacional autorizada ja carregada em memoria e os widgets consomem os endpoints existentes de dashboard do modulo Iluminacao Publica; nao foram criados endpoints gerais `/api/internal/dashboard/*`.
+
 ## 2. Stack
 
 - Vite: empacotamento e build do front-end.
