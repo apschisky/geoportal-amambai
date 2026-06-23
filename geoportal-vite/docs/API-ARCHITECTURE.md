@@ -12,6 +12,19 @@ A revisao defensiva da API publica atual esta em `docs/PUBLIC-API-SECURITY-REVIE
 
 ## 2. Papel da API na arquitetura
 
+### 2.1 Etapa 0 — pré-requisito para administração interna
+
+A API interna pode expor leitura protegida e operações operacionais controladas, mas qualquer CRUD administrativo de usuários, perfis e permissões deve ser tratado como etapa posterior, com controles de segurança, auditoria e validação explícita. O estado atual de autenticação e autorização é suficiente para proteger o acesso interno inicial, mas ainda não habilita uma camada administrativa aberta.
+
+Os controles mínimos que ainda devem ser fechados antes do primeiro CRUD administrativo são:
+- rate limit de login por IP e por IP+login;
+- tratamento seguro do IP real atrás do Apache/proxy;
+- testes automatizados para bloqueio, revogação e acesso negado;
+- anti-elevação, proteção contra remoção do último administrador e auditoria administrativa;
+- separação forte entre permissões administrativas e permissões de negócio.
+
+Enquanto a Etapa 0 não estiver concluída e validada em homologação, a API interna deve permanecer sem tela administrativa aberta e sem endpoints mutáveis de administração.
+
 A API deve atuar como:
 
 - camada de regras de negocio;

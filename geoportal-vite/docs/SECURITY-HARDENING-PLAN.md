@@ -8,6 +8,26 @@ Definir criterios e acoes de endurecimento para reduzir riscos antes de ampliar 
 
 Antes de avançar em autenticação interna, consulte `docs/INTERNAL-AUTH-TECHNICAL-DECISIONS.md` para as decisões técnicas iniciais de hash, sessão, transporte e autorização.
 
+## 1.1 Etapa 0 — Segurança administrativa antes do CRUD
+
+Antes de abrir qualquer tela administrativa, endpoint de criação/alteração de usuário, perfil ou permissão, o projeto deve completar uma etapa preventiva de segurança chamada Etapa 0.
+
+Estado atual registrado:
+- O projeto já possui controles iniciais de autenticação interna com rotas internas sob feature flag, cookie HttpOnly/Secure/SameSite para navegador, revogação lógica de sessão no logout, respostas 401/403 genéricas e autorização por permissão em endpoints internos.
+- O estado atual não deve ser interpretado como “painel administrativo aberto” nem como “CRUD administrativo pronto”.
+
+Itens ainda pendentes antes do primeiro CRUD administrativo:
+- Rate limit de login por IP e por IP+login, com resposta genérica.
+- Tratamento seguro do IP real atrás do Apache/proxy, incluindo `X-Forwarded-For` e logs compatíveis.
+- Testes automatizados para tentativas excessivas, acesso negado, bloqueio de conta e revogação de sessão.
+- Regras explícitas de anti-elevação, proteção contra remover o último administrador e auditoria administrativa.
+- Política de permissões administrativas separada da autorização de negócio, sem bypass por login hardcoded.
+- Proteção de infraestrutura contra abuso volumétrico (DDoS/abuso de login); o FastAPI sozinho não resolve ataques de camada 3/4/7 em escala.
+
+Conclusão operacional:
+- A Etapa 0 é requisito documental e operacional antes do CRUD administrativo.
+- Enquanto ela não estiver concluída e validada em homologação, o projeto deve manter os fluxos administrativos fechados, sem tela administrativa pública e sem criação/alteração de usuários reais em produção.
+
 ## 2. Principios de seguranca
 
 - [ ] Seguranca em camadas: servidor, proxy, GeoServer, banco, API e front-end.

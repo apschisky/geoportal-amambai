@@ -13,7 +13,26 @@ Pontos importantes:
 - Estas decisões devem orientar implementação, testes, revisão de segurança e documentação.
 - O documento não implementa código, endpoints, telas, migrations, usuários reais, senhas reais, tokens reais ou acesso interno público.
 
-## 1.1 Status de implementação atual
+## 1.2 Etapa 0 — pré-requisito antes do CRUD administrativo
+
+A decisão técnica atual é não abrir CRUD administrativo de usuários, perfis ou permissões antes de fechar uma etapa preventiva de segurança. O estado existente é compatível com navegação interna e leitura protegida, mas não com uma administração aberta.
+
+O que já existe e deve permanecer como base:
+- Rotas internas sob feature flag e fail-closed.
+- Sessão opaca por cookie HttpOnly/Secure/SameSite, com revogação lógica.
+- Autorização por permissão em endpoints internos.
+- Respostas 401/403 genéricas e sem exposição de segredos.
+
+O que ainda falta antes do primeiro CRUD administrativo:
+- Rate limit de login por IP e por IP+login.
+- Tratamento seguro do IP real atrás do Apache/proxy.
+- Testes automatizados de bloqueio, revogação e acesso negado.
+- Anti-elevação, auditoria administrativa e proteção do último administrador.
+- Separação explícita entre permissões administrativas e permissões de negócio.
+
+Conclusão: a Etapa 0 é uma decisão técnica obrigatória antes de qualquer endpoint mutável administrativo.
+
+## 1.3 Status de implementação atual
 
 - Concluído e validado:
   - Schema `mod_auth` criado e validado.

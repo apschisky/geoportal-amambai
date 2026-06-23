@@ -10,6 +10,20 @@ O modelo conceitual transversal de dados de autenticacao/autorizacao esta em `do
 
 A decisao tecnica de autenticacao interna e autorizacao deve ser alinhada com `docs/INTERNAL-AUTH-TECHNICAL-DECISIONS.md` antes de implementar endpoints.
 
+## Etapa 0 — pré-requisito antes de qualquer CRUD administrativo
+
+Antes de abrir qualquer endpoint administrativo de usuários, perfis ou permissões, o projeto deve completar a Etapa 0 de segurança. O conjunto atual de autenticação e autorização já permite leitura protegida e fluir internas controladas, mas não substitui um processo de hardening antes de criar um painel administrativo.
+
+Pré-requisitos registrados:
+- Rate limit de login por IP e por IP+login.
+- Tratamento seguro de IP real por trás do Apache/proxy.
+- Testes automatizados para acesso negado, bloqueio e revogação de sessão.
+- Regras explícitas de anti-elevação e proteção contra remoção do último administrador.
+- Auditoria administrativa de criação, alteração, desativação e atribuição de perfis.
+- Separação entre permissões administrativas e permissões de negócio, sem bypass por login hardcoded.
+
+Até a Etapa 0 estar concluída e validada em homologação, a autorização administrativa deve permanecer fechada e sem tela de CRUD exposta.
+
 O plano tecnico das futuras migrations de `mod_auth` esta em `docs/INTERNAL-AUTH-MIGRATIONS-PLAN.md`.
 
 O plano de threat model, controles e validacao para a implementacao segura da autenticacao backend esta em `docs/INTERNAL-AUTH-SECURITY-IMPLEMENTATION-PLAN.md`.
