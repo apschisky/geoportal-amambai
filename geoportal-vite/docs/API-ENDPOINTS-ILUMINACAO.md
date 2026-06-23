@@ -2,9 +2,9 @@
 
 Este documento detalha os endpoints conceituais da futura API/FastAPI para o modulo de Iluminacao Publica / Manutencao de Postes. Ele nao implementa codigo, nao cria SQL e nao define rotas finais obrigatorias.
 
-Nota de interpretacao documental: os endpoints `GET /api/internal/iluminacao/dashboard/*` sao contratos do modulo Iluminacao Publica para agregados read-only e widgets gerenciais. Eles nao representam, por si mesmos, uma tela exclusiva de dashboard do modulo nem substituem o dashboard geral futuro do portal interno.
+Nota de interpretacao documental: os endpoints `GET /api/internal/iluminacao/dashboard/*` sao contratos do modulo Iluminacao Publica para agregados read-only e widgets gerenciais. Eles nao representam, por si mesmos, uma tela exclusiva de dashboard do modulo nem definem sozinhos a tela geral implementada do portal interno.
 
-Atualizacao documental 2026-06-23: o frontend interno `/interno/` ja implementa o Dashboard geral usando esses endpoints para widgets de Iluminacao Publica. Na v1, nao foi criado nenhum endpoint geral `/api/internal/dashboard/*`; a tela geral continua sendo uma consolidaçao do portal que usa os agregados de modulo ja existentes.
+Atualizacao documental 2026-06-23: o frontend interno `/interno/` ja implementa o Dashboard geral usando esses endpoints para widgets de Iluminacao Publica. Na v1, nao foi criado nenhum endpoint geral `/api/internal/dashboard/*`; a tela geral continua sendo uma consolidacao do portal que usa os agregados de modulo ja existentes, e esses endpoints continuam sendo de modulo.
 
 ## 1. Objetivo
 
