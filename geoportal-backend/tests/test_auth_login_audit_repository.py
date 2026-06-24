@@ -1,10 +1,13 @@
 from datetime import UTC, datetime
 from typing import Any
 
+import pytest
+
 from sqlalchemy.sql.elements import TextClause
 
 from app.repositories.auth_login_audit_repository import (
     count_recent_failed_attempts,
+    count_recent_failed_attempts_by_origin_scope,
     record_login_attempt,
 )
 
@@ -253,3 +256,38 @@ def test_count_recent_failed_attempts_supports_generic_window_without_filters() 
         "login_informado": None,
         "origem": None,
     }
+
+
+def test_count_recent_failed_attempts_by_origin_scope_uses_bound_prefix() -> None:
+    engine = FakeEngine({'failed_count': 4})
+    since = datetime(2026, 5, 26, 12, 0, tzinfo=UTC)
+
+    response = count_recent_failed_attempts_by_origin_scope(
+        since=since,
+        origem_scope='api_internal_auth_login',
+        login_informado=LOGIN_FICTICIO,
+        engine=engine,
+    )
+
+    sql = sql_for(engine)
+    params = params_for(engine)
+    assert response == 4
+    assert 'origem = :origem_scope' in sql
+    assert 'origem LIKE :origem_scope_prefix' in sql
+    assert 'SELECT *' not in sql.upper()
+    assert params == {
+        'since': since,
+        'login_informado': LOGIN_FICTICIO,
+        'origem_scope': 'api_internal_auth_login',
+        'origem_scope_prefix': 'api_internal_auth_login|%',
+    }
+    assert_sensitive_values_absent(sql, params)
+
+
+def test_count_recent_failed_attempts_by_origin_scope_rejects_blank_scope() -> None:
+    with pytest.raises(ValueError):
+        count_recent_failed_attempts_by_origin_scope(
+            since=datetime(2026, 5, 26, 12, 0, tzinfo=UTC),
+            origem_scope='   ',
+            engine=FakeEngine(),
+        )
