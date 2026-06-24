@@ -93,3 +93,43 @@ def count_recent_failed_attempts(
         row = connection.execute(statement, params).mappings().one()
 
     return int(row["failed_count"])
+
+
+def count_recent_failed_attempts_by_origin_scope(
+    since: datetime,
+    origem_scope: str,
+    login_informado: str | None = None,
+    engine: Engine | None = None,
+) -> int:
+    normalized_scope = _blank_to_none(origem_scope)
+    if normalized_scope is None:
+        raise ValueError('origem_scope must not be empty')
+
+    db_engine = engine or get_engine()
+    statement = text(
+        '''
+        SELECT count(*) AS failed_count
+        FROM mod_auth.login_auditoria
+        WHERE sucesso IS false
+          AND criado_em >= :since
+          AND (
+              CAST(:login_informado AS text) IS NULL
+              OR login_informado = CAST(:login_informado AS text)
+          )
+          AND (
+              origem = :origem_scope
+              OR origem LIKE :origem_scope_prefix
+          )
+        '''
+    )
+    params = {
+        'since': since,
+        'login_informado': _blank_to_none(login_informado),
+        'origem_scope': normalized_scope,
+        'origem_scope_prefix': f'{normalized_scope}|%',
+    }
+
+    with db_engine.begin() as connection:
+        row = connection.execute(statement, params).mappings().one()
+
+    return int(row['failed_count'])

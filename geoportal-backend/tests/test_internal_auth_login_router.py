@@ -7,6 +7,8 @@ from fastapi.testclient import TestClient
 
 from app.api.routes import internal_auth_login
 from app.api.routes import internal_auth_smoke
+from app.services import auth_service
+from app.services import auth_service
 from app.dependencies import auth_dependencies
 from app.dependencies.auth_dependencies import get_current_authenticated_session
 from app.dependencies.auth_dependencies import get_session_secret
@@ -96,6 +98,15 @@ def test_internal_login_success_returns_minimal_payload(
 
     def fake_authenticate_user(**kwargs: Any) -> AuthenticatedSession:
         calls.update(kwargs)
+        for key in (
+            'client_ip',
+            'rate_limit_enabled',
+            'rate_limit_max_attempts',
+            'rate_limit_ip_max_attempts',
+            'rate_limit_ip_login_max_attempts',
+            'rate_limit_window_minutes',
+        ):
+            calls.pop(key, None)
         return authenticated_session()
 
     monkeypatch.setattr(
@@ -373,3 +384,82 @@ def test_internal_login_router_configures_cookie_without_duplicate_auth_logic() 
     assert "token_hash" not in source
     assert "get_engine" not in source
     assert "delete(" not in source.lower()
+
+
+def test_internal_login_passes_resolved_ip_and_rate_limit_settings(
+    monkeypatch,
+) -> None:
+    calls: dict[str, Any] = {}
+    monkeypatch.setattr(
+        internal_auth_login,
+        'resolve_client_ip',
+        lambda request, trusted_proxy_hosts: '198.51.100.70',
+    )
+
+    def fake_authenticate_user(**kwargs: Any) -> AuthenticatedSession:
+        calls.update(kwargs)
+        return authenticated_session()
+
+    monkeypatch.setattr(
+        internal_auth_login.auth_service,
+        'authenticate_user',
+        fake_authenticate_user,
+    )
+    client = TestClient(build_isolated_app())
+
+    response = client.post(
+        LOGIN_PATH,
+        json={'login': TEST_LOGIN, 'senha': TEST_PASSWORD},
+    )
+
+    assert response.status_code == 200
+    assert calls['client_ip'] == '198.51.100.70'
+    assert calls['rate_limit_enabled'] is True
+    assert calls['rate_limit_max_attempts'] == 5
+    assert calls['rate_limit_ip_max_attempts'] == 20
+    assert calls['rate_limit_ip_login_max_attempts'] == 5
+    assert calls['rate_limit_window_minutes'] == 15
+
+
+def test_internal_login_rate_limit_returns_generic_429(monkeypatch) -> None:
+    monkeypatch.setattr(
+        internal_auth_login.auth_service,
+        'authenticate_user',
+        lambda **kwargs: (_ for _ in ()).throw(
+            auth_service.LoginRateLimitExceeded()
+        ),
+    )
+    client = TestClient(build_isolated_app())
+
+    response = client.post(
+        LOGIN_PATH,
+        json={'login': TEST_LOGIN, 'senha': 'credencial-invalida'},
+    )
+
+    assert response.status_code == 429
+    assert response.json() == {'detail': 'Too many authentication attempts'}
+    assert TEST_LOGIN not in response.text
+
+
+def test_internal_login_passes_disabled_rate_limit_setting(monkeypatch) -> None:
+    calls: dict[str, Any] = {}
+    monkeypatch.setattr(internal_auth_login.settings, 'rate_limit_enabled', False)
+
+    def fake_authenticate_user(**kwargs: Any) -> AuthenticatedSession:
+        calls.update(kwargs)
+        return authenticated_session()
+
+    monkeypatch.setattr(
+        internal_auth_login.auth_service,
+        'authenticate_user',
+        fake_authenticate_user,
+    )
+    client = TestClient(build_isolated_app())
+
+    response = client.post(
+        LOGIN_PATH,
+        json={'login': TEST_LOGIN, 'senha': TEST_PASSWORD},
+    )
+
+    assert response.status_code == 200
+    assert calls['rate_limit_enabled'] is False

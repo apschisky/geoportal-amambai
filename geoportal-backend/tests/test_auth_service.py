@@ -79,6 +79,19 @@ def patch_successful_dependencies(
         calls["count_engine"] = engine
         return failed_attempts
 
+    def fake_count_recent_failed_attempts_by_origin_scope(
+        since: datetime,
+        origem_scope: str,
+        login_informado: str | None = None,
+        engine: object = None,
+    ) -> int:
+        calls['count_failed'] += 1
+        calls['count_since'] = since
+        calls['count_origem'] = origem_scope
+        calls['count_login_informado'] = login_informado
+        calls['count_engine'] = engine
+        return failed_attempts
+
     def fake_evaluate_login_rate_limit(
         failed_attempts: int,
         max_attempts: int,
@@ -169,6 +182,11 @@ def patch_successful_dependencies(
         auth_service,
         "count_recent_failed_attempts",
         fake_count_recent_failed_attempts,
+    )
+    monkeypatch.setattr(
+        auth_service,
+        'count_recent_failed_attempts_by_origin_scope',
+        fake_count_recent_failed_attempts_by_origin_scope,
     )
     monkeypatch.setattr(
         auth_service,
@@ -515,17 +533,17 @@ def test_authenticate_user_rate_limit_block_returns_generic_failure(
 ) -> None:
     calls = patch_successful_dependencies(monkeypatch, failed_attempts=5)
 
-    response = auth_service.authenticate_user(
-        login_informado=TEST_LOGIN,
-        password=TEST_PASSWORD,
-        session_secret=TEST_SECRET,
-        origem=TEST_ORIGEM,
-        now=NOW,
-        rate_limit_max_attempts=5,
-        rate_limit_window_minutes=15,
-    )
+    with pytest.raises(auth_service.LoginRateLimitExceeded):
+        auth_service.authenticate_user(
+            login_informado=TEST_LOGIN,
+            password=TEST_PASSWORD,
+            session_secret=TEST_SECRET,
+            origem=TEST_ORIGEM,
+            now=NOW,
+            rate_limit_max_attempts=5,
+            rate_limit_window_minutes=15,
+        )
 
-    assert response is None
     assert calls["count_failed"] == 1
     assert calls["rate_limit"] == 1
     assert calls["get_user"] == 0
@@ -630,3 +648,165 @@ def test_authenticate_user_audit_never_receives_sensitive_values(
     assert TEST_TOKEN not in audit_values
     assert TEST_TOKEN_HASH not in audit_values
     assert TEST_SECRET not in audit_values
+
+
+def test_authenticate_user_blocks_many_logins_from_same_ip(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = patch_successful_dependencies(monkeypatch)
+
+    def fake_count(
+        since: datetime,
+        login_informado: str | None = None,
+        origem: str | None = None,
+        engine: object = None,
+    ) -> int:
+        return 20 if login_informado is None else 0
+
+    monkeypatch.setattr(auth_service, 'count_recent_failed_attempts', fake_count)
+
+    with pytest.raises(auth_service.LoginRateLimitExceeded):
+        auth_service.authenticate_user(
+            login_informado='outro.usuario',
+            password=TEST_PASSWORD,
+            session_secret=TEST_SECRET,
+            origem=TEST_ORIGEM,
+            client_ip='198.51.100.40',
+            now=NOW,
+            rate_limit_ip_max_attempts=20,
+        )
+
+    assert calls['get_user'] == 0
+    assert calls['audit_last']['motivo_falha'] == (
+        auth_service.RATE_LIMIT_IP_FAILURE_REASON
+    )
+    assert calls['audit_last']['origem'].startswith(f'{TEST_ORIGEM}|ip=')
+    assert '198.51.100.40' not in calls['audit_last']['origem']
+
+
+def test_authenticate_user_blocks_same_login_and_ip_combination(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = patch_successful_dependencies(monkeypatch)
+
+    def fake_count(
+        since: datetime,
+        login_informado: str | None = None,
+        origem: str | None = None,
+        engine: object = None,
+    ) -> int:
+        return 5 if login_informado == TEST_LOGIN else 0
+
+    monkeypatch.setattr(auth_service, 'count_recent_failed_attempts', fake_count)
+    monkeypatch.setattr(
+        auth_service,
+        'count_recent_failed_attempts_by_origin_scope',
+        lambda **kwargs: 0,
+    )
+
+    with pytest.raises(auth_service.LoginRateLimitExceeded):
+        auth_service.authenticate_user(
+            login_informado=TEST_LOGIN,
+            password=TEST_PASSWORD,
+            session_secret=TEST_SECRET,
+            origem=TEST_ORIGEM,
+            client_ip='198.51.100.41',
+            now=NOW,
+            rate_limit_ip_login_max_attempts=5,
+        )
+
+    assert calls['get_user'] == 0
+    assert calls['audit_last']['motivo_falha'] == (
+        auth_service.RATE_LIMIT_IP_LOGIN_FAILURE_REASON
+    )
+
+
+def test_audit_origin_is_stable_per_ip_and_distinct_between_ips() -> None:
+    first = auth_service._build_audit_origin(
+        TEST_ORIGEM, '198.51.100.50', TEST_SECRET
+    )
+    repeated = auth_service._build_audit_origin(
+        TEST_ORIGEM, '198.51.100.50', TEST_SECRET
+    )
+    second = auth_service._build_audit_origin(
+        TEST_ORIGEM, '198.51.100.51', TEST_SECRET
+    )
+
+    assert first == repeated
+    assert first != second
+    assert first is not None
+    assert len(first) <= 80
+    assert '198.51.100.50' not in first
+
+
+def test_authenticate_user_skips_all_rate_limits_when_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = patch_successful_dependencies(monkeypatch)
+
+    def unexpected_count(**kwargs):
+        raise AssertionError('rate limit count must remain disabled')
+
+    monkeypatch.setattr(
+        auth_service,
+        'count_recent_failed_attempts',
+        unexpected_count,
+    )
+    monkeypatch.setattr(
+        auth_service,
+        'count_recent_failed_attempts_by_origin_scope',
+        unexpected_count,
+    )
+
+    response = auth_service.authenticate_user(
+        login_informado=TEST_LOGIN,
+        password=TEST_PASSWORD,
+        session_secret=TEST_SECRET,
+        origem=TEST_ORIGEM,
+        client_ip='198.51.100.60',
+        now=NOW,
+        rate_limit_enabled=False,
+    )
+
+    assert response is not None
+    assert calls['get_user'] == 1
+    assert calls['audit_last']['origem'].startswith(f'{TEST_ORIGEM}|ip=')
+
+
+def test_same_login_on_different_ip_is_not_blocked_by_ip_login_scope(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = patch_successful_dependencies(monkeypatch)
+    blocked_origin = auth_service._build_audit_origin(
+        TEST_ORIGEM, '198.51.100.80', TEST_SECRET
+    )
+
+    def fake_count(
+        since: datetime,
+        login_informado: str | None = None,
+        origem: str | None = None,
+        engine: object = None,
+    ) -> int:
+        if login_informado == TEST_LOGIN and origem == blocked_origin:
+            return 5
+        return 0
+
+    monkeypatch.setattr(auth_service, 'count_recent_failed_attempts', fake_count)
+    monkeypatch.setattr(
+        auth_service,
+        'count_recent_failed_attempts_by_origin_scope',
+        lambda **kwargs: 0,
+    )
+
+    response = auth_service.authenticate_user(
+        login_informado=TEST_LOGIN,
+        password=TEST_PASSWORD,
+        session_secret=TEST_SECRET,
+        origem=TEST_ORIGEM,
+        client_ip='198.51.100.81',
+        now=NOW,
+        rate_limit_ip_login_max_attempts=5,
+    )
+
+    assert response is not None
+    assert calls['create_session'] == 1
