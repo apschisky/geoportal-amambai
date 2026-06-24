@@ -29,14 +29,14 @@ Primeiro reforço já implementado localmente:
 - Testes automatizados de spoofing de headers e excesso de tentativas.
 
 O que ainda falta antes do primeiro CRUD administrativo:
-- Validação operacional do reforço no servidor/homologação, incluindo os headers efetivos do Apache e o contrato `429`.
+- Hardening e validação explícita do IP real no Apache/proxy, caso a separação de clientes por IP original seja requisito operacional.
 - Testes adicionais de bloqueio, revogação e acesso negado associados ao futuro fluxo administrativo.
 - Anti-elevação, auditoria administrativa e proteção do último administrador.
 - Separação explícita entre permissões administrativas e permissões de negócio.
 
 Conclusão: a Etapa 0 é uma decisão técnica obrigatória antes de qualquer endpoint mutável administrativo.
 
-Reforço técnico recente da Etapa 0 (commits `152c177` e `f3d8ff3`): a decisão adotada para o login interno passou a incluir resolução segura de IP real, rate limit por IP e por IP+login, e rejeição conservadora de `X-Forwarded-For`/`X-Real-IP` em cenários de spoofing. O fluxo continua sem migration nova e sem armazenar o IP em texto puro; o valor é tratado com HMAC-SHA256 e truncado para o campo de origem. A decisão permanece de validar esse comportamento em servidor/homologação antes de considerar a Etapa 0 fechada para o próximo bloco administrativo.
+Reforço técnico recente da Etapa 0 (commits `152c177`, `f3d8ff3` e documentação `bf7b4df`): a decisão adotada para o login interno inclui resolução segura de IP, rate limit por IP e por IP+login, e rejeição conservadora de `X-Forwarded-For`/`X-Real-IP` em cenários de spoofing. O fluxo continua sem migration nova e sem armazenar o IP em texto puro; o valor é tratado com HMAC-SHA256 e truncado para o campo de origem. A validação em produção interna confirmou login normal e bloqueio `429` após cinco respostas `401`. Como o Apache ativo não apresentou configuração explícita dos headers de IP real pesquisados, a granularidade por cliente não está confirmada e permanece hardening futuro de infraestrutura.
 
 ## 1.3 Status de implementação atual
 

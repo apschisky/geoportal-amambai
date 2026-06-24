@@ -54,14 +54,9 @@ Use o harness do servidor para validar alterações após pull ou antes de homol
 
 ### Restart e validacao controlada de servico
 
-Para o reforço recente da Etapa 0 do login interno, o harness de servidor deve validar, de forma controlada, os seguintes pontos antes de considerar a etapa fechada:
-- se o Apache/proxy encaminha `X-Forwarded-For` e `X-Real-IP` conforme esperado;
-- se o backend enxerga o IP real ou apenas `127.0.0.1` no runtime interno;
-- se `RATE_LIMIT_ENABLED=true` está ativo no ambiente interno;
-- se `429 Too many authentication attempts` aparece sem expor usuário;
-- se o login normal continua funcionando e a auditoria registra os motivos de rate limit esperados.
+Validação controlada executada para o reforço da Etapa 0: o harness confirmou `GeoportalAPIInternaProducao` em `127.0.0.1:8003`, health/version corretos e `401` em `/auth/me` sem sessão; o restart controlado também foi concluído. A configuração sanitizada confirmou `RATE_LIMIT_ENABLED=true`. Em chamada autenticada separada, login normal, `/auth/me` e logout funcionaram; o probe de excesso retornou `401,401,401,401,401,429`.
 
-Esses passos fazem parte da validação operacional, não da publicação automática ou do deploy funcional.
+Limite do harness nesta validação: ele não comprova sozinho a origem real do IP. A inspeção somente leitura do Apache ativo não encontrou configuração explícita de `X-Forwarded-For` ou `X-Real-IP`. Qualquer hardening futuro desses headers deve ocorrer em ciclo próprio, com backup, validação de sintaxe, rollback e nova checagem de spoofing. Esses passos não autorizam alteração automática do Apache.
 
 Use o harness abaixo quando a necessidade operacional for apenas reiniciar e validar um servico da API. Ele nao faz deploy, `git pull`, migrations, alteracao de banco, alteracao de `.env`, instalacao de dependencias, ativacao de rotas internas ou alteracao de Apache/proxy. O reinicio so ocorre quando `-Restart` e informado explicitamente. Em producao, `-Restart` exige confirmacao interativa ou `-Force`.
 

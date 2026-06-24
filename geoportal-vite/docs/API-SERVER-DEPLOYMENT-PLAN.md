@@ -40,14 +40,23 @@ A API nao deve gravar em:
 
 ### 3.1 Reforço da Etapa 0 no login interno
 
-O primeiro reforço da Etapa 0 do login interno foi implementado localmente e enviado ao GitHub, mas ainda depende de validação controlada no servidor/homologação/produção interna. O reforço inclui:
+O primeiro reforço da Etapa 0 do login interno foi implementado, enviado ao GitHub e validado funcionalmente em produção interna. O reforço inclui:
 - resolução segura de IP real com fallback conservador para `request.client.host`;
 - aceitação restrita de `X-Forwarded-For` e `X-Real-IP` apenas de peer confiável e com valor único válido;
 - rate limit do login interno por IP, por login/origem e por IP+login;
 - resposta `429` sanitizada e auditoria preservada com motivos específicos de rate limit;
 - uso do mesmo schema de auditoria já existente, sem nova migration.
 
-O deploy operacional ainda precisa confirmar se o Apache encaminha os headers esperados, se o runtime interno vê o IP real ou apenas `127.0.0.1`, se `RATE_LIMIT_ENABLED=true` está ativo e se o `429` e o login normal funcionam sem impacto indevido em usuários legítimos.
+Validação operacional registrada:
+- servidor atualizado por `git pull --ff-only` até `bf7b4df`, em `main`, com `origin/main` alinhado e working tree limpo;
+- suíte backend completa: `695 passed`, `3 warnings` conhecidos;
+- loader `C:\apps\geoportal-api\scripts\load-producao-interna-env.ps1` confirmou, de forma sanitizada, ambiente de produção, debug desligado, persistência e rate limit ativos, rotas internas ativas, cookie Secure ativo e conexão de banco definida sem exposição do valor;
+- `TRUSTED_PROXY_HOSTS` não definida, mantendo o default seguro `127.0.0.1,::1`;
+- harness executado primeiro com `-Environment InternaProducao -Validate` e depois com `-Restart -Validate`; serviço `GeoportalAPIInternaProducao`, porta `8003`, health e version OK, `/auth/me` com `401` sem sessão;
+- login normal de `admin.producao`, `/auth/me` autenticado e logout confirmados;
+- login fictício de probe retornou `401,401,401,401,401,429`, confirmando o contrato sanitizado.
+
+Inventário somente leitura do proxy ativo: `Apache2.4`, `PEMHTTPD-x64` e `Tomcat9` estavam em execução. Embora o serviço `Apache2.4` aponte para um binário em diretório próprio, `httpd -S` confirmou `ServerRoot C:/Apache24` e o vhost em `C:/Apache24/conf/extra/httpd-ssl.conf:121`. O proxy interno ativo foi confirmado nas linhas 162-163 como `ProxyPass /api/internal/ http://127.0.0.1:8003/api/internal/` e respectivo `ProxyPassReverse`. Foram encontrados `X-Forwarded-Proto`, `X-Forwarded-Port` e `RequestHeader unset Proxy early`, mas não foram encontrados `X-Forwarded-For`, `X-Real-IP`, `ProxyAddHeaders`, `RemoteIPHeader` ou `RemoteIPTrustedProxy`. Portanto, o rate limit está publicado e funcional, porém a identificação de IP real individual por cliente não está validada e depende de hardening futuro do Apache/proxy.
 
 ### Homologacao
 

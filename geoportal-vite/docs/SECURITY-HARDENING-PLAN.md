@@ -22,7 +22,7 @@ Primeiro reforço concluído localmente antes do CRUD administrativo:
 - Testes automatizados para tentativas excessivas, spoofing de headers e preservação do login normal.
 
 Itens ainda pendentes antes do primeiro CRUD administrativo:
-- Validação controlada do reforço no servidor/homologação e dos headers efetivamente produzidos pelo Apache.
+- Hardening explícito do Apache/proxy para IP real por cliente, se essa granularidade for necessária, seguido de nova validação controlada dos headers efetivamente produzidos.
 - Ampliação dos testes de acesso negado, bloqueio de conta e revogação de sessão conforme os próximos endpoints administrativos forem desenhados.
 - Regras explícitas de anti-elevação, proteção contra remover o último administrador e auditoria administrativa.
 - Política de permissões administrativas separada da autorização de negócio, sem bypass por login hardcoded.
@@ -40,11 +40,15 @@ Atualização documental 2026-06-24 (commits `152c177` e `f3d8ff3`): o primeiro 
 - preservação dos motivos de auditoria `rate_limit`, `rate_limit_ip` e `rate_limit_ip_login`;
 - suporte a `RATE_LIMIT_ENABLED=false` como desligamento explícito do rate limit, sem interromper a autenticação comum.
 
-Pendências de validação antes do CRUD administrativo:
-- confirmar no ambiente real se o Apache encaminha `X-Forwarded-For` e `X-Real-IP` como esperado;
-- confirmar se o backend enxerga IP real ou apenas `127.0.0.1` no runtime interno;
-- validar em homologação/servidor se o `429` aparece corretamente sem expor usuário;
-- validar que o login normal continua operacional e que a auditoria registra motivos de rate limit sem impacto indevido em usuários legítimos.
+Validação controlada em produção interna concluída após os commits `152c177`, `f3d8ff3` e `bf7b4df`:
+- servidor atualizado por `git pull --ff-only`, em `main`, com `origin/main` alinhado e working tree limpo;
+- suíte backend completa no servidor: `695 passed`, `3 warnings` conhecidos de depreciação do `HTTP_422_UNPROCESSABLE_ENTITY`;
+- runtime interno confirmado com `APP_ENV=producao`, `API_DEBUG=false`, `PERSIST_SOLICITACOES=true`, `RATE_LIMIT_ENABLED=true`, rotas internas ativas e cookie Secure ativo; `DATABASE_URL` apenas confirmada como definida, sem exposição de valor;
+- `TRUSTED_PROXY_HOSTS` não estava definida no loader, portanto o backend usou o default seguro `127.0.0.1,::1`;
+- login normal de `admin.producao`, `/auth/me` autenticado e logout foram validados sem registrar credencial, token ou cookie;
+- probe com login fictício retornou `401,401,401,401,401,429`, confirmando o contrato sanitizado sem revelar existência de usuário, contador ou escopo bloqueado.
+
+Limite confirmado nesta validação: a busca somente leitura na configuração ativa do Apache não encontrou configuração explícita de `X-Forwarded-For`, `X-Real-IP`, `ProxyAddHeaders`, `RemoteIPHeader` ou `RemoteIPTrustedProxy`. Assim, o rate limit está funcional e publicado, mas a identificação granular do IP real de cada cliente não deve ser considerada validada. O fallback conservador continua seguro; eventual separação por IP real exige hardening futuro do proxy e nova validação.
 
 Matriz de controles deste reforço:
 
@@ -60,7 +64,8 @@ Matriz de controles deste reforço:
 | Resposta para excesso | Implementado localmente | `429` genérico, sem usuário, contador ou escopo bloqueado |
 | Privacidade do IP | Implementado localmente | HMAC-SHA256 truncado; IP bruto não é persistido por esse fluxo |
 | Persistência entre workers/processos | Implementado localmente | Contagem em `mod_auth.login_auditoria`, sem migration nova |
-| Validação dos headers reais do Apache | Pendente | Exige pull e validação controlada em servidor/homologação |
+| Validação funcional em produção interna | Concluída | Login normal, logout e sequência `401,401,401,401,401,429` confirmados |
+| Identificação do IP real por cliente | Não confirmada | Apache ativo sem configuração explícita dos headers pesquisados; fallback permanece no peer imediato |
 | Defesa contra DDoS volumétrico | Fora do escopo da aplicação | Depende de Apache, firewall, WAF/CDN, provedor ou VPN |
 
 ## 2. Principios de seguranca

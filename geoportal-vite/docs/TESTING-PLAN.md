@@ -58,7 +58,9 @@ O reforço recente da Etapa 0 do login interno integra a cobertura automatizada 
 
 No ciclo recente, os resultados reportados foram: microchecagem focada com `66 passed`, suíte backend completa com `695 passed` e `3 warnings`, e teste isolado de auditoria complementar com `8 passed`. As warnings conhecidas são de depreciação do `HTTP_422_UNPROCESSABLE_ENTITY`.
 
-Validação operacional ainda pendente: repetir em servidor/homologação os casos essenciais para confirmar o comportamento real do Apache/proxy, o estado de `RATE_LIMIT_ENABLED`, o retorno `429`, a continuidade do login legítimo e os motivos registrados na auditoria. Essa validação não deve imprimir IP, senha, token, cookie, hash ou segredo.
+Validação operacional em produção interna concluída: a suíte backend no servidor passou com `695 passed` e `3 warnings`; `RATE_LIMIT_ENABLED=true` foi confirmado de forma sanitizada; login normal, `/auth/me` e logout funcionaram; o probe fictício retornou `401,401,401,401,401,429`. Nenhuma credencial, token ou cookie foi documentado.
+
+Lacuna mantida no plano de testes: a configuração ativa pesquisada do Apache não apresentou `X-Forwarded-For` ou `X-Real-IP` explícitos. Assim, a próxima validação de infraestrutura deve ocorrer somente após eventual hardening do proxy e deve confirmar, com IPs fictícios/controlados, a granularidade por cliente e a resistência a spoofing sem registrar IP real em documentação.
 
 ## 4. Funcoes candidatas a testes unitarios
 
