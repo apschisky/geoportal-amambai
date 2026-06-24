@@ -301,3 +301,22 @@ Primeiro conjunto recomendado:
 - `fetchWithTimeout` somente depois que o setup de mock/timers estiver claro.
 
 Depois disso, seguir para `src/geoportal-routes.js` e `buildPosteRepairFormUrl`.
+
+## Cobertura futura da seguranca administrativa
+
+Auditoria administrativa, anti-autoelevacao e protecao do ultimo administrador permanecem planejadas, nao implementadas. A implementacao futura deve cobrir, no minimo:
+
+- usuario sem permissao administrativa recebe `403`;
+- administrador nao consegue conceder a si mesmo perfil ou permissao superior;
+- administrador nao consegue alterar ou remover seu proprio perfil critico quando a regra proibir;
+- sistema nao permite desativar, bloquear ou excluir logicamente o ultimo administrador efetivo;
+- sistema nao permite remover perfil ou revogar permissao critica do ultimo administrador efetivo;
+- tentativa negada gera evento de auditoria administrativa com motivo seguro;
+- mutacao bem-sucedida e auditoria obrigatoria pertencem a mesma transacao;
+- payload com campo extra e rejeitado;
+- senha, hash, token, cookie, `session_secret`, `DATABASE_URL` e payload sensivel nao aparecem na auditoria;
+- concorrencia entre duas operacoes nao permite race condition simples que remova simultaneamente os ultimos administradores;
+- endpoints read-only nao retornam `senha_hash`, token, cookie, segredo, SQL ou role de banco;
+- permissoes administrativas sao verificadas no backend, independentemente da visibilidade do frontend.
+
+Testes transacionais devem simular pelo menos dois administradores efetivos e duas operacoes concorrentes sobre seus vinculos. A estrategia de lock escolhida deve ser demonstrada pelos testes, sem depender apenas de contagem feita antes da transacao.

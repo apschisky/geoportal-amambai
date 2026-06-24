@@ -822,6 +822,36 @@ Inventario de permissao: antes da implementacao local, a consulta real de homolo
 
 Testes locais do commit `313afd8`: `tests/test_iluminacao_service.py` com 59 passed, `tests/test_iluminacao_repository.py` com 44 passed, `tests/test_internal_iluminacao_solicitacoes_router.py` com 79 passed e 2 warnings, `tests/test_bootstrap_internal_admin_profile_admin.py` com 16 passed, `tests/test_bootstrap_internal_maintenance_profile_admin.py` com 8 passed e suite completa backend com 660 passed e 2 warnings. Os warnings conhecidos sao `DeprecationWarning` relacionado a `HTTP_422_UNPROCESSABLE_ENTITY`, sem bloqueio.
 
+## Proximo bloco de autorizacao administrativa
+
+O proximo bloco planejado da Etapa 0 deve endurecer a administracao existente antes de sua ampliacao ou exposicao em frontend. Ainda nao e uma liberacao de CRUD administrativo.
+
+Permissoes candidatas para decomposicao por menor privilegio:
+
+- `admin.usuarios.ler`;
+- `admin.usuarios.criar`;
+- `admin.usuarios.editar`;
+- `admin.usuarios.desativar`;
+- `admin.usuarios.resetar_senha`;
+- `admin.perfis.ler`;
+- `admin.perfis.criar`;
+- `admin.perfis.editar`;
+- `admin.perfis.desativar`;
+- `admin.permissoes.ler`;
+- `admin.permissoes.conceder`;
+- `admin.permissoes.revogar`;
+- `admin.auditoria.ler`.
+
+Esses nomes sao candidatos de contrato futuro. O inventario deve mapear as permissoes ja existentes, como `admin.usuarios.bloquear`, `admin.usuarios.redefinir_senha`, `admin.usuarios.atribuir_perfis`, `admin.perfis.gerenciar` e `admin.permissoes.gerenciar`, sem remove-las ou renomea-las silenciosamente. A implementacao devera definir compatibilidade, substituicao gradual ou manutencao dos codigos atuais.
+
+Regras obrigatorias:
+
+- nenhuma permissao administrativa critica pode ser concedida pelo usuario a si mesmo;
+- alteracoes de perfis ou vinculos criticos do proprio ator devem ser bloqueadas ou encaminhadas a fluxo separado;
+- o backend deve impedir qualquer operacao que deixe zero administradores efetivos;
+- tentativas negadas por autoelevacao ou protecao do ultimo administrador devem ser auditadas;
+- ocultar a acao no frontend nao substitui `require_permission(...)` e as regras transacionais no backend.
+
 Validacao operacional em producao interna: o servidor ficou em HEAD `da4be5c`, `origin/main` atualizado e working tree limpo; `GeoportalAPIInternaProducao` foi reiniciado e validado pelo harness `scripts/deploy/backend-restart-validate-service.ps1 -Environment InternaProducao -Restart -Validate`, na porta `8003`, com `/api/health` OK, `/api/version` OK com `environment=producao` e `/api/internal/auth/me` retornando 401 sem sessao. Com sessao administrativa real de `admin.producao`, sem registrar senha, token ou cookie, `/auth/me` confirmou `authenticated=true`, `login=admin.producao` e permissao `iluminacao.solicitacoes.corrigir_status`. O chamado teste/controlado `id=1`, protocolo `IP-2026-000001`, foi alterado de `resolvida` para `em_execucao`; a resposta retornou `finalizado_em=null`, preservou `prioridade=normal` e o historico registrou `acao='reabertura'`, `status_anterior=resolvida`, `status_novo=em_execucao`, `usuario_id=1`, `origem_acao='ajuste_administrativo'` e justificativa em `observacao_resumida`. Em seguida, a validacao negativa zero-write confirmou: 403 para `admin.producao` sem header mutavel, 422 para campo extra, 422 para justificativa curta, 422 para status inexistente, 404 para solicitacao inexistente `999999999` e 403 para `manutencao.producao` sem `iluminacao.solicitacoes.corrigir_status`. Apos esses testes, o chamado permaneceu com `status=em_execucao`, `atualizado_em=2026-06-17T14:42:48.101169-04:00` e `finalizado_em` nulo/vazio. Logout admin OK e logout manutencao OK. Nao foram executados em producao os cenarios `terminal -> aberta` e `terminal -> encaminhada`, pois exigiriam nova escrita para recolocar o chamado em terminal; esses bloqueios permanecem cobertos por testes automatizados. Producao interna, Apache/proxy, frontend/tela interna, migrations, schema, `.env` versionado e NSSM nao foram alterados por essa documentacao; houve apenas restart controlado do servico interno pelo harness. Proximos passos: revisar se o chamado teste deve permanecer em `em_execucao`, decidir sobre validacao manual adicional dos cenarios terminal -> `aberta/encaminhada` e planejar frontend administrativo restrito.
 
 Plano de autorizacao para a UI administrativa de `status-correcao`: a acao visual ja foi implementada e publicada no detalhe da solicitacao. Ela aparece somente quando `/api/internal/auth/me` retorna `iluminacao.solicitacoes.corrigir_status` em `permissoes`; nao aparece para `manutencao-iluminacao`, `manutencao.producao` ou qualquer usuario sem essa permissao especifica. O bloco visual ficou separado do PATCH normal de status, com rotulo administrativo claro, confirmacao forte, justificativa obrigatoria e chamada mutavel com `X-Geoportal-Internal-Request: 1`. Mesmo que o frontend oculte a acao, a autorizacao real continua no backend por `require_permission("iluminacao.solicitacoes.corrigir_status")`, payload restrito e mensagens de erro sanitizadas. A UI nao inclui administracao de usuarios/perfis/permissoes, dashboard avancado, edicao direta de banco, acao em lote ou atalho para manutencao.

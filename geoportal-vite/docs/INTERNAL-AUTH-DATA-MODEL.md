@@ -285,6 +285,38 @@ Essa separacao evita dar permissao ampla quando a necessidade operacional e limi
 - Definir senhas reais.
 - Registrar tokens reais.
 
+## 15.1 Modelo planejado de auditoria administrativa
+
+`mod_auth.login_auditoria` continua reservado a autenticacao. O proximo bloco da Etapa 0 deve avaliar uma estrutura separada, provisoriamente chamada `mod_auth.auditoria_administrativa`, sem criar migration neste ciclo.
+
+Campos conceituais minimos:
+
+- `id`;
+- `ator_usuario_id`;
+- `ator_login_snapshot`;
+- `acao`;
+- `entidade_tipo`;
+- `entidade_id`;
+- `resumo_alteracao` sanitizado;
+- `justificativa`, quando exigida;
+- `resultado` (`sucesso`, `negada`, `erro_validacao` ou conjunto equivalente fechado);
+- `motivo_negativa` interno e sanitizado;
+- `origem` segura;
+- `request_id` ou correlation id, quando existir;
+- `criado_em`.
+
+Perfis ou permissoes efetivas relevantes do ator podem ser registrados em forma resumida e sanitizada se isso for necessario para explicar a decisao de autorizacao. Nao devem ser copiados payloads completos nem dados sensiveis.
+
+Eventos planejados incluem `admin.user.create`, `admin.user.update`, `admin.user.disable`, `admin.user.enable`, `admin.user.reset_password`, `admin.user.assign_profile`, `admin.user.remove_profile`, `admin.profile.create`, `admin.profile.update`, `admin.profile.disable`, `admin.permission.grant`, `admin.permission.revoke`, `admin.security.denied_self_elevation`, `admin.security.denied_last_admin_removal` e `admin.security.denied_last_admin_disable`.
+
+A role de runtime deve ter somente os privilegios minimos para inserir eventos obrigatorios. Consulta da auditoria deve exigir permissao propria. Update e delete de eventos nao devem fazer parte do fluxo normal da aplicacao.
+
+## 15.2 Administrador efetivo
+
+Administrador efetivo e o usuario ativo, nao deletado logicamente, com vinculos ativos e capacidade critica efetiva de administrar usuarios, perfis ou permissoes. A definicao nao deve depender apenas do nome de um perfil.
+
+O conjunto exato de permissoes criticas deve ser inventariado antes da implementacao. A avaliacao deve considerar os codigos atuais e a futura decomposicao granular, sem renomeacao silenciosa. Qualquer alteracao que possa reduzir a contagem a zero deve ocorrer em transacao unica e sob lock apropriado.
+
 ## 16. Criterios de aceite
 
 - Documentacao clara.

@@ -582,3 +582,50 @@ Antes de expor qualquer endpoint interno, os testes devem cobrir:
 - [ ] Testes automatizados passando.
 - [ ] API publica sem regressao.
 - [ ] Documentacao atualizada.
+
+## Proximo bloco planejado: auditoria e salvaguardas administrativas
+
+Este bloco permanece **pendente de implementacao e validacao**. Ele deve preceder a ampliacao do CRUD administrativo e qualquer frontend de gestao.
+
+### Auditoria administrativa propria
+
+- usar tabela ou mecanismo separado de `mod_auth.login_auditoria`;
+- registrar ator autenticado, snapshot seguro do login, acao, entidade, identificador da entidade, resumo sanitizado, justificativa quando exigida, resultado, motivo interno seguro da negativa, timestamp, origem segura e `request_id` ou correlation id quando disponivel;
+- registrar, quando relevante e sem excesso de dados, as permissoes efetivas usadas para autorizar a acao;
+- nunca registrar senha, hash, token, cookie, `session_secret`, `DATABASE_URL`, payload bruto sensivel ou valores anteriores/novos sensiveis sem sanitizacao;
+- exigir auditoria na mesma transacao para mutacoes administrativas bem-sucedidas; uma mutacao critica deve falhar de forma fechada se seu registro obrigatorio nao puder ser persistido;
+- manter a acao negada mesmo se houver falha ao registrar uma tentativa bloqueada, encaminhando o erro operacional de forma sanitizada.
+
+Categorias iniciais planejadas:
+
+- `admin.user.create`, `admin.user.update`, `admin.user.disable`, `admin.user.enable`;
+- `admin.user.reset_password`, `admin.user.assign_profile`, `admin.user.remove_profile`;
+- `admin.profile.create`, `admin.profile.update`, `admin.profile.disable`;
+- `admin.permission.grant`, `admin.permission.revoke`;
+- `admin.security.denied_self_elevation`;
+- `admin.security.denied_last_admin_removal`;
+- `admin.security.denied_last_admin_disable`.
+
+### Regras de anti-autoelevacao
+
+- o ator nao pode conceder a si mesmo perfil ou permissao administrativa superior;
+- perfis criticos do proprio ator nao podem ser alterados diretamente pelo fluxo de administracao de terceiros;
+- o ator nao pode remover restricoes criticas da propria conta;
+- alteracao de senha propria deve permanecer separada do reset administrativo de terceiros;
+- todas as tentativas bloqueadas devem gerar evento de auditoria administrativa;
+- a identidade deve ser comparada por `usuario_id` autenticado, nunca por login hardcoded.
+
+### Protecao do ultimo administrador efetivo
+
+- considerar somente usuario ativo, nao deletado logicamente, com perfil ou vinculo ativo e capacidade administrativa critica efetiva;
+- bloquear desativacao, bloqueio, exclusao logica, remocao de perfil ou revogacao que deixe o sistema sem administrador efetivo;
+- validar a regra na mesma transacao da alteracao, usando lock apropriado (`SELECT ... FOR UPDATE`, advisory lock ou mecanismo equivalente testado);
+- recontar a capacidade efetiva dentro da transacao, evitando decisao baseada em estado previamente carregado;
+- auditar a tentativa negada.
+
+### Ordem segura
+
+1. Fase A: estrutura de auditoria, services de anti-autoelevacao e protecao do ultimo administrador, com testes unitarios e transacionais.
+2. Fase B: inventariar e endurecer endpoints administrativos somente leitura existentes; completar listagens de usuarios, perfis, permissoes e auditoria sem retornar dados sensiveis.
+3. Fase C: endurecer e ampliar endpoints mutaveis restritos somente depois das salvaguardas, com header mutavel, permissao especifica, confirmacao ou justificativa quando critica e auditoria obrigatoria.
+4. Fase D: frontend administrativo restrito, sem transformar ocultacao de botoes em controle de seguranca.

@@ -385,3 +385,21 @@ Rollback correspondente:
 - Sem endpoints criados.
 - Sem dados sensiveis.
 - Plano pronto para gerar migrations pequenas e revisaveis.
+
+## 10. Migration futura de auditoria administrativa - planejada, nao criada
+
+O proximo bloco da Etapa 0 provavelmente exigira migration estrutural para uma tabela propria de auditoria administrativa, pois `mod_auth.login_auditoria` possui finalidade especifica de autenticacao e nao deve receber eventos de gestao de usuarios, perfis e permissoes.
+
+Antes de numerar ou criar a migration, deve ser feito inventario do schema real e dos GRANTs atuais. A proposta deve prever:
+
+- tabela append-only para os campos definidos em `INTERNAL-AUTH-DATA-MODEL.md`;
+- constraints para `acao`, `resultado` e tamanhos maximos de textos sanitizados;
+- indices por data, ator, acao, entidade e resultado somente quando justificados pelas consultas previstas;
+- foreign key opcional ou estrategia de snapshot que preserve a auditoria mesmo apos desativacao ou exclusao logica do usuario;
+- GRANT minimo de `INSERT` para a role de runtime e `SELECT` apenas para papel autorizado;
+- ausencia de `UPDATE` e `DELETE` no fluxo normal;
+- rollback cauteloso, proibido em producao se houver eventos reais sem backup e decisao explicita de retencao.
+
+A protecao do ultimo administrador e as regras de anti-autoelevacao devem ser implementadas no service e repository transacional. Trigger de banco nao deve ser adotado automaticamente: sua necessidade deve ser avaliada somente se as garantias da aplicacao e do modelo de concorrencia forem insuficientes.
+
+Classificacao atual: **migration estrutural provavelmente necessaria, ainda nao criada e pendente de inventario tecnico**. Permissoes administrativas novas tambem exigirao seed, bootstrap ou migration operacional idempotente em ciclo separado, nunca SQL manual solto sem rastreabilidade.

@@ -115,3 +115,21 @@ Pare imediatamente se:
 - Nao criar scripts que reiniciem servicos sem parametro explicito e confirmacao adequada.
 - Não incluir dados sensíveis.
 - Os resultados do `backend-security-check.ps1` devem ser avaliados manualmente antes de confiar integralmente.
+
+## Validacao futura das salvaguardas administrativas
+
+O proximo bloco da Etapa 0 ainda nao esta implementado. Quando existir, sua validacao controlada deve ocorrer primeiro em testes locais e homologacao, usando usuarios ficticios e backup previo, antes de qualquer uso em producao.
+
+O roteiro futuro deve confirmar:
+
+- auditoria administrativa registrada sem segredo ou payload sensivel;
+- `403` para usuario sem permissao;
+- negativa de autoelevacao;
+- negativa de alteracao do proprio vinculo critico, conforme contrato;
+- negativa de bloqueio, desativacao ou remocao do ultimo administrador efetivo;
+- preservacao de pelo menos um administrador efetivo apos operacoes concorrentes;
+- endpoints read-only sem `senha_hash` e demais campos sensiveis;
+- header interno mutavel e justificativa nas acoes criticas;
+- nenhum GRANT amplo permanente para a role de runtime.
+
+O harness nao deve criar administradores reais, conceder permissao critica automaticamente nem contornar as salvaguardas para facilitar a validacao.

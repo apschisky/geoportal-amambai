@@ -410,3 +410,15 @@ Este documento complementa:
 - futuro `docs/API-ENDPOINTS-ILUMINACAO.md`
 - futuro script SQL versionado
 - futura prova de conceito FastAPI em homologacao
+
+## Proximo bloco da arquitetura administrativa
+
+Ordem planejada:
+
+1. criar auditoria administrativa propria e append-only;
+2. criar services independentes de validacao de autoelevacao e de preservacao do ultimo administrador efetivo;
+3. inventariar e endurecer os endpoints administrativos read-only ja existentes antes de criar novos contratos;
+4. somente depois ampliar endpoints mutaveis de usuarios, perfis e permissoes;
+5. expor frontend administrativo apenas apos testes de autorizacao, concorrencia, auditoria e privacidade.
+
+Os endpoints read-only devem omitir `senha_hash`, tokens, cookies, segredos, SQL, roles de banco e outros campos sensiveis. Endpoints mutaveis criticos devem exigir sessao, permissao especifica, header interno mutavel, payload estrito, auditoria e salvaguardas transacionais. A existencia parcial de endpoints administrativos no repositorio nao significa que a superficie esta pronta para CRUD visual amplo.

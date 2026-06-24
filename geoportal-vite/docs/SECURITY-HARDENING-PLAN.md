@@ -383,3 +383,20 @@ Etapas recomendadas para chegar a um nivel seguro:
 6. Desenhar autenticacao, autorizacao, auditoria e backup antes de implementar API.
 7. Criar ambiente de homologacao ou estrategia segura de testes.
 8. Implementar API somente depois do desenho minimo de seguranca aprovado.
+
+## Proximo bloco da Etapa 0 - seguranca administrativa
+
+O proximo bloco obrigatorio e **Seguranca administrativa - auditoria, anti-autoelevacao e protecao do ultimo administrador**. Este bloco nao representa uma tela administrativa nova, um CRUD aberto ou a liberacao visual da gestao de usuarios, perfis e permissoes. Ele deve endurecer a superficie administrativa existente antes de qualquer ampliacao.
+
+Controles planejados:
+
+- auditoria administrativa propria, separada de `mod_auth.login_auditoria`;
+- bloqueio de concessao, pelo ator, de perfil ou permissao critica a si mesmo;
+- restricao de alteracoes nos proprios perfis e vinculos administrativos;
+- protecao transacional contra desativar, bloquear, excluir logicamente ou retirar a capacidade do ultimo administrador efetivo;
+- permissoes administrativas granulares, sem bypass por login hardcoded;
+- registro auditavel de tentativas negadas, inclusive autoelevacao e remocao do ultimo administrador.
+
+Administrador efetivo, para essa salvaguarda, e o usuario ativo, nao deletado logicamente e com vinculos ativos que lhe deem capacidade real de administrar usuarios, perfis ou permissoes. A verificacao futura deve ocorrer na mesma transacao da alteracao, com bloqueio apropriado para impedir que operacoes concorrentes removam simultaneamente os ultimos administradores.
+
+O rate limit interno ja validado protege a entrada da autenticacao, mas nao substitui esses controles de autorizacao e integridade administrativa. Auditoria administrativa, anti-autoelevacao e protecao do ultimo administrador permanecem planejadas e pendentes de implementacao e validacao.

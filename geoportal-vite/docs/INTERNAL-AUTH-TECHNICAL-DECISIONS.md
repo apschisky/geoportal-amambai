@@ -988,3 +988,20 @@ Observação:
 - `docs/INTERNAL-AUTHORIZATION-PLAN.md`
 - `docs/SECURITY-HARDENING-PLAN.md`
 - `docs/API-SERVER-DEPLOYMENT-PLAN.md`
+
+## Decisao para o proximo bloco da Etapa 0
+
+Fica planejado, sem implementacao neste ciclo, o bloco **Seguranca administrativa - auditoria, anti-autoelevacao e protecao do ultimo administrador**.
+
+Decisoes:
+
+- `mod_auth.login_auditoria` permanece dedicada ao fluxo de autenticacao e nao deve ser sobrecarregada com eventos administrativos;
+- a auditoria administrativa deve ser append-only para a role de runtime, com permissao minima de `INSERT` e leitura somente para papel autorizado de auditoria;
+- mutacoes administrativas bem-sucedidas e seu evento de auditoria devem pertencer a mesma transacao;
+- autoelevacao e alteracao do proprio vinculo critico devem ser negadas por regra de negocio no backend;
+- a protecao do ultimo administrador deve considerar permissoes efetivas, nao apenas nome de perfil;
+- a verificacao deve ser concorrente e transacional, sem contagem seguida de update fora do mesmo lock;
+- nao deve existir excecao por nome de login, inclusive para bootstrap ou suporte;
+- nomes finais de permissoes poderao ser refinados, mas permissao ampla existente nao deve ser reutilizada silenciosamente quando uma acao critica exigir menor privilegio.
+
+Esta decisao nao declara a auditoria administrativa, a anti-autoelevacao ou a protecao do ultimo administrador como implementadas.
