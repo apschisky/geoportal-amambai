@@ -46,7 +46,21 @@ Em etapa posterior, avaliar testes com ambiente controlado para:
 - Playwright ou ferramenta similar para fluxos reais no navegador;
 - interceptacao de rede para nao depender do GeoServer nos testes automatizados.
 
-## 3. Funcoes candidatas a testes unitarios
+## 3. Cobertura de segurança para a Etapa 0
+
+O reforço recente da Etapa 0 do login interno integra a cobertura automatizada de segurança do backend. A implementação passou a cobrir:
+- spoofing de `X-Forwarded-For` e `X-Real-IP` com peer confiável e não confiável;
+- rejeição conservadora de cadeias múltiplas, vazias ou malformadas;
+- rate limit por IP, por login/origem e por IP+login;
+- resposta `429` sanitizada sem expor usuário, contador ou escopo bloqueado;
+- login normal continuando operacional após o reforço;
+- auditoria preservando `rate_limit`, `rate_limit_ip` e `rate_limit_ip_login` sem persistir IP bruto.
+
+No ciclo recente, os resultados reportados foram: microchecagem focada com `66 passed`, suíte backend completa com `695 passed` e `3 warnings`, e teste isolado de auditoria complementar com `8 passed`. As warnings conhecidas são de depreciação do `HTTP_422_UNPROCESSABLE_ENTITY`.
+
+Validação operacional ainda pendente: repetir em servidor/homologação os casos essenciais para confirmar o comportamento real do Apache/proxy, o estado de `RATE_LIMIT_ENABLED`, o retorno `429`, a continuidade do login legítimo e os motivos registrados na auditoria. Essa validação não deve imprimir IP, senha, token, cookie, hash ou segredo.
+
+## 4. Funcoes candidatas a testes unitarios
 
 ### `src/geoportal-utils.js`
 
@@ -174,7 +188,7 @@ Ponto de atencao:
 
 - Essas funcoes nao estao na lista principal da etapa, mas sao bons candidatos futuros. Hoje varias sao internas; exportar ou mover para utilitario compartilhado deve ser uma decisao separada.
 
-## 4. O que NAO testar em unitario agora
+## 5. O que NAO testar em unitario agora
 
 Nao priorizar testes unitarios para:
 
@@ -191,7 +205,7 @@ Nao priorizar testes unitarios para:
 
 Esses fluxos continuam no checklist manual e, no futuro, podem ser cobertos por testes end-to-end controlados.
 
-## 5. Ordem sugerida de implementacao
+## 6. Ordem sugerida de implementacao
 
 1. Instalar/configurar Vitest, se ainda nao existir.
    - Adicionar script `test` em `package.json`.
@@ -218,7 +232,7 @@ Esses fluxos continuam no checklist manual e, no futuro, podem ser cobertos por 
    - Mocks de OpenLayers e GeoServer.
    - Ou Playwright com rede interceptada.
 
-## 6. Riscos
+## 7. Riscos
 
 - Exportar funcao interna pode aumentar acoplamento se feito sem criterio.
 - Testes nao devem exigir GeoServer online.
@@ -229,7 +243,7 @@ Esses fluxos continuam no checklist manual e, no futuro, podem ser cobertos por 
 - Cuidado com singletons como `geoportal-state.js`: limpar estado entre testes.
 - `fetchWithTimeout` depende de `window.setTimeout`; o setup do Vitest precisa refletir o ambiente real ou a funcao deve ser testada com ambiente adequado.
 
-## 7. Convencoes propostas
+## 8. Convencoes propostas
 
 - Usar Vitest.
 - Nomear arquivos como `.test.js`.
@@ -245,7 +259,7 @@ Esses fluxos continuam no checklist manual e, no futuro, podem ser cobertos por 
 - Manter fixtures pequenas e legiveis.
 - Cada teste deve validar uma regra de negocio clara.
 
-## 8. Checklist antes de implementar testes
+## 9. Checklist antes de implementar testes
 
 - [ ] Rodar `npm.cmd run build`.
 - [ ] Confirmar que nao ha mudancas funcionais misturadas com configuracao de testes.

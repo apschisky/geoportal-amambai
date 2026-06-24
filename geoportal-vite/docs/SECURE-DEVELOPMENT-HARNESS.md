@@ -54,6 +54,15 @@ Use o harness do servidor para validar alterações após pull ou antes de homol
 
 ### Restart e validacao controlada de servico
 
+Para o reforço recente da Etapa 0 do login interno, o harness de servidor deve validar, de forma controlada, os seguintes pontos antes de considerar a etapa fechada:
+- se o Apache/proxy encaminha `X-Forwarded-For` e `X-Real-IP` conforme esperado;
+- se o backend enxerga o IP real ou apenas `127.0.0.1` no runtime interno;
+- se `RATE_LIMIT_ENABLED=true` está ativo no ambiente interno;
+- se `429 Too many authentication attempts` aparece sem expor usuário;
+- se o login normal continua funcionando e a auditoria registra os motivos de rate limit esperados.
+
+Esses passos fazem parte da validação operacional, não da publicação automática ou do deploy funcional.
+
 Use o harness abaixo quando a necessidade operacional for apenas reiniciar e validar um servico da API. Ele nao faz deploy, `git pull`, migrations, alteracao de banco, alteracao de `.env`, instalacao de dependencias, ativacao de rotas internas ou alteracao de Apache/proxy. O reinicio so ocorre quando `-Restart` e informado explicitamente. Em producao, `-Restart` exige confirmacao interativa ou `-Force`.
 
 ```powershell

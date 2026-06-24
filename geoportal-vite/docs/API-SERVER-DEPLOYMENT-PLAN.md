@@ -38,6 +38,17 @@ A API nao deve gravar em:
 
 ## 3. Ambientes
 
+### 3.1 Reforço da Etapa 0 no login interno
+
+O primeiro reforço da Etapa 0 do login interno foi implementado localmente e enviado ao GitHub, mas ainda depende de validação controlada no servidor/homologação/produção interna. O reforço inclui:
+- resolução segura de IP real com fallback conservador para `request.client.host`;
+- aceitação restrita de `X-Forwarded-For` e `X-Real-IP` apenas de peer confiável e com valor único válido;
+- rate limit do login interno por IP, por login/origem e por IP+login;
+- resposta `429` sanitizada e auditoria preservada com motivos específicos de rate limit;
+- uso do mesmo schema de auditoria já existente, sem nova migration.
+
+O deploy operacional ainda precisa confirmar se o Apache encaminha os headers esperados, se o runtime interno vê o IP real ou apenas `127.0.0.1`, se `RATE_LIMIT_ENABLED=true` está ativo e se o `429` e o login normal funcionam sem impacto indevido em usuários legítimos.
+
 ### Homologacao
 
 - Usar banco de homologacao.

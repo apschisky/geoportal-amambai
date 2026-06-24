@@ -14,15 +14,21 @@ A decisao tecnica de autenticacao interna e autorizacao deve ser alinhada com `d
 
 Antes de abrir qualquer endpoint administrativo de usuários, perfis ou permissões, o projeto deve completar a Etapa 0 de segurança. O conjunto atual de autenticação e autorização já permite leitura protegida e fluir internas controladas, mas não substitui um processo de hardening antes de criar um painel administrativo.
 
-Pré-requisitos registrados:
+Primeiro reforço implementado localmente:
 - Rate limit de login por IP e por IP+login.
-- Tratamento seguro de IP real por trás do Apache/proxy.
-- Testes automatizados para acesso negado, bloqueio e revogação de sessão.
+- Tratamento seguro de IP real por trás do Apache/proxy, com proteção contra spoofing de headers.
+- Testes automatizados de excesso de tentativas e resolução segura de IP.
+
+Pré-requisitos ainda pendentes:
+- Validação controlada do reforço no servidor/homologação antes de abrir o CRUD administrativo.
+- Testes adicionais para acesso negado, bloqueio e revogação de sessão no futuro fluxo administrativo.
 - Regras explícitas de anti-elevação e proteção contra remoção do último administrador.
 - Auditoria administrativa de criação, alteração, desativação e atribuição de perfis.
 - Separação entre permissões administrativas e permissões de negócio, sem bypass por login hardcoded.
 
 Até a Etapa 0 estar concluída e validada em homologação, a autorização administrativa deve permanecer fechada e sem tela de CRUD exposta.
+
+Reforço recente da Etapa 0 (commits `152c177` e `f3d8ff3`): o primeiro bloqueio de bruteforce/credential stuffing básico do login interno foi implementado localmente. Ele reforça a base de autorização ao reduzir abuso na entrada, mas ainda não substitui os próximos blocos antes do CRUD administrativo: auditoria administrativa própria, anti-elevação, proteção contra remover o último administrador, validação real de `Origin/Referer` ou CSRF para endpoints administrativos críticos, permissões administrativas granulares e read-only primeiro.
 
 O plano tecnico das futuras migrations de `mod_auth` esta em `docs/INTERNAL-AUTH-MIGRATIONS-PLAN.md`.
 

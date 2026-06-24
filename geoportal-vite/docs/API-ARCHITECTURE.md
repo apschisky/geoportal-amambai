@@ -16,14 +16,20 @@ A revisao defensiva da API publica atual esta em `docs/PUBLIC-API-SECURITY-REVIE
 
 A API interna pode expor leitura protegida e operações operacionais controladas, mas qualquer CRUD administrativo de usuários, perfis e permissões deve ser tratado como etapa posterior, com controles de segurança, auditoria e validação explícita. O estado atual de autenticação e autorização é suficiente para proteger o acesso interno inicial, mas ainda não habilita uma camada administrativa aberta.
 
-Os controles mínimos que ainda devem ser fechados antes do primeiro CRUD administrativo são:
+Primeiro reforço já implementado localmente:
 - rate limit de login por IP e por IP+login;
 - tratamento seguro do IP real atrás do Apache/proxy;
-- testes automatizados para bloqueio, revogação e acesso negado;
+- testes automatizados de spoofing de headers e excesso de tentativas.
+
+Os controles mínimos que ainda devem ser fechados antes do primeiro CRUD administrativo são:
+- validação operacional do reforço no servidor/homologação e dos headers efetivamente encaminhados pelo Apache;
+- testes adicionais para bloqueio, revogação e acesso negado no futuro fluxo administrativo;
 - anti-elevação, proteção contra remoção do último administrador e auditoria administrativa;
 - separação forte entre permissões administrativas e permissões de negócio.
 
 Enquanto a Etapa 0 não estiver concluída e validada em homologação, a API interna deve permanecer sem tela administrativa aberta e sem endpoints mutáveis de administração.
+
+Reforço recente da Etapa 0 (commits `152c177` e `f3d8ff3`): o login interno passou a ter resolução segura de IP real, rate limit por IP e por IP+login, proteção contra spoofing de `X-Forwarded-For`/`X-Real-IP` e resposta `429` sanitizada. Esse reforço reduz abuso de login e melhora a base da API interna, mas não substitui a defesa de infraestrutura nem a validação operacional em servidor/homologação para confirmar como o Apache/proxy encaminha os headers reais.
 
 A API deve atuar como:
 

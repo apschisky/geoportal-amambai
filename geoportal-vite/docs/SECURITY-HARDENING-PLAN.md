@@ -16,10 +16,14 @@ Estado atual registrado:
 - O projeto já possui controles iniciais de autenticação interna com rotas internas sob feature flag, cookie HttpOnly/Secure/SameSite para navegador, revogação lógica de sessão no logout, respostas 401/403 genéricas e autorização por permissão em endpoints internos.
 - O estado atual não deve ser interpretado como “painel administrativo aberto” nem como “CRUD administrativo pronto”.
 
+Primeiro reforço concluído localmente antes do CRUD administrativo:
+- Rate limit de login por IP e por IP+login, com resposta genérica e sanitizada.
+- Tratamento seguro do IP real atrás do Apache/proxy, sem confiança cega em `X-Forwarded-For` ou `X-Real-IP`.
+- Testes automatizados para tentativas excessivas, spoofing de headers e preservação do login normal.
+
 Itens ainda pendentes antes do primeiro CRUD administrativo:
-- Rate limit de login por IP e por IP+login, com resposta genérica.
-- Tratamento seguro do IP real atrás do Apache/proxy, incluindo `X-Forwarded-For` e logs compatíveis.
-- Testes automatizados para tentativas excessivas, acesso negado, bloqueio de conta e revogação de sessão.
+- Validação controlada do reforço no servidor/homologação e dos headers efetivamente produzidos pelo Apache.
+- Ampliação dos testes de acesso negado, bloqueio de conta e revogação de sessão conforme os próximos endpoints administrativos forem desenhados.
 - Regras explícitas de anti-elevação, proteção contra remover o último administrador e auditoria administrativa.
 - Política de permissões administrativas separada da autorização de negócio, sem bypass por login hardcoded.
 - Proteção de infraestrutura contra abuso volumétrico (DDoS/abuso de login); o FastAPI sozinho não resolve ataques de camada 3/4/7 em escala.
@@ -27,6 +31,37 @@ Itens ainda pendentes antes do primeiro CRUD administrativo:
 Conclusão operacional:
 - A Etapa 0 é requisito documental e operacional antes do CRUD administrativo.
 - Enquanto ela não estiver concluída e validada em homologação, o projeto deve manter os fluxos administrativos fechados, sem tela administrativa pública e sem criação/alteração de usuários reais em produção.
+
+Atualização documental 2026-06-24 (commits `152c177` e `f3d8ff3`): o primeiro reforço da Etapa 0 foi implementado localmente e enviado ao GitHub. O marco registra:
+- resolução segura de IP real por meio do helper `geoportal-backend/app/core/client_ip.py`;
+- aceitação conservadora de `X-Forwarded-For` e `X-Real-IP` apenas de peer confiável e com valor único válido;
+- rate limit do login interno por IP, por login/origem e por IP+login usando a auditoria existente em `mod_auth.login_auditoria`;
+- resposta `429 Too many authentication attempts` sanitizada, sem revelar existência de usuário nem contador;
+- preservação dos motivos de auditoria `rate_limit`, `rate_limit_ip` e `rate_limit_ip_login`;
+- suporte a `RATE_LIMIT_ENABLED=false` como desligamento explícito do rate limit, sem interromper a autenticação comum.
+
+Pendências de validação antes do CRUD administrativo:
+- confirmar no ambiente real se o Apache encaminha `X-Forwarded-For` e `X-Real-IP` como esperado;
+- confirmar se o backend enxerga IP real ou apenas `127.0.0.1` no runtime interno;
+- validar em homologação/servidor se o `429` aparece corretamente sem expor usuário;
+- validar que o login normal continua operacional e que a auditoria registra motivos de rate limit sem impacto indevido em usuários legítimos.
+
+Matriz de controles deste reforço:
+
+| Controle | Estado atual | Evidência/limite |
+|---|---|---|
+| Resolução segura do IP do cliente | Implementado localmente | `app/core/client_ip.py`; usa o peer imediato como fallback |
+| Confiança em proxy | Implementado localmente | Default restrito a `127.0.0.1` e `::1`; configuração externa permanece pendente de validação |
+| `X-Forwarded-For` | Implementado localmente | Aceito somente de peer confiável e com exatamente um IP válido; cadeia múltipla é rejeitada |
+| `X-Real-IP` | Implementado localmente | Aceito somente de peer confiável e com valor único válido |
+| Rate limit por login/origem | Implementado localmente | 5 falhas em 15 minutos |
+| Rate limit por IP | Implementado localmente | 20 falhas em 15 minutos |
+| Rate limit por IP+login | Implementado localmente | 5 falhas em 15 minutos |
+| Resposta para excesso | Implementado localmente | `429` genérico, sem usuário, contador ou escopo bloqueado |
+| Privacidade do IP | Implementado localmente | HMAC-SHA256 truncado; IP bruto não é persistido por esse fluxo |
+| Persistência entre workers/processos | Implementado localmente | Contagem em `mod_auth.login_auditoria`, sem migration nova |
+| Validação dos headers reais do Apache | Pendente | Exige pull e validação controlada em servidor/homologação |
+| Defesa contra DDoS volumétrico | Fora do escopo da aplicação | Depende de Apache, firewall, WAF/CDN, provedor ou VPN |
 
 ## 2. Principios de seguranca
 

@@ -23,14 +23,20 @@ O que já existe e deve permanecer como base:
 - Autorização por permissão em endpoints internos.
 - Respostas 401/403 genéricas e sem exposição de segredos.
 
-O que ainda falta antes do primeiro CRUD administrativo:
+Primeiro reforço já implementado localmente:
 - Rate limit de login por IP e por IP+login.
-- Tratamento seguro do IP real atrás do Apache/proxy.
-- Testes automatizados de bloqueio, revogação e acesso negado.
+- Tratamento seguro do IP real atrás do Apache/proxy, com fallback conservador.
+- Testes automatizados de spoofing de headers e excesso de tentativas.
+
+O que ainda falta antes do primeiro CRUD administrativo:
+- Validação operacional do reforço no servidor/homologação, incluindo os headers efetivos do Apache e o contrato `429`.
+- Testes adicionais de bloqueio, revogação e acesso negado associados ao futuro fluxo administrativo.
 - Anti-elevação, auditoria administrativa e proteção do último administrador.
 - Separação explícita entre permissões administrativas e permissões de negócio.
 
 Conclusão: a Etapa 0 é uma decisão técnica obrigatória antes de qualquer endpoint mutável administrativo.
+
+Reforço técnico recente da Etapa 0 (commits `152c177` e `f3d8ff3`): a decisão adotada para o login interno passou a incluir resolução segura de IP real, rate limit por IP e por IP+login, e rejeição conservadora de `X-Forwarded-For`/`X-Real-IP` em cenários de spoofing. O fluxo continua sem migration nova e sem armazenar o IP em texto puro; o valor é tratado com HMAC-SHA256 e truncado para o campo de origem. A decisão permanece de validar esse comportamento em servidor/homologação antes de considerar a Etapa 0 fechada para o próximo bloco administrativo.
 
 ## 1.3 Status de implementação atual
 
@@ -43,6 +49,10 @@ Conclusão: a Etapa 0 é uma decisão técnica obrigatória antes de qualquer en
   - Repository interno de auditoria de login criado.
   - Service puro de rate limit implementado.
   - `auth_service.py` com auditoria e rate limit integrado.
+  - Resolução segura de IP implementada em `app/core/client_ip.py`, com peer confiável configurável e fallback para `request.client.host`.
+  - Rate limit persistente implementado por login/origem, por IP e por IP+login usando `mod_auth.login_auditoria`, sem migration adicional.
+  - IP pseudonimizado por HMAC-SHA256 antes do registro em `origem`; IP bruto não é persistido por esse fluxo.
+  - Excesso de tentativas retorna `429` genérico; credencial inválida abaixo do limite permanece com `401` genérico.
   - Atualização de `ultimo_login_em` tornada best effort via try/except para reduzir risco de inconsistência; sessão autenticada permanece válida se falhar.
   - Testes de robustez de auditoria e tratamento de exceções passaram em `tests/test_auth_service.py` com 26 testes.
   - Service interno de validação de sessão autenticada implementado.
