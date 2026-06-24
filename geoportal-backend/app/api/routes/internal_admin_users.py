@@ -11,6 +11,7 @@ from app.repositories.auth_admin_user_list_repository import (
     list_internal_admin_users,
 )
 from app.services.auth_admin_user_service import CreatedBasicInternalUser
+from app.services.auth_admin_user_service import AdministrativeSecurityDeniedError
 from app.services.auth_admin_user_service import InternalUserConflictError
 from app.services.auth_admin_user_service import InternalUserNotFoundError
 from app.services.auth_admin_user_service import InternalUserProfileInactiveConflictError
@@ -232,6 +233,8 @@ def create_user(
             nome=payload.nome,
             email=payload.email,
             senha_inicial=payload.senha_inicial,
+            ator_usuario_id=_current_session.usuario_id,
+            ator_login=_current_session.login,
         )
     except InternalUserConflictError as exc:
         raise HTTPException(
@@ -259,7 +262,16 @@ def block_user(
     _internal_request: None = Depends(require_internal_mutating_request_header),
 ) -> InternalAdminUserDetailResponse:
     try:
-        user = block_internal_admin_user(usuario_id=usuario_id)
+        user = block_internal_admin_user(
+            usuario_id=usuario_id,
+            ator_usuario_id=_current_session.usuario_id,
+            ator_login=_current_session.login,
+        )
+    except AdministrativeSecurityDeniedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail='Forbidden',
+        ) from exc
     except InternalUserNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -286,7 +298,11 @@ def unblock_user(
     _internal_request: None = Depends(require_internal_mutating_request_header),
 ) -> InternalAdminUserDetailResponse:
     try:
-        user = unblock_internal_admin_user(usuario_id=usuario_id)
+        user = unblock_internal_admin_user(
+            usuario_id=usuario_id,
+            ator_usuario_id=_current_session.usuario_id,
+            ator_login=_current_session.login,
+        )
     except InternalUserNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -319,7 +335,14 @@ def reset_user_password(
             usuario_id=usuario_id,
             nova_senha=parsed_payload.nova_senha,
             confirmar_nova_senha=parsed_payload.confirmar_nova_senha,
+            ator_usuario_id=_current_session.usuario_id,
+            ator_login=_current_session.login,
         )
+    except AdministrativeSecurityDeniedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail='Forbidden',
+        ) from exc
     except InternalUserNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -354,7 +377,14 @@ def assign_user_profile(
             usuario_id=usuario_id,
             perfil_id=parsed_payload.perfil_id,
             modulo=parsed_payload.modulo,
+            ator_usuario_id=_current_session.usuario_id,
+            ator_login=_current_session.login,
         )
+    except AdministrativeSecurityDeniedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail='Forbidden',
+        ) from exc
     except InternalUserProfileNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

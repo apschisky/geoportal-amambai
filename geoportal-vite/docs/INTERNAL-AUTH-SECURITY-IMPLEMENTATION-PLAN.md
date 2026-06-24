@@ -629,3 +629,17 @@ Categorias iniciais planejadas:
 2. Fase B: inventariar e endurecer endpoints administrativos somente leitura existentes; completar listagens de usuarios, perfis, permissoes e auditoria sem retornar dados sensiveis.
 3. Fase C: endurecer e ampliar endpoints mutaveis restritos somente depois das salvaguardas, com header mutavel, permissao especifica, confirmacao ou justificativa quando critica e auditoria obrigatoria.
 4. Fase D: frontend administrativo restrito, sem transformar ocultacao de botoes em controle de seguranca.
+
+### Implementacao backend local deste bloco
+
+O primeiro bloco foi implementado localmente, ainda sem migration aplicada em banco real, deploy ou frontend:
+
+- migration `0011_create_mod_auth_admin_auditoria.sql` e rollback correspondente;
+- repository append-only com sanitizacao de texto livre e taxonomia tecnica validada;
+- auditoria de sucesso na mesma transacao de criacao, bloqueio, desbloqueio, reset administrativo e atribuicao de perfil;
+- negativa auditada para autoatribuicao de perfil administrativo, reset administrativo da propria senha, auto-bloqueio e bloqueio do ultimo administrador efetivo;
+- `pg_advisory_xact_lock` para serializar a verificacao da capacidade administrativa efetiva;
+- resposta externa `403 Forbidden` sanitizada para negativas das salvaguardas;
+- suite backend local concluida com `716 passed` e `3 warnings` conhecidos.
+
+Remocao de perfil e revogacao de permissao ainda nao possuem endpoint mutavel. A integracao especifica dessas futuras operacoes permanece pendente; elas deverao reutilizar a mesma fronteira transacional e nao poderao ser liberadas antes de testes dedicados.

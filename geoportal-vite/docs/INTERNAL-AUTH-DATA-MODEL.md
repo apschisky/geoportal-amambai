@@ -317,6 +317,12 @@ Administrador efetivo e o usuario ativo, nao deletado logicamente, com vinculos 
 
 O conjunto exato de permissoes criticas deve ser inventariado antes da implementacao. A avaliacao deve considerar os codigos atuais e a futura decomposicao granular, sem renomeacao silenciosa. Qualquer alteracao que possa reduzir a contagem a zero deve ocorrer em transacao unica e sob lock apropriado.
 
+### 15.3 Estado local implementado
+
+A estrutura local adotou o nome `mod_auth.admin_auditoria`, com `ator_usuario_id`, `ator_login`, `acao`, `entidade_tipo`, `entidade_id`, `resultado`, `motivo`, `resumo`, `justificativa`, `origem`, `request_id` e `criado_em`. A tabela permanece append-only no fluxo da aplicacao: o repository implementa somente `INSERT`.
+
+O conceito de administrador efetivo foi implementado com usuario ativo, nao desativado, nao bloqueado e com perfil, vinculo e permissao critica ativos. A verificacao do ultimo administrador usa lock transacional. A migration existe apenas no repositorio e nao foi aplicada em homologacao ou producao.
+
 ## 16. Criterios de aceite
 
 - Documentacao clara.

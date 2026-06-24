@@ -13,6 +13,7 @@ from app.dependencies.auth_dependencies import INTERNAL_MUTATING_REQUEST_HEADER_
 from app.main import app as main_app
 from app.repositories.auth_admin_user_list_repository import InternalAdminUserListItem
 from app.services.auth_admin_user_service import AssignedInternalUserProfile
+from app.services.auth_admin_user_service import AdministrativeSecurityDeniedError
 from app.services.auth_admin_user_service import InternalUserConflictError
 from app.services.auth_admin_user_service import InternalUserNotFoundError
 from app.services.auth_admin_user_service import InternalUserProfileInactiveConflictError
@@ -564,6 +565,8 @@ def test_create_admin_user_returns_201_for_authenticated_user_with_permission_an
         "permission_code": EXPECTED_CREATE_PERMISSION,
     }
     assert created_kwargs == {
+        'ator_usuario_id': 7,
+        'ator_login': None,
         "login": "usuario.exemplo",
         "nome": "Usuario Exemplo",
         "email": None,
@@ -852,6 +855,8 @@ def test_block_actions_return_200_for_authenticated_user_with_permission_and_hea
     action_kwargs: dict[str, object] = {}
 
     def fake_block_action(**kwargs: object) -> UpdatedInternalUserBlockStatus:
+        assert kwargs.pop('ator_usuario_id') == 7
+        assert kwargs.pop('ator_login') is None
         action_kwargs.update(kwargs)
         return fake_block_status(bloqueado=expected_blocked)
 
@@ -1141,6 +1146,8 @@ def test_reset_password_returns_200_for_authenticated_user_with_permission_and_h
         "permission_code": EXPECTED_RESET_PASSWORD_PERMISSION,
     }
     assert reset_kwargs == {
+        'ator_usuario_id': 7,
+        'ator_login': None,
         "usuario_id": 8,
         "nova_senha": "nova-senha-ficticia-interna-456",
         "confirmar_nova_senha": "nova-senha-ficticia-interna-456",
@@ -1475,6 +1482,8 @@ def test_assign_admin_user_profile_returns_201_for_authenticated_user_with_permi
         "permission_code": EXPECTED_ASSIGN_PROFILE_PERMISSION,
     }
     assert assignment_kwargs == {
+        'ator_usuario_id': 7,
+        'ator_login': None,
         "usuario_id": 8,
         "perfil_id": 3,
         "modulo": None,
@@ -1752,6 +1761,56 @@ def test_assign_admin_user_profile_response_does_not_expose_sensitive_fields(
         "auditoria",
     ):
         assert forbidden not in response_text
+
+
+@pytest.mark.parametrize(
+    ('path', 'service_name', 'payload'),
+    [
+        (ADMIN_USER_BLOCK_PATH, 'block_internal_admin_user', None),
+        (
+            ADMIN_USER_RESET_PASSWORD_PATH,
+            'reset_internal_admin_user_password',
+            RESET_PASSWORD_PAYLOAD,
+        ),
+        (
+            ADMIN_USER_PROFILES_PATH,
+            'assign_internal_admin_user_profile',
+            PROFILE_PAYLOAD,
+        ),
+    ],
+)
+def test_administrative_security_denial_returns_sanitized_403(
+    monkeypatch: pytest.MonkeyPatch,
+    path: str,
+    service_name: str,
+    payload: dict[str, object] | None,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        'has_permission',
+        lambda usuario_id, permission_code: True,
+    )
+
+    def deny_action(**kwargs: object) -> object:
+        raise AdministrativeSecurityDeniedError('internal security reason')
+
+    monkeypatch.setattr(internal_admin_users, service_name, deny_action)
+    client = TestClient(app)
+
+    response = client.post(
+        path,
+        json=payload,
+        headers=mutating_headers(),
+    )
+
+    assert response.status_code == 403
+    assert response.json() == {'detail': 'Forbidden'}
+    assert 'internal security reason' not in response.text
+    assert 'last_effective_admin' not in response.text
 
 
 def test_public_iluminacao_health_is_not_affected() -> None:

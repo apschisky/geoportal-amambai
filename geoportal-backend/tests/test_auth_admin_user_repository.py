@@ -22,6 +22,7 @@ from app.repositories.auth_admin_user_repository import (
     unblock_internal_user,
 )
 from app.services import auth_admin_user_service
+from app.repositories import auth_admin_audit_repository
 
 
 RAW_PASSWORD = "senha-ficticia-interna-123"
@@ -63,6 +64,8 @@ class FakeConnection:
         self.params: dict[str, Any] | None = None
         self.row = row
         self.exc = exc
+        self.committed = False
+        self.rolled_back = False
 
     def execute(self, statement: TextClause, params: dict[str, Any]) -> FakeResult:
         self.statement = statement
@@ -80,6 +83,8 @@ class FakeBegin:
         return self.connection
 
     def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
+        self.connection.committed = exc_type is None
+        self.connection.rolled_back = exc_type is not None
         return None
 
 
@@ -927,6 +932,48 @@ def test_service_resets_internal_user_password_with_policy_hash_and_repository(
         },
     }
     assert NEW_RAW_PASSWORD not in calls["reset_internal_user_password"].values()  # type: ignore[union-attr]
+
+
+def test_service_denies_administrative_self_password_reset_and_audits(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    engine = FakeEngine()
+    monkeypatch.setattr(
+        auth_admin_audit_repository,
+        'get_engine',
+        lambda: engine,
+    )
+    monkeypatch.setattr(
+        auth_admin_user_service,
+        'get_internal_admin_user_by_id',
+        lambda **kwargs: pytest.fail('user lookup must not run'),
+    )
+
+    with pytest.raises(
+        auth_admin_user_service.AdministrativeSecurityDeniedError
+    ):
+        auth_admin_user_service.reset_internal_admin_user_password(
+            usuario_id=7,
+            nova_senha=NEW_RAW_PASSWORD,
+            confirmar_nova_senha=NEW_RAW_PASSWORD,
+            ator_usuario_id=7,
+            ator_login='admin.teste',
+        )
+
+    params = params_for(engine)
+    assert 'INSERT INTO mod_auth.admin_auditoria' in sql_for(engine)
+    assert params['acao'] == 'admin.security.denied_self_change'
+    assert params['resultado'] == 'negada'
+    assert params['motivo'] == 'self_password_reset'
+    assert engine.connection.committed is True
+    assert engine.connection.rolled_back is False
+    for forbidden in (
+        NEW_RAW_PASSWORD,
+        'token-ficticio',
+        'cookie-ficticio',
+        NEW_PASSWORD_HASH,
+    ):
+        assert forbidden not in str(params)
 
 
 def test_service_reset_password_returns_not_found_before_hash(
