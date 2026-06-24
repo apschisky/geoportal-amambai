@@ -1232,6 +1232,24 @@ Essa etapa posterior exigira autenticacao, autorizacao por perfil, endpoints int
 
 O desenho detalhado esta em `docs/INTERNAL-AUTHORIZATION-PLAN.md`.
 
+### Proxima homologacao controlada - migration 0011
+
+O commit `9f6ec75 Implementa auditoria e salvaguardas administrativas` foi testado localmente e enviado ao GitHub, mas ainda nao foi publicado ou validado em servidor. A migration `0011_create_mod_auth_admin_auditoria.sql` tambem nao foi executada.
+
+Ordem obrigatoria para a proxima operacao:
+
+1. `git pull --ff-only` no servidor de homologacao;
+2. confirmar branch, commit e working tree;
+3. criar backup manual do banco de homologacao e validar sua legibilidade;
+4. aplicar a migration `0011` somente em homologacao;
+5. validar `mod_auth.admin_auditoria`, constraints, indices e sequence;
+6. revisar e conceder somente privilegios minimos ao runtime;
+7. executar testes backend e validar login e endpoints administrativos existentes;
+8. registrar resultados sanitizados;
+9. somente depois avaliar uma etapa separada para producao.
+
+Esta secao nao autoriza deploy, restart, aplicacao em producao ou criacao de frontend administrativo.
+
 ## 8. Seguranca operacional
 
 - Segredos e variaveis reais devem ficar fora do Git.

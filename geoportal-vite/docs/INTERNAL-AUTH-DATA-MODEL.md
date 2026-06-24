@@ -287,7 +287,7 @@ Essa separacao evita dar permissao ampla quando a necessidade operacional e limi
 
 ## 15.1 Modelo planejado de auditoria administrativa
 
-`mod_auth.login_auditoria` continua reservado a autenticacao. O proximo bloco da Etapa 0 deve avaliar uma estrutura separada, provisoriamente chamada `mod_auth.auditoria_administrativa`, sem criar migration neste ciclo.
+`mod_auth.login_auditoria` continua reservado a autenticacao. O commit `9f6ec75` implementou localmente a estrutura separada `mod_auth.admin_auditoria` e criou a migration `0011`, ainda nao executada.
 
 Campos conceituais minimos:
 
@@ -315,13 +315,13 @@ A role de runtime deve ter somente os privilegios minimos para inserir eventos o
 
 Administrador efetivo e o usuario ativo, nao deletado logicamente, com vinculos ativos e capacidade critica efetiva de administrar usuarios, perfis ou permissoes. A definicao nao deve depender apenas do nome de um perfil.
 
-O conjunto exato de permissoes criticas deve ser inventariado antes da implementacao. A avaliacao deve considerar os codigos atuais e a futura decomposicao granular, sem renomeacao silenciosa. Qualquer alteracao que possa reduzir a contagem a zero deve ocorrer em transacao unica e sob lock apropriado.
+O conjunto implementado considera permissoes administrativas mutaveis atuais e candidatas futuras, sem renomeacao silenciosa. Operacoes que possam remover a capacidade do ultimo administrador devem ocorrer em transacao unica e sob lock apropriado.
 
 ### 15.3 Estado local implementado
 
 A estrutura local adotou o nome `mod_auth.admin_auditoria`, com `ator_usuario_id`, `ator_login`, `acao`, `entidade_tipo`, `entidade_id`, `resultado`, `motivo`, `resumo`, `justificativa`, `origem`, `request_id` e `criado_em`. A tabela permanece append-only no fluxo da aplicacao: o repository implementa somente `INSERT`.
 
-O conceito de administrador efetivo foi implementado com usuario ativo, nao desativado, nao bloqueado e com perfil, vinculo e permissao critica ativos. A verificacao do ultimo administrador usa lock transacional. A migration existe apenas no repositorio e nao foi aplicada em homologacao ou producao.
+O conceito de administrador efetivo foi implementado com usuario ativo, nao desativado, nao bloqueado e com perfil, vinculo e permissao critica ativos. A verificacao do ultimo administrador usa lock transacional. A migration existe apenas no repositorio, foi enviada ao GitHub no commit `9f6ec75` e nao foi aplicada em homologacao ou producao.
 
 ## 16. Criterios de aceite
 

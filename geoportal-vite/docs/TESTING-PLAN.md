@@ -304,7 +304,7 @@ Depois disso, seguir para `src/geoportal-routes.js` e `buildPosteRepairFormUrl`.
 
 ## Cobertura futura da seguranca administrativa
 
-Auditoria administrativa, anti-autoelevacao e protecao do ultimo administrador permanecem planejadas, nao implementadas. A implementacao futura deve cobrir, no minimo:
+Auditoria administrativa, anti-autoelevacao e protecao do ultimo administrador foram implementadas e testadas localmente no commit `9f6ec75`. A cobertura inclui:
 
 - usuario sem permissao administrativa recebe `403`;
 - administrador nao consegue conceder a si mesmo perfil ou permissao superior;
@@ -321,6 +321,6 @@ Auditoria administrativa, anti-autoelevacao e protecao do ultimo administrador p
 
 Testes transacionais devem simular pelo menos dois administradores efetivos e duas operacoes concorrentes sobre seus vinculos. A estrategia de lock escolhida deve ser demonstrada pelos testes, sem depender apenas de contagem feita antes da transacao.
 
-Atualizacao local: foram adicionados testes de migration, append-only, sanitizacao, preservacao da categoria `admin.user.reset_password`, auditoria de sucesso e negativa, autoatribuicao administrativa, auto-bloqueio, reset administrativo da propria senha e bloqueio do ultimo administrador efetivo. A suite focada de auth/admin passou com `219 passed`; apos os ajustes finais, os testes diretamente afetados passaram com `140 passed`; a suite backend completa passou com `716 passed` e `3 warnings` conhecidos de deprecacao do `HTTP_422_UNPROCESSABLE_ENTITY`.
+Atualizacao local: foram adicionados testes de migration, append-only, sanitizacao, preservacao da categoria `admin.user.reset_password`, auditoria de sucesso e negativa, autoatribuicao administrativa, auto-bloqueio, reset administrativo da propria senha e bloqueio do ultimo administrador efetivo. Os testes tambem confirmam que eventos negados sao commitados antes da excecao convertida em `403`, sem rollback, e que eventos de sucesso permanecem na transacao da mutacao. A suite focada de auth/admin passou com `219 passed`; os testes diretamente afetados passaram com `140 passed`; a suite backend completa passou com `716 passed` e `3 warnings` conhecidos de deprecacao do `HTTP_422_UNPROCESSABLE_ENTITY`.
 
-Permanece futura a cobertura de endpoints de remocao de perfil e revogacao de permissao, pois esses contratos mutaveis ainda nao existem. Nenhum teste deste ciclo executou migration ou acessou banco real.
+Permanece futura a cobertura de endpoints de remocao de perfil e revogacao de permissao, pois esses contratos mutaveis ainda nao existem. Nenhum teste deste ciclo executou migration ou acessou banco real. Os resultados sao exclusivamente locais e nao representam validacao em homologacao ou producao.

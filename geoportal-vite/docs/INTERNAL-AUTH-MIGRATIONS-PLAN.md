@@ -386,7 +386,7 @@ Rollback correspondente:
 - Sem dados sensiveis.
 - Plano pronto para gerar migrations pequenas e revisaveis.
 
-## 10. Migration futura de auditoria administrativa - planejada, nao criada
+## 10. Migration 0011 de auditoria administrativa - criada, nao aplicada
 
 O proximo bloco da Etapa 0 provavelmente exigira migration estrutural para uma tabela propria de auditoria administrativa, pois `mod_auth.login_auditoria` possui finalidade especifica de autenticacao e nao deve receber eventos de gestao de usuarios, perfis e permissoes.
 
@@ -402,6 +402,17 @@ Antes de numerar ou criar a migration, deve ser feito inventario do schema real 
 
 A protecao do ultimo administrador e as regras de anti-autoelevacao devem ser implementadas no service e repository transacional. Trigger de banco nao deve ser adotado automaticamente: sua necessidade deve ser avaliada somente se as garantias da aplicacao e do modelo de concorrencia forem insuficientes.
 
-Classificacao atual: **migration estrutural provavelmente necessaria, ainda nao criada e pendente de inventario tecnico**. Permissoes administrativas novas tambem exigirao seed, bootstrap ou migration operacional idempotente em ciclo separado, nunca SQL manual solto sem rastreabilidade.
+Classificacao atual: **migration estrutural criada e testada localmente, ainda nao aplicada em nenhum banco real**. Permissoes administrativas novas tambem exigirao seed, bootstrap ou migration operacional idempotente em ciclo separado, nunca SQL manual solto sem rastreabilidade.
 
-Atualizacao local: a migration foi criada como `0011_create_mod_auth_admin_auditoria.sql`, acompanhada de `0011_drop_mod_auth_admin_auditoria.sql`. Ela cria `mod_auth.admin_auditoria`, constraints de campos obrigatorios e resultado, alem de indices por data, ator, acao, entidade e resultado. Nao cria dados, seeds ou GRANTs e nao foi executada em homologacao ou producao. Antes de deploy sera necessario revisar backup, privilegio minimo de `INSERT` para o runtime, leitura restrita e retencao dos eventos.
+Atualizacao local do commit `9f6ec75`: a migration foi criada como `0011_create_mod_auth_admin_auditoria.sql`, acompanhada de `0011_drop_mod_auth_admin_auditoria.sql`. Ela cria `mod_auth.admin_auditoria`, constraints de campos obrigatorios e resultado, alem de indices por data, ator, acao, entidade e resultado. Nao cria dados, seeds ou GRANTs e nao foi executada em homologacao ou producao.
+
+Proximo passo operacional:
+
+1. atualizar o servidor de homologacao com `git pull --ff-only`;
+2. confirmar working tree limpo e commit esperado;
+3. criar e validar backup manual do banco de homologacao;
+4. aplicar somente a migration `0011`;
+5. validar tabela, constraints, indices e privilegios;
+6. conceder ao runtime apenas os privilegios minimos necessarios, se aplicavel;
+7. executar testes e validar os endpoints administrativos existentes;
+8. documentar o resultado antes de planejar producao.

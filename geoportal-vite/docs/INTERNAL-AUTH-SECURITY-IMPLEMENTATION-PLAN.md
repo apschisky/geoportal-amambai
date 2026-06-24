@@ -632,7 +632,7 @@ Categorias iniciais planejadas:
 
 ### Implementacao backend local deste bloco
 
-O primeiro bloco foi implementado localmente, ainda sem migration aplicada em banco real, deploy ou frontend:
+O primeiro bloco foi implementado localmente e enviado ao GitHub no commit `9f6ec75 Implementa auditoria e salvaguardas administrativas`, ainda sem migration aplicada em banco real, deploy ou frontend:
 
 - migration `0011_create_mod_auth_admin_auditoria.sql` e rollback correspondente;
 - repository append-only com sanitizacao de texto livre e taxonomia tecnica validada;
@@ -643,3 +643,7 @@ O primeiro bloco foi implementado localmente, ainda sem migration aplicada em ba
 - suite backend local concluida com `716 passed` e `3 warnings` conhecidos.
 
 Remocao de perfil e revogacao de permissao ainda nao possuem endpoint mutavel. A integracao especifica dessas futuras operacoes permanece pendente; elas deverao reutilizar a mesma fronteira transacional e nao poderao ser liberadas antes de testes dedicados.
+
+A microchecagem local confirmou que eventos negados nao sao perdidos por rollback: autoelevacao, auto-bloqueio e bloqueio do ultimo administrador gravam a auditoria e encerram a transacao antes de lancar a excecao convertida em `403`; o reset administrativo da propria senha usa transacao de auditoria independente. Os testes verificam explicitamente commit sem rollback e ausencia de senha, token, cookie e hash nos eventos.
+
+Estado operacional: nao publicado, nao aplicado em homologacao ou producao e sem migration executada. Proxima etapa segura: atualizar homologacao por `git pull --ff-only`, criar backup manual, aplicar somente a migration `0011`, revisar tabela, indices e GRANTs minimos, executar testes e validar os endpoints administrativos existentes antes de qualquer planejamento de producao.

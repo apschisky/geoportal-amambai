@@ -1004,4 +1004,6 @@ Decisoes:
 - nao deve existir excecao por nome de login, inclusive para bootstrap ou suporte;
 - nomes finais de permissoes poderao ser refinados, mas permissao ampla existente nao deve ser reutilizada silenciosamente quando uma acao critica exigir menor privilegio.
 
-Esta decisao nao declara a auditoria administrativa, a anti-autoelevacao ou a protecao do ultimo administrador como implementadas.
+Atualizacao do commit `9f6ec75`: estas decisoes foram implementadas e testadas localmente no backend. A auditoria usa `mod_auth.admin_auditoria`, os eventos de sucesso compartilham a transacao da mutacao, os eventos negados sao confirmados antes do `403`, e a protecao do ultimo administrador usa `pg_advisory_xact_lock` e permissoes efetivas.
+
+O commit foi enviado ao GitHub, mas a migration `0011` ainda nao foi executada. Portanto, este estado nao representa publicacao em servidor, validacao em homologacao ou liberacao de CRUD ou frontend administrativo.

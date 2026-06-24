@@ -399,4 +399,17 @@ Controles planejados:
 
 Administrador efetivo, para essa salvaguarda, e o usuario ativo, nao deletado logicamente e com vinculos ativos que lhe deem capacidade real de administrar usuarios, perfis ou permissoes. A verificacao futura deve ocorrer na mesma transacao da alteracao, com bloqueio apropriado para impedir que operacoes concorrentes removam simultaneamente os ultimos administradores.
 
-O rate limit interno ja validado protege a entrada da autenticacao, mas nao substitui esses controles de autorizacao e integridade administrativa. Auditoria administrativa, anti-autoelevacao e protecao do ultimo administrador permanecem planejadas e pendentes de implementacao e validacao.
+O rate limit interno ja validado protege a entrada da autenticacao, mas nao substitui esses controles de autorizacao e integridade administrativa.
+
+Atualizacao local do commit `9f6ec75 Implementa auditoria e salvaguardas administrativas`:
+
+- auditoria administrativa propria implementada em repository separado de `mod_auth.login_auditoria`;
+- migration versionada `0011_create_mod_auth_admin_auditoria.sql` e rollback correspondente criados, mas ainda nao executados;
+- eventos de sucesso permanecem atomicos com a mutacao;
+- eventos negados sao persistidos antes da resposta `403`, com commit comprovado por fake engine transacional;
+- autoatribuicao de perfil administrativo critico, reset administrativo da propria senha e auto-bloqueio sao negados;
+- bloqueio do ultimo administrador efetivo e impedido sob `pg_advisory_xact_lock`;
+- identificacao do ator e feita por `usuario_id`, sem excecao por login;
+- testes locais: `219 passed` no conjunto focado e `716 passed`, com `3 warnings` conhecidos, na suite backend completa.
+
+Este marco foi implementado localmente, testado localmente e enviado ao GitHub. Nao foi publicado em servidor, aplicado em banco, validado em homologacao ou validado em producao. O proximo passo e homologar a migration `0011` de forma controlada, com backup manual previo.
