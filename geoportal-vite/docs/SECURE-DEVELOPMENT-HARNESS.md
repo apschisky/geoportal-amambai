@@ -118,7 +118,7 @@ Pare imediatamente se:
 
 ## Validacao futura das salvaguardas administrativas
 
-O proximo bloco da Etapa 0 ainda nao esta implementado. Quando existir, sua validacao controlada deve ocorrer primeiro em testes locais e homologacao, usando usuarios ficticios e backup previo, antes de qualquer uso em producao.
+O proximo bloco da Etapa 0 foi implementado e testado localmente no commit `9f6ec75`, mas ainda nao foi validado em ambiente. Sua primeira validacao controlada deve ocorrer em homologacao, usando usuarios ficticios e backup manual previo, antes de qualquer uso em producao.
 
 O roteiro futuro deve confirmar:
 
@@ -133,3 +133,5 @@ O roteiro futuro deve confirmar:
 - nenhum GRANT amplo permanente para a role de runtime.
 
 O harness nao deve criar administradores reais, conceder permissao critica automaticamente nem contornar as salvaguardas para facilitar a validacao.
+
+Antes de executar o harness, a migration `0011` deve ser aplicada manualmente e de forma controlada em homologacao, apos backup. O harness nao deve aplicar migrations automaticamente. A validacao deve confirmar que eventos de sucesso e negativa aparecem em `mod_auth.admin_auditoria` sem senha, token, cookie, hash ou segredo.
