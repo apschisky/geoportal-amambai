@@ -1010,4 +1010,6 @@ Validacao operacional em 2026-06-25: a migration `0011` foi executada somente em
 
 Os eventos de sucesso `admin.user.create` e `admin.user.disable` foram persistidos para o usuario ficticio de teste. A tentativa de auto-bloqueio foi negada externamente com `403 Forbidden` sanitizado e registrada internamente como `admin.security.denied_self_change`, resultado `negada`, motivo `self_block`. Essa separacao entre resposta publica minima e motivo tecnico auditavel fica confirmada como decisao aplicada.
 
-Producao e frontend administrativo nao foram alterados. A aplicacao em producao exige ciclo posterior com backup, migration controlada, privilegios minimos e repeticao da validacao.
+Validacao posterior em producao confirmou a mesma decisao: migration aplicada apos backup, runtime com `INSERT, SELECT` na tabela e `USAGE` na sequence, sem `UPDATE`, `DELETE` ou leitura direta da sequence. Os privilegios minimos devem permanecer enquanto a auditoria estiver ativa.
+
+O teste autenticado de producao foi executado via HTTPS porque `GEOPORTAL_INTERNAL_SESSION_COOKIE_SECURE=true`. A negativa de auto-bloqueio retornou somente `403 Forbidden`, enquanto `self_block` permaneceu restrito ao evento auditado. O usuario ficticio criado para a validacao permanece bloqueado. Nenhum frontend administrativo novo foi liberado por este marco.

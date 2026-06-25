@@ -386,7 +386,7 @@ Rollback correspondente:
 - Sem dados sensiveis.
 - Plano pronto para gerar migrations pequenas e revisaveis.
 
-## 10. Migration 0011 de auditoria administrativa - aplicada somente em homologacao
+## 10. Migration 0011 de auditoria administrativa - aplicada em homologacao e producao
 
 O proximo bloco da Etapa 0 provavelmente exigira migration estrutural para uma tabela propria de auditoria administrativa, pois `mod_auth.login_auditoria` possui finalidade especifica de autenticacao e nao deve receber eventos de gestao de usuarios, perfis e permissoes.
 
@@ -402,7 +402,7 @@ Antes de numerar ou criar a migration, deve ser feito inventario do schema real 
 
 A protecao do ultimo administrador e as regras de anti-autoelevacao devem ser implementadas no service e repository transacional. Trigger de banco nao deve ser adotado automaticamente: sua necessidade deve ser avaliada somente se as garantias da aplicacao e do modelo de concorrencia forem insuficientes.
 
-Classificacao atual: **migration estrutural aplicada e validada somente em homologacao; producao pendente**. Permissoes administrativas novas tambem exigirao seed, bootstrap ou migration operacional idempotente em ciclo separado, nunca SQL manual solto sem rastreabilidade.
+Classificacao atual: **migration estrutural aplicada e validada em homologacao e producao**. Permissoes administrativas novas tambem exigirao seed, bootstrap ou migration operacional idempotente em ciclo separado, nunca SQL manual solto sem rastreabilidade.
 
 Atualizacao do commit `9f6ec75`: a migration foi criada como `0011_create_mod_auth_admin_auditoria.sql`, acompanhada de `0011_drop_mod_auth_admin_auditoria.sql`. Ela cria `mod_auth.admin_auditoria`, constraints de campos obrigatorios e resultado, alem de indices por data, ator, acao, entidade e resultado. Nao cria dados, seeds ou GRANTs.
 
@@ -418,13 +418,16 @@ Registro seguro da aplicacao em homologacao em 2026-06-25:
 - contagem final de tres eventos apos a validacao funcional;
 - migration nao aplicada em producao.
 
-Proximo passo operacional para producao:
+Registro seguro da aplicacao em producao em 2026-06-25:
 
-1. revisar o resultado documentado de homologacao;
-2. confirmar branch, commit e working tree no servidor;
-3. criar e validar backup manual do banco de producao;
-4. aplicar somente a migration `0011` em janela controlada;
-5. validar tabela, constraints, indices e sequence;
-6. conceder ao runtime de producao somente os privilegios minimos equivalentes;
-7. executar harness e validacoes funcionais sanitizadas;
-8. documentar o resultado antes de ampliar o CRUD administrativo.
+- banco: `amambaiGis`;
+- backup manual previo: `C:\apps\geoportal-api\backups\manual\pre_admin_auditoria_0011_amambaiGis_20260625_083025.sql`;
+- tamanho do backup: 249.028.015 bytes;
+- tabela validada com 13 colunas, 6 indices e 12 constraints;
+- contagem inicial confirmada em zero;
+- role `geoportal_api_interna_prod` com `USAGE` no schema, `INSERT, SELECT` na tabela e `USAGE` na sequence;
+- ausencia confirmada de `UPDATE` e `DELETE` na tabela e de `SELECT` na sequence;
+- contagem final de tres eventos apos a validacao funcional;
+- usuario ficticio de validacao mantido bloqueado.
+
+Os GRANTs minimos acima devem permanecer. Qualquer ampliacao futura de CRUD administrativo deve partir deste marco e passar por planejamento, teste e auditoria proprios.

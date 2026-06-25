@@ -646,8 +646,16 @@ Remocao de perfil e revogacao de permissao ainda nao possuem endpoint mutavel. A
 
 A microchecagem local confirmou que eventos negados nao sao perdidos por rollback: autoelevacao, auto-bloqueio e bloqueio do ultimo administrador gravam a auditoria e encerram a transacao antes de lancar a excecao convertida em `403`; o reset administrativo da propria senha usa transacao de auditoria independente. Os testes verificam explicitamente commit sem rollback e ausencia de senha, token, cookie e hash nos eventos.
 
-Estado operacional em 2026-06-25: publicado e validado somente na API interna de homologacao, ainda nao aplicado em producao. O servidor estava no commit `f2b956f Complementa documentacao da auditoria administrativa`; a migration `0011` foi aplicada ao banco `amambaiGis_homologacao` apos backup manual de 248.973.816 bytes.
+Estado da primeira validacao em 2026-06-25: publicado e validado inicialmente somente na API interna de homologacao. O servidor estava no commit `f2b956f Complementa documentacao da auditoria administrativa`; a migration `0011` foi aplicada ao banco `amambaiGis_homologacao` apos backup manual de 248.973.816 bytes.
 
 O runtime `geoportal_api_homolog` recebeu somente `USAGE` no schema `mod_auth`, `INSERT, SELECT` em `mod_auth.admin_auditoria` e `USAGE` na sequence correspondente, sem `UPDATE` ou `DELETE`. O servico `GeoportalAPIInternaHomologacao`, porta `8002`, foi reiniciado e validado pelo harness `backend-restart-validate-service.ps1 -Environment InternaHomologacao -Restart -Validate`; health, version com `environment=homologacao` e `401` de `/api/internal/auth/me` sem sessao foram confirmados.
 
-O teste funcional criou e bloqueou um usuario ficticio, preservado bloqueado ao final, e negou o auto-bloqueio do administrador com `403 {&#34;detail&#34;:&#34;Forbidden&#34;}`. A auditoria terminou com tres registros e manteve o motivo tecnico `self_block` apenas no evento interno. Producao permanece pendente de ciclo proprio com backup, migration, GRANT minimo e validacoes equivalentes.
+O teste funcional criou e bloqueou um usuario ficticio, preservado bloqueado ao final, e negou o auto-bloqueio do administrador com `403 {&#34;detail&#34;:&#34;Forbidden&#34;}`. A auditoria terminou com tres registros e manteve o motivo tecnico `self_block` apenas no evento interno. Naquele marco, producao ainda dependia de ciclo proprio; a validacao posterior esta registrada abaixo.
+
+### Validacao controlada em producao
+
+Em 2026-06-25, a etapa equivalente foi concluida na API interna de producao. O banco `amambaiGis` recebeu somente a migration `0011`, depois de backup manual de 249.028.015 bytes. O runtime `geoportal_api_interna_prod` recebeu `USAGE` no schema, `INSERT, SELECT` na tabela de auditoria e `USAGE` na sequence, sem `UPDATE`, `DELETE` ou `SELECT` na sequence.
+
+O servico `GeoportalAPIInternaProducao`, porta `8003`, passou no harness `-Environment InternaProducao -Restart -Validate` e em validacao final sem restart. Health, version com `environment=producao` e `401` de `/api/internal/auth/me` sem sessao foram confirmados. Como o cookie de sessao e `Secure`, login, mutacoes controladas e logout foram validados por `https://geoserver.amambai.ms.gov.br/api/internal`, nao pelo endpoint HTTP local.
+
+O teste produziu tres eventos auditados, preservou a resposta externa `403 Forbidden` sanitizada na tentativa de auto-bloqueio e encontrou zero ocorrencias dos termos sensiveis pesquisados. O usuario ficticio de producao permanece bloqueado. Este marco valida a base de auditoria em producao, mas nao libera automaticamente novos endpoints ou frontend administrativo.

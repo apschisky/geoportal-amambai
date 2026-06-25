@@ -118,7 +118,7 @@ Pare imediatamente se:
 
 ## Validacao das salvaguardas administrativas
 
-O bloco da Etapa 0 foi implementado no commit `9f6ec75` e validado de forma controlada na API interna de homologacao em 2026-06-25, usando usuario ficticio e backup manual previo. Producao permanece pendente.
+O bloco da Etapa 0 foi implementado no commit `9f6ec75` e validado primeiro na API interna de homologacao em 2026-06-25, usando usuario ficticio e backup manual previo. A validacao posterior em producao esta registrada abaixo.
 
 O roteiro executado confirmou:
 
@@ -137,3 +137,11 @@ O harness nao deve criar administradores reais, conceder permissao critica autom
 A migration `0011` foi aplicada manualmente em `amambaiGis_homologacao` depois do backup `pre_admin_auditoria_0011_amambaiGis_homologacao_20260625_072037.sql`. O harness nao aplicou migration: ele foi usado depois, com `backend-restart-validate-service.ps1 -Environment InternaHomologacao -Restart -Validate`, para validar `GeoportalAPIInternaHomologacao` na porta `8002`.
 
 O harness confirmou health, version com ambiente de homologacao e `401` de `/api/internal/auth/me` sem sessao. O teste funcional posterior confirmou dois eventos de sucesso e uma negativa persistida, resposta externa `403 Forbidden` sanitizada, usuario ficticio bloqueado ao final e ausencia dos termos sensiveis pesquisados. Em producao, repetir o mesmo principio: migration manual apos backup, GRANT minimo e harness apenas para restart/validate.
+
+### Validacao equivalente em producao
+
+Em 2026-06-25, o mesmo fluxo foi concluido em `InternaProducao`. A migration foi aplicada manualmente somente depois do backup de producao; o harness continuou restrito ao restart/validate do servico `GeoportalAPIInternaProducao`, porta `8003`.
+
+O teste autenticado usou HTTPS, e nao `http://127.0.0.1:8003`, porque o cookie interno de producao possui `Secure=true`. O harness confirmou health, version e protecao de `/auth/me`; a validacao funcional confirmou dois eventos de sucesso, uma negativa auditada, resposta `403 Forbidden` sanitizada, logout e ausencia dos termos sensiveis verificados. O usuario ficticio permanece bloqueado.
+
+O harness final sem restart tambem passou. Os GRANTs minimos de auditoria devem permanecer e o harness nao deve ampliar privilegios nem aplicar migrations automaticamente.

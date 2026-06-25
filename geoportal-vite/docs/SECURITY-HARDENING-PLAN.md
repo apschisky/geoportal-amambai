@@ -404,7 +404,7 @@ O rate limit interno ja validado protege a entrada da autenticacao, mas nao subs
 Atualizacao local do commit `9f6ec75 Implementa auditoria e salvaguardas administrativas`:
 
 - auditoria administrativa propria implementada em repository separado de `mod_auth.login_auditoria`;
-- migration versionada `0011_create_mod_auth_admin_auditoria.sql` e rollback correspondente criados, mas ainda nao executados;
+- migration versionada `0011_create_mod_auth_admin_auditoria.sql` e rollback correspondente criados; migration aplicada e validada em homologacao e producao;
 - eventos de sucesso permanecem atomicos com a mutacao;
 - eventos negados sao persistidos antes da resposta `403`, com commit comprovado por fake engine transacional;
 - autoatribuicao de perfil administrativo critico, reset administrativo da propria senha e auto-bloqueio sao negados;
@@ -418,4 +418,8 @@ A validacao confirmou `mod_auth.admin_auditoria` com 13 colunas, 6 indices, 12 c
 
 O fluxo funcional registrou tres eventos: criacao e bloqueio do usuario ficticio `zz_admin_audit_probe_20260625075205` (`id=11`) com resultado `sucesso`, e tentativa de auto-bloqueio do ator autenticado (`id=7`) com resultado `negada`, evento `admin.security.denied_self_change` e motivo interno `self_block`. A resposta externa foi sanitizada como `403 {&#34;detail&#34;:&#34;Forbidden&#34;}`. A verificacao de privacidade encontrou zero ocorrencias dos termos `token`, `cookie`, `hash`, `session_secret`, `database_url` e `senha_inicial` nos campos auditados.
 
-Producao nao foi alterada. O proximo passo e planejar aplicacao controlada em producao com backup previo, revisao da estrutura, GRANT minimo para a role runtime de producao e repeticao das validacoes sanitizadas.
+Validacao controlada em producao em 2026-06-25: a migration `0011` foi aplicada no banco `amambaiGis` apos o backup manual `C:\apps\geoportal-api\backups\manual\pre_admin_auditoria_0011_amambaiGis_20260625_083025.sql`, com 249.028.015 bytes. A estrutura foi confirmada com 13 colunas, 6 indices, 12 constraints e contagem inicial zero.
+
+A role `geoportal_api_interna_prod` recebeu somente `USAGE` no schema `mod_auth`, `INSERT, SELECT` em `mod_auth.admin_auditoria` e `USAGE` na sequence. Permanecem ausentes `UPDATE` e `DELETE` na tabela e `SELECT` na sequence, preservando o modelo append-only. Esses GRANTs minimos devem permanecer enquanto a auditoria administrativa estiver ativa.
+
+O teste autenticado usou exclusivamente HTTPS por causa de `GEOPORTAL_INTERNAL_SESSION_COOKIE_SECURE=true`. Foram auditados `admin.user.create` e `admin.user.disable` para o usuario ficticio `zz_admin_audit_prod_probe_20260625084805` (`id=3`) e `admin.security.denied_self_change` para o ator (`id=1`), com resultado `negada` e motivo interno `self_block`. A negativa externa retornou `403 Forbidden` sanitizado, a verificacao de privacidade encontrou zero termos sensiveis e o logout foi confirmado. O usuario ficticio permanece bloqueado como evidencia controlada.

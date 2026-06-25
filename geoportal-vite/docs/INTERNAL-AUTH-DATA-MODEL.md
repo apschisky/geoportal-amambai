@@ -287,7 +287,7 @@ Essa separacao evita dar permissao ampla quando a necessidade operacional e limi
 
 ## 15.1 Modelo planejado de auditoria administrativa
 
-`mod_auth.login_auditoria` continua reservado a autenticacao. O commit `9f6ec75` implementou a estrutura separada `mod_auth.admin_auditoria`; a migration `0011` foi aplicada somente em homologacao em 2026-06-25.
+`mod_auth.login_auditoria` continua reservado a autenticacao. O commit `9f6ec75` implementou a estrutura separada `mod_auth.admin_auditoria`; a migration `0011` foi aplicada em homologacao e, posteriormente, em producao em 2026-06-25.
 
 Campos conceituais minimos:
 
@@ -323,7 +323,9 @@ A estrutura local adotou o nome `mod_auth.admin_auditoria`, com `ator_usuario_id
 
 O conceito de administrador efetivo foi implementado com usuario ativo, nao desativado, nao bloqueado e com perfil, vinculo e permissao critica ativos. A verificacao do ultimo administrador usa lock transacional.
 
-Em homologacao, `mod_auth.admin_auditoria` foi validada com 13 colunas, 6 indices e 12 constraints. A contagem inicial era zero e, apos o teste funcional, passou a tres eventos auditados. A role runtime possui `INSERT` e `SELECT`, mas nao `UPDATE` ou `DELETE`, preservando o modelo append-only da aplicacao. A migration ainda nao foi aplicada em producao.
+Em homologacao e producao, `mod_auth.admin_auditoria` foi validada com 13 colunas, 6 indices e 12 constraints. Em cada ambiente, a contagem inicial era zero e passou a tres eventos apos a respectiva validacao funcional.
+
+As roles runtime possuem `INSERT` e `SELECT` na tabela e `USAGE` na sequence, mas nao `UPDATE` ou `DELETE` na tabela. Em producao, tambem nao ha `SELECT` na sequence. Essa matriz deve permanecer para preservar o modelo append-only da aplicacao.
 
 ## 16. Criterios de aceite
 

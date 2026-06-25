@@ -1247,9 +1247,21 @@ Validacoes concluidas:
 7. auto-bloqueio negado com `403 {&#34;detail&#34;:&#34;Forbidden&#34;}`;
 8. tres eventos auditados e zero ocorrencias dos termos sensiveis verificados.
 
-O usuario ficticio `zz_admin_audit_probe_20260625075205` (`id=11`) permaneceu bloqueado ao final da validacao. Producao nao foi alterada e exige planejamento operacional separado com backup, migration, GRANT minimo e repeticao das verificacoes. Somente depois dessa etapa deve ser avaliada qualquer ampliacao do CRUD administrativo.
+O usuario ficticio `zz_admin_audit_probe_20260625075205` (`id=11`) permaneceu bloqueado ao final da validacao. Nessa primeira etapa, producao nao foi alterada; a aplicacao posterior em producao, tambem controlada, esta registrada na secao seguinte. A ampliacao do CRUD administrativo continua exigindo planejamento proprio.
 
 Esta secao nao autoriza deploy, restart, aplicacao em producao ou criacao de frontend administrativo.
+
+### Producao controlada concluida - migration 0011
+
+Em 2026-06-25, com o servidor no commit `b40ea7e Documenta homologacao da auditoria administrativa`, foi criado o backup `C:\apps\geoportal-api\backups\manual\pre_admin_auditoria_0011_amambaiGis_20260625_083025.sql`, com 249.028.015 bytes, antes da aplicacao da migration `0011` no banco `amambaiGis`.
+
+A estrutura de `mod_auth.admin_auditoria` foi validada com 13 colunas, 6 indices, 12 constraints e contagem inicial zero. A role `geoportal_api_interna_prod` recebeu apenas `USAGE` no schema, `INSERT, SELECT` na tabela e `USAGE` na sequence. `UPDATE`, `DELETE` e `SELECT` direto na sequence permanecem ausentes e nao devem ser concedidos enquanto o modelo append-only estiver vigente.
+
+O servico `GeoportalAPIInternaProducao`, porta `8003`, passou no harness `backend-restart-validate-service.ps1 -Environment InternaProducao -Restart -Validate`; health, version com `environment=producao` e `401` de `/api/internal/auth/me` sem sessao foram confirmados. O harness final sem restart tambem passou.
+
+Os testes autenticados foram feitos por HTTPS em `https://geoserver.amambai.ms.gov.br/api/internal`, porque `GEOPORTAL_INTERNAL_SESSION_COOKIE_SECURE=true`. O usuario ficticio `zz_admin_audit_prod_probe_20260625084805` (`id=3`) foi criado e bloqueado. A tentativa de auto-bloqueio de `admin.producao` (`id=1`) retornou `403 {&#34;detail&#34;:&#34;Forbidden&#34;}`.
+
+A auditoria terminou com tres eventos: `admin.user.create`, `admin.user.disable` e `admin.security.denied_self_change`, este ultimo com resultado `negada` e motivo interno `self_block`. A verificacao de privacidade encontrou zero registros com os termos sensiveis pesquisados, e o logout foi confirmado. O usuario ficticio permanece bloqueado como evidencia controlada. O working tree do servidor terminou limpo em `b40ea7e`.
 
 ## 8. Seguranca operacional
 

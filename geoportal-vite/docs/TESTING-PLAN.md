@@ -338,3 +338,17 @@ O usuario ficticio `zz_admin_audit_probe_20260625075205` permaneceu bloqueado. A
 A verificacao dos campos auditados retornou zero registros contendo `token`, `cookie`, `hash`, `session_secret`, `database_url` ou `senha_inicial`. O servico interno de homologacao passou no harness de restart/validate, e `/api/internal/auth/me` continuou protegido com `401` sem sessao.
 
 Esta validacao nao representa aplicacao em producao. A etapa de producao deve repetir backup, migration controlada, GRANT minimo, harness e verificacoes funcionais equivalentes.
+
+### Validacao funcional em producao - 2026-06-25
+
+A etapa equivalente foi executada no banco `amambaiGis` e na API interna de producao depois de backup manual. Por causa do cookie `Secure`, o login e as operacoes autenticadas foram exercitados via HTTPS.
+
+A estrutura iniciou com zero eventos e terminou com tres registros:
+
+- `admin.user.create`, resultado `sucesso`, entidade `usuario`, id `3`;
+- `admin.user.disable`, resultado `sucesso`, entidade `usuario`, id `3`;
+- `admin.security.denied_self_change`, resultado `negada`, entidade `usuario`, id `1`, motivo interno `self_block`.
+
+O usuario ficticio `zz_admin_audit_prod_probe_20260625084805` permaneceu bloqueado. A tentativa de auto-bloqueio retornou `403 {&#34;detail&#34;:&#34;Forbidden&#34;}`, o logout foi confirmado e a verificacao de privacidade encontrou zero registros com `token`, `cookie`, `hash`, `session_secret`, `database_url` ou `senha_inicial` nos campos auditados.
+
+O harness com restart e a validacao final sem restart passaram. Esse marco confirma a auditoria administrativa em producao, mas nao substitui testes e salvaguardas especificos para futuros endpoints administrativos.
