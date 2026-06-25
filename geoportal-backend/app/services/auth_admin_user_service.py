@@ -4,6 +4,9 @@ from app.repositories.auth_admin_security_repository import AdministrativeSecuri
 from app.repositories.auth_admin_security_repository import assign_internal_user_profile_audited
 from app.repositories.auth_admin_security_repository import block_internal_user_audited
 from app.repositories.auth_admin_security_repository import create_basic_internal_user_audited
+from app.repositories.auth_admin_security_repository import (
+    deactivate_internal_user_profile_audited,
+)
 from app.repositories.auth_admin_security_repository import reset_internal_user_password_audited
 from app.repositories.auth_admin_security_repository import unblock_internal_user_audited
 from app.repositories.auth_admin_user_repository import CreatedBasicInternalUser
@@ -22,6 +25,18 @@ from app.repositories.auth_admin_user_repository import create_basic_internal_us
 from app.repositories.auth_admin_user_repository import reset_internal_user_password
 from app.repositories.auth_admin_user_repository import unblock_internal_user
 from app.repositories.auth_admin_user_list_repository import get_internal_admin_user_by_id
+from app.repositories.auth_admin_user_profile_repository import (
+    InternalAdminUserProfileLink,
+)
+from app.repositories.auth_admin_user_profile_repository import (
+    InternalUserProfileLinkInactiveConflictError,
+)
+from app.repositories.auth_admin_user_profile_repository import (
+    InternalUserProfileLinkNotFoundError,
+)
+from app.repositories.auth_admin_user_profile_repository import (
+    list_internal_user_profile_links,
+)
 from app.security.passwords import hash_password
 from app.security.passwords import validate_initial_password_policy
 
@@ -114,6 +129,47 @@ def assign_internal_admin_user_profile(
         usuario_id=usuario_id,
         perfil_id=perfil_id,
         modulo=normalized_modulo,
+    )
+
+
+def list_internal_admin_user_profiles(
+    *,
+    usuario_id: int,
+) -> list[InternalAdminUserProfileLink]:
+    if usuario_id <= 0:
+        raise ValueError('usuario_id must be positive')
+    return list_internal_user_profile_links(usuario_id=usuario_id)
+
+
+def deactivate_internal_admin_user_profile(
+    *,
+    usuario_id: int,
+    perfil_id: int,
+    modulo: str | None,
+    justificativa: str,
+    ator_usuario_id: int,
+    ator_login: str | None = None,
+) -> InternalAdminUserProfileLink:
+    if usuario_id <= 0:
+        raise ValueError('usuario_id must be positive')
+    if perfil_id <= 0:
+        raise ValueError('perfil_id must be positive')
+    normalized_modulo = modulo.strip().lower() if modulo is not None else None
+    if normalized_modulo == '':
+        normalized_modulo = None
+    normalized_justificativa = justificativa.strip()
+    if not 10 <= len(normalized_justificativa) <= 1000:
+        raise ValueError('justificativa is invalid')
+
+    return deactivate_internal_user_profile_audited(
+        usuario_id=usuario_id,
+        perfil_id=perfil_id,
+        modulo=normalized_modulo,
+        justificativa=normalized_justificativa,
+        audit_context=_audit_context(
+            ator_usuario_id=ator_usuario_id,
+            ator_login=ator_login,
+        ),
     )
 
 
@@ -212,6 +268,11 @@ def reset_internal_admin_user_password(
 
 
 __all__ = [
+    'InternalAdminUserProfileLink',
+    'InternalUserProfileLinkInactiveConflictError',
+    'InternalUserProfileLinkNotFoundError',
+    'deactivate_internal_admin_user_profile',
+    'list_internal_admin_user_profiles',
     'AdministrativeSecurityDeniedError',
     "AssignedInternalUserProfile",
     "InternalUserConflictError",

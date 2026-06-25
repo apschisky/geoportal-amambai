@@ -22,6 +22,11 @@ PROFILE_NAME = "Administrador Interno do Geoportal"
 PROFILE_DESCRIPTION = "Perfil administrativo inicial do Geoportal Interno."
 
 INITIAL_ADMIN_PERMISSIONS: tuple[AdminPermissionSeed, ...] = (
+    AdminPermissionSeed(
+        'admin',
+        'usuarios.remover_perfis',
+        'Remover perfis de usuarios internos por desativacao logica.',
+    ),
     AdminPermissionSeed("admin", "usuarios.ler", "Ler usuarios internos."),
     AdminPermissionSeed("admin", "usuarios.criar", "Criar usuarios internos."),
     AdminPermissionSeed("admin", "usuarios.bloquear", "Bloquear usuarios internos."),

@@ -16,12 +16,21 @@ from app.services.auth_admin_user_service import InternalUserConflictError
 from app.services.auth_admin_user_service import InternalUserNotFoundError
 from app.services.auth_admin_user_service import InternalUserProfileInactiveConflictError
 from app.services.auth_admin_user_service import InternalUserProfileNotFoundError
+from app.services.auth_admin_user_service import InternalAdminUserProfileLink
+from app.services.auth_admin_user_service import (
+    InternalUserProfileLinkInactiveConflictError,
+)
+from app.services.auth_admin_user_service import (
+    InternalUserProfileLinkNotFoundError,
+)
 from app.services.auth_admin_user_service import AssignedInternalUserProfile
 from app.services.auth_admin_user_service import UpdatedInternalUserBlockStatus
 from app.services.auth_admin_user_service import UpdatedInternalUserPasswordStatus
 from app.services.auth_admin_user_service import assign_internal_admin_user_profile
 from app.services.auth_admin_user_service import block_internal_admin_user
 from app.services.auth_admin_user_service import create_basic_internal_admin_user
+from app.services.auth_admin_user_service import deactivate_internal_admin_user_profile
+from app.services.auth_admin_user_service import list_internal_admin_user_profiles
 from app.services.auth_admin_user_service import reset_internal_admin_user_password
 from app.services.auth_admin_user_service import unblock_internal_admin_user
 from app.services.auth_current_session_service import AuthenticatedCurrentSession
@@ -37,6 +46,10 @@ INVALID_ASSIGN_PROFILE_PAYLOAD_DETAIL = "Invalid payload"
 INVALID_RESET_PASSWORD_PAYLOAD_DETAIL = "Invalid payload"
 
 router = APIRouter(prefix="/api/internal/admin", tags=["internal-admin"])
+
+
+REMOVE_INTERNAL_USER_PROFILE_PERMISSION = 'admin.usuarios.remover_perfis'
+INVALID_DEACTIVATE_PROFILE_PAYLOAD_DETAIL = 'Invalid payload'
 
 
 def _is_valid_optional_email(value: str | None) -> bool:
@@ -121,6 +134,35 @@ class ResetInternalUserPasswordRequest(BaseModel):
         return value
 
 
+class DeactivateInternalUserProfileRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    modulo: str | None = None
+    justificativa: str
+
+    @field_validator('modulo', mode='before')
+    @classmethod
+    def normalize_optional_module(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise ValueError('Invalid value')
+        normalized_value = value.strip().lower()
+        if len(normalized_value) > 80:
+            raise ValueError('Invalid value')
+        return normalized_value or None
+
+    @field_validator('justificativa', mode='before')
+    @classmethod
+    def validate_justification(cls, value: str) -> str:
+        if not isinstance(value, str):
+            raise ValueError('Invalid value')
+        normalized_value = value.strip()
+        if not 10 <= len(normalized_value) <= 1000:
+            raise ValueError('Invalid value')
+        return normalized_value
+
+
 class InternalAdminUserResponse(BaseModel):
     id: int
     login: str
@@ -148,6 +190,23 @@ class InternalUserProfileAssignmentResponse(BaseModel):
 
 class InternalUserProfileAssignmentEnvelope(BaseModel):
     vinculo: InternalUserProfileAssignmentResponse
+
+
+class InternalAdminUserProfileLinkResponse(BaseModel):
+    perfil_id: int
+    chave: str
+    nome: str
+    modulo: str | None
+    ativo: bool
+    criado_em: datetime
+
+
+class InternalAdminUserProfilesResponse(BaseModel):
+    vinculos: list[InternalAdminUserProfileLinkResponse]
+
+
+class InternalAdminUserProfileLinkEnvelope(BaseModel):
+    vinculo: InternalAdminUserProfileLinkResponse
 
 
 def _to_user_response(
@@ -180,6 +239,19 @@ def _to_profile_assignment_response(
     )
 
 
+def _to_user_profile_link_response(
+    link: InternalAdminUserProfileLink,
+) -> InternalAdminUserProfileLinkResponse:
+    return InternalAdminUserProfileLinkResponse(
+        perfil_id=link.perfil_id,
+        chave=link.chave,
+        nome=link.nome,
+        modulo=link.modulo,
+        ativo=link.ativo,
+        criado_em=link.criado_em,
+    )
+
+
 def _parse_assign_profile_payload(
     payload: object,
 ) -> AssignInternalUserProfileRequest:
@@ -189,6 +261,17 @@ def _parse_assign_profile_payload(
         return AssignInternalUserProfileRequest.model_validate(payload)
     except ValidationError as exc:
         raise ValueError("Invalid payload") from exc
+
+
+def _parse_deactivate_profile_payload(
+    payload: object,
+) -> DeactivateInternalUserProfileRequest:
+    if not isinstance(payload, dict):
+        raise ValueError('Invalid payload')
+    try:
+        return DeactivateInternalUserProfileRequest.model_validate(payload)
+    except ValidationError as exc:
+        raise ValueError('Invalid payload') from exc
 
 
 def _parse_reset_password_payload(
@@ -248,6 +331,80 @@ def create_user(
         ) from exc
 
     return InternalAdminUserDetailResponse(usuario=_to_user_response(user))
+
+
+@router.get(
+    '/users/{usuario_id}/profiles',
+    response_model=InternalAdminUserProfilesResponse,
+)
+def list_user_profiles(
+    usuario_id: int,
+    _current_session: AuthenticatedCurrentSession = Depends(
+        require_permission(LIST_INTERNAL_USERS_PERMISSION)
+    ),
+) -> InternalAdminUserProfilesResponse:
+    try:
+        links = list_internal_admin_user_profiles(usuario_id=usuario_id)
+    except InternalUserProfileLinkNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail='Not found',
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail='Invalid payload') from exc
+
+    return InternalAdminUserProfilesResponse(
+        vinculos=[_to_user_profile_link_response(link) for link in links]
+    )
+
+
+@router.post(
+    '/users/{usuario_id}/profiles/{perfil_id}/deactivate',
+    response_model=InternalAdminUserProfileLinkEnvelope,
+)
+def deactivate_user_profile(
+    usuario_id: int,
+    perfil_id: int,
+    payload: object = Body(...),
+    _current_session: AuthenticatedCurrentSession = Depends(
+        require_permission(REMOVE_INTERNAL_USER_PROFILE_PERMISSION)
+    ),
+    _internal_request: None = Depends(require_internal_mutating_request_header),
+) -> InternalAdminUserProfileLinkEnvelope:
+    try:
+        parsed_payload = _parse_deactivate_profile_payload(payload)
+        link = deactivate_internal_admin_user_profile(
+            usuario_id=usuario_id,
+            perfil_id=perfil_id,
+            modulo=parsed_payload.modulo,
+            justificativa=parsed_payload.justificativa,
+            ator_usuario_id=_current_session.usuario_id,
+            ator_login=_current_session.login,
+        )
+    except AdministrativeSecurityDeniedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail='Forbidden',
+        ) from exc
+    except InternalUserProfileLinkNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail='Not found',
+        ) from exc
+    except InternalUserProfileLinkInactiveConflictError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail='Conflict',
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=INVALID_DEACTIVATE_PROFILE_PAYLOAD_DETAIL,
+        ) from exc
+
+    return InternalAdminUserProfileLinkEnvelope(
+        vinculo=_to_user_profile_link_response(link)
+    )
 
 
 @router.post(

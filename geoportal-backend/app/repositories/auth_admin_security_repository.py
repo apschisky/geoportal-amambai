@@ -17,6 +17,15 @@ from app.repositories.auth_admin_user_repository import (
 from app.repositories.auth_admin_user_repository import InternalUserProfileNotFoundError
 from app.repositories.auth_admin_user_repository import UpdatedInternalUserBlockStatus
 from app.repositories.auth_admin_user_repository import UpdatedInternalUserPasswordStatus
+from app.repositories.auth_admin_user_profile_repository import (
+    InternalAdminUserProfileLink,
+)
+from app.repositories.auth_admin_user_profile_repository import (
+    InternalUserProfileLinkInactiveConflictError,
+)
+from app.repositories.auth_admin_user_profile_repository import (
+    InternalUserProfileLinkNotFoundError,
+)
 
 
 ADMIN_SECURITY_LOCK_KEY = 714_202_606
@@ -27,6 +36,7 @@ CRITICAL_ADMIN_PERMISSIONS = (
     'admin.usuarios.editar',
     'admin.usuarios.desativar',
     'admin.usuarios.resetar_senha',
+    'admin.usuarios.remover_perfis',
     'admin.perfis.criar',
     'admin.perfis.editar',
     'admin.perfis.desativar',
@@ -162,6 +172,97 @@ def ensure_admin_capability_removal_allowed_with_connection(
     if not _is_effective_admin(connection, usuario_id=target_usuario_id):
         return True
     return _count_effective_admins(connection) > 1
+
+
+def _target_link_is_effective_admin_capability(
+    connection: Connection,
+    *,
+    usuario_id: int,
+    perfil_id: int,
+    modulo: str | None,
+) -> bool:
+    module_condition = (
+        'up.modulo IS NULL'
+        if modulo is None
+        else 'lower(up.modulo) = lower(:modulo)'
+    )
+    statement = _critical_permission_statement(
+        f'''
+        SELECT 1
+        FROM mod_auth.usuarios u
+        INNER JOIN mod_auth.usuario_perfis up ON up.usuario_id = u.id
+        INNER JOIN mod_auth.perfis pf ON pf.id = up.perfil_id
+        INNER JOIN mod_auth.perfil_permissoes pp ON pp.perfil_id = pf.id
+        INNER JOIN mod_auth.permissoes p ON p.id = pp.permissao_id
+        WHERE u.id = :usuario_id
+          AND up.perfil_id = :perfil_id
+          AND {module_condition}
+          AND u.ativo IS true
+          AND u.desativado_em IS NULL
+          AND (u.bloqueado_ate IS NULL OR u.bloqueado_ate <= now())
+          AND up.ativo IS true
+          AND pf.ativo IS true
+          AND p.ativo IS true
+          AND (lower(btrim(p.modulo)) || '.' || lower(btrim(p.chave)))
+              IN :critical_permissions
+        LIMIT 1
+        '''
+    )
+    row = connection.execute(
+        statement,
+        {
+            'usuario_id': usuario_id,
+            'perfil_id': perfil_id,
+            'modulo': modulo,
+            'critical_permissions': CRITICAL_ADMIN_PERMISSIONS,
+        },
+    ).mappings().first()
+    return row is not None
+
+
+def _count_effective_admins_after_link_deactivation(
+    connection: Connection,
+    *,
+    usuario_id: int,
+    perfil_id: int,
+    modulo: str | None,
+) -> int:
+    statement = _critical_permission_statement(
+        '''
+        SELECT count(DISTINCT u.id) AS total
+        FROM mod_auth.usuarios u
+        INNER JOIN mod_auth.usuario_perfis up ON up.usuario_id = u.id
+        INNER JOIN mod_auth.perfis pf ON pf.id = up.perfil_id
+        INNER JOIN mod_auth.perfil_permissoes pp ON pp.perfil_id = pf.id
+        INNER JOIN mod_auth.permissoes p ON p.id = pp.permissao_id
+        WHERE u.ativo IS true
+          AND u.desativado_em IS NULL
+          AND (u.bloqueado_ate IS NULL OR u.bloqueado_ate <= now())
+          AND up.ativo IS true
+          AND pf.ativo IS true
+          AND p.ativo IS true
+          AND (lower(btrim(p.modulo)) || '.' || lower(btrim(p.chave)))
+              IN :critical_permissions
+          AND NOT (
+              up.usuario_id = :usuario_id
+              AND up.perfil_id = :perfil_id
+              AND (
+                  (:modulo IS NULL AND up.modulo IS NULL)
+                  OR (:modulo IS NOT NULL AND lower(up.modulo) = lower(:modulo))
+              )
+          )
+        '''
+    )
+    row = connection.execute(
+        statement,
+        {
+            'usuario_id': usuario_id,
+            'perfil_id': perfil_id,
+            'modulo': modulo,
+            'critical_permissions': CRITICAL_ADMIN_PERMISSIONS,
+        },
+    ).mappings().first()
+    return int(row['total']) if row is not None else 0
 
 
 def create_basic_internal_user_audited(
@@ -342,6 +443,136 @@ def assign_internal_user_profile_audited(
     return result
 
 
+def deactivate_internal_user_profile_audited(
+    *,
+    usuario_id: int,
+    perfil_id: int,
+    modulo: str | None,
+    justificativa: str,
+    audit_context: AdminAuditContext,
+    engine: Engine | None = None,
+) -> InternalAdminUserProfileLink:
+    db_engine = engine or get_engine()
+    denied = False
+    row = None
+    module_condition = (
+        'up.modulo IS NULL'
+        if modulo is None
+        else 'lower(up.modulo) = lower(:modulo)'
+    )
+    scope = modulo or 'global'
+    entity_id = f'{usuario_id}:{perfil_id}:{scope}'
+
+    with db_engine.begin() as connection:
+        _acquire_admin_security_lock(connection)
+        link = connection.execute(
+            text(
+                f'''
+                SELECT up.usuario_id, up.perfil_id, pf.chave, pf.nome,
+                       up.modulo, up.ativo, up.criado_em
+                FROM mod_auth.usuario_perfis up
+                INNER JOIN mod_auth.perfis pf ON pf.id = up.perfil_id
+                WHERE up.usuario_id = :usuario_id
+                  AND up.perfil_id = :perfil_id
+                  AND {module_condition}
+                FOR UPDATE OF up
+                '''
+            ),
+            {
+                'usuario_id': usuario_id,
+                'perfil_id': perfil_id,
+                'modulo': modulo,
+            },
+        ).mappings().first()
+        if link is None:
+            raise InternalUserProfileLinkNotFoundError(
+                'internal user profile link was not found'
+            )
+        if link['ativo'] is not True:
+            raise InternalUserProfileLinkInactiveConflictError(
+                'internal user profile link is inactive'
+            )
+
+        if usuario_id == audit_context.ator_usuario_id:
+            record_admin_audit_event_with_connection(
+                connection,
+                context=audit_context,
+                acao='admin.security.denied_self_demotion',
+                entidade_tipo='usuario_perfil',
+                entidade_id=entity_id,
+                resultado='negada',
+                motivo='self_demotion',
+                resumo='Remocao do proprio vinculo administrativo foi negada.',
+                justificativa=justificativa,
+            )
+            denied = True
+        elif _target_link_is_effective_admin_capability(
+            connection,
+            usuario_id=usuario_id,
+            perfil_id=perfil_id,
+            modulo=modulo,
+        ) and _count_effective_admins_after_link_deactivation(
+            connection,
+            usuario_id=usuario_id,
+            perfil_id=perfil_id,
+            modulo=modulo,
+        ) == 0:
+            record_admin_audit_event_with_connection(
+                connection,
+                context=audit_context,
+                acao='admin.security.denied_last_admin_removal',
+                entidade_tipo='usuario_perfil',
+                entidade_id=entity_id,
+                resultado='negada',
+                motivo='last_effective_admin',
+                resumo='Remocao de vinculo administrativo foi negada.',
+                justificativa=justificativa,
+            )
+            denied = True
+        else:
+            row = connection.execute(
+                text(
+                    f'''
+                    UPDATE mod_auth.usuario_perfis up
+                    SET ativo = false
+                    FROM mod_auth.perfis pf
+                    WHERE up.usuario_id = :usuario_id
+                      AND up.perfil_id = :perfil_id
+                      AND {module_condition}
+                      AND up.ativo IS true
+                      AND pf.id = up.perfil_id
+                    RETURNING up.usuario_id, up.perfil_id, pf.chave, pf.nome,
+                              up.modulo, up.ativo, up.criado_em
+                    '''
+                ),
+                {
+                    'usuario_id': usuario_id,
+                    'perfil_id': perfil_id,
+                    'modulo': modulo,
+                },
+            ).mappings().first()
+            if row is None:
+                raise InternalUserProfileLinkInactiveConflictError(
+                    'internal user profile link state changed'
+                )
+            record_admin_audit_event_with_connection(
+                connection,
+                context=audit_context,
+                acao='admin.user.remove_profile',
+                entidade_tipo='usuario_perfil',
+                entidade_id=entity_id,
+                resultado='sucesso',
+                resumo='Perfil removido do usuario por desativacao logica.',
+                justificativa=justificativa,
+            )
+
+    if denied:
+        raise AdministrativeSecurityDeniedError('administrative action denied')
+    if row is None:
+        raise RuntimeError('internal user profile link was not deactivated')
+    return InternalAdminUserProfileLink(**dict(row))
+
+
 def block_internal_user_audited(
     *,
     usuario_id: int,
@@ -502,6 +733,7 @@ def reset_internal_user_password_audited(
 
 
 __all__ = [
+    'deactivate_internal_user_profile_audited',
     "ADMIN_SECURITY_LOCK_KEY",
     "CRITICAL_ADMIN_PERMISSIONS",
     "AdministrativeSecurityDeniedError",
