@@ -287,7 +287,7 @@ Essa separacao evita dar permissao ampla quando a necessidade operacional e limi
 
 ## 15.1 Modelo planejado de auditoria administrativa
 
-`mod_auth.login_auditoria` continua reservado a autenticacao. O commit `9f6ec75` implementou localmente a estrutura separada `mod_auth.admin_auditoria` e criou a migration `0011`, ainda nao executada.
+`mod_auth.login_auditoria` continua reservado a autenticacao. O commit `9f6ec75` implementou a estrutura separada `mod_auth.admin_auditoria`; a migration `0011` foi aplicada somente em homologacao em 2026-06-25.
 
 Campos conceituais minimos:
 
@@ -321,7 +321,9 @@ O conjunto implementado considera permissoes administrativas mutaveis atuais e c
 
 A estrutura local adotou o nome `mod_auth.admin_auditoria`, com `ator_usuario_id`, `ator_login`, `acao`, `entidade_tipo`, `entidade_id`, `resultado`, `motivo`, `resumo`, `justificativa`, `origem`, `request_id` e `criado_em`. A tabela permanece append-only no fluxo da aplicacao: o repository implementa somente `INSERT`.
 
-O conceito de administrador efetivo foi implementado com usuario ativo, nao desativado, nao bloqueado e com perfil, vinculo e permissao critica ativos. A verificacao do ultimo administrador usa lock transacional. A migration existe apenas no repositorio, foi enviada ao GitHub no commit `9f6ec75` e nao foi aplicada em homologacao ou producao.
+O conceito de administrador efetivo foi implementado com usuario ativo, nao desativado, nao bloqueado e com perfil, vinculo e permissao critica ativos. A verificacao do ultimo administrador usa lock transacional.
+
+Em homologacao, `mod_auth.admin_auditoria` foi validada com 13 colunas, 6 indices e 12 constraints. A contagem inicial era zero e, apos o teste funcional, passou a tres eventos auditados. A role runtime possui `INSERT` e `SELECT`, mas nao `UPDATE` ou `DELETE`, preservando o modelo append-only da aplicacao. A migration ainda nao foi aplicada em producao.
 
 ## 16. Criterios de aceite
 

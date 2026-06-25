@@ -412,4 +412,10 @@ Atualizacao local do commit `9f6ec75 Implementa auditoria e salvaguardas adminis
 - identificacao do ator e feita por `usuario_id`, sem excecao por login;
 - testes locais: `219 passed` no conjunto focado e `716 passed`, com `3 warnings` conhecidos, na suite backend completa.
 
-Este marco foi implementado localmente, testado localmente e enviado ao GitHub. Nao foi publicado em servidor, aplicado em banco, validado em homologacao ou validado em producao. O proximo passo e homologar a migration `0011` de forma controlada, com backup manual previo.
+Este marco foi implementado localmente, testado localmente, enviado ao GitHub e validado de forma controlada na API interna de homologacao em 2026-06-25. A migration `0011` foi aplicada somente no banco `amambaiGis_homologacao`, depois do backup manual `C:\apps\geoportal-api\backups\manual\pre_admin_auditoria_0011_amambaiGis_homologacao_20260625_072037.sql`, com 248.973.816 bytes.
+
+A validacao confirmou `mod_auth.admin_auditoria` com 13 colunas, 6 indices, 12 constraints e contagem inicial zero. A role `geoportal_api_homolog` recebeu somente `USAGE` no schema, `INSERT` e `SELECT` na tabela e `USAGE` na sequence; `UPDATE` e `DELETE` permaneceram ausentes.
+
+O fluxo funcional registrou tres eventos: criacao e bloqueio do usuario ficticio `zz_admin_audit_probe_20260625075205` (`id=11`) com resultado `sucesso`, e tentativa de auto-bloqueio do ator autenticado (`id=7`) com resultado `negada`, evento `admin.security.denied_self_change` e motivo interno `self_block`. A resposta externa foi sanitizada como `403 {&#34;detail&#34;:&#34;Forbidden&#34;}`. A verificacao de privacidade encontrou zero ocorrencias dos termos `token`, `cookie`, `hash`, `session_secret`, `database_url` e `senha_inicial` nos campos auditados.
+
+Producao nao foi alterada. O proximo passo e planejar aplicacao controlada em producao com backup previo, revisao da estrutura, GRANT minimo para a role runtime de producao e repeticao das validacoes sanitizadas.

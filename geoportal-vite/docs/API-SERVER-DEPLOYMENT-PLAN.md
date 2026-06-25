@@ -1232,21 +1232,22 @@ Essa etapa posterior exigira autenticacao, autorizacao por perfil, endpoints int
 
 O desenho detalhado esta em `docs/INTERNAL-AUTHORIZATION-PLAN.md`.
 
-### Proxima homologacao controlada - migration 0011
+### Homologacao controlada concluida - migration 0011
 
-O commit `9f6ec75 Implementa auditoria e salvaguardas administrativas` foi testado localmente e enviado ao GitHub, mas ainda nao foi publicado ou validado em servidor. A migration `0011_create_mod_auth_admin_auditoria.sql` tambem nao foi executada.
+Em 2026-06-25, o servidor de homologacao estava no commit `f2b956f Complementa documentacao da auditoria administrativa`. A migration `0011_create_mod_auth_admin_auditoria.sql` foi aplicada somente no banco `amambaiGis_homologacao`, depois de backup manual de 248.973.816 bytes.
 
-Ordem obrigatoria para a proxima operacao:
+Validacoes concluidas:
 
-1. `git pull --ff-only` no servidor de homologacao;
-2. confirmar branch, commit e working tree;
-3. criar backup manual do banco de homologacao e validar sua legibilidade;
-4. aplicar a migration `0011` somente em homologacao;
-5. validar `mod_auth.admin_auditoria`, constraints, indices e sequence;
-6. revisar e conceder somente privilegios minimos ao runtime;
-7. executar testes backend e validar login e endpoints administrativos existentes;
-8. registrar resultados sanitizados;
-9. somente depois avaliar uma etapa separada para producao.
+1. `mod_auth.admin_auditoria` validada com 13 colunas, 6 indices, 12 constraints e count inicial zero;
+2. `geoportal_api_homolog` recebeu `USAGE` no schema, `INSERT, SELECT` na tabela e `USAGE` na sequence, sem `UPDATE` ou `DELETE`;
+3. `GeoportalAPIInternaHomologacao`, porta `8002`, reiniciado pelo harness `-Environment InternaHomologacao -Restart -Validate`;
+4. `/api/health` e `/api/version` validados, com `environment=homologacao`;
+5. `/api/internal/auth/me` retornou `401` sem sessao;
+6. login de homologacao, criacao e bloqueio de usuario ficticio concluidos;
+7. auto-bloqueio negado com `403 {&#34;detail&#34;:&#34;Forbidden&#34;}`;
+8. tres eventos auditados e zero ocorrencias dos termos sensiveis verificados.
+
+O usuario ficticio `zz_admin_audit_probe_20260625075205` (`id=11`) permaneceu bloqueado ao final da validacao. Producao nao foi alterada e exige planejamento operacional separado com backup, migration, GRANT minimo e repeticao das verificacoes. Somente depois dessa etapa deve ser avaliada qualquer ampliacao do CRUD administrativo.
 
 Esta secao nao autoriza deploy, restart, aplicacao em producao ou criacao de frontend administrativo.
 

@@ -116,11 +116,11 @@ Pare imediatamente se:
 - Não incluir dados sensíveis.
 - Os resultados do `backend-security-check.ps1` devem ser avaliados manualmente antes de confiar integralmente.
 
-## Validacao futura das salvaguardas administrativas
+## Validacao das salvaguardas administrativas
 
-O proximo bloco da Etapa 0 foi implementado e testado localmente no commit `9f6ec75`, mas ainda nao foi validado em ambiente. Sua primeira validacao controlada deve ocorrer em homologacao, usando usuarios ficticios e backup manual previo, antes de qualquer uso em producao.
+O bloco da Etapa 0 foi implementado no commit `9f6ec75` e validado de forma controlada na API interna de homologacao em 2026-06-25, usando usuario ficticio e backup manual previo. Producao permanece pendente.
 
-O roteiro futuro deve confirmar:
+O roteiro executado confirmou:
 
 - auditoria administrativa registrada sem segredo ou payload sensivel;
 - `403` para usuario sem permissao;
@@ -134,4 +134,6 @@ O roteiro futuro deve confirmar:
 
 O harness nao deve criar administradores reais, conceder permissao critica automaticamente nem contornar as salvaguardas para facilitar a validacao.
 
-Antes de executar o harness, a migration `0011` deve ser aplicada manualmente e de forma controlada em homologacao, apos backup. O harness nao deve aplicar migrations automaticamente. A validacao deve confirmar que eventos de sucesso e negativa aparecem em `mod_auth.admin_auditoria` sem senha, token, cookie, hash ou segredo.
+A migration `0011` foi aplicada manualmente em `amambaiGis_homologacao` depois do backup `pre_admin_auditoria_0011_amambaiGis_homologacao_20260625_072037.sql`. O harness nao aplicou migration: ele foi usado depois, com `backend-restart-validate-service.ps1 -Environment InternaHomologacao -Restart -Validate`, para validar `GeoportalAPIInternaHomologacao` na porta `8002`.
+
+O harness confirmou health, version com ambiente de homologacao e `401` de `/api/internal/auth/me` sem sessao. O teste funcional posterior confirmou dois eventos de sucesso e uma negativa persistida, resposta externa `403 Forbidden` sanitizada, usuario ficticio bloqueado ao final e ausencia dos termos sensiveis pesquisados. Em producao, repetir o mesmo principio: migration manual apos backup, GRANT minimo e harness apenas para restart/validate.

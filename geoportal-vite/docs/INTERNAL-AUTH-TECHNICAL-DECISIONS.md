@@ -1006,4 +1006,8 @@ Decisoes:
 
 Atualizacao do commit `9f6ec75`: estas decisoes foram implementadas e testadas localmente no backend. A auditoria usa `mod_auth.admin_auditoria`, os eventos de sucesso compartilham a transacao da mutacao, os eventos negados sao confirmados antes do `403`, e a protecao do ultimo administrador usa `pg_advisory_xact_lock` e permissoes efetivas.
 
-O commit foi enviado ao GitHub, mas a migration `0011` ainda nao foi executada. Portanto, este estado nao representa publicacao em servidor, validacao em homologacao ou liberacao de CRUD ou frontend administrativo.
+Validacao operacional em 2026-06-25: a migration `0011` foi executada somente em `amambaiGis_homologacao`, apos backup manual, e o runtime recebeu apenas privilegios append-only compativeis com a decisao: `INSERT` e `SELECT` na tabela, `USAGE` na sequence e nenhum `UPDATE` ou `DELETE`.
+
+Os eventos de sucesso `admin.user.create` e `admin.user.disable` foram persistidos para o usuario ficticio de teste. A tentativa de auto-bloqueio foi negada externamente com `403 Forbidden` sanitizado e registrada internamente como `admin.security.denied_self_change`, resultado `negada`, motivo `self_block`. Essa separacao entre resposta publica minima e motivo tecnico auditavel fica confirmada como decisao aplicada.
+
+Producao e frontend administrativo nao foram alterados. A aplicacao em producao exige ciclo posterior com backup, migration controlada, privilegios minimos e repeticao da validacao.

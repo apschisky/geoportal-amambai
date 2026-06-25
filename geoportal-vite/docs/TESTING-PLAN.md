@@ -323,4 +323,18 @@ Testes transacionais devem simular pelo menos dois administradores efetivos e du
 
 Atualizacao local: foram adicionados testes de migration, append-only, sanitizacao, preservacao da categoria `admin.user.reset_password`, auditoria de sucesso e negativa, autoatribuicao administrativa, auto-bloqueio, reset administrativo da propria senha e bloqueio do ultimo administrador efetivo. Os testes tambem confirmam que eventos negados sao commitados antes da excecao convertida em `403`, sem rollback, e que eventos de sucesso permanecem na transacao da mutacao. A suite focada de auth/admin passou com `219 passed`; os testes diretamente afetados passaram com `140 passed`; a suite backend completa passou com `716 passed` e `3 warnings` conhecidos de deprecacao do `HTTP_422_UNPROCESSABLE_ENTITY`.
 
-Permanece futura a cobertura de endpoints de remocao de perfil e revogacao de permissao, pois esses contratos mutaveis ainda nao existem. Nenhum teste deste ciclo executou migration ou acessou banco real. Os resultados sao exclusivamente locais e nao representam validacao em homologacao ou producao.
+Permanece futura a cobertura de endpoints de remocao de perfil e revogacao de permissao, pois esses contratos mutaveis ainda nao existem.
+
+### Validacao funcional em homologacao - 2026-06-25
+
+Depois dos testes locais, a migration `0011` foi aplicada de forma controlada somente em `amambaiGis_homologacao`, com backup manual previo. A estrutura iniciou com zero eventos e terminou com tres registros:
+
+- `admin.user.create`, resultado `sucesso`, entidade `usuario`, id `11`;
+- `admin.user.disable`, resultado `sucesso`, entidade `usuario`, id `11`;
+- `admin.security.denied_self_change`, resultado `negada`, entidade `usuario`, id `7`, motivo interno `self_block`.
+
+O usuario ficticio `zz_admin_audit_probe_20260625075205` permaneceu bloqueado. A tentativa de auto-bloqueio retornou `403 {&#34;detail&#34;:&#34;Forbidden&#34;}`, sem expor a regra interna; o motivo tecnico permaneceu somente na auditoria.
+
+A verificacao dos campos auditados retornou zero registros contendo `token`, `cookie`, `hash`, `session_secret`, `database_url` ou `senha_inicial`. O servico interno de homologacao passou no harness de restart/validate, e `/api/internal/auth/me` continuou protegido com `401` sem sessao.
+
+Esta validacao nao representa aplicacao em producao. A etapa de producao deve repetir backup, migration controlada, GRANT minimo, harness e verificacoes funcionais equivalentes.
