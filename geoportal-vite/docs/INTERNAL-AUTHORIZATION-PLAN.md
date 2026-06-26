@@ -28,6 +28,8 @@ Pré-requisitos ainda pendentes:
 
 Até a Etapa 0 estar concluída e validada em homologação, a autorização administrativa deve permanecer fechada e sem tela de CRUD exposta.
 
+Nota de divergencia documental 2026-06-26: este bloco inicial descreve a regra antes dos endpoints administrativos pontuais implementados depois. Auditoria administrativa, salvaguardas e desativacao logica de vinculos usuario/perfil foram validadas em ciclos controlados; isso nao contradiz a restricao de nao abrir uma tela administrativa ampla ou CRUD completo sem planejamento proprio.
+
 Reforço recente da Etapa 0 (commits `152c177` e `f3d8ff3`): o primeiro bloqueio de bruteforce/credential stuffing básico do login interno foi implementado localmente. Ele reforça a base de autorização ao reduzir abuso na entrada, mas ainda não substitui os próximos blocos antes do CRUD administrativo: auditoria administrativa própria, anti-elevação, proteção contra remover o último administrador, validação real de `Origin/Referer` ou CSRF para endpoints administrativos críticos, permissões administrativas granulares e read-only primeiro.
 
 O plano tecnico das futuras migrations de `mod_auth` esta em `docs/INTERNAL-AUTH-MIGRATIONS-PLAN.md`.
@@ -858,7 +860,7 @@ Plano de autorizacao para a UI administrativa de `status-correcao`: a acao visua
 
 ## Contrato implementado localmente - vinculos usuario/perfil
 
-O commit `9173259 Implementa desativacao administrativa de perfis de usuarios` implementou no backend local os endpoints administrativos de vinculo usuario/perfil, publicados no GitHub e ainda pendentes de validacao em homologacao/producao.
+O commit `9173259 Implementa desativacao administrativa de perfis de usuarios` implementou no backend os endpoints administrativos de vinculo usuario/perfil, publicados no GitHub e posteriormente validados em homologacao e producao interna.
 
 Endpoints:
 
@@ -871,7 +873,7 @@ A desativacao e logica (`ativo=false`) em `mod_auth.usuario_perfis`; nao ha `DEL
 
 Eventos de auditoria: `admin.user.remove_profile`, `admin.security.denied_self_demotion` e `admin.security.denied_last_admin_removal`, sem payload bruto, senha, hash, token, cookie, segredo ou `DATABASE_URL`.
 
-Antes de homologacao/producao, sera necessario ciclo operacional controlado para bootstrap da nova permissao e GRANT minimo de `UPDATE (ativo)` em `mod_auth.usuario_perfis` para a role runtime interna, sem `DELETE`.
+O ciclo operacional controlado foi concluido em homologacao e producao interna: bootstrap da nova permissao, vinculo somente ao perfil administrativo autorizado e GRANT minimo de `UPDATE (ativo)` em `mod_auth.usuario_perfis` para a role runtime interna, sem `DELETE`.
 
 ## Homologacao validada - desativacao administrativa de perfis de usuarios
 
@@ -885,4 +887,16 @@ No teste positivo controlado, o usuario ficticio `zz_profile_deactivate_probe_20
 
 A matriz final de menor privilegio para `geoportal_api_homolog` manteve `DELETE=false` em `mod_auth.usuario_perfis`, `UPDATE` de tabela falso e apenas `UPDATE(ativo)=t`. O `INSERT=t` em `mod_auth.usuario_perfis` permanece necessario para o endpoint ja existente de atribuicao de perfil; a nova desativacao nao amplia para `DELETE` nem exige migration estrutural.
 
-Producao ainda nao foi alterada por esta etapa.
+Producao foi validada posteriormente em ciclo separado.
+
+## Producao interna validada - desativacao administrativa de perfis de usuarios
+
+A desativacao administrativa de vinculos usuario/perfil foi validada em `InternaProducao` em 2026-06-26. O ambiente validado foi `GeoportalAPIInternaProducao`, porta `8003`, banco `amambaiGis`, runtime `geoportal_api_interna_prod`, com `APP_ENV=producao` e `GEOPORTAL_INTERNAL_SESSION_COOKIE_SECURE=true`.
+
+Antes da operacao houve backup manual `C:\apps\geoportal-api\backups\manual\pre_desativacao_perfis_admin_amambaiGis_20260626_092442.sql`, com 249.202.757 bytes. A permissao `admin.usuarios.remover_perfis` nao existia em producao antes do bootstrap e nenhum perfil a possuia. O bootstrap `bootstrap_internal_admin_profile.py --login admin.producao` criou a permissao `id=19`, ativa, e vinculou somente ao perfil `administrador-interno-geoportal`; `manutencao-iluminacao` permaneceu sem essa permissao.
+
+`/auth/me` para `admin.producao` (`usuario_id=1`) confirmou a permissao. A leitura `GET /api/internal/admin/users/1/profiles` retornou o vinculo ativo do admin com `perfil_id=1`. A tentativa de auto-rebaixamento em `POST /api/internal/admin/users/1/profiles/1/deactivate` retornou `403`, manteve o vinculo ativo e auditou `admin.security.denied_self_demotion` com entidade `usuario_perfil`, `entidade_id=1:1:global`, resultado `negada` e motivo `self_demotion`.
+
+No teste positivo controlado, o usuario ficticio `zz_profile_deactivate_prod_20260626094758` (`id=4`) recebeu o perfil `manutencao-iluminacao` (`perfil_id=2`) com `201`; a desativacao retornou `200`, deixou `ativo=false/f`, retornou `"ativo": false` no raw JSON da listagem e auditou `admin.user.remove_profile` com `entidade_id=4:2:global`, resultado `sucesso`. A repeticao retornou `409`.
+
+A matriz final de menor privilegio para `geoportal_api_interna_prod` manteve `DELETE=false` em `mod_auth.usuario_perfis`, `UPDATE` de tabela falso e apenas `UPDATE(ativo)=t`. O `INSERT=t` em `mod_auth.usuario_perfis` permanece necessario para o endpoint ja existente de atribuicao de perfil; a nova desativacao nao amplia para `DELETE` nem exige migration estrutural. O usuario real `manutencao.producao` nao foi alterado. A UI administrativa para este CRUD complementar permanece etapa futura separada.

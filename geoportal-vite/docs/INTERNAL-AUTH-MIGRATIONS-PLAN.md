@@ -436,7 +436,7 @@ Os GRANTs minimos acima devem permanecer. Qualquer ampliacao futura de CRUD admi
 
 O commit `9173259 Implementa desativacao administrativa de perfis de usuarios` nao criou migration estrutural. A etapa reutiliza `mod_auth.usuario_perfis.ativo` para desativacao logica de vinculo usuario/perfil e preserva a politica de nao usar `DELETE`.
 
-A unica acao operacional futura necessaria para homologacao/producao e permissionamento: bootstrap controlado da permissao de aplicacao `admin.usuarios.remover_perfis` e GRANT minimo de `UPDATE (ativo)` em `mod_auth.usuario_perfis` para a role runtime interna, sem conceder `DELETE`. Caso o schema real de algum ambiente divergir do esperado, parar antes de validar o endpoint e inventariar a divergencia.
+A unica acao operacional necessaria para homologacao/producao foi permissionamento: bootstrap controlado da permissao de aplicacao `admin.usuarios.remover_perfis` e GRANT minimo de `UPDATE (ativo)` em `mod_auth.usuario_perfis` para a role runtime interna, sem conceder `DELETE`. Caso o schema real de algum ambiente futuro divirja do esperado, parar antes de validar o endpoint e inventariar a divergencia.
 
 ## Homologacao sem migration estrutural - desativacao de vinculos
 
@@ -444,4 +444,12 @@ A homologacao de 2026-06-26 confirmou que a desativacao administrativa de vincul
 
 A alteracao operacional necessaria foi de permissionamento: bootstrap controlado de `admin.usuarios.remover_perfis` e GRANT final com `INSERT=t` preservado para atribuicao de perfil existente e `UPDATE(ativo)=t` para desativacao logica, mantendo table `UPDATE=f` e `DELETE=f`.
 
-Producao permanece pendente e deve repetir o processo em ciclo separado, com backup previo e validacao equivalente.
+Producao repetiu o processo em ciclo separado em 2026-06-26, com backup previo `C:\apps\geoportal-api\backups\manual\pre_desativacao_perfis_admin_amambaiGis_20260626_092442.sql`, 249.202.757 bytes, e validacao equivalente.
+
+## Producao interna sem migration estrutural - desativacao de vinculos
+
+A producao interna de 2026-06-26 confirmou que a desativacao administrativa de vinculos usuario/perfil nao exige migration estrutural em `amambaiGis`. O schema existente de `mod_auth.usuario_perfis` suportou a operacao com `ativo=false`.
+
+A alteracao operacional necessaria foi de permissionamento: bootstrap controlado de `admin.usuarios.remover_perfis` para `admin.producao`, vinculo somente ao perfil `administrador-interno-geoportal`, e GRANT final com `INSERT=t` preservado para atribuicao de perfil existente e `UPDATE(ativo)=t` para desativacao logica, mantendo table `UPDATE=f` e `DELETE=f`.
+
+`mod_auth.permissoes` e `mod_auth.perfil_permissoes` permaneceram sem `INSERT` e sem `UPDATE` para `geoportal_api_interna_prod` apos a revogacao dos GRANTs temporarios de bootstrap. O perfil `manutencao-iluminacao` nao recebeu `admin.usuarios.remover_perfis`.

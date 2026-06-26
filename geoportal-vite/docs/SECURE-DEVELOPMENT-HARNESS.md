@@ -146,11 +146,11 @@ O teste autenticado usou HTTPS, e nao `http://127.0.0.1:8003`, porque o cookie i
 
 O harness final sem restart tambem passou. Os GRANTs minimos de auditoria devem permanecer e o harness nao deve ampliar privilegios nem aplicar migrations automaticamente.
 
-## Validacao futura - vinculos usuario/perfil
+## Validacao registrada - vinculos usuario/perfil
 
-A desativacao administrativa de vinculos usuario/perfil foi implementada localmente no commit `9173259`, mas ainda nao foi validada em homologacao/producao. O harness nao deve aplicar bootstrap, GRANTs ou alteracoes de permissao automaticamente.
+A desativacao administrativa de vinculos usuario/perfil foi implementada no commit `9173259` e validada em homologacao e producao interna em 2026-06-26. O harness nao deve aplicar bootstrap, GRANTs ou alteracoes de permissao automaticamente.
 
-Antes de validar em homologacao:
+Roteiro operacional executado primeiro em homologacao e repetido em producao interna:
 
 1. confirmar `git pull --ff-only` e working tree limpo;
 2. executar bootstrap administrativo controlado para criar/vincular `admin.usuarios.remover_perfis` somente ao perfil administrativo autorizado;
@@ -159,7 +159,7 @@ Antes de validar em homologacao:
 5. validar `GET /api/internal/admin/users/{usuario_id}/profiles` e `POST /api/internal/admin/users/{usuario_id}/profiles/{perfil_id}/deactivate` por chamada autenticada, sem registrar senha, token ou cookie;
 6. confirmar auditoria em `mod_auth.admin_auditoria` para sucesso e negativas, sem termos sensiveis.
 
-A producao deve repetir o roteiro somente apos homologacao documentada e aprovada.
+A producao repetiu o roteiro somente apos homologacao documentada, usando validacao HTTPS por causa de `GEOPORTAL_INTERNAL_SESSION_COOKIE_SECURE=true`.
 
 ## Validacao registrada - desativacao de vinculos em homologacao
 
@@ -167,4 +167,4 @@ A etapa de desativacao administrativa de vinculos usuario/perfil foi validada em
 
 Para esta etapa, o harness apenas validou o servico; backup, bootstrap da permissao `admin.usuarios.remover_perfis`, ajustes de GRANT e testes funcionais foram procedimentos operacionais controlados fora do harness. A matriz final do runtime manteve `DELETE=false` em `mod_auth.usuario_perfis` e acrescentou somente `UPDATE(ativo)` para a nova desativacao, preservando `INSERT` por causa da atribuicao de perfil ja existente.
 
-A futura producao deve repetir esse padrao: backup previo, bootstrap controlado, menor privilegio, harness, validacao funcional e auditoria, sem registrar senha, token ou cookie.
+A producao interna repetiu esse padrao em 2026-06-26: backup previo, bootstrap controlado, menor privilegio, harness antes/depois, validacao funcional via HTTPS e auditoria, sem registrar senha, token ou cookie. O harness `InternaProducao -Validate` passou antes e depois; foi necessario restart controlado de `GeoportalAPIInternaProducao` para carregar o endpoint novo. A matriz final do runtime `geoportal_api_interna_prod` manteve `DELETE=false`, table `UPDATE=false`, `UPDATE(ativo)=true` e `INSERT=true` em `mod_auth.usuario_perfis`, preservando a atribuicao de perfil existente. O usuario real `manutencao.producao` nao foi alterado.

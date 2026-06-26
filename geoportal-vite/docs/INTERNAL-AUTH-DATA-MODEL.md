@@ -354,3 +354,13 @@ A validacao de 2026-06-26 em `amambaiGis_homologacao` confirmou o uso operaciona
 O runtime `geoportal_api_homolog` terminou com `SELECT=t`, `INSERT=t`, table `UPDATE=f`, `UPDATE(ativo)=t` e `DELETE=f` em `mod_auth.usuario_perfis`. O `INSERT` permanece necessario para a atribuicao de perfil ja existente; `UPDATE(ativo)` atende somente a nova desativacao logica.
 
 Eventos confirmados em `mod_auth.admin_auditoria`: negativa `admin.security.denied_self_demotion` para `entidade_id=7:3:global` e sucesso `admin.user.remove_profile` para `entidade_id=12:4:global`.
+
+## 15.6 Producao interna do uso de `usuario_perfis.ativo`
+
+A validacao de 2026-06-26 em `amambaiGis`, ambiente `InternaProducao`, confirmou o uso operacional de `mod_auth.usuario_perfis.ativo` para desativacao logica administrativa de vinculos usuario/perfil, sem migration estrutural e sem `DELETE`.
+
+O runtime `geoportal_api_interna_prod` terminou com `SELECT=t`, `INSERT=t`, table `UPDATE=f`, `UPDATE(ativo)=t` e `DELETE=f` em `mod_auth.usuario_perfis`. O `INSERT` permanece necessario para a atribuicao de perfil ja existente; `UPDATE(ativo)` atende somente a nova desativacao logica. `mod_auth.permissoes` e `mod_auth.perfil_permissoes` permaneceram sem `INSERT` e sem `UPDATE` para a role runtime.
+
+A permissao operacional `admin.usuarios.remover_perfis` foi criada em producao como dado de autorizacao (`id=19`, `modulo='admin'`, `chave='usuarios.remover_perfis'`) e vinculada somente ao perfil `administrador-interno-geoportal`. O perfil operacional `manutencao-iluminacao` nao recebeu essa permissao.
+
+Eventos confirmados em `mod_auth.admin_auditoria`: negativa `admin.security.denied_self_demotion` para `entidade_id=1:1:global`, resultado `negada`, motivo `self_demotion`; e sucesso `admin.user.remove_profile` para `entidade_id=4:2:global`, resultado `sucesso`. O usuario real `manutencao.producao` nao foi alterado; o usuario ficticio de validacao foi bloqueado ao final, preservando o vinculo desativado como `ativo=f`.

@@ -377,7 +377,7 @@ Cobertura reportada:
 
 Resultados locais reportados: focados diretos `50 passed`, administrativos ampliados `269 passed`, suite backend completa `742 passed` e `3 warnings` conhecidos de deprecacao de `HTTP_422_UNPROCESSABLE_ENTITY`.
 
-Validacao operacional ainda pendente: homologacao primeiro, com bootstrap controlado da permissao, GRANT minimo de `UPDATE (ativo)` em `mod_auth.usuario_perfis`, sem `DELETE`, e producao somente em ciclo separado.
+Validacao operacional concluida em 2026-06-26: homologacao primeiro, seguida de producao interna em ciclo separado, com bootstrap controlado da permissao, GRANT minimo de `UPDATE (ativo)` em `mod_auth.usuario_perfis`, sem `DELETE`.
 
 ### Validacao funcional em homologacao - desativacao de vinculos usuario/perfil
 
@@ -394,3 +394,28 @@ Cenarios confirmados:
 - logout retornou `200`.
 
 A validacao de privilegios confirmou `DELETE=f`, table `UPDATE=f` e `UPDATE(ativo)=t` em `mod_auth.usuario_perfis`, preservando `INSERT=t` para a funcionalidade ja existente de atribuicao de perfil.
+
+### Validacao funcional em producao interna - desativacao de vinculos usuario/perfil
+
+Em 2026-06-26, a desativacao administrativa de vinculos usuario/perfil foi validada em `InternaProducao`, no servico `GeoportalAPIInternaProducao` em `127.0.0.1:8003`, banco `amambaiGis`, runtime `geoportal_api_interna_prod`, com `APP_ENV=producao` e cookie interno `Secure` ativo. O backup manual previo registrado foi `C:\apps\geoportal-api\backups\manual\pre_desativacao_perfis_admin_amambaiGis_20260626_092442.sql`, com 249.202.757 bytes.
+
+Cenarios confirmados:
+
+- inventario previo: `admin.usuarios.remover_perfis` nao existia em producao e nenhum perfil a possuia;
+- bootstrap real com `bootstrap_internal_admin_profile.py --login admin.producao` criou a permissao `id=19` e vinculou somente ao perfil `administrador-interno-geoportal`;
+- `manutencao-iluminacao` permaneceu sem `admin.usuarios.remover_perfis`;
+- harness `InternaProducao -Validate` passou antes e depois; apos restart controlado do servico, `/api/health`, `/api/version` e `/api/internal/auth/me` sem sessao mantiveram os resultados esperados;
+- OpenAPI local confirmou `GET,POST /api/internal/admin/users/{usuario_id}/profiles` e `POST /api/internal/admin/users/{usuario_id}/profiles/{perfil_id}/deactivate`;
+- login HTTPS de `admin.producao` retornou `200`, `/auth/me` confirmou permissao `admin.usuarios.remover_perfis`, e GET dos proprios vinculos retornou `administrador-interno-geoportal` ativo;
+- auto-rebaixamento `POST /api/internal/admin/users/1/profiles/1/deactivate` retornou `403`, manteve o vinculo do admin ativo e registrou auditoria `admin.security.denied_self_demotion` com motivo `self_demotion`;
+- usuario ficticio `zz_profile_deactivate_prod_20260626094758` (`id=4`) recebeu `manutencao-iluminacao` (`perfil_id=2`) com `201`, foi desativado com `200`, ficou `ativo=false/f` e registrou auditoria `admin.user.remove_profile`;
+- segunda desativacao do mesmo vinculo retornou `409`;
+- usuario ficticio foi bloqueado ao final com `bloqueado=true`, e o vinculo desativado permaneceu `ativo=f`;
+- usuario real `manutencao.producao` nao foi alterado;
+- login sem campo `login`, com senha ficticia, retornou `422`;
+- raw JSON da listagem do vinculo inativo retornou explicitamente `"ativo": false`;
+- logout retornou `200` nos fluxos autenticados.
+
+A validacao de privilegios finais confirmou menor privilegio para `geoportal_api_interna_prod`: `mod_auth.usuario_perfis` com `SELECT=t`, `INSERT=t`, table `UPDATE=f`, `UPDATE(ativo)=t` e `DELETE=f`; `mod_auth.permissoes` sem `INSERT`/`UPDATE`; `mod_auth.perfil_permissoes` sem `INSERT`/`UPDATE`. O `INSERT` em `usuario_perfis` permanece necessario para o endpoint ja existente de atribuicao de perfil, enquanto a desativacao logica acrescenta somente `UPDATE(ativo)`.
+
+Resultado: producao interna validada com sucesso e funcionalidade operacional no backend/API. UI administrativa para este CRUD complementar deve ser planejada separadamente, se houver necessidade futura.

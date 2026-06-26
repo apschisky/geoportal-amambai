@@ -1016,7 +1016,7 @@ O teste autenticado de producao foi executado via HTTPS porque `GEOPORTAL_INTERN
 
 ## Decisao implementada - desativacao de vinculo usuario/perfil
 
-Atualizacao do commit `9173259`: a remocao logica de vinculos usuario/perfil deixou de ser apenas lacuna planejada e foi implementada localmente no backend, sem frontend, sem migration estrutural e sem validacao operacional em homologacao/producao.
+Atualizacao do commit `9173259`: a remocao logica de vinculos usuario/perfil deixou de ser apenas lacuna planejada e foi implementada no backend, sem frontend e sem migration estrutural. A validacao operacional foi concluida em homologacao e producao interna em 2026-06-26.
 
 A decisao tecnica adotada foi expor `GET /api/internal/admin/users/{usuario_id}/profiles` como leitura sanitizada protegida por `admin.usuarios.ler` e `POST /api/internal/admin/users/{usuario_id}/profiles/{perfil_id}/deactivate` como mutacao restrita protegida por `admin.usuarios.remover_perfis` e header `X-Geoportal-Internal-Request: 1`. A mutacao usa `ativo=false`, nunca `DELETE`, e diferencia `404` para vinculo inexistente de `409` para vinculo ja inativo.
 
@@ -1024,7 +1024,7 @@ A v1 bloqueia qualquer auto-rebaixamento por `usuario_id` do ator autenticado, i
 
 Auditoria: sucesso com `admin.user.remove_profile`; negativas com `admin.security.denied_self_demotion` e `admin.security.denied_last_admin_removal`. Eventos de sucesso compartilham a transacao da mutacao; eventos negados persistem antes do `403`. O identificador de `usuario_perfil` usa formato composto seguro `usuario_id:perfil_id:modulo|global`.
 
-Para publicacao futura, a decisao operacional permanece: homologacao primeiro, bootstrap controlado de `admin.usuarios.remover_perfis`, GRANT minimo de `UPDATE (ativo)` em `mod_auth.usuario_perfis`, sem `DELETE`, e producao somente em ciclo separado apos validacao.
+A decisao operacional aplicada foi: homologacao primeiro, bootstrap controlado de `admin.usuarios.remover_perfis`, GRANT minimo de `UPDATE (ativo)` em `mod_auth.usuario_perfis`, sem `DELETE`, e producao somente em ciclo separado apos validacao.
 
 ## Validacao tecnica em homologacao - desativacao de vinculos
 
@@ -1035,3 +1035,13 @@ A permissao `admin.usuarios.remover_perfis` foi criada como permissao de aplicac
 A matriz final confirmou que a atribuicao de perfis e a desativacao de vinculos requerem capacidades distintas no banco: `INSERT` em `mod_auth.usuario_perfis` permanece por causa do endpoint de atribuicao ja existente, enquanto a nova desativacao usa apenas `UPDATE(ativo)`. Nao ha table `UPDATE` amplo nem `DELETE`.
 
 A resposta externa de auto-rebaixamento permaneceu `403` sanitizado, enquanto o motivo tecnico `self_demotion` ficou apenas na auditoria administrativa.
+
+## Validacao tecnica em producao interna - desativacao de vinculos
+
+Em 2026-06-26, a implementacao `9173259` foi validada em `InternaProducao`, no servico `GeoportalAPIInternaProducao`, porta `8003`, banco `amambaiGis`. A decisao tecnica de usar desativacao logica (`ativo=false`) em `mod_auth.usuario_perfis`, sem `DELETE`, foi confirmada em ambiente real de producao interna.
+
+A permissao `admin.usuarios.remover_perfis` foi criada como permissao de aplicacao (`modulo='admin'`, `chave='usuarios.remover_perfis'`, id `19`) e associada apenas ao perfil `administrador-interno-geoportal`. O perfil `manutencao-iluminacao` nao recebeu essa permissao.
+
+A matriz final de `geoportal_api_interna_prod` confirmou a separacao de capacidades: `INSERT` em `mod_auth.usuario_perfis` permanece por causa do endpoint de atribuicao ja existente, enquanto a desativacao usa apenas `UPDATE(ativo)`. Nao ha table `UPDATE` amplo nem `DELETE`. `mod_auth.permissoes` e `mod_auth.perfil_permissoes` ficaram sem `INSERT`/`UPDATE` para a role runtime apos revogacao dos GRANTs temporarios.
+
+A resposta externa de auto-rebaixamento permaneceu `403` sanitizado, enquanto o motivo tecnico `self_demotion` ficou apenas na auditoria administrativa. O teste positivo controlado retornou `ativo=false`, a repeticao retornou `409`, e o usuario real `manutencao.producao` nao foi alterado.

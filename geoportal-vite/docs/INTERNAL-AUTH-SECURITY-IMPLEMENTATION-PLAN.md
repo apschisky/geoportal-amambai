@@ -31,6 +31,8 @@ Pré-requisitos ainda pendentes antes do primeiro CRUD administrativo:
 
 Conclusão operacional: a Etapa 0 é pré-requisito documental e operacional antes do CRUD administrativo; até ela ser concluída e validada em homologação/servidor, a exposição administrativa deve permanecer fechada.
 
+Nota de divergencia documental 2026-06-26: este paragrafo inicial reflete o estado anterior aos ciclos de auditoria administrativa e desativacao logica de vinculos usuario/perfil. A partir das validacoes registradas abaixo, a divergencia deve ser lida como historica: endpoints administrativos pontuais foram liberados apos controles especificos, mas isso nao equivale a liberar frontend administrativo amplo nem CRUD completo de usuarios/perfis/permissoes.
+
 Sequência segura após o primeiro reforço:
 1. Planejar o hardening explícito de IP real no Apache/proxy, se necessário, sem assumir que a configuração atual entrega IP individual por cliente.
 2. Implementar auditoria administrativa própria para alterações de usuários, perfis e permissões.
@@ -662,7 +664,7 @@ O teste produziu tres eventos auditados, preservou a resposta externa `403 Forbi
 
 ### Implementacao local complementar - vinculos usuario/perfil
 
-O commit `9173259 Implementa desativacao administrativa de perfis de usuarios` implementou localmente, somente no backend e ja enviado ao GitHub, o primeiro complemento seguro do CRUD administrativo para vinculos usuario/perfil. Esta etapa **nao foi validada em homologacao ou producao**, nao executou bootstrap real, nao alterou banco real e nao criou migration estrutural.
+O commit `9173259 Implementa desativacao administrativa de perfis de usuarios` implementou, somente no backend e ja enviado ao GitHub, o primeiro complemento seguro do CRUD administrativo para vinculos usuario/perfil. A etapa nao criou migration estrutural; a validacao operacional foi concluida depois em homologacao e producao interna, com bootstrap real e GRANT minimo documentados abaixo.
 
 Contratos implementados:
 
@@ -692,7 +694,7 @@ Auditoria implementada localmente:
 
 Testes locais reportados para o commit `9173259`: focados diretos com `50 passed`, administrativos ampliados com `269 passed` e suite backend completa com `742 passed` e `3 warnings` conhecidos de deprecacao de `HTTP_422_UNPROCESSABLE_ENTITY`.
 
-Pendencia operacional antes de homologacao/producao: executar ciclo controlado separado para bootstrap da permissao `admin.usuarios.remover_perfis`, validar que somente o perfil administrativo autorizado recebeu a permissao e conceder ao runtime interno apenas o minimo necessario para `UPDATE (ativo)` em `mod_auth.usuario_perfis`, sem `DELETE`. A validacao deve ocorrer primeiro em homologacao e somente depois em producao. UI administrativa permanece etapa posterior.
+Pendencia operacional encerrada em 2026-06-26: foram executados ciclos controlados separados em homologacao e em producao interna para bootstrap da permissao `admin.usuarios.remover_perfis`, validacao de vinculo somente ao perfil administrativo autorizado e concessao ao runtime interno apenas do minimo necessario para `UPDATE (ativo)` em `mod_auth.usuario_perfis`, sem `DELETE`. UI administrativa permanece etapa posterior.
 
 ### Validacao controlada em homologacao - desativacao de vinculos usuario/perfil
 
@@ -718,4 +720,22 @@ Teste negativo: a tentativa de desativar `/api/internal/admin/users/7/profiles/3
 
 Teste positivo controlado: foi criado o usuario ficticio `zz_profile_deactivate_probe_20260626085536` (`id=12`), atribuido o perfil `manutencao-iluminacao` (`id=4`) com resposta `201`, e a desativacao retornou `200`. Endpoint e SQL confirmaram `ativo=false/f`. A auditoria registrou `id=7`, `acao=admin.user.remove_profile`, `entidade_tipo=usuario_perfil`, `entidade_id=12:4:global`, `resultado=sucesso`, `criado_em=2026-06-26 09:03:31.518693-04`. A segunda tentativa de desativacao retornou `409`, e o logout retornou `200`.
 
-Producao permanece pendente e deve seguir ciclo proprio com backup, bootstrap controlado da permissao, preservacao de `INSERT` necessario para atribuicao existente, concessao apenas de `UPDATE(ativo)` adicional para a nova desativacao, sem `DELETE`, e validacoes equivalentes antes de uso operacional amplo.
+Producao foi validada em ciclo proprio posterior, com backup, bootstrap controlado da permissao, preservacao de `INSERT` necessario para atribuicao existente, concessao apenas de `UPDATE(ativo)` adicional para a nova desativacao, sem `DELETE`, e validacoes equivalentes antes de uso operacional amplo.
+
+### Validacao controlada em producao interna - desativacao de vinculos usuario/perfil
+
+Em 2026-06-26, a desativacao administrativa de vinculos usuario/perfil foi validada em `InternaProducao`, no servico `GeoportalAPIInternaProducao`, porta `8003`, banco `amambaiGis`, runtime `geoportal_api_interna_prod`, com `APP_ENV=producao` e `GEOPORTAL_INTERNAL_SESSION_COOKIE_SECURE=true`. O backup manual previo foi `C:\apps\geoportal-api\backups\manual\pre_desativacao_perfis_admin_amambaiGis_20260626_092442.sql`, com 249.202.757 bytes.
+
+O inventario previo confirmou ausencia de `admin.usuarios.remover_perfis` em producao, nenhum perfil com essa permissao, perfis reais `administrador-interno-geoportal` (`id=1`) e `manutencao-iluminacao` (`id=2`) ativos, e usuarios reais `admin.producao` (`id=1`) e `manutencao.producao` (`id=2`) ativos. O bootstrap real `bootstrap_internal_admin_profile.py --login admin.producao` criou a permissao `id=19`, `modulo='admin'`, `chave='usuarios.remover_perfis'`, ativa, e vinculou somente ao perfil `administrador-interno-geoportal`; `manutencao-iluminacao` nao recebeu a permissao. GRANTs temporarios usados no bootstrap foram revogados.
+
+Matriz final validada para `geoportal_api_interna_prod`:
+
+- `mod_auth.usuario_perfis`: `SELECT=t`, `INSERT=t`, table `UPDATE=f`, `UPDATE(ativo)=t`, `DELETE=f`;
+- `mod_auth.permissoes`: `INSERT=f`, `UPDATE=f`;
+- `mod_auth.perfil_permissoes`: `INSERT=f`, `UPDATE=f`.
+
+O harness `InternaProducao -Validate` passou antes e depois; restart controlado do servico foi necessario para carregar o endpoint novo. Apos o restart, `/api/health` ficou OK, `/api/version` retornou `environment=producao` e `/api/internal/auth/me` retornou `401` sem sessao. O OpenAPI local confirmou os endpoints de listagem/atribuicao de perfis e desativacao.
+
+Com `admin.producao`, login HTTPS retornou `200`, `/auth/me` confirmou `admin.usuarios.remover_perfis` e a listagem do proprio admin retornou `administrador-interno-geoportal` ativo. A tentativa de auto-rebaixamento retornou `403`, manteve o vinculo ativo e auditou `admin.security.denied_self_demotion`, `entidade_id=1:1:global`, resultado `negada`, motivo `self_demotion`. O teste positivo com usuario ficticio `zz_profile_deactivate_prod_20260626094758` (`id=4`) atribuiu e desativou `manutencao-iluminacao` (`perfil_id=2`) com `200`, confirmou `ativo=false/f`, auditou `admin.user.remove_profile`, `entidade_id=4:2:global`, resultado `sucesso`, e a segunda desativacao retornou `409`.
+
+O usuario ficticio foi bloqueado ao final e o vinculo permaneceu `ativo=f`. O usuario real `manutencao.producao` nao foi alterado. Login incompleto retornou `422`, raw JSON de vinculo inativo retornou `"ativo": false` e logout retornou `200`. Resultado: funcionalidade operacional no backend/API; UI administrativa para este CRUD complementar permanece etapa futura separada.

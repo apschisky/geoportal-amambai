@@ -58,6 +58,54 @@ Validação operacional registrada:
 
 Inventário somente leitura do proxy ativo: `Apache2.4`, `PEMHTTPD-x64` e `Tomcat9` estavam em execução. Embora o serviço `Apache2.4` aponte para um binário em diretório próprio, `httpd -S` confirmou `ServerRoot C:/Apache24` e o vhost em `C:/Apache24/conf/extra/httpd-ssl.conf:121`. O proxy interno ativo foi confirmado nas linhas 162-163 como `ProxyPass /api/internal/ http://127.0.0.1:8003/api/internal/` e respectivo `ProxyPassReverse`. Foram encontrados `X-Forwarded-Proto`, `X-Forwarded-Port` e `RequestHeader unset Proxy early`, mas não foram encontrados `X-Forwarded-For`, `X-Real-IP`, `ProxyAddHeaders`, `RemoteIPHeader` ou `RemoteIPTrustedProxy`. Portanto, o rate limit está publicado e funcional, porém a identificação de IP real individual por cliente não está validada e depende de hardening futuro do Apache/proxy.
 
+### 3.2 Marco operacional - desativacao administrativa de perfis em producao interna
+
+Em 2026-06-26, a funcionalidade de desativacao administrativa de vinculos usuario/perfil foi validada em producao interna no runtime `geoportal_api_interna_prod`, servico `GeoportalAPIInternaProducao`, porta `8003`, banco `amambaiGis`, com `APP_ENV=producao` e `GEOPORTAL_INTERNAL_SESSION_COOKIE_SECURE=true`. O servidor estava alinhado com GitHub no commit `48ae092 Documenta homologacao da desativacao administrativa de perfis`; a implementacao base e o commit `9173259 Implementa desativacao administrativa de perfis de usuarios`.
+
+Backup manual previo registrado: `C:\apps\geoportal-api\backups\manual\pre_desativacao_perfis_admin_amambaiGis_20260626_092442.sql`, com 249.202.757 bytes.
+
+Inventario e bootstrap:
+
+- antes do bootstrap, `admin.usuarios.remover_perfis` nao existia em producao e nenhum perfil a possuia;
+- perfis reais confirmados: `administrador-interno-geoportal` (`id=1`) e `manutencao-iluminacao` (`id=2`), ambos ativos;
+- usuarios reais confirmados: `admin.producao` (`id=1`) e `manutencao.producao` (`id=2`), ambos ativos;
+- sequences confirmadas: `mod_auth.perfis_id_seq` e `mod_auth.permissoes_id_seq`;
+- GRANTs temporarios foram aplicados apenas para bootstrap e depois revogados;
+- bootstrap executado com `bootstrap_internal_admin_profile.py --login admin.producao`;
+- permissao criada: `id=19`, `modulo='admin'`, `chave='usuarios.remover_perfis'`, descricao `Remover perfis de usuarios internos por desativacao logica.`, ativa, criada em `2026-06-26 09:29:03.031563-04`;
+- permissao vinculada somente ao perfil `administrador-interno-geoportal`; `manutencao-iluminacao` nao recebeu a permissao.
+
+Validacao de servico e contrato:
+
+- harness `InternaProducao -Validate` passou antes e depois;
+- restart controlado de `GeoportalAPIInternaProducao` foi necessario para carregar o endpoint novo;
+- apos restart: `/api/health` OK, `/api/version` com `environment=producao`, `/api/internal/auth/me` com `401` sem sessao;
+- OpenAPI local em `127.0.0.1:8003` confirmou `GET,POST /api/internal/admin/users/{usuario_id}/profiles` e `POST /api/internal/admin/users/{usuario_id}/profiles/{perfil_id}/deactivate`.
+
+GRANT final minimo validado para `geoportal_api_interna_prod`:
+
+- `mod_auth.usuario_perfis`: `SELECT=t`, `INSERT=t`, table `UPDATE=f`, `UPDATE(ativo)=t`, `DELETE=f`;
+- `mod_auth.permissoes`: `INSERT=f`, `UPDATE=f`;
+- `mod_auth.perfil_permissoes`: `INSERT=f`, `UPDATE=f`.
+
+Observacao operacional: `INSERT` em `mod_auth.usuario_perfis` permanece necessario para o endpoint ja existente de atribuicao de perfil. A desativacao logica acrescenta somente `UPDATE(ativo)` e preserva ausencia de `DELETE`.
+
+Validacao funcional via HTTPS com `admin.producao`:
+
+- login em `https://geoserver.amambai.ms.gov.br/api/internal` retornou `200`;
+- `/auth/me` confirmou `ADMIN_USER_ID=1`, `LOGIN=admin.producao` e permissao `admin.usuarios.remover_perfis` presente;
+- GET `/api/internal/admin/users/1/profiles` retornou o perfil `administrador-interno-geoportal` ativo;
+- auto-rebaixamento `POST /api/internal/admin/users/1/profiles/1/deactivate` retornou `403`, manteve o vinculo ativo e registrou auditoria `admin.security.denied_self_demotion`, resultado `negada`, motivo `self_demotion`;
+- teste positivo com usuario ficticio `zz_profile_deactivate_prod_20260626094758` (`id=4`) atribuiu `manutencao-iluminacao` (`perfil_id=2`) com `201`, desativou com `200`, confirmou `ativo=false/f` por endpoint e SQL, e registrou auditoria `admin.user.remove_profile`, resultado `sucesso`;
+- segunda desativacao retornou `409`;
+- usuario ficticio foi bloqueado ao final; o vinculo inativo permaneceu `ativo=f`;
+- usuario real `manutencao.producao` nao foi alterado;
+- login sem campo `login`, com senha ficticia, retornou `422`;
+- raw JSON de vinculo inativo retornou `"ativo": false`, confirmando o contrato da listagem;
+- logout retornou `200`.
+
+Resultado: producao interna validada com sucesso. A funcionalidade esta operacional no backend/API. UI administrativa para este CRUD complementar, se existir como etapa futura, deve ser planejada separadamente. Proximo passo recomendado: monitoramento assistido e documentacao de fechamento do marco.
+
 ### Homologacao
 
 - Usar banco de homologacao.
@@ -1277,11 +1325,11 @@ A auditoria terminou com tres eventos: `admin.user.create`, `admin.user.disable`
 
 ### Proximo ciclo operacional - vinculos usuario/perfil
 
-O commit `9173259 Implementa desativacao administrativa de perfis de usuarios` esta implementado localmente e publicado no GitHub, mas ainda nao foi aplicado/validado em homologacao ou producao.
+O commit `9173259 Implementa desativacao administrativa de perfis de usuarios` foi implementado, publicado no GitHub e validado em homologacao e producao interna em ciclos separados.
 
 Nao ha migration estrutural para esta etapa. O schema atual de `mod_auth.usuario_perfis` ja comporta a desativacao logica via `ativo=false`.
 
-Ordem recomendada para homologacao:
+Ordem executada em homologacao:
 
 1. confirmar backup operacional adequado antes de alterar permissao/GRANT;
 2. atualizar o servidor de homologacao com `git pull --ff-only`;
@@ -1291,7 +1339,7 @@ Ordem recomendada para homologacao:
 6. validar leitura de vinculos, desativacao valida, auto-rebaixamento negado, ultimo administrador protegido, auditoria de sucesso/negativa e ausencia de segredo;
 7. documentar o resultado antes de qualquer producao.
 
-Producao deve ser ciclo separado, com backup previo, bootstrap/GRANT minimo equivalentes, validacao HTTPS quando cookie `Secure` exigir, e confirmacao final de que `DELETE` em `mod_auth.usuario_perfis` continua ausente.
+Producao foi executada em ciclo separado, com backup previo, bootstrap/GRANT minimo equivalentes, validacao HTTPS por causa do cookie `Secure` e confirmacao final de que `DELETE` em `mod_auth.usuario_perfis` continuou ausente.
 
 ### Homologacao concluida - desativacao administrativa de perfis de usuarios
 
@@ -1333,4 +1381,4 @@ Validacoes:
 - usuario ficticio `zz_profile_deactivate_probe_20260626085536` (`id=12`) recebeu `manutencao-iluminacao` (`perfil_id=4`) com `201`, foi desativado com `200`, confirmado como `ativo=false/f`, auditado como `admin.user.remove_profile`, e segunda tentativa retornou `409`;
 - logout retornou `200`.
 
-Producao nao foi alterada nesta validacao. A aplicacao em producao deve ser planejada em ciclo separado, com backup previo, bootstrap controlado, matriz final preservando `INSERT` para atribuicao existente, `UPDATE(ativo)` para desativacao e `DELETE=false`.
+Producao nao foi alterada nesta validacao de homologacao. A aplicacao em producao foi registrada acima na secao "Marco operacional - desativacao administrativa de perfis em producao interna", com backup previo, bootstrap controlado, matriz final preservando `INSERT` para atribuicao existente, `UPDATE(ativo)` para desativacao e `DELETE=false`.
