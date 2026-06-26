@@ -872,3 +872,17 @@ A desativacao e logica (`ativo=false`) em `mod_auth.usuario_perfis`; nao ha `DEL
 Eventos de auditoria: `admin.user.remove_profile`, `admin.security.denied_self_demotion` e `admin.security.denied_last_admin_removal`, sem payload bruto, senha, hash, token, cookie, segredo ou `DATABASE_URL`.
 
 Antes de homologacao/producao, sera necessario ciclo operacional controlado para bootstrap da nova permissao e GRANT minimo de `UPDATE (ativo)` em `mod_auth.usuario_perfis` para a role runtime interna, sem `DELETE`.
+
+## Homologacao validada - desativacao administrativa de perfis de usuarios
+
+A desativacao administrativa de vinculos usuario/perfil foi validada em `InternaHomologacao` no commit `d91240a`, com implementacao base `9173259`. O ambiente validado foi `GeoportalAPIInternaHomologacao`, porta `8002`, banco `amambaiGis_homologacao`.
+
+A permissao `admin.usuarios.remover_perfis` foi criada como `modulo='admin'`, `chave='usuarios.remover_perfis'`, id `19`, ativa, e vinculada somente ao perfil `administrador-interno-geoportal`. O perfil `manutencao-iluminacao` permaneceu sem essa permissao.
+
+`/auth/me` para `admin.homologacao` (`usuario_id=7`) confirmou a permissao. A leitura `GET /api/internal/admin/users/7/profiles` retornou o vinculo ativo do admin com `perfil_id=3`. A tentativa de auto-rebaixamento em `POST /api/internal/admin/users/7/profiles/3/deactivate` retornou `403`, manteve o vinculo ativo e auditou `admin.security.denied_self_demotion` com entidade `usuario_perfil`, `entidade_id=7:3:global`, resultado `negada` e motivo `self_demotion`.
+
+No teste positivo controlado, o usuario ficticio `zz_profile_deactivate_probe_20260626085536` (`id=12`) recebeu o perfil `manutencao-iluminacao` (`perfil_id=4`) com `201`; a desativacao retornou `200`, deixou `ativo=false/f` e auditou `admin.user.remove_profile` com `entidade_id=12:4:global`, resultado `sucesso`. A repeticao retornou `409`, confirmando o contrato de vinculo ja inativo.
+
+A matriz final de menor privilegio para `geoportal_api_homolog` manteve `DELETE=false` em `mod_auth.usuario_perfis`, `UPDATE` de tabela falso e apenas `UPDATE(ativo)=t`. O `INSERT=t` em `mod_auth.usuario_perfis` permanece necessario para o endpoint ja existente de atribuicao de perfil; a nova desativacao nao amplia para `DELETE` nem exige migration estrutural.
+
+Producao ainda nao foi alterada por esta etapa.

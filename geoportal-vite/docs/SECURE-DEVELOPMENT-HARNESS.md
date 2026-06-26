@@ -160,3 +160,11 @@ Antes de validar em homologacao:
 6. confirmar auditoria em `mod_auth.admin_auditoria` para sucesso e negativas, sem termos sensiveis.
 
 A producao deve repetir o roteiro somente apos homologacao documentada e aprovada.
+
+## Validacao registrada - desativacao de vinculos em homologacao
+
+A etapa de desativacao administrativa de vinculos usuario/perfil foi validada em `InternaHomologacao` em 2026-06-26. O harness final sem restart confirmou `/api/health` OK, `/api/version` com `environment=homologacao` e `/api/internal/auth/me` retornando `401` sem sessao.
+
+Para esta etapa, o harness apenas validou o servico; backup, bootstrap da permissao `admin.usuarios.remover_perfis`, ajustes de GRANT e testes funcionais foram procedimentos operacionais controlados fora do harness. A matriz final do runtime manteve `DELETE=false` em `mod_auth.usuario_perfis` e acrescentou somente `UPDATE(ativo)` para a nova desativacao, preservando `INSERT` por causa da atribuicao de perfil ja existente.
+
+A futura producao deve repetir esse padrao: backup previo, bootstrap controlado, menor privilegio, harness, validacao funcional e auditoria, sem registrar senha, token ou cookie.

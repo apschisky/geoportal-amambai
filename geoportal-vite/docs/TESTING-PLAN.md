@@ -378,3 +378,19 @@ Cobertura reportada:
 Resultados locais reportados: focados diretos `50 passed`, administrativos ampliados `269 passed`, suite backend completa `742 passed` e `3 warnings` conhecidos de deprecacao de `HTTP_422_UNPROCESSABLE_ENTITY`.
 
 Validacao operacional ainda pendente: homologacao primeiro, com bootstrap controlado da permissao, GRANT minimo de `UPDATE (ativo)` em `mod_auth.usuario_perfis`, sem `DELETE`, e producao somente em ciclo separado.
+
+### Validacao funcional em homologacao - desativacao de vinculos usuario/perfil
+
+Em 2026-06-26, a desativacao administrativa de vinculos usuario/perfil foi validada em `InternaHomologacao`.
+
+Cenarios confirmados:
+
+- OpenAPI publicou `GET /api/internal/admin/users/{usuario_id}/profiles` e `POST /api/internal/admin/users/{usuario_id}/profiles/{perfil_id}/deactivate`;
+- `/auth/me` de `admin.homologacao` confirmou `admin.usuarios.remover_perfis`;
+- GET de vinculos do admin retornou o perfil `administrador-interno-geoportal` ativo;
+- auto-rebaixamento do admin retornou `403`, manteve vinculo ativo e registrou `admin.security.denied_self_demotion` com motivo `self_demotion`;
+- usuario ficticio `zz_profile_deactivate_probe_20260626085536` recebeu perfil `manutencao-iluminacao` com `201`, foi desativado com `200`, ficou `ativo=false/f` e registrou `admin.user.remove_profile`;
+- segunda desativacao do mesmo vinculo retornou `409`;
+- logout retornou `200`.
+
+A validacao de privilegios confirmou `DELETE=f`, table `UPDATE=f` e `UPDATE(ativo)=t` em `mod_auth.usuario_perfis`, preservando `INSERT=t` para a funcionalidade ja existente de atribuicao de perfil.

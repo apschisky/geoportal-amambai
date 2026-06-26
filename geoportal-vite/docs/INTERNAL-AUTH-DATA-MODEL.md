@@ -346,3 +346,11 @@ A leitura administrativa de vinculos retorna somente `perfil_id`, `chave`, `nome
 A auditoria relacionada grava `admin.user.remove_profile`, `admin.security.denied_self_demotion` e `admin.security.denied_last_admin_removal` em `mod_auth.admin_auditoria`, usando entidade `usuario_perfil` e identificador composto `usuario_id:perfil_id:modulo|global`. O registro nao deve conter payload bruto, senha, hash, token, cookie, segredo ou `DATABASE_URL`.
 
 Para homologacao/producao, o modelo exige manter ausencia de `DELETE` em `mod_auth.usuario_perfis` e conceder, quando a etapa for validada, apenas `UPDATE (ativo)` ao runtime interno, alem das leituras ja necessarias para resolver autorizacao.
+
+## 15.5 Homologacao do uso de `usuario_perfis.ativo`
+
+A validacao de 2026-06-26 em `amambaiGis_homologacao` confirmou o uso operacional de `mod_auth.usuario_perfis.ativo` para desativacao logica administrativa de vinculos usuario/perfil, sem migration estrutural e sem `DELETE`.
+
+O runtime `geoportal_api_homolog` terminou com `SELECT=t`, `INSERT=t`, table `UPDATE=f`, `UPDATE(ativo)=t` e `DELETE=f` em `mod_auth.usuario_perfis`. O `INSERT` permanece necessario para a atribuicao de perfil ja existente; `UPDATE(ativo)` atende somente a nova desativacao logica.
+
+Eventos confirmados em `mod_auth.admin_auditoria`: negativa `admin.security.denied_self_demotion` para `entidade_id=7:3:global` e sucesso `admin.user.remove_profile` para `entidade_id=12:4:global`.

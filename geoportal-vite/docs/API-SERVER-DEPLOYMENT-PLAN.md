@@ -1292,3 +1292,45 @@ Ordem recomendada para homologacao:
 7. documentar o resultado antes de qualquer producao.
 
 Producao deve ser ciclo separado, com backup previo, bootstrap/GRANT minimo equivalentes, validacao HTTPS quando cookie `Secure` exigir, e confirmacao final de que `DELETE` em `mod_auth.usuario_perfis` continua ausente.
+
+### Homologacao concluida - desativacao administrativa de perfis de usuarios
+
+Em 2026-06-26, a funcionalidade de desativacao administrativa de vinculos usuario/perfil foi validada em `InternaHomologacao` no commit `d91240a Documenta desativacao administrativa de perfis de usuarios`, com implementacao base `9173259`.
+
+Ambiente:
+
+- servico: `GeoportalAPIInternaHomologacao`;
+- porta: `8002`;
+- banco: `amambaiGis_homologacao`;
+- backup previo: `C:\apps\geoportal-api\backups\manual\pre_desativacao_perfis_admin_amambaiGis_homologacao_20260626_074933.sql`, 248.980.625 bytes.
+
+Bootstrap e permissoes:
+
+- bootstrap controlado executado com `.venv` do backend e `--login admin.homologacao`;
+- permissao criada: `modulo='admin'`, `chave='usuarios.remover_perfis'`, id `19`, ativa;
+- vinculo somente ao perfil `administrador-interno-geoportal`;
+- perfil `manutencao-iluminacao` sem a permissao;
+- GRANTs temporarios do bootstrap revogados.
+
+Privilégios finais do runtime `geoportal_api_homolog`:
+
+- `mod_auth.usuario_perfis`: `SELECT=t`, `INSERT=t`, table `UPDATE=f`, `UPDATE(ativo)=t`, `DELETE=f`;
+- `mod_auth.permissoes`: `INSERT=f`, `UPDATE=f`;
+- `mod_auth.perfil_permissoes`: `INSERT=f`, `UPDATE=f`.
+
+O `INSERT` em `mod_auth.usuario_perfis` permanece necessario para a funcionalidade ja existente de atribuicao de perfil. A nova desativacao exige somente o acrescimo controlado de `UPDATE(ativo)`, preservando ausencia de `DELETE`.
+
+Validacoes:
+
+- harness final sem restart OK;
+- `/api/health` OK;
+- `/api/version` com `environment=homologacao`;
+- `/api/internal/auth/me` retornou `401` sem sessao;
+- OpenAPI publicou `GET /api/internal/admin/users/{usuario_id}/profiles` e `POST /api/internal/admin/users/{usuario_id}/profiles/{perfil_id}/deactivate`;
+- login `admin.homologacao` OK, `usuario_id=7`, perfil `administrador-interno-geoportal`, permissao `admin.usuarios.remover_perfis` presente;
+- GET de vinculos do admin retornou perfil `administrador-interno-geoportal` ativo;
+- auto-rebaixamento do admin retornou `403`, manteve vinculo ativo e auditou `admin.security.denied_self_demotion`;
+- usuario ficticio `zz_profile_deactivate_probe_20260626085536` (`id=12`) recebeu `manutencao-iluminacao` (`perfil_id=4`) com `201`, foi desativado com `200`, confirmado como `ativo=false/f`, auditado como `admin.user.remove_profile`, e segunda tentativa retornou `409`;
+- logout retornou `200`.
+
+Producao nao foi alterada nesta validacao. A aplicacao em producao deve ser planejada em ciclo separado, com backup previo, bootstrap controlado, matriz final preservando `INSERT` para atribuicao existente, `UPDATE(ativo)` para desativacao e `DELETE=false`.

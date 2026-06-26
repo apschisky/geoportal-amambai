@@ -1025,3 +1025,13 @@ A v1 bloqueia qualquer auto-rebaixamento por `usuario_id` do ator autenticado, i
 Auditoria: sucesso com `admin.user.remove_profile`; negativas com `admin.security.denied_self_demotion` e `admin.security.denied_last_admin_removal`. Eventos de sucesso compartilham a transacao da mutacao; eventos negados persistem antes do `403`. O identificador de `usuario_perfil` usa formato composto seguro `usuario_id:perfil_id:modulo|global`.
 
 Para publicacao futura, a decisao operacional permanece: homologacao primeiro, bootstrap controlado de `admin.usuarios.remover_perfis`, GRANT minimo de `UPDATE (ativo)` em `mod_auth.usuario_perfis`, sem `DELETE`, e producao somente em ciclo separado apos validacao.
+
+## Validacao tecnica em homologacao - desativacao de vinculos
+
+O commit `d91240a`, com a implementacao `9173259`, foi validado em `InternaHomologacao`. A decisao tecnica de usar desativacao logica (`ativo=false`) em `mod_auth.usuario_perfis`, sem `DELETE`, foi confirmada em ambiente real de homologacao.
+
+A permissao `admin.usuarios.remover_perfis` foi criada como permissao de aplicacao (`modulo='admin'`, `chave='usuarios.remover_perfis'`, id `19`) e associada apenas ao perfil `administrador-interno-geoportal`. A manutencao nao recebeu essa permissao.
+
+A matriz final confirmou que a atribuicao de perfis e a desativacao de vinculos requerem capacidades distintas no banco: `INSERT` em `mod_auth.usuario_perfis` permanece por causa do endpoint de atribuicao ja existente, enquanto a nova desativacao usa apenas `UPDATE(ativo)`. Nao ha table `UPDATE` amplo nem `DELETE`.
+
+A resposta externa de auto-rebaixamento permaneceu `403` sanitizado, enquanto o motivo tecnico `self_demotion` ficou apenas na auditoria administrativa.

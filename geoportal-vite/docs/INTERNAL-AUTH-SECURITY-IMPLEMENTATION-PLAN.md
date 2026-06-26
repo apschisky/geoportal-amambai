@@ -693,3 +693,29 @@ Auditoria implementada localmente:
 Testes locais reportados para o commit `9173259`: focados diretos com `50 passed`, administrativos ampliados com `269 passed` e suite backend completa com `742 passed` e `3 warnings` conhecidos de deprecacao de `HTTP_422_UNPROCESSABLE_ENTITY`.
 
 Pendencia operacional antes de homologacao/producao: executar ciclo controlado separado para bootstrap da permissao `admin.usuarios.remover_perfis`, validar que somente o perfil administrativo autorizado recebeu a permissao e conceder ao runtime interno apenas o minimo necessario para `UPDATE (ativo)` em `mod_auth.usuario_perfis`, sem `DELETE`. A validacao deve ocorrer primeiro em homologacao e somente depois em producao. UI administrativa permanece etapa posterior.
+
+### Validacao controlada em homologacao - desativacao de vinculos usuario/perfil
+
+Em 2026-06-26, o commit `d91240a Documenta desativacao administrativa de perfis de usuarios`, contendo a implementacao `9173259`, foi validado na API interna de homologacao (`InternaHomologacao`), servico `GeoportalAPIInternaHomologacao`, porta `8002`, banco `amambaiGis_homologacao`.
+
+Antes da validacao foi criado backup manual `C:\apps\geoportal-api\backups\manual\pre_desativacao_perfis_admin_amambaiGis_homologacao_20260626_074933.sql`, com 248.980.625 bytes. Nao houve migration estrutural; a funcionalidade usa `mod_auth.usuario_perfis.ativo` para desativacao logica.
+
+O bootstrap controlado foi executado com a `.venv` do backend e `--login admin.homologacao`. A permissao `modulo='admin'`, `chave='usuarios.remover_perfis'`, id `19`, ativa, foi criada e vinculada somente ao perfil `administrador-interno-geoportal`. O perfil `manutencao-iluminacao` nao recebeu essa permissao. Os GRANTs temporarios usados no bootstrap foram revogados.
+
+Matriz final validada para `geoportal_api_homolog`:
+
+- `mod_auth.usuario_perfis`: `SELECT=t`, `INSERT=t`, table `UPDATE=f`, `UPDATE(ativo)=t`, `DELETE=f`;
+- `mod_auth.permissoes`: `INSERT=f`, `UPDATE=f`;
+- `mod_auth.perfil_permissoes`: `INSERT=f`, `UPDATE=f`.
+
+Observacao operacional: a atribuicao de perfil existente ainda depende de `INSERT` em `mod_auth.usuario_perfis`; portanto, o estado correto de homologacao nao e somente `UPDATE(ativo)`. A nova desativacao acrescenta apenas `UPDATE(ativo)`, sem `DELETE`.
+
+O harness final sem restart passou: `/api/health` OK, `/api/version` com `environment=homologacao` e `/api/internal/auth/me` retornando `401` sem sessao. O OpenAPI publicou `GET /api/internal/admin/users/{usuario_id}/profiles` e `POST /api/internal/admin/users/{usuario_id}/profiles/{perfil_id}/deactivate`.
+
+Com `admin.homologacao` (`usuario_id=7`), `/auth/me` confirmou o perfil `administrador-interno-geoportal` e a permissao `admin.usuarios.remover_perfis`. O GET read-only em `/api/internal/admin/users/7/profiles` retornou o vinculo ativo com `perfil_id=3`, `administrador-interno-geoportal`.
+
+Teste negativo: a tentativa de desativar `/api/internal/admin/users/7/profiles/3/deactivate` retornou `403`, manteve o vinculo do admin ativo e registrou auditoria `id=4`, `acao=admin.security.denied_self_demotion`, `entidade_tipo=usuario_perfil`, `entidade_id=7:3:global`, `resultado=negada`, `motivo=self_demotion`, `criado_em=2026-06-26 08:47:03.262191-04`.
+
+Teste positivo controlado: foi criado o usuario ficticio `zz_profile_deactivate_probe_20260626085536` (`id=12`), atribuido o perfil `manutencao-iluminacao` (`id=4`) com resposta `201`, e a desativacao retornou `200`. Endpoint e SQL confirmaram `ativo=false/f`. A auditoria registrou `id=7`, `acao=admin.user.remove_profile`, `entidade_tipo=usuario_perfil`, `entidade_id=12:4:global`, `resultado=sucesso`, `criado_em=2026-06-26 09:03:31.518693-04`. A segunda tentativa de desativacao retornou `409`, e o logout retornou `200`.
+
+Producao permanece pendente e deve seguir ciclo proprio com backup, bootstrap controlado da permissao, preservacao de `INSERT` necessario para atribuicao existente, concessao apenas de `UPDATE(ativo)` adicional para a nova desativacao, sem `DELETE`, e validacoes equivalentes antes de uso operacional amplo.

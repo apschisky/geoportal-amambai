@@ -429,3 +429,9 @@ O teste autenticado usou exclusivamente HTTPS por causa de `GEOPORTAL_INTERNAL_S
 O commit `9173259` implementou localmente o complemento de hardening administrativo para desativar vinculos usuario/perfil sem `DELETE`, com permissao especifica `admin.usuarios.remover_perfis`, header mutavel, justificativa obrigatoria, auditoria administrativa e salvaguardas contra auto-rebaixamento e remocao do ultimo administrador efetivo.
 
 A etapa ainda nao foi validada em homologacao/producao. Antes de uso operacional, exigir bootstrap controlado da permissao, GRANT minimo de `UPDATE (ativo)` em `mod_auth.usuario_perfis`, sem `DELETE`, validacao em homologacao e somente depois producao em ciclo separado. A UI administrativa continua fora deste marco.
+
+## Marco de homologacao - desativacao administrativa de vinculos
+
+A desativacao administrativa de vinculos usuario/perfil foi validada em homologacao no commit `d91240a`. O controle reforca menor privilegio e trilha de auditoria: permissao especifica `admin.usuarios.remover_perfis`, `X-Geoportal-Internal-Request: 1`, negativa sanitizada de auto-rebaixamento, auditoria `admin.security.denied_self_demotion` e sucesso auditado `admin.user.remove_profile`.
+
+A validacao confirmou ausencia de `DELETE` em `mod_auth.usuario_perfis`. O privilégio final correto para homologacao combina `INSERT` ja necessario para atribuicao de perfil existente com `UPDATE(ativo)` para a nova desativacao logica; table `UPDATE` amplo permanece falso. Producao continua pendente.
