@@ -352,3 +352,29 @@ A estrutura iniciou com zero eventos e terminou com tres registros:
 O usuario ficticio `zz_admin_audit_prod_probe_20260625084805` permaneceu bloqueado. A tentativa de auto-bloqueio retornou `403 {&#34;detail&#34;:&#34;Forbidden&#34;}`, o logout foi confirmado e a verificacao de privacidade encontrou zero registros com `token`, `cookie`, `hash`, `session_secret`, `database_url` ou `senha_inicial` nos campos auditados.
 
 O harness com restart e a validacao final sem restart passaram. Esse marco confirma a auditoria administrativa em producao, mas nao substitui testes e salvaguardas especificos para futuros endpoints administrativos.
+
+### Cobertura local - desativacao administrativa de vinculos usuario/perfil
+
+O commit `9173259 Implementa desativacao administrativa de perfis de usuarios` adicionou cobertura local para o complemento de CRUD administrativo de vinculos usuario/perfil.
+
+Cobertura reportada:
+
+- listagem sanitizada de vinculos do usuario;
+- usuario inexistente retornando `404`;
+- desativacao valida de vinculo global e por modulo quando aplicavel;
+- rejeicao de campo extra, justificativa ausente e justificativa curta com `422`;
+- ausencia de `X-Geoportal-Internal-Request` com `403`;
+- ausencia de `admin.usuarios.remover_perfis` com `403`;
+- vinculo inexistente com `404` e vinculo ja inativo com `409`;
+- auto-rebaixamento negado com `403` e auditoria persistida;
+- remocao que deixaria zero administradores efetivos negada com `403` e auditoria persistida;
+- remocao permitida quando existe outro administrador efetivo ou outro vinculo critico ativo;
+- auditoria de sucesso atomica com `ativo=false`;
+- auditoria negada persistida antes do `403`;
+- ausencia de `DELETE` em `mod_auth.usuario_perfis`;
+- `UPDATE` tecnico restrito a `ativo=false` do vinculo alvo;
+- bootstrap idempotente de `admin.usuarios.remover_perfis`, sem conceder a perfis operacionais.
+
+Resultados locais reportados: focados diretos `50 passed`, administrativos ampliados `269 passed`, suite backend completa `742 passed` e `3 warnings` conhecidos de deprecacao de `HTTP_422_UNPROCESSABLE_ENTITY`.
+
+Validacao operacional ainda pendente: homologacao primeiro, com bootstrap controlado da permissao, GRANT minimo de `UPDATE (ativo)` em `mod_auth.usuario_perfis`, sem `DELETE`, e producao somente em ciclo separado.

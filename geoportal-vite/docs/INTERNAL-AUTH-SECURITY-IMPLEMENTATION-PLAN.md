@@ -659,3 +659,37 @@ Em 2026-06-25, a etapa equivalente foi concluida na API interna de producao. O b
 O servico `GeoportalAPIInternaProducao`, porta `8003`, passou no harness `-Environment InternaProducao -Restart -Validate` e em validacao final sem restart. Health, version com `environment=producao` e `401` de `/api/internal/auth/me` sem sessao foram confirmados. Como o cookie de sessao e `Secure`, login, mutacoes controladas e logout foram validados por `https://geoserver.amambai.ms.gov.br/api/internal`, nao pelo endpoint HTTP local.
 
 O teste produziu tres eventos auditados, preservou a resposta externa `403 Forbidden` sanitizada na tentativa de auto-bloqueio e encontrou zero ocorrencias dos termos sensiveis pesquisados. O usuario ficticio de producao permanece bloqueado. Este marco valida a base de auditoria em producao, mas nao libera automaticamente novos endpoints ou frontend administrativo.
+
+### Implementacao local complementar - vinculos usuario/perfil
+
+O commit `9173259 Implementa desativacao administrativa de perfis de usuarios` implementou localmente, somente no backend e ja enviado ao GitHub, o primeiro complemento seguro do CRUD administrativo para vinculos usuario/perfil. Esta etapa **nao foi validada em homologacao ou producao**, nao executou bootstrap real, nao alterou banco real e nao criou migration estrutural.
+
+Contratos implementados:
+
+- `GET /api/internal/admin/users/{usuario_id}/profiles`, protegido por `admin.usuarios.ler`, retorna somente vinculos sanitizados com `perfil_id`, `chave`, `nome`, `modulo`, `ativo` e `criado_em`;
+- `POST /api/internal/admin/users/{usuario_id}/profiles/{perfil_id}/deactivate`, protegido por `admin.usuarios.remover_perfis`, exige `X-Geoportal-Internal-Request: 1`, aceita `modulo` nulo/string e `justificativa` obrigatoria de 10 a 1000 caracteres apos trim, rejeita campos extras e desativa logicamente o vinculo com `ativo=false`;
+- vinculo inexistente retorna `404 Not found`; vinculo ja inativo retorna `409 Conflict`;
+- a operacao nao usa `DELETE`, nao altera permissoes, perfis, usuarios ou vinculos fora do alvo, e nao retorna permissoes completas, dados sensiveis, auditoria ou usuarios vinculados.
+
+A nova permissao de aplicacao `admin.usuarios.remover_perfis` foi adicionada ao bootstrap administrativo idempotente e deve ficar restrita ao perfil administrativo autorizado. O perfil `manutencao-iluminacao` nao recebe permissao `admin.*`.
+
+Salvaguardas implementadas localmente:
+
+- auto-rebaixamento e sempre negado na v1, mesmo que o vinculo removido nao seja o ultimo administrador;
+- ausencia do header interno retorna `403 {"detail":"Invalid internal request"}`;
+- ausencia de permissao ou negativa por salvaguarda retorna `403 {"detail":"Forbidden"}`;
+- a protecao prospectiva do ultimo administrador usa `pg_advisory_xact_lock`, simula a desativacao apenas do vinculo alvo e considera outro vinculo/perfil critico ativo do mesmo usuario antes de bloquear;
+- a definicao efetiva considera usuario ativo, nao desativado, nao bloqueado, vinculo ativo, perfil ativo e permissao ativa.
+
+Auditoria implementada localmente:
+
+- sucesso: `admin.user.remove_profile`, entidade `usuario_perfil`, identificador seguro `usuario_id:perfil_id:modulo|global`;
+- negativa por auto-rebaixamento: `admin.security.denied_self_demotion`;
+- negativa por ultimo administrador: `admin.security.denied_last_admin_removal`;
+- evento de sucesso e atomico com `ativo=false`;
+- eventos negados persistem antes do `403`;
+- eventos nao registram payload bruto, senha, hash, token, cookie, segredo, `SESSION_SECRET` ou `DATABASE_URL`.
+
+Testes locais reportados para o commit `9173259`: focados diretos com `50 passed`, administrativos ampliados com `269 passed` e suite backend completa com `742 passed` e `3 warnings` conhecidos de deprecacao de `HTTP_422_UNPROCESSABLE_ENTITY`.
+
+Pendencia operacional antes de homologacao/producao: executar ciclo controlado separado para bootstrap da permissao `admin.usuarios.remover_perfis`, validar que somente o perfil administrativo autorizado recebeu a permissao e conceder ao runtime interno apenas o minimo necessario para `UPDATE (ativo)` em `mod_auth.usuario_perfis`, sem `DELETE`. A validacao deve ocorrer primeiro em homologacao e somente depois em producao. UI administrativa permanece etapa posterior.

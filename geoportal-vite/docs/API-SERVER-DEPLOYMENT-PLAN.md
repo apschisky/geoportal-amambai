@@ -1274,3 +1274,21 @@ A auditoria terminou com tres eventos: `admin.user.create`, `admin.user.disable`
 - A consulta publica deve continuar retornando somente dados publicos minimos.
 - A confirmacao da consulta deve usar dado complementar minimo, como os ultimos 4 digitos do contato.
 - Protecao contra enumeracao deve ser mantida.
+
+### Proximo ciclo operacional - vinculos usuario/perfil
+
+O commit `9173259 Implementa desativacao administrativa de perfis de usuarios` esta implementado localmente e publicado no GitHub, mas ainda nao foi aplicado/validado em homologacao ou producao.
+
+Nao ha migration estrutural para esta etapa. O schema atual de `mod_auth.usuario_perfis` ja comporta a desativacao logica via `ativo=false`.
+
+Ordem recomendada para homologacao:
+
+1. confirmar backup operacional adequado antes de alterar permissao/GRANT;
+2. atualizar o servidor de homologacao com `git pull --ff-only`;
+3. executar bootstrap administrativo controlado para a permissao `admin.usuarios.remover_perfis`, garantindo vinculo apenas ao perfil administrativo autorizado;
+4. conceder ao runtime interno o minimo necessario para `UPDATE (ativo)` em `mod_auth.usuario_perfis`, sem `DELETE`;
+5. reiniciar e validar `GeoportalAPIInternaHomologacao` pelo harness;
+6. validar leitura de vinculos, desativacao valida, auto-rebaixamento negado, ultimo administrador protegido, auditoria de sucesso/negativa e ausencia de segredo;
+7. documentar o resultado antes de qualquer producao.
+
+Producao deve ser ciclo separado, com backup previo, bootstrap/GRANT minimo equivalentes, validacao HTTPS quando cookie `Secure` exigir, e confirmacao final de que `DELETE` em `mod_auth.usuario_perfis` continua ausente.

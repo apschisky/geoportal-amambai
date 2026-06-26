@@ -423,3 +423,9 @@ Validacao controlada em producao em 2026-06-25: a migration `0011` foi aplicada 
 A role `geoportal_api_interna_prod` recebeu somente `USAGE` no schema `mod_auth`, `INSERT, SELECT` em `mod_auth.admin_auditoria` e `USAGE` na sequence. Permanecem ausentes `UPDATE` e `DELETE` na tabela e `SELECT` na sequence, preservando o modelo append-only. Esses GRANTs minimos devem permanecer enquanto a auditoria administrativa estiver ativa.
 
 O teste autenticado usou exclusivamente HTTPS por causa de `GEOPORTAL_INTERNAL_SESSION_COOKIE_SECURE=true`. Foram auditados `admin.user.create` e `admin.user.disable` para o usuario ficticio `zz_admin_audit_prod_probe_20260625084805` (`id=3`) e `admin.security.denied_self_change` para o ator (`id=1`), com resultado `negada` e motivo interno `self_block`. A negativa externa retornou `403 Forbidden` sanitizado, a verificacao de privacidade encontrou zero termos sensiveis e o logout foi confirmado. O usuario ficticio permanece bloqueado como evidencia controlada.
+
+## Marco local - desativacao administrativa de vinculos usuario/perfil
+
+O commit `9173259` implementou localmente o complemento de hardening administrativo para desativar vinculos usuario/perfil sem `DELETE`, com permissao especifica `admin.usuarios.remover_perfis`, header mutavel, justificativa obrigatoria, auditoria administrativa e salvaguardas contra auto-rebaixamento e remocao do ultimo administrador efetivo.
+
+A etapa ainda nao foi validada em homologacao/producao. Antes de uso operacional, exigir bootstrap controlado da permissao, GRANT minimo de `UPDATE (ativo)` em `mod_auth.usuario_perfis`, sem `DELETE`, validacao em homologacao e somente depois producao em ciclo separado. A UI administrativa continua fora deste marco.

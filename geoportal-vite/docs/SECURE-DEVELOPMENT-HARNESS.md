@@ -145,3 +145,18 @@ Em 2026-06-25, o mesmo fluxo foi concluido em `InternaProducao`. A migration foi
 O teste autenticado usou HTTPS, e nao `http://127.0.0.1:8003`, porque o cookie interno de producao possui `Secure=true`. O harness confirmou health, version e protecao de `/auth/me`; a validacao funcional confirmou dois eventos de sucesso, uma negativa auditada, resposta `403 Forbidden` sanitizada, logout e ausencia dos termos sensiveis verificados. O usuario ficticio permanece bloqueado.
 
 O harness final sem restart tambem passou. Os GRANTs minimos de auditoria devem permanecer e o harness nao deve ampliar privilegios nem aplicar migrations automaticamente.
+
+## Validacao futura - vinculos usuario/perfil
+
+A desativacao administrativa de vinculos usuario/perfil foi implementada localmente no commit `9173259`, mas ainda nao foi validada em homologacao/producao. O harness nao deve aplicar bootstrap, GRANTs ou alteracoes de permissao automaticamente.
+
+Antes de validar em homologacao:
+
+1. confirmar `git pull --ff-only` e working tree limpo;
+2. executar bootstrap administrativo controlado para criar/vincular `admin.usuarios.remover_perfis` somente ao perfil administrativo autorizado;
+3. conceder ao runtime interno apenas o GRANT minimo necessario para `UPDATE (ativo)` em `mod_auth.usuario_perfis`, sem `DELETE`;
+4. reiniciar/validar o servico pelo harness apenas depois das alteracoes operacionais controladas;
+5. validar `GET /api/internal/admin/users/{usuario_id}/profiles` e `POST /api/internal/admin/users/{usuario_id}/profiles/{perfil_id}/deactivate` por chamada autenticada, sem registrar senha, token ou cookie;
+6. confirmar auditoria em `mod_auth.admin_auditoria` para sucesso e negativas, sem termos sensiveis.
+
+A producao deve repetir o roteiro somente apos homologacao documentada e aprovada.

@@ -431,3 +431,9 @@ Registro seguro da aplicacao em producao em 2026-06-25:
 - usuario ficticio de validacao mantido bloqueado.
 
 Os GRANTs minimos acima devem permanecer. Qualquer ampliacao futura de CRUD administrativo deve partir deste marco e passar por planejamento, teste e auditoria proprios.
+
+## Sem migration estrutural - desativacao de vinculos usuario/perfil
+
+O commit `9173259 Implementa desativacao administrativa de perfis de usuarios` nao criou migration estrutural. A etapa reutiliza `mod_auth.usuario_perfis.ativo` para desativacao logica de vinculo usuario/perfil e preserva a politica de nao usar `DELETE`.
+
+A unica acao operacional futura necessaria para homologacao/producao e permissionamento: bootstrap controlado da permissao de aplicacao `admin.usuarios.remover_perfis` e GRANT minimo de `UPDATE (ativo)` em `mod_auth.usuario_perfis` para a role runtime interna, sem conceder `DELETE`. Caso o schema real de algum ambiente divergir do esperado, parar antes de validar o endpoint e inventariar a divergencia.

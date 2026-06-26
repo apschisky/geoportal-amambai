@@ -336,3 +336,13 @@ As roles runtime possuem `INSERT` e `SELECT` na tabela e `USAGE` na sequence, ma
 - Sem migrations.
 - Sem endpoints.
 - Pronto para orientar a proxima fase de autenticacao/autorizacao interna.
+
+## 15.4 Vinculos usuario/perfil - desativacao administrativa local
+
+O commit `9173259` passou a usar o campo `ativo` de `mod_auth.usuario_perfis` para desativacao logica administrativa de vinculos. Nao houve migration estrutural porque o schema ja possuia `usuario_id`, `perfil_id`, `modulo`, `ativo`, `criado_em`, unicidade adequada e FKs restritivas.
+
+A leitura administrativa de vinculos retorna somente `perfil_id`, `chave`, `nome`, `modulo`, `ativo` e `criado_em`. A mutacao altera apenas o vinculo alvo para `ativo=false`; nao usa `DELETE`, nao altera `mod_auth.perfis`, `mod_auth.permissoes`, `mod_auth.usuarios` nem outros vinculos.
+
+A auditoria relacionada grava `admin.user.remove_profile`, `admin.security.denied_self_demotion` e `admin.security.denied_last_admin_removal` em `mod_auth.admin_auditoria`, usando entidade `usuario_perfil` e identificador composto `usuario_id:perfil_id:modulo|global`. O registro nao deve conter payload bruto, senha, hash, token, cookie, segredo ou `DATABASE_URL`.
+
+Para homologacao/producao, o modelo exige manter ausencia de `DELETE` em `mod_auth.usuario_perfis` e conceder, quando a etapa for validada, apenas `UPDATE (ativo)` ao runtime interno, alem das leituras ja necessarias para resolver autorizacao.
