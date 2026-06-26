@@ -2664,3 +2664,313 @@ textarea:disabled {
     min-height: 46px;
   }
 }
+
+.internal-admin-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.85fr) minmax(420px, 1.35fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.internal-admin-list-panel,
+.internal-admin-detail-panel,
+.internal-admin-detail-card {
+  min-width: 0;
+}
+
+.internal-admin-list-panel,
+.internal-admin-detail-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.internal-admin-heading-row {
+  align-items: start;
+  gap: 12px;
+}
+
+.internal-admin-heading-row .internal-secondary-action {
+  white-space: nowrap;
+}
+
+.internal-admin-search {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.internal-admin-search label {
+  color: #0f172a;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.internal-admin-search input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.internal-admin-search p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.84rem;
+}
+
+.internal-admin-user-list,
+.internal-admin-profile-list,
+.internal-admin-actions-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.internal-admin-actions-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.internal-admin-user-row {
+  width: 100%;
+  min-height: 58px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  background: #fff;
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.internal-admin-user-row:hover,
+.internal-admin-user-row.is-active {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+}
+
+.internal-admin-user-row span,
+.internal-admin-profile-row div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.internal-admin-user-row strong,
+.internal-admin-profile-row strong {
+  color: #0f172a;
+  overflow-wrap: anywhere;
+}
+
+.internal-admin-user-row small,
+.internal-admin-profile-row small,
+.internal-admin-user-row em {
+  color: #64748b;
+  font-style: normal;
+  overflow-wrap: anywhere;
+}
+
+.internal-admin-detail-card,
+.internal-admin-profile-row {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #fff;
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.internal-admin-profiles-card {
+  display: grid;
+  gap: 12px;
+}
+
+.internal-admin-detail-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 12px 0 0;
+}
+
+.internal-admin-detail-list div {
+  min-width: 0;
+}
+
+.internal-admin-detail-list dt {
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.internal-admin-detail-list dd {
+  margin: 2px 0 0;
+  color: #0f172a;
+  overflow-wrap: anywhere;
+}
+
+.internal-admin-profile-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+}
+
+.internal-admin-profile-status {
+  justify-self: end;
+  color: #475569;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.internal-admin-profile-row form,
+.internal-admin-inline-form,
+.internal-admin-form {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 10px;
+}
+
+.internal-admin-inline-form {
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 0.6fr) auto;
+  align-items: end;
+  padding-top: 10px;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.internal-admin-form label,
+.internal-admin-inline-form label {
+  display: grid;
+  gap: 5px;
+  color: #475569;
+  font-size: 0.86rem;
+}
+
+.internal-admin-form input,
+.internal-admin-form select,
+.internal-admin-inline-form input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  border-radius: 8px;
+  padding: 9px 10px;
+  font: inherit;
+}
+
+.internal-admin-form button,
+.internal-admin-profile-row button {
+  justify-self: start;
+  min-height: 38px;
+  border: 0;
+  border-radius: 8px;
+  background: #1d4ed8;
+  color: #fff;
+  padding: 9px 14px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.internal-admin-form button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.internal-admin-form-message {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #475569;
+}
+
+.internal-admin-form-message.is-success {
+  color: #166534;
+}
+
+.internal-admin-form-message.is-danger {
+  color: #b91c1c;
+}
+
+@media (max-width: 980px) {
+  .internal-admin-layout,
+  .internal-admin-detail-list,
+  .internal-admin-actions-grid,
+  .internal-admin-inline-form {
+    grid-template-columns: 1fr;
+  }
+
+  .internal-admin-heading-row .internal-secondary-action,
+  .internal-admin-form button,
+  .internal-admin-profile-row button {
+    justify-self: stretch;
+    width: 100%;
+  }
+}
+/* Admin MVP refinement: keep administrative cards breathable and aligned. */
+.internal-admin-layout {
+  gap: 20px;
+}
+
+.internal-admin-list-panel,
+.internal-admin-detail-panel {
+  gap: 16px;
+}
+
+.internal-admin-search,
+.internal-admin-detail-card,
+.internal-admin-profile-row,
+.internal-admin-form.internal-action-card,
+.internal-admin-profiles-card {
+  padding: 18px;
+}
+
+.internal-admin-search,
+.internal-admin-form,
+.internal-admin-inline-form,
+.internal-admin-profiles-card,
+.internal-admin-profile-list,
+.internal-admin-actions-grid {
+  gap: 14px;
+}
+
+.internal-admin-form label,
+.internal-admin-inline-form label {
+  gap: 7px;
+}
+
+.internal-admin-form input,
+.internal-admin-form select,
+.internal-admin-inline-form input,
+.internal-admin-search input {
+  padding: 10px 12px;
+}
+
+.internal-admin-user-row {
+  padding: 12px 14px;
+}
+
+.internal-admin-form button,
+.internal-admin-profile-row button {
+  min-height: 40px;
+  padding: 10px 16px;
+}
+
+.internal-admin-form h4,
+.internal-admin-profiles-card h4,
+.internal-admin-detail-card h3 {
+  margin-top: 0;
+}
+
+.internal-admin-form .internal-sensitive-note,
+.internal-admin-form-message {
+  margin: 0;
+}
+
+@media (min-width: 981px) {
+  .internal-admin-form button,
+  .internal-admin-profile-row button {
+    width: auto;
+    max-width: max-content;
+  }
+}

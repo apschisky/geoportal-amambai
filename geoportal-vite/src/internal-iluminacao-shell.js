@@ -19,6 +19,8 @@ import { buildGoogleMapsRouteUrl } from './geoportal-routes.js';
 const AUTH_ME_ENDPOINT = '/api/internal/auth/me';
 const AUTH_LOGIN_ENDPOINT = '/api/internal/auth/login';
 const AUTH_LOGOUT_ENDPOINT = '/api/internal/auth/logout';
+const INTERNAL_ADMIN_USERS_ENDPOINT = '/api/internal/admin/users';
+const INTERNAL_ADMIN_PROFILES_ENDPOINT = '/api/internal/admin/profiles';
 const INTERNAL_SOLICITACOES_ENDPOINT = '/api/internal/iluminacao/solicitacoes';
 const INTERNAL_RELATORIO_SOLICITACOES_CSV_ENDPOINT =
   '/api/internal/iluminacao/relatorios/solicitacoes.csv';
@@ -94,6 +96,11 @@ const PERMISSIONS = {
   iluminacaoStatusCorrection: 'iluminacao.solicitacoes.corrigir_status',
   iluminacaoDashboard: 'iluminacao.dashboard.ler',
   adminUsersRead: 'admin.usuarios.ler',
+  adminUsersCreate: 'admin.usuarios.criar',
+  adminUsersBlock: 'admin.usuarios.bloquear',
+  adminUsersResetPassword: 'admin.usuarios.redefinir_senha',
+  adminUsersAssignProfiles: 'admin.usuarios.atribuir_perfis',
+  adminUsersRemoveProfiles: 'admin.usuarios.remover_perfis',
   adminProfilesRead: 'admin.perfis.ler',
   adminPermissionsRead: 'admin.permissoes.ler'
 };
@@ -139,7 +146,7 @@ const plannedModules = [
   {
     key: 'admin',
     name: 'Administração do Sistema',
-    description: 'Área restrita planejada',
+    description: 'Gestão interna de usuários e perfis',
     kind: 'admin',
     permissions: [
       PERMISSIONS.adminUsersRead,
@@ -504,9 +511,43 @@ const initialSessionState = {
   dashboard: createDashboardState(),
   relatorio: createRelatorioState(),
   solicitacoes: createSolicitacoesState(),
-  detalhe: createDetalheState()
+  detalhe: createDetalheState(),
+  admin: createAdminState()
 };
 
+
+function createAdminFormState(overrides = {}) {
+  return {
+    status: 'idle',
+    statusCode: null,
+    message: '',
+    ...overrides
+  };
+}
+
+function createAdminState(overrides = {}) {
+  return {
+    usersStatus: 'idle',
+    users: [],
+    selectedUserId: null,
+    detailStatus: 'idle',
+    user: null,
+    userProfilesStatus: 'idle',
+    userProfiles: [],
+    availableProfilesStatus: 'idle',
+    availableProfiles: [],
+    statusCode: null,
+    userSearchQuery: '',
+    message: 'Administração carregada conforme permissões.',
+    createForm: createAdminFormState({ message: 'Criação disponível para administradores autorizados.' }),
+    blockForm: createAdminFormState(),
+    unblockForm: createAdminFormState(),
+    resetForm: createAdminFormState(),
+    assignProfileForm: createAdminFormState(),
+    deactivateProfileForm: createAdminFormState(),
+    ...overrides
+  };
+}
 function createSessionState(overrides = {}) {
   return {
     sessionState: 'checking_session',
@@ -528,6 +569,7 @@ function createSessionState(overrides = {}) {
     relatorio: createRelatorioState(),
     solicitacoes: createSolicitacoesState(),
     detalhe: createDetalheState(),
+    admin: createAdminState(),
     ...overrides
   };
 }
@@ -576,7 +618,8 @@ function renderApp(root, state) {
     ...state,
     dashboard: state.dashboard || createDashboardState(),
     solicitacoes: state.solicitacoes || createSolicitacoesState(),
-    detalhe: state.detalhe || createDetalheState()
+    detalhe: state.detalhe || createDetalheState(),
+    admin: state.admin || createAdminState()
   };
 
   currentState = {
@@ -951,6 +994,7 @@ export {
   createRelatorioState,
   createPrioridadeFormState,
   createStatusCorrectionFormState,
+  createAdminState,
   fetchDashboardGeralWidgets,
   fetchRelatorioSolicitacoesCsv,
   fetchRelatorioSolicitacoesResumo,
@@ -958,6 +1002,16 @@ export {
   fetchUpdateSolicitacaoStatus,
   fetchUpdateSolicitacaoStatusCorrecao,
   fetchUpdateSolicitacaoPrioridade,
+  fetchAdminUsers,
+  fetchAdminUserDetail,
+  fetchAdminAvailableProfiles,
+  fetchAdminUserProfiles,
+  fetchCreateAdminUser,
+  fetchBlockAdminUser,
+  fetchUnblockAdminUser,
+  fetchResetAdminUserPassword,
+  fetchAssignAdminUserProfile,
+  fetchDeactivateAdminUserProfile,
   getInternalActionTarget,
   getPrioridadeFormValidationMessage,
   getRelatorioValidationMessage,
@@ -967,6 +1021,7 @@ export {
   normalizeSolicitacaoCoordinate,
   renderCoordinateRouteSection,
   renderDashboardPanel,
+  renderAdminPanel,
   renderModuleMenu,
   renderObservacoesPanel,
   renderRelatorioPanel,
@@ -978,6 +1033,9 @@ export {
   renderSummaryCards,
   renderStatusUpdatePanel,
   scrollToSolicitacaoDetailSection,
+  loadAdminUser,
+  refreshAdminPanel,
+  selectModule,
   shouldSyncRelatorioFormOnInput
 };
 
@@ -1451,6 +1509,49 @@ function canAccessIluminacaoModule(state) {
     && hasPermission(state, PERMISSIONS.iluminacaoRead);
 }
 
+
+function canAccessAdminModule(state) {
+  return state.sessionState === 'authenticated'
+    && hasAnyPermission(state, [
+      PERMISSIONS.adminUsersRead,
+      PERMISSIONS.adminUsersCreate,
+      PERMISSIONS.adminUsersBlock,
+      PERMISSIONS.adminUsersResetPassword,
+      PERMISSIONS.adminUsersAssignProfiles,
+      PERMISSIONS.adminUsersRemoveProfiles,
+      PERMISSIONS.adminProfilesRead
+    ]);
+}
+
+function canCreateAdminUser(state) {
+  return state.sessionState === 'authenticated'
+    && hasPermission(state, PERMISSIONS.adminUsersCreate);
+}
+
+function canBlockAdminUser(state) {
+  return state.sessionState === 'authenticated'
+    && hasPermission(state, PERMISSIONS.adminUsersBlock);
+}
+
+function canResetAdminUserPassword(state) {
+  return state.sessionState === 'authenticated'
+    && hasPermission(state, PERMISSIONS.adminUsersResetPassword);
+}
+
+function canAssignAdminUserProfile(state) {
+  return state.sessionState === 'authenticated'
+    && hasPermission(state, PERMISSIONS.adminUsersAssignProfiles);
+}
+
+function canRemoveAdminUserProfile(state) {
+  return state.sessionState === 'authenticated'
+    && hasPermission(state, PERMISSIONS.adminUsersRemoveProfiles);
+}
+
+function canReadAdminProfiles(state) {
+  return state.sessionState === 'authenticated'
+    && hasPermission(state, PERMISSIONS.adminProfilesRead);
+}
 function resolveInitialActiveModule(state, requestedModule = state.activeModule) {
   if (requestedModule === 'dashboard' && canViewDashboardWidgets(state)) {
     return 'dashboard';
@@ -1460,12 +1561,20 @@ function resolveInitialActiveModule(state, requestedModule = state.activeModule)
     return 'iluminacao';
   }
 
+  if (requestedModule === 'admin' && canAccessAdminModule(state)) {
+    return 'admin';
+  }
+
   if (canViewDashboardWidgets(state)) {
     return 'dashboard';
   }
 
   if (canAccessIluminacaoModule(state)) {
     return 'iluminacao';
+  }
+
+  if (canAccessAdminModule(state)) {
+    return 'admin';
   }
 
   return 'none';
@@ -1631,8 +1740,8 @@ function getModuleView(module, state) {
     return {
       state: allowed ? 'allowed' : 'restricted',
       label: allowed ? 'Permitido' : 'Restrito',
-      enabled: false,
-      active: false
+      enabled: allowed,
+      active: allowed && state.activeModule === module.key
     };
   }
 
@@ -2610,7 +2719,7 @@ function renderMaintenanceSolicitacoesRows(items, state) {
             Ver detalhe
           </button>
         `
-        : '<button type="button" class="internal-row-action" disabled>IndisponÃ­vel</button>';
+        : '<button type="button" class="internal-row-action" disabled>Indisponível</button>';
 
       return `
         <article class="internal-maintenance-card" role="listitem">
@@ -2785,10 +2894,10 @@ function renderSolicitacoesPanel(state) {
   const hasPrevious = canLoad && listState.offset > 0 && !isLoading;
   const hasNext = canLoad && nextOffset < listState.total && !isLoading;
   const effectiveTableLabel = canLoad && maintenanceMode
-    ? 'Lista compacta de solicitaÃ§Ãµes para manutenÃ§Ã£o'
+    ? 'Lista compacta de solicitações para manutenção'
     : canLoad
-    ? 'Lista somente leitura de solicitaÃ§Ãµes internas'
-    : 'Listagem bloqueada atÃ© autenticaÃ§Ã£o e permissÃ£o';
+    ? 'Lista somente leitura de solicitações internas'
+    : 'Listagem bloqueada até autenticação e permissão';
   const tableLabel = canLoad
     ? 'Lista somente leitura de solicitações internas'
     : 'Listagem bloqueada até autenticação e permissão';
@@ -3734,7 +3843,7 @@ function renderSolicitanteWhatsappAction(item) {
       Abrir WhatsApp
     </a>
     <p class="internal-muted-note">
-      O link usa apenas o nÃºmero sanitizado e nÃ£o inclui mensagem automÃ¡tica.
+      O link usa apenas o número sanitizado e não inclui mensagem automática.
     </p>
   `;
 }
@@ -4333,12 +4442,710 @@ function renderNoAvailableModulePanel() {
   `;
 }
 
+
+function buildAdminUserDetailUrl(usuarioId) {
+  return `${INTERNAL_ADMIN_USERS_ENDPOINT}/${encodeURIComponent(String(usuarioId))}`;
+}
+
+function buildAdminUserProfilesUrl(usuarioId) {
+  return `${buildAdminUserDetailUrl(usuarioId)}/profiles`;
+}
+
+function buildAdminUserBlockUrl(usuarioId) {
+  return `${buildAdminUserDetailUrl(usuarioId)}/block`;
+}
+
+function buildAdminUserUnblockUrl(usuarioId) {
+  return `${buildAdminUserDetailUrl(usuarioId)}/unblock`;
+}
+
+function buildAdminUserResetPasswordUrl(usuarioId) {
+  return `${buildAdminUserDetailUrl(usuarioId)}/reset-password`;
+}
+
+function buildAdminUserProfileDeactivateUrl(usuarioId, perfilId) {
+  return `${buildAdminUserProfilesUrl(usuarioId)}/${encodeURIComponent(String(perfilId))}/deactivate`;
+}
+
+function normalizeAdminUser(source = {}) {
+  const id = Number(source.id ?? source.usuario_id);
+  return {
+    id: Number.isInteger(id) && id > 0 ? id : null,
+    login: safeText(source.login, ''),
+    nome: safeText(source.nome, ''),
+    email: source.email == null ? '' : safeText(source.email, ''),
+    ativo: source.ativo === true,
+    bloqueado: source.bloqueado === true,
+    criadoEm: safeText(source.criado_em, '')
+  };
+}
+
+function normalizeAdminProfile(source = {}) {
+  const id = Number(source.id ?? source.perfil_id);
+  return {
+    id: Number.isInteger(id) && id > 0 ? id : null,
+    perfilId: Number.isInteger(id) && id > 0 ? id : null,
+    chave: safeText(source.chave, ''),
+    nome: safeText(source.nome, ''),
+    modulo: source.modulo == null ? null : safeText(source.modulo, ''),
+    ativo: source.ativo !== false,
+    criadoEm: safeText(source.criado_em, '')
+  };
+}
+
+function getPayloadArray(payload, keys) {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  if (!payload || typeof payload !== 'object') {
+    return [];
+  }
+
+  for (const key of keys) {
+    if (Array.isArray(payload[key])) {
+      return payload[key];
+    }
+  }
+
+  return [];
+}
+
+function getAdminErrorMessage(statusCode, action = 'operação') {
+  if (statusCode === 401) {
+    return 'Sessão expirada. Faça login novamente.';
+  }
+
+  if (statusCode === 403) {
+    return 'Seu perfil não possui permissão para esta ação.';
+  }
+
+  if (statusCode === 409) {
+    return action === 'deactivate-profile'
+      ? 'Vínculo já está inativo.'
+      : 'Conflito de dados. Atualize a tela e tente novamente.';
+  }
+
+  if (statusCode === 422) {
+    return 'Revise os campos informados antes de continuar.';
+  }
+
+  if (statusCode === 404) {
+    return 'Registro não encontrado ou indisponível.';
+  }
+
+  return 'Não foi possível concluir a operação administrativa agora.';
+}
+
+async function parseAdminJson(response) {
+  try {
+    return await response.json();
+  } catch {
+    return {};
+  }
+}
+
+function createAdminFetchError(response, action) {
+  return {
+    status: response.status === 401 ? 'expired' : 'error',
+    statusCode: response.status,
+    message: getAdminErrorMessage(response.status, action)
+  };
+}
+
+async function fetchAdminUsers() {
+  const response = await fetch(INTERNAL_ADMIN_USERS_ENDPOINT, {
+    method: 'GET',
+    credentials: 'include',
+    headers: { Accept: 'application/json' }
+  });
+
+  if (!response.ok) {
+    return createAdminFetchError(response, 'list-users');
+  }
+
+  const payload = await parseAdminJson(response);
+  const users = getPayloadArray(payload, ['usuarios', 'users', 'items'])
+    .map(normalizeAdminUser)
+    .filter((user) => Number.isInteger(user.id));
+
+  return {
+    status: users.length > 0 ? 'ready' : 'empty',
+    statusCode: response.status,
+    users,
+    message: users.length > 0 ? 'Usuários internos carregados.' : 'Nenhum usuário interno retornado.'
+  };
+}
+
+async function fetchAdminUserDetail(usuarioId) {
+  const response = await fetch(buildAdminUserDetailUrl(usuarioId), {
+    method: 'GET',
+    credentials: 'include',
+    headers: { Accept: 'application/json' }
+  });
+
+  if (!response.ok) {
+    return createAdminFetchError(response, 'user-detail');
+  }
+
+  const payload = await parseAdminJson(response);
+  const user = normalizeAdminUser(payload.usuario || payload.user || payload);
+
+  return {
+    status: Number.isInteger(user.id) ? 'ready' : 'error',
+    statusCode: response.status,
+    user: Number.isInteger(user.id) ? user : null,
+    message: Number.isInteger(user.id) ? 'Detalhe do usuário carregado.' : 'Resposta de usuário em formato inesperado.'
+  };
+}
+
+async function fetchAdminAvailableProfiles() {
+  const response = await fetch(INTERNAL_ADMIN_PROFILES_ENDPOINT, {
+    method: 'GET',
+    credentials: 'include',
+    headers: { Accept: 'application/json' }
+  });
+
+  if (!response.ok) {
+    return createAdminFetchError(response, 'list-profiles');
+  }
+
+  const payload = await parseAdminJson(response);
+  const profiles = getPayloadArray(payload, ['perfis', 'profiles', 'items'])
+    .map(normalizeAdminProfile)
+    .filter((profile) => Number.isInteger(profile.id));
+
+  return {
+    status: profiles.length > 0 ? 'ready' : 'empty',
+    statusCode: response.status,
+    profiles,
+    message: profiles.length > 0 ? 'Perfis carregados.' : 'Nenhum perfil disponível retornado.'
+  };
+}
+
+async function fetchAdminUserProfiles(usuarioId) {
+  const response = await fetch(buildAdminUserProfilesUrl(usuarioId), {
+    method: 'GET',
+    credentials: 'include',
+    headers: { Accept: 'application/json' }
+  });
+
+  if (!response.ok) {
+    return createAdminFetchError(response, 'user-profiles');
+  }
+
+  const payload = await parseAdminJson(response);
+  const profiles = getPayloadArray(payload, ['vinculos', 'perfis', 'profiles', 'items'])
+    .map(normalizeAdminProfile)
+    .filter((profile) => Number.isInteger(profile.perfilId));
+
+  return {
+    status: profiles.length > 0 ? 'ready' : 'empty',
+    statusCode: response.status,
+    profiles,
+    message: profiles.length > 0 ? 'Vínculos carregados.' : 'Nenhum vínculo usuário/perfil retornado.'
+  };
+}
+
+async function fetchCreateAdminUser(payload) {
+  const response = await fetch(INTERNAL_ADMIN_USERS_ENDPOINT, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      [INTERNAL_MUTATING_REQUEST_HEADER]: '1'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    return createAdminFetchError(response, 'create-user');
+  }
+
+  const body = await parseAdminJson(response);
+  return {
+    status: 'success',
+    statusCode: response.status,
+    user: normalizeAdminUser(body.usuario || body.user || body),
+    message: 'Usuário criado com sucesso.'
+  };
+}
+
+async function fetchBlockAdminUser(usuarioId) {
+  const response = await fetch(buildAdminUserBlockUrl(usuarioId), {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      [INTERNAL_MUTATING_REQUEST_HEADER]: '1'
+    }
+  });
+
+  if (!response.ok) {
+    return createAdminFetchError(response, 'block-user');
+  }
+
+  const body = await parseAdminJson(response);
+  return {
+    status: 'success',
+    statusCode: response.status,
+    user: normalizeAdminUser(body.usuario || body.user || body),
+    message: 'Usuário bloqueado com sucesso.'
+  };
+}
+
+async function fetchUnblockAdminUser(usuarioId) {
+  const response = await fetch(buildAdminUserUnblockUrl(usuarioId), {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      [INTERNAL_MUTATING_REQUEST_HEADER]: '1'
+    }
+  });
+
+  if (!response.ok) {
+    return createAdminFetchError(response, 'unblock-user');
+  }
+
+  const body = await parseAdminJson(response);
+  return {
+    status: 'success',
+    statusCode: response.status,
+    user: normalizeAdminUser(body.usuario || body.user || body),
+    message: 'Usuário desbloqueado com sucesso.'
+  };
+}
+
+async function fetchResetAdminUserPassword(usuarioId, novaSenha, confirmarNovaSenha) {
+  const response = await fetch(buildAdminUserResetPasswordUrl(usuarioId), {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      [INTERNAL_MUTATING_REQUEST_HEADER]: '1'
+    },
+    body: JSON.stringify({
+      nova_senha: novaSenha,
+      confirmar_nova_senha: confirmarNovaSenha
+    })
+  });
+
+  if (!response.ok) {
+    return createAdminFetchError(response, 'reset-password');
+  }
+
+  return {
+    status: 'success',
+    statusCode: response.status,
+    message: 'Senha redefinida com sucesso. O usuário deve usar a nova senha no próximo login.'
+  };
+}
+
+async function fetchAssignAdminUserProfile(usuarioId, perfilId, modulo = '') {
+  const payload = { perfil_id: perfilId };
+  const normalizedModulo = String(modulo || '').trim();
+
+  if (normalizedModulo) {
+    payload.modulo = normalizedModulo;
+  }
+
+  const response = await fetch(buildAdminUserProfilesUrl(usuarioId), {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      [INTERNAL_MUTATING_REQUEST_HEADER]: '1'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    return createAdminFetchError(response, 'assign-profile');
+  }
+
+  return {
+    status: 'success',
+    statusCode: response.status,
+    message: response.status === 201 ? 'Perfil atribuído ao usuário.' : 'Vínculo de perfil já estava ativo.'
+  };
+}
+
+async function fetchDeactivateAdminUserProfile(usuarioId, perfilId, modulo, justificativa) {
+  const payload = { justificativa };
+  const normalizedModulo = String(modulo || '').trim();
+
+  if (normalizedModulo) {
+    payload.modulo = normalizedModulo;
+  }
+
+  const response = await fetch(buildAdminUserProfileDeactivateUrl(usuarioId, perfilId), {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      [INTERNAL_MUTATING_REQUEST_HEADER]: '1'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    return createAdminFetchError(response, 'deactivate-profile');
+  }
+
+  return {
+    status: 'success',
+    statusCode: response.status,
+    message: 'Vínculo usuário/perfil desativado.'
+  };
+}
+
+function normalizeAdminSearchText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function getAdminVisibleUsers(admin, limitWhenEmpty = 6) {
+  const users = Array.isArray(admin?.users) ? admin.users : [];
+  const query = normalizeAdminSearchText(admin?.userSearchQuery);
+
+  if (!query) {
+    return users.slice(0, limitWhenEmpty);
+  }
+
+  return users.filter((user) => [user.nome, user.login, user.email]
+    .some((value) => normalizeAdminSearchText(value).includes(query)))
+    .slice(0, 20);
+}
+
+function renderAdminStatusMessage(formState) {
+  if (!formState || !formState.message) {
+    return '';
+  }
+
+  const tone = formState.status === 'success' ? 'success'
+    : formState.status === 'error' || formState.status === 'expired' ? 'danger'
+      : 'neutral';
+
+  return `<p class="internal-admin-form-message is-${tone}">${escapeHtml(formState.message)}</p>`;
+}
+
+function renderAdminUserList(state) {
+  const admin = state.admin || createAdminState();
+  const users = Array.isArray(admin.users) ? admin.users : [];
+  const searchQuery = safeText(admin.userSearchQuery, '');
+  const visibleUsers = getAdminVisibleUsers(admin);
+  const hasSearch = normalizeAdminSearchText(searchQuery).length > 0;
+
+  const searchBox = `
+    <div class="internal-admin-search">
+      <label for="internal-admin-user-search">Pesquisar usuário</label>
+      <input
+        id="internal-admin-user-search"
+        type="search"
+        value="${escapeHtml(searchQuery)}"
+        placeholder="Digite nome, login ou e-mail"
+        autocomplete="off"
+        data-admin-user-search
+      >
+      <p>${hasSearch
+        ? `${visibleUsers.length} resultado(s) encontrado(s).`
+        : users.length > visibleUsers.length
+          ? 'Digite para filtrar ou escolha um dos primeiros usuários carregados.'
+          : 'Digite para filtrar por nome, login ou e-mail.'}</p>
+    </div>
+  `;
+
+  if (admin.usersStatus === 'loading') {
+    return `${searchBox}<p class="internal-muted-note">Carregando usuários internos...</p>`;
+  }
+
+  if (admin.usersStatus === 'error' || admin.usersStatus === 'expired') {
+    return `${searchBox}<p class="internal-muted-note">${escapeHtml(admin.message || 'Não foi possível carregar usuários.')}</p>`;
+  }
+
+  if (users.length === 0) {
+    return `${searchBox}<p class="internal-muted-note">Nenhum usuário carregado ainda.</p>`;
+  }
+
+  if (visibleUsers.length === 0) {
+    return `${searchBox}<p class="internal-muted-note">Nenhum usuário encontrado para a pesquisa informada.</p>`;
+  }
+
+  return `
+    ${searchBox}
+    <div class="internal-admin-user-list" role="list" aria-label="Resultados de usuários internos">
+      ${visibleUsers.map((user) => `
+        <button
+          type="button"
+          class="internal-admin-user-row${admin.selectedUserId === user.id ? ' is-active' : ''}"
+          data-action="select-admin-user"
+          data-admin-user-id="${escapeHtml(String(user.id))}"
+        >
+          <span>
+            <strong>${escapeHtml(user.nome || user.login || `Usuário #${user.id}`)}</strong>
+            <small>${escapeHtml(user.login || 'login não informado')}</small>
+          </span>
+          <em>${user.bloqueado ? 'Bloqueado' : user.ativo ? 'Ativo' : 'Inativo'}</em>
+        </button>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderAdminUserDetail(state) {
+  const admin = state.admin || createAdminState();
+  const user = admin.user;
+
+  if (admin.detailStatus === 'loading') {
+    return '<p class="internal-muted-note">Carregando detalhe do usuário...</p>';
+  }
+
+  if (admin.detailStatus === 'error') {
+    return `<p class="internal-muted-note">${escapeHtml(admin.message || 'Não foi possível carregar o detalhe do usuário.')}</p>`;
+  }
+
+  if (!user) {
+    return '<p class="internal-muted-note">Selecione um usuário para ver detalhe, vínculos e ações.</p>';
+  }
+
+  return `
+    <div class="internal-admin-detail-card">
+      <div class="internal-history-heading">
+        <div>
+          <h3>${escapeHtml(user.nome || user.login || `Usuário #${user.id}`)}</h3>
+          <p>${escapeHtml(user.login || 'login não informado')}</p>
+        </div>
+        <span class="internal-status-pill ${user.bloqueado ? 'is-cancelada' : 'is-aberta'}">${user.bloqueado ? 'Bloqueado' : user.ativo ? 'Ativo' : 'Inativo'}</span>
+      </div>
+      <dl class="internal-admin-detail-list">
+        <div><dt>ID</dt><dd>${escapeHtml(String(user.id))}</dd></div>
+        <div><dt>Email</dt><dd>${escapeHtml(user.email || 'Não informado')}</dd></div>
+        <div><dt>Criado em</dt><dd>${escapeHtml(formatDateTime(user.criadoEm))}</dd></div>
+      </dl>
+    </div>
+  `;
+}
+
+function renderAdminUserProfiles(state) {
+  const admin = state.admin || createAdminState();
+
+  if (!admin.user && admin.detailStatus !== 'loading') {
+    return '';
+  }
+
+  if (admin.userProfilesStatus === 'loading') {
+    return '<p class="internal-muted-note">Carregando vínculos usuário/perfil...</p>';
+  }
+
+  if (admin.userProfilesStatus === 'error') {
+    return `<p class="internal-muted-note">${escapeHtml(admin.message || 'Não foi possível carregar vínculos usuário/perfil.')}</p>`;
+  }
+
+  if (!Array.isArray(admin.userProfiles) || admin.userProfiles.length === 0) {
+    return '<p class="internal-muted-note">Nenhum vínculo usuário/perfil retornado.</p>';
+  }
+
+  return `
+    <div class="internal-admin-profile-list">
+      ${admin.userProfiles.map((profile) => `
+        <article class="internal-admin-profile-row">
+          <div>
+            <strong>${escapeHtml(profile.nome || profile.chave || `Perfil #${profile.perfilId}`)}</strong>
+            <small>${escapeHtml(profile.chave || 'chave não informada')} ${profile.modulo ? `- ${escapeHtml(profile.modulo)}` : '- global'}</small>
+          </div>
+          <span class="internal-admin-profile-status">${profile.ativo ? 'Ativo' : 'Inativo'}</span>
+          ${profile.ativo && canRemoveAdminUserProfile(state) ? `
+            <form class="internal-admin-inline-form" data-admin-deactivate-profile-form>
+              <input type="hidden" name="perfil_id" value="${escapeHtml(String(profile.perfilId))}">
+              <input type="hidden" name="modulo" value="${escapeHtml(profile.modulo || '')}">
+              <label>
+                <span>Justificativa</span>
+                <input name="justificativa" type="text" minlength="10" maxlength="1000" required placeholder="Motivo administrativo">
+              </label>
+              <label>
+                <span>Confirme</span>
+                <input name="confirmacao" type="text" required placeholder="DESATIVAR">
+              </label>
+              <button type="submit">Desativar vínculo</button>
+            </form>
+          ` : ''}
+        </article>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderAdminCreateUserPanel(state) {
+  if (!canCreateAdminUser(state)) {
+    return '<p class="internal-muted-note">Criação de usuário indisponível para este perfil.</p>';
+  }
+
+  const admin = state.admin || createAdminState();
+  return `
+    <form class="internal-action-card internal-admin-form" data-admin-create-user-form>
+      <h4>Criar usuário</h4>
+      <label><span>Login</span><input name="login" autocomplete="off" required></label>
+      <label><span>Nome</span><input name="nome" autocomplete="off" required></label>
+      <label><span>Email opcional</span><input name="email" type="email" autocomplete="off"></label>
+      <label><span>Senha inicial</span><input name="senha_inicial" type="password" autocomplete="new-password" required></label>
+      <button type="submit" ${admin.createForm.status === 'submitting' ? 'disabled' : ''}>Criar usuário</button>
+      ${renderAdminStatusMessage(admin.createForm)}
+    </form>
+  `;
+}
+
+function renderAdminBlockControl(state) {
+  const admin = state.admin || createAdminState();
+  const user = admin.user;
+
+  if (!user || !canBlockAdminUser(state)) {
+    return '';
+  }
+
+  if (user.bloqueado) {
+    return `
+      <form class="internal-action-card internal-admin-form" data-admin-unblock-user-form>
+        <h4>Desbloquear usuário</h4>
+        <p class="internal-sensitive-note">Desbloqueio reabilita o acesso conforme validação do backend.</p>
+        <label><span>Confirme</span><input name="confirmacao" type="text" required placeholder="DESBLOQUEAR"></label>
+        <button type="submit" ${(admin.unblockForm || createAdminFormState()).status === 'submitting' ? 'disabled' : ''}>Desbloquear usuário</button>
+        ${renderAdminStatusMessage(admin.unblockForm || createAdminFormState())}
+      </form>
+    `;
+  }
+
+  return `
+    <form class="internal-action-card internal-admin-form" data-admin-block-user-form>
+      <h4>Bloquear usuário</h4>
+      <p class="internal-sensitive-note">Bloqueio revoga acesso futuro conforme regra do backend.</p>
+      <label><span>Confirme</span><input name="confirmacao" type="text" required placeholder="BLOQUEAR"></label>
+      <button type="submit" ${(admin.blockForm || createAdminFormState()).status === 'submitting' ? 'disabled' : ''}>Bloquear usuário</button>
+      ${renderAdminStatusMessage(admin.blockForm || createAdminFormState())}
+    </form>
+  `;
+}
+
+function renderAdminSensitiveActions(state) {
+  const admin = state.admin || createAdminState();
+
+  if (!admin.user) {
+    return '';
+  }
+
+  return `
+    <div class="internal-admin-actions-grid">
+      ${renderAdminBlockControl(state)}
+      ${canResetAdminUserPassword(state) ? `
+        <form class="internal-action-card internal-admin-form" data-admin-reset-password-form>
+          <h4>Redefinir senha</h4>
+          <label><span>Nova senha</span><input name="nova_senha" type="password" autocomplete="new-password" required></label>
+          <label><span>Confirmar senha</span><input name="confirmar_nova_senha" type="password" autocomplete="new-password" required></label>
+          <button type="submit" ${admin.resetForm.status === 'submitting' ? 'disabled' : ''}>Redefinir senha</button>
+          ${renderAdminStatusMessage(admin.resetForm)}
+        </form>
+      ` : ''}
+    </div>
+  `;
+}
+function renderAdminAssignProfilePanel(state) {
+  const admin = state.admin || createAdminState();
+
+  if (!admin.user) {
+    return '';
+  }
+
+  if (!canAssignAdminUserProfile(state)) {
+    return '<p class="internal-muted-note">Atribuição de perfil indisponível para este perfil.</p>';
+  }
+
+  if (!canReadAdminProfiles(state)) {
+    return '<p class="internal-muted-note">Para atribuir perfis, também é necessário listar perfis.</p>';
+  }
+
+  return `
+    <form class="internal-action-card internal-admin-form" data-admin-assign-profile-form>
+      <h4>Atribuir perfil</h4>
+      <label>
+        <span>Perfil</span>
+        <select name="perfil_id" required>
+          <option value="">Selecione</option>
+          ${(admin.availableProfiles || []).map((profile) => `
+            <option value="${escapeHtml(String(profile.id))}">${escapeHtml(profile.nome || profile.chave || `Perfil #${profile.id}`)}</option>
+          `).join('')}
+        </select>
+      </label>
+      <label><span>Módulo opcional</span><input name="modulo" autocomplete="off" placeholder="global se vazio"></label>
+      <button type="submit" ${admin.assignProfileForm.status === 'submitting' ? 'disabled' : ''}>Atribuir perfil</button>
+      ${renderAdminStatusMessage(admin.assignProfileForm)}
+    </form>
+  `;
+}
+
+function renderAdminPanel(state) {
+  const admin = state.admin || createAdminState();
+
+  if (!canAccessAdminModule(state)) {
+    return `
+      <section class="internal-module-workspace" aria-labelledby="admin-title">
+        <div class="internal-section-heading">
+          <h2 id="admin-title">Administração</h2>
+          <p>Seu perfil não possui permissão administrativa.</p>
+        </div>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="internal-module-workspace internal-admin-workspace" aria-labelledby="admin-title">
+      <div class="internal-section-heading">
+        <h2 id="admin-title">Administração</h2>
+        <p>Gestão interna de usuários e vínculos usuário/perfil.</p>
+      </div>
+      <div class="internal-admin-layout">
+        <aside class="internal-admin-list-panel">
+          <div class="internal-history-heading internal-admin-heading-row">
+            <div>
+              <h3>Usuários internos</h3>
+              <p>${escapeHtml(admin.message || 'Pesquise e selecione um usuário para administrar.')}</p>
+            </div>
+            <button type="button" class="internal-secondary-action" data-action="refresh-admin-users">Atualizar</button>
+          </div>
+          ${renderAdminUserList(state)}
+          ${renderAdminCreateUserPanel(state)}
+        </aside>
+        <section class="internal-admin-detail-panel" aria-label="Detalhe administrativo do usuário">
+          ${renderAdminUserDetail(state)}
+          <article class="internal-action-card internal-admin-profiles-card">
+            <div class="internal-history-heading">
+              <div>
+                <h4>Vínculos usuário/perfil</h4>
+                <p>Desativação lógica usa auditoria e validação no backend.</p>
+              </div>
+            </div>
+            ${renderAdminUserProfiles(state)}
+            ${renderAdminStatusMessage(admin.deactivateProfileForm)}
+          </article>
+          ${renderAdminAssignProfilePanel(state)}
+          ${renderAdminSensitiveActions(state)}
+        </section>
+      </div>
+    </section>
+  `;
+}
 function renderInternalIluminacaoShell(root, state) {
   const stateInfo = SESSION_STATES[state.sessionState] || SESSION_STATES.technical_error;
   const maintenanceMode = isMaintenanceLikeUser(state.permissions || []);
 
   root.innerHTML = `
-    <main class="internal-page${maintenanceMode ? ' is-maintenance-mode' : ''}${state.activeModule === 'dashboard' ? ' is-dashboard-mode' : ''}${state.activeModule === 'iluminacao' ? ' is-iluminacao-mode' : ''}" aria-labelledby="internal-page-title">
+    <main class="internal-page${maintenanceMode ? ' is-maintenance-mode' : ''}${state.activeModule === 'dashboard' ? ' is-dashboard-mode' : ''}${state.activeModule === 'iluminacao' ? ' is-iluminacao-mode' : ''}${state.activeModule === 'admin' ? ' is-admin-mode' : ''}" aria-labelledby="internal-page-title">
       <header class="internal-topbar">
         <div>
           <p class="internal-kicker">Homologação / Integração de sessão</p>
@@ -4413,7 +5220,9 @@ function renderInternalIluminacaoShell(root, state) {
             </div>
           </section>
     `
-      : renderNoAvailableModulePanel()}
+      : currentState.activeModule === 'admin'
+        ? renderAdminPanel(currentState)
+        : renderNoAvailableModulePanel()}
         </section>
       </div>
 
@@ -6297,12 +7106,12 @@ async function submitListStatusUpdate(root, state, form) {
   };
 
   if (!canUpdateStatus(state)) {
-    setMessage('AlteraÃ§Ã£o de fase indisponÃ­vel para este perfil.', true);
+    setMessage('Alteração de fase indisponível para este perfil.', true);
     return;
   }
 
   if (!Number.isInteger(solicitacaoId) || solicitacaoId < 1) {
-    setMessage('SolicitaÃ§Ã£o invÃ¡lida para alteraÃ§Ã£o de fase.', true);
+    setMessage('Solicitação inválida para alteração de fase.', true);
     return;
   }
 
@@ -6336,14 +7145,14 @@ async function submitListStatusUpdate(root, state, form) {
       renderApp(root, createSessionState({
         sessionState: 'unauthenticated',
         statusCode: 401,
-        message: 'SessÃ£o expirada ao tentar atualizar fase. FaÃ§a login novamente.',
+        message: 'Sessão expirada ao tentar atualizar fase. Faça login novamente.',
         hasChecked: true
       }));
       return;
     }
 
     if (nextFormState.status !== 'success') {
-      setMessage(nextFormState.message || 'NÃ£o foi possÃ­vel atualizar a fase.', true);
+      setMessage(nextFormState.message || 'Não foi possível atualizar a fase.', true);
       form.dataset.submitting = 'false';
       updateStatusFormControls(form);
       return;
@@ -6373,7 +7182,7 @@ async function submitListStatusUpdate(root, state, form) {
         renderApp(root, createSessionState({
           sessionState: 'unauthenticated',
           statusCode: 401,
-          message: 'SessÃ£o expirada ao recarregar o detalhe. FaÃ§a login novamente.',
+          message: 'Sessão expirada ao recarregar o detalhe. Faça login novamente.',
           hasChecked: true
         }));
         return;
@@ -6406,7 +7215,7 @@ async function submitListStatusUpdate(root, state, form) {
       detalhe: nextDetail
     });
   } catch {
-    setMessage('Falha temporÃ¡ria de conexÃ£o ao atualizar fase.', true);
+    setMessage('Falha temporária de conexão ao atualizar fase.', true);
     form.dataset.submitting = 'false';
     updateStatusFormControls(form);
   }
@@ -7506,6 +8315,488 @@ async function loadDashboard(root, state) {
   }
 }
 
+
+function renderAdminExpired(root, state, message) {
+  renderApp(root, createSessionState({
+    ...state,
+    sessionState: 'unauthenticated',
+    statusCode: 401,
+    message,
+    hasChecked: true,
+    admin: state.admin || createAdminState()
+  }));
+}
+
+async function loadAdminPanel(root, state) {
+  if (!canAccessAdminModule(state)) {
+    renderApp(root, {
+      ...state,
+      activeModule: 'admin',
+      admin: createAdminState({
+        usersStatus: 'forbidden',
+        message: 'Seu perfil não possui permissão administrativa.'
+      })
+    });
+    return;
+  }
+
+  const currentAdmin = state.admin || createAdminState();
+  renderApp(root, {
+    ...state,
+    activeModule: 'admin',
+    admin: {
+      ...currentAdmin,
+      usersStatus: 'loading',
+      availableProfilesStatus: canReadAdminProfiles(state) ? 'loading' : currentAdmin.availableProfilesStatus,
+      message: 'Carregando área administrativa.'
+    }
+  });
+
+  try {
+    const usersResult = hasPermission(state, PERMISSIONS.adminUsersRead)
+      ? await fetchAdminUsers()
+      : { status: 'error', statusCode: 403, users: [], message: 'Listagem de usuários indisponível para este perfil.' };
+
+    if (usersResult.status === 'expired') {
+      renderAdminExpired(root, state, usersResult.message);
+      return;
+    }
+
+    let profilesResult = { status: currentAdmin.availableProfilesStatus || 'idle', profiles: currentAdmin.availableProfiles || [], message: '' };
+    if (canReadAdminProfiles(state)) {
+      profilesResult = await fetchAdminAvailableProfiles();
+      if (profilesResult.status === 'expired') {
+        renderAdminExpired(root, state, profilesResult.message);
+        return;
+      }
+    }
+
+    renderApp(root, {
+      ...state,
+      activeModule: 'admin',
+      admin: {
+        ...currentAdmin,
+        usersStatus: usersResult.status,
+        users: usersResult.users || [],
+        availableProfilesStatus: profilesResult.status,
+        availableProfiles: profilesResult.profiles || [],
+        statusCode: usersResult.statusCode || profilesResult.statusCode || null,
+        message: usersResult.message || profilesResult.message || 'Administração carregada.'
+      }
+    });
+  } catch {
+    renderApp(root, {
+      ...state,
+      activeModule: 'admin',
+      admin: {
+        ...currentAdmin,
+        usersStatus: 'error',
+        message: 'Falha temporária de conexão ao carregar administração.'
+      }
+    });
+  }
+}
+
+async function loadAdminUser(root, state, usuarioId) {
+  const currentAdmin = state.admin || createAdminState();
+
+  if (!Number.isInteger(usuarioId) || usuarioId < 1) {
+    return;
+  }
+
+  const shouldLoadProfileCatalog = canReadAdminProfiles(state)
+    && canAssignAdminUserProfile(state)
+    && currentAdmin.availableProfilesStatus !== 'ready';
+
+  renderApp(root, {
+    ...state,
+    activeModule: 'admin',
+    admin: {
+      ...currentAdmin,
+      selectedUserId: usuarioId,
+      detailStatus: 'loading',
+      userProfilesStatus: 'loading',
+      availableProfilesStatus: shouldLoadProfileCatalog ? 'loading' : currentAdmin.availableProfilesStatus,
+      message: 'Carregando usuário selecionado.'
+    }
+  });
+
+  try {
+    const [detailResult, profilesResult, availableProfilesResult] = await Promise.all([
+      fetchAdminUserDetail(usuarioId),
+      fetchAdminUserProfiles(usuarioId),
+      shouldLoadProfileCatalog
+        ? fetchAdminAvailableProfiles()
+        : Promise.resolve({
+          status: currentAdmin.availableProfilesStatus,
+          profiles: currentAdmin.availableProfiles,
+          message: ''
+        })
+    ]);
+
+    if ([detailResult, profilesResult, availableProfilesResult].some((result) => result.status === 'expired')) {
+      renderAdminExpired(root, state, 'Sessão expirada. Faça login novamente.');
+      return;
+    }
+
+    const fallbackUser = (currentAdmin.users || []).find((user) => user.id === usuarioId) || null;
+
+    const failedResult = [detailResult, profilesResult, availableProfilesResult]
+
+      .find((result) => result.status === 'error');
+
+    renderApp(root, {
+      ...state,
+      activeModule: 'admin',
+      admin: {
+        ...currentAdmin,
+        selectedUserId: usuarioId,
+        detailStatus: detailResult.status,
+        user: detailResult.user || fallbackUser,
+        userProfilesStatus: profilesResult.status,
+        userProfiles: profilesResult.profiles || [],
+        availableProfilesStatus: availableProfilesResult.status || currentAdmin.availableProfilesStatus,
+        availableProfiles: availableProfilesResult.profiles || currentAdmin.availableProfiles || [],
+        statusCode: detailResult.statusCode || profilesResult.statusCode || availableProfilesResult.statusCode || null,
+        message: failedResult?.message || detailResult.message || profilesResult.message || 'Usuário selecionado.'
+      }
+    });
+  } catch {
+    renderApp(root, {
+      ...state,
+      activeModule: 'admin',
+      admin: {
+        ...currentAdmin,
+        selectedUserId: usuarioId,
+        detailStatus: 'error',
+        userProfilesStatus: 'error',
+        message: 'Falha temporária de conexão ao carregar usuário.'
+      }
+    });
+  }
+}
+
+async function refreshAdminPanel(root, state) {
+  const admin = state.admin || createAdminState();
+  const selectedUserId = admin.selectedUserId;
+  const hasSelectedUser = Number.isInteger(selectedUserId) && selectedUserId > 0;
+
+  renderApp(root, {
+    ...state,
+    activeModule: 'admin',
+    admin: {
+      ...admin,
+      usersStatus: 'loading',
+      detailStatus: hasSelectedUser ? 'loading' : admin.detailStatus,
+      userProfilesStatus: hasSelectedUser ? 'loading' : admin.userProfilesStatus,
+      availableProfilesStatus: canReadAdminProfiles(state) ? 'loading' : admin.availableProfilesStatus,
+      message: hasSelectedUser
+        ? 'Atualizando usuários, detalhe e vínculos.'
+        : 'Atualizando usuários internos.'
+    }
+  });
+
+  try {
+    const usersPromise = hasPermission(state, PERMISSIONS.adminUsersRead)
+      ? fetchAdminUsers()
+      : Promise.resolve({ status: 'error', statusCode: 403, users: admin.users, message: 'Listagem de usuários indisponível para este perfil.' });
+    const catalogPromise = canReadAdminProfiles(state)
+      ? fetchAdminAvailableProfiles()
+      : Promise.resolve({ status: admin.availableProfilesStatus, profiles: admin.availableProfiles, message: '' });
+    const detailPromise = hasSelectedUser
+      ? fetchAdminUserDetail(selectedUserId)
+      : Promise.resolve({ status: admin.detailStatus, user: admin.user, message: '' });
+    const profilesPromise = hasSelectedUser
+      ? fetchAdminUserProfiles(selectedUserId)
+      : Promise.resolve({ status: admin.userProfilesStatus, profiles: admin.userProfiles, message: '' });
+
+    const [usersResult, catalogResult, detailResult, profilesResult] = await Promise.all([
+      usersPromise,
+      catalogPromise,
+      detailPromise,
+      profilesPromise
+    ]);
+
+    if ([usersResult, catalogResult, detailResult, profilesResult].some((result) => result.status === 'expired')) {
+      renderAdminExpired(root, state, 'Sessão expirada. Faça login novamente.');
+      return;
+    }
+
+    const fallbackUser = (usersResult.users || admin.users || []).find((user) => user.id === selectedUserId) || admin.user;
+
+    const failedResult = [usersResult, catalogResult, detailResult, profilesResult]
+
+      .find((result) => result.status === 'error');
+
+    renderApp(root, {
+      ...state,
+      activeModule: 'admin',
+      admin: {
+        ...admin,
+        usersStatus: usersResult.status || admin.usersStatus,
+        users: usersResult.users || admin.users,
+        availableProfilesStatus: catalogResult.status || admin.availableProfilesStatus,
+        availableProfiles: catalogResult.profiles || admin.availableProfiles,
+        detailStatus: detailResult.status || admin.detailStatus,
+        user: detailResult.user || fallbackUser || null,
+        userProfilesStatus: profilesResult.status || admin.userProfilesStatus,
+        userProfiles: profilesResult.profiles || admin.userProfiles,
+        statusCode: usersResult.statusCode || catalogResult.statusCode || detailResult.statusCode || profilesResult.statusCode || null,
+        message: failedResult?.message || (hasSelectedUser ? 'Usuário e vínculos atualizados.' : usersResult.message || 'Usuários internos atualizados.')
+      }
+    });
+  } catch {
+    renderApp(root, {
+      ...state,
+      activeModule: 'admin',
+      admin: {
+        ...admin,
+        usersStatus: 'error',
+        detailStatus: hasSelectedUser ? 'error' : admin.detailStatus,
+        userProfilesStatus: hasSelectedUser ? 'error' : admin.userProfilesStatus,
+        message: 'Falha temporária de conexão ao atualizar administração.'
+      }
+    });
+  }
+}
+async function refreshAdminAfterMutation(root, state, formStateKey, formState) {
+  const admin = state.admin || createAdminState();
+  const selectedUserId = admin.selectedUserId;
+  const usersResult = hasPermission(state, PERMISSIONS.adminUsersRead)
+    ? await fetchAdminUsers()
+    : { status: 'error', users: admin.users, message: '' };
+
+  let detailResult = { status: admin.detailStatus, user: admin.user };
+  let profilesResult = { status: admin.userProfilesStatus, profiles: admin.userProfiles };
+
+  if (Number.isInteger(selectedUserId) && selectedUserId > 0) {
+    detailResult = await fetchAdminUserDetail(selectedUserId);
+    profilesResult = await fetchAdminUserProfiles(selectedUserId);
+  }
+
+  if ([usersResult, detailResult, profilesResult].some((result) => result.status === 'expired')) {
+    renderAdminExpired(root, state, 'Sessão expirada. Faça login novamente.');
+    return;
+  }
+
+  renderApp(root, {
+    ...state,
+    activeModule: 'admin',
+    admin: {
+      ...admin,
+      usersStatus: usersResult.status || admin.usersStatus,
+      users: usersResult.users || admin.users,
+      detailStatus: detailResult.status || admin.detailStatus,
+      user: detailResult.user || admin.user,
+      userProfilesStatus: profilesResult.status || admin.userProfilesStatus,
+      userProfiles: profilesResult.profiles || admin.userProfiles,
+      [formStateKey]: formState,
+      message: formState.message || 'Administração atualizada.'
+    }
+  });
+}
+
+async function submitAdminCreateUser(root, state, form) {
+  const admin = state.admin || createAdminState();
+  const formData = new FormData(form);
+  const login = String(formData.get('login') || '').trim();
+  const nome = String(formData.get('nome') || '').trim();
+  const email = String(formData.get('email') || '').trim();
+  const senhaInicial = String(formData.get('senha_inicial') || '');
+
+  if (!canCreateAdminUser(state)) {
+    renderApp(root, { ...state, admin: { ...admin, createForm: createAdminFormState({ status: 'error', statusCode: 403, message: getAdminErrorMessage(403) }) } });
+    return;
+  }
+
+  if (!login || !nome || !senhaInicial) {
+    renderApp(root, { ...state, admin: { ...admin, createForm: createAdminFormState({ status: 'error', statusCode: 422, message: getAdminErrorMessage(422) }) } });
+    return;
+  }
+
+  renderApp(root, { ...state, admin: { ...admin, createForm: createAdminFormState({ status: 'submitting', message: 'Criando usuário...' }) } });
+
+  try {
+    const result = await fetchCreateAdminUser({ login, nome, email: email || null, senha_inicial: senhaInicial });
+    form.reset();
+
+    if (result.status === 'expired') {
+      renderAdminExpired(root, state, result.message);
+      return;
+    }
+
+    await refreshAdminAfterMutation(root, state, 'createForm', createAdminFormState({
+      status: result.status === 'success' ? 'success' : 'error',
+      statusCode: result.statusCode,
+      message: result.message
+    }));
+  } catch {
+    form.reset();
+    renderApp(root, { ...state, admin: { ...admin, createForm: createAdminFormState({ status: 'error', message: 'Falha temporária ao criar usuário.' }) } });
+  }
+}
+
+async function submitAdminBlockUser(root, state, form) {
+  const admin = state.admin || createAdminState();
+  const confirmacao = String(new FormData(form).get('confirmacao') || '').trim().toUpperCase();
+
+  if (!admin.selectedUserId || confirmacao !== 'BLOQUEAR') {
+    renderApp(root, { ...state, admin: { ...admin, blockForm: createAdminFormState({ status: 'error', statusCode: 422, message: 'Digite BLOQUEAR para confirmar.' }) } });
+    return;
+  }
+
+  renderApp(root, { ...state, admin: { ...admin, blockForm: createAdminFormState({ status: 'submitting', message: 'Bloqueando usuário...' }) } });
+  const result = await fetchBlockAdminUser(admin.selectedUserId);
+  form.reset();
+
+  if (result.status === 'expired') {
+    renderAdminExpired(root, state, result.message);
+    return;
+  }
+
+  await refreshAdminAfterMutation(root, state, 'blockForm', createAdminFormState({
+    status: result.status === 'success' ? 'success' : 'error',
+    statusCode: result.statusCode,
+    message: result.message
+  }));
+}
+
+async function submitAdminUnblockUser(root, state, form) {
+  const admin = state.admin || createAdminState();
+  const confirmacao = String(new FormData(form).get('confirmacao') || '').trim().toUpperCase();
+
+  if (!admin.selectedUserId || confirmacao !== 'DESBLOQUEAR') {
+    renderApp(root, { ...state, admin: { ...admin, unblockForm: createAdminFormState({ status: 'error', statusCode: 422, message: 'Digite DESBLOQUEAR para confirmar.' }) } });
+    return;
+  }
+
+  renderApp(root, { ...state, admin: { ...admin, unblockForm: createAdminFormState({ status: 'submitting', message: 'Desbloqueando usuário...' }) } });
+  const result = await fetchUnblockAdminUser(admin.selectedUserId);
+  form.reset();
+
+  if (result.status === 'expired') {
+    renderAdminExpired(root, state, result.message);
+    return;
+  }
+
+  await refreshAdminAfterMutation(root, state, 'unblockForm', createAdminFormState({
+    status: result.status === 'success' ? 'success' : 'error',
+    statusCode: result.statusCode,
+    message: result.message
+  }));
+}
+async function submitAdminResetPassword(root, state, form) {
+  const admin = state.admin || createAdminState();
+  const formData = new FormData(form);
+  const novaSenha = String(formData.get('nova_senha') || '');
+  const confirmarNovaSenha = String(formData.get('confirmar_nova_senha') || '');
+
+  if (!admin.selectedUserId || !novaSenha || novaSenha !== confirmarNovaSenha) {
+    form.reset();
+    renderApp(root, { ...state, admin: { ...admin, resetForm: createAdminFormState({ status: 'error', statusCode: 422, message: 'Revise e confirme a nova senha.' }) } });
+    return;
+  }
+
+  renderApp(root, { ...state, admin: { ...admin, resetForm: createAdminFormState({ status: 'submitting', message: 'Redefinindo senha...' }) } });
+  const result = await fetchResetAdminUserPassword(admin.selectedUserId, novaSenha, confirmarNovaSenha);
+  form.reset();
+
+  if (result.status === 'expired') {
+    renderAdminExpired(root, state, result.message);
+    return;
+  }
+
+  renderApp(root, {
+    ...state,
+    admin: {
+      ...admin,
+      resetForm: createAdminFormState({
+        status: result.status === 'success' ? 'success' : 'error',
+        statusCode: result.statusCode,
+        message: result.message
+      })
+    }
+  });
+}
+
+async function submitAdminAssignProfile(root, state, form) {
+  const admin = state.admin || createAdminState();
+  const formData = new FormData(form);
+  const perfilId = Number.parseInt(String(formData.get('perfil_id') || ''), 10);
+  const modulo = String(formData.get('modulo') || '').trim();
+
+  if (!admin.selectedUserId || !Number.isInteger(perfilId) || perfilId < 1) {
+    renderApp(root, { ...state, admin: { ...admin, assignProfileForm: createAdminFormState({ status: 'error', statusCode: 422, message: getAdminErrorMessage(422) }) } });
+    return;
+  }
+
+  renderApp(root, { ...state, admin: { ...admin, assignProfileForm: createAdminFormState({ status: 'submitting', message: 'Atribuindo perfil...' }) } });
+  const result = await fetchAssignAdminUserProfile(admin.selectedUserId, perfilId, modulo);
+  form.reset();
+
+  if (result.status === 'expired') {
+    renderAdminExpired(root, state, result.message);
+    return;
+  }
+
+  await refreshAdminAfterMutation(root, state, 'assignProfileForm', createAdminFormState({
+    status: result.status === 'success' ? 'success' : 'error',
+    statusCode: result.statusCode,
+    message: result.message
+  }));
+}
+
+async function submitAdminDeactivateProfile(root, state, form) {
+  const admin = state.admin || createAdminState();
+  const formData = new FormData(form);
+  const perfilId = Number.parseInt(String(formData.get('perfil_id') || ''), 10);
+  const modulo = String(formData.get('modulo') || '').trim();
+  const justificativa = String(formData.get('justificativa') || '').trim();
+  const confirmacao = String(formData.get('confirmacao') || '').trim().toUpperCase();
+
+  if (!admin.selectedUserId || !Number.isInteger(perfilId) || perfilId < 1 || justificativa.length < 10 || confirmacao !== 'DESATIVAR') {
+    renderApp(root, { ...state, admin: { ...admin, deactivateProfileForm: createAdminFormState({ status: 'error', statusCode: 422, message: 'Informe justificativa e digite DESATIVAR.' }) } });
+    return;
+  }
+
+  renderApp(root, { ...state, admin: { ...admin, deactivateProfileForm: createAdminFormState({ status: 'submitting', message: 'Desativando vínculo...' }) } });
+  const result = await fetchDeactivateAdminUserProfile(admin.selectedUserId, perfilId, modulo, justificativa);
+  form.reset();
+
+  if (result.status === 'expired') {
+    renderAdminExpired(root, state, result.message);
+    return;
+  }
+
+  await refreshAdminAfterMutation(root, state, 'deactivateProfileForm', createAdminFormState({
+    status: result.status === 'success' ? 'success' : 'error',
+    statusCode: result.statusCode,
+    message: result.message
+  }));
+}
+function syncAdminUserSearch(root, state, searchQuery, cursorPosition = null) {
+  const admin = state.admin || createAdminState();
+  const nextSearchQuery = String(searchQuery || '');
+
+  renderApp(root, {
+    ...state,
+    activeModule: 'admin',
+    admin: {
+      ...admin,
+      userSearchQuery: nextSearchQuery
+    }
+  });
+
+  const searchInput = root.querySelector('[data-admin-user-search]');
+  if (searchInput instanceof HTMLInputElement) {
+    const safeCursorPosition = Number.isInteger(cursorPosition)
+      ? Math.max(0, Math.min(cursorPosition, nextSearchQuery.length))
+      : nextSearchQuery.length;
+
+    searchInput.focus();
+    searchInput.setSelectionRange(safeCursorPosition, safeCursorPosition);
+  }
+}
 async function selectModule(root, state, moduleKey) {
   if (moduleKey === 'dashboard') {
     if (canViewDashboardWidgets(state)) {
@@ -7531,6 +8822,19 @@ async function selectModule(root, state, moduleKey) {
     if (canListSolicitacoes(nextState)) {
       await loadSolicitacoes(root, nextState, nextState.solicitacoes?.offset || 0);
     }
+    return;
+  }
+
+  if (moduleKey === 'admin') {
+    if (canAccessAdminModule(state)) {
+      await loadAdminPanel(root, state);
+      return;
+    }
+
+    renderApp(root, {
+      ...state,
+      activeModule: resolveInitialActiveModule(state)
+    });
   }
 }
 
@@ -7552,6 +8856,11 @@ async function verifySession(root) {
           ...nextState,
           activeModule: 'iluminacao'
         }, 'iluminacao');
+        return;
+      }
+
+      if (initialModule === 'admin') {
+        await loadAdminPanel(root, nextState);
         return;
       }
 
@@ -7776,6 +9085,26 @@ if (root) {
       selectModule(root, currentState, target.dataset.moduleKey || '');
       return;
     }
+    if (
+      target instanceof HTMLElement
+      && target.matches('[data-action="refresh-admin-users"]')
+    ) {
+      refreshAdminPanel(root, currentState);
+      return;
+    }
+
+    if (
+      target instanceof HTMLElement
+      && target.matches('[data-action="select-admin-user"]')
+    ) {
+      const requestedId = Number.parseInt(target.dataset.adminUserId || '0', 10);
+      const safeId = Number.isInteger(requestedId) && requestedId > 0
+        ? requestedId
+        : 0;
+
+      loadAdminUser(root, currentState, safeId);
+      return;
+    }
 
     if (
       target instanceof HTMLElement
@@ -7858,6 +9187,13 @@ if (root) {
 
     if (shouldSyncRelatorioFormOnInput(target)) {
       syncRelatorioForm(root, currentState, target.form);
+      return;
+    }
+    if (
+      target instanceof HTMLInputElement
+      && target.matches('[data-admin-user-search]')
+    ) {
+      syncAdminUserSearch(root, currentState, target.value, target.selectionStart);
       return;
     }
 
@@ -8016,6 +9352,60 @@ if (root) {
     ) {
       event.preventDefault();
       submitStatusCorrectionUpdate(root, currentState, target);
+      return;
+    }
+
+    if (
+      target instanceof HTMLFormElement
+      && target.matches('[data-admin-create-user-form]')
+    ) {
+      event.preventDefault();
+      submitAdminCreateUser(root, currentState, target);
+      return;
+    }
+
+    if (
+      target instanceof HTMLFormElement
+      && target.matches('[data-admin-block-user-form]')
+    ) {
+      event.preventDefault();
+      submitAdminBlockUser(root, currentState, target);
+      return;
+    }
+
+    if (
+      target instanceof HTMLFormElement
+      && target.matches('[data-admin-reset-password-form]')
+    ) {
+      event.preventDefault();
+      submitAdminResetPassword(root, currentState, target);
+      return;
+    }
+
+    if (
+      target instanceof HTMLFormElement
+      && target.matches('[data-admin-unblock-user-form]')
+    ) {
+      event.preventDefault();
+      submitAdminUnblockUser(root, currentState, target);
+      return;
+    }
+
+    if (
+      target instanceof HTMLFormElement
+      && target.matches('[data-admin-assign-profile-form]')
+    ) {
+      event.preventDefault();
+      submitAdminAssignProfile(root, currentState, target);
+      return;
+    }
+
+    if (
+      target instanceof HTMLFormElement
+      && target.matches('[data-admin-deactivate-profile-form]')
+    ) {
+      event.preventDefault();
+      submitAdminDeactivateProfile(root, currentState, target);
     }
   });
 }

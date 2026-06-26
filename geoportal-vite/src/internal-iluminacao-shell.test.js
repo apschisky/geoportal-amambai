@@ -17,6 +17,14 @@ import {
   createDetalheState,
   createSessionState,
   createRelatorioState,
+  createAdminState,
+  fetchAdminUsers,
+  fetchAdminUserDetail,
+  fetchAdminUserProfiles,
+  fetchCreateAdminUser,
+  fetchUnblockAdminUser,
+  fetchResetAdminUserPassword,
+  fetchDeactivateAdminUserProfile,
   fetchDashboardGeralWidgets,
   fetchRelatorioSolicitacoesCsv,
   fetchRelatorioSolicitacoesResumo,
@@ -32,6 +40,7 @@ import {
   normalizeSolicitacaoCoordinate,
   renderCoordinateRouteSection,
   renderDashboardPanel,
+  renderAdminPanel,
   renderModuleMenu,
   renderObservacoesPanel,
   renderRelatorioPanel,
@@ -44,6 +53,9 @@ import {
   renderStatusUpdatePanel,
   resolveInitialActiveModule,
   scrollToSolicitacaoDetailSection,
+  loadAdminUser,
+  refreshAdminPanel,
+  selectModule,
   shouldSyncRelatorioFormOnInput
 } from './internal-iluminacao-shell.js';
 
@@ -54,6 +66,11 @@ const statusPermission = 'iluminacao.solicitacoes.atualizar_status';
 const statusCorrectionPermission = 'iluminacao.solicitacoes.corrigir_status';
 const dashboardPermission = 'iluminacao.dashboard.ler';
 const adminUsersReadPermission = 'admin.usuarios.ler';
+const adminUsersCreatePermission = 'admin.usuarios.criar';
+const adminUsersBlockPermission = 'admin.usuarios.bloquear';
+const adminUsersResetPasswordPermission = 'admin.usuarios.redefinir_senha';
+const adminUsersRemoveProfilesPermission = 'admin.usuarios.remover_perfis';
+const adminProfilesReadPermission = 'admin.perfis.ler';
 
 function authenticatedState(permissions = [], overrides = {}) {
   return {
@@ -1384,5 +1401,288 @@ describe('internal modo manutencao', () => {
     );
 
     expect(invalidHtml).not.toContain('data-internal-whatsapp');
+  });
+});
+
+describe('internal admin MVP', () => {
+  function adminPanelState(permissions = [adminUsersReadPermission], overrides = {}) {
+    return createSessionState({
+      sessionState: 'authenticated',
+      permissions,
+      activeModule: 'admin',
+      admin: createAdminState({
+        usersStatus: 'ready',
+        users: [{ id: 1, login: 'admin.producao', nome: 'Admin Producao', email: '', ativo: true, bloqueado: false, criadoEm: '' }],
+        selectedUserId: 1,
+        detailStatus: 'ready',
+        user: { id: 1, login: 'admin.producao', nome: 'Admin Producao', email: '', ativo: true, bloqueado: false, criadoEm: '' },
+        userProfilesStatus: 'ready',
+        userProfiles: [{ perfilId: 1, id: 1, chave: 'administrador-interno-geoportal', nome: 'Administrador', modulo: null, ativo: true, criadoEm: '' }],
+        availableProfilesStatus: 'ready',
+        availableProfiles: [{ id: 2, perfilId: 2, chave: 'manutencao-iluminacao', nome: 'Manutencao', modulo: null, ativo: true, criadoEm: '' }],
+        ...overrides.admin
+      }),
+      ...overrides
+    });
+  }
+
+  it('mostra Administracao no menu para usuario com permissao admin', () => {
+    const html = renderModuleMenu(adminPanelState([adminUsersReadPermission]));
+
+    expect(html).toContain('data-module-key="admin"');
+    expect(html).toContain('Administra');
+    expect(html).toContain('Gestão interna de usuários e perfis');
+    expect(html).toContain('Permitido');
+    expect(html).toMatch(/data-module-key="admin"[\s\S]*?>/);
+    expect(html.match(/data-module-key="admin"[\s\S]*?>/)?.[0]).not.toContain('disabled');
+  });
+
+  it('resolve modulo admin quando so ha permissao administrativa', () => {
+    const state = adminPanelState([adminUsersReadPermission], { activeModule: 'admin' });
+
+    expect(resolveInitialActiveModule(state)).toBe('admin');
+  });
+
+  it('abre painel de Administracao ao selecionar o modulo admin', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse(200, { usuarios: [{ id: 1, login: 'admin.producao', nome: 'Admin', ativo: true, bloqueado: false }] })
+    );
+    const root = {
+      innerHTML: '',
+      querySelector: vi.fn(() => null)
+    };
+
+    await selectModule(root, adminPanelState([adminUsersReadPermission], { activeModule: 'dashboard' }), 'admin');
+
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/internal/admin/users');
+    expect(root.innerHTML).toContain('internal-admin-workspace');
+    expect(root.innerHTML).toContain('Usuários internos');
+    expect(root.innerHTML).toContain('aria-current="page"');
+  });
+  it('carrega detalhe e vínculos ao selecionar usuário', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { usuario: { id: 2, login: 'manutencao.producao', nome: 'Manutenção Produção', ativo: true, bloqueado: false } }));
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { vinculos: [{ perfil_id: 2, chave: 'manutencao-iluminacao', nome: 'Manutenção', ativo: true }] }));
+    const root = { innerHTML: '', querySelector: vi.fn(() => null) };
+
+    await loadAdminUser(root, adminPanelState([adminUsersReadPermission]), 2);
+
+    expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
+      '/api/internal/admin/users/2',
+      '/api/internal/admin/users/2/profiles'
+    ]);
+    expect(fetchMock.mock.calls.every((call) => call[1].credentials === 'include')).toBe(true);
+    expect(root.innerHTML).toContain('Manutenção Produção');
+    expect(root.innerHTML).toContain('manutencao-iluminacao');
+  });
+
+  it('botão Atualizar recarrega lista, detalhe e vínculos do usuário selecionado', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { usuarios: [{ id: 1, login: 'admin.producao', nome: 'Admin Atualizado', ativo: true, bloqueado: false }] }));
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { usuario: { id: 1, login: 'admin.producao', nome: 'Admin Atualizado', ativo: true, bloqueado: false } }));
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { vinculos: [{ perfil_id: 1, chave: 'administrador-interno-geoportal', nome: 'Administrador', ativo: true }] }));
+    const root = { innerHTML: '', querySelector: vi.fn(() => null) };
+
+    await refreshAdminPanel(root, adminPanelState([adminUsersReadPermission]));
+
+    expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
+      '/api/internal/admin/users',
+      '/api/internal/admin/users/1',
+      '/api/internal/admin/users/1/profiles'
+    ]);
+    expect(root.innerHTML).toContain('Admin Atualizado');
+    expect(root.innerHTML).toContain('administrador-interno-geoportal');
+  });
+
+  it('desbloqueio aparece somente para usuário bloqueado com permissão', () => {
+    const activeHtml = renderAdminPanel(adminPanelState([adminUsersReadPermission, adminUsersBlockPermission]));
+    const blockedHtml = renderAdminPanel(adminPanelState([adminUsersReadPermission, adminUsersBlockPermission], {
+      admin: {
+        user: { id: 1, login: 'admin.producao', nome: 'Admin Produção', email: '', ativo: true, bloqueado: true, criadoEm: '' },
+        users: [{ id: 1, login: 'admin.producao', nome: 'Admin Produção', email: '', ativo: true, bloqueado: true, criadoEm: '' }]
+      }
+    }));
+    const blockedWithoutPermission = renderAdminPanel(adminPanelState([adminUsersReadPermission], {
+      admin: {
+        user: { id: 1, login: 'admin.producao', nome: 'Admin Produção', email: '', ativo: true, bloqueado: true, criadoEm: '' }
+      }
+    }));
+
+    expect(activeHtml).toContain('data-admin-block-user-form');
+    expect(activeHtml).not.toContain('data-admin-unblock-user-form');
+    expect(blockedHtml).toContain('data-admin-unblock-user-form');
+    expect(blockedHtml).toContain('Desbloquear usuário');
+    expect(blockedHtml).not.toContain('data-admin-block-user-form');
+    expect(blockedWithoutPermission).not.toContain('data-admin-unblock-user-form');
+  });
+
+  it('desbloqueio envia header interno e cookie de sessão', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse(200, { usuario: { id: 1, login: 'admin.producao', nome: 'Admin Produção', ativo: true, bloqueado: false } })
+    );
+
+    const result = await fetchUnblockAdminUser(1);
+
+    expect(result).toMatchObject({ status: 'success' });
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/internal/admin/users/1/unblock');
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({ method: 'POST', credentials: 'include' });
+    expect(fetchMock.mock.calls[0][1].headers[INTERNAL_MUTATING_REQUEST_HEADER]).toBe('1');
+  });
+  it('pesquisa filtra usuários por nome e login', () => {
+    const htmlByName = renderAdminPanel(adminPanelState([adminUsersReadPermission], {
+      admin: {
+        userSearchQuery: 'manutenção',
+        users: [
+          { id: 1, login: 'admin.producao', nome: 'Admin Produção', email: '', ativo: true, bloqueado: false, criadoEm: '' },
+          { id: 2, login: 'manutencao.producao', nome: 'Manutenção Produção', email: '', ativo: true, bloqueado: false, criadoEm: '' }
+        ]
+      }
+    }));
+    const htmlByLogin = renderAdminPanel(adminPanelState([adminUsersReadPermission], {
+      admin: {
+        userSearchQuery: 'admin.producao',
+        users: [
+          { id: 1, login: 'admin.producao', nome: 'Admin Produção', email: '', ativo: true, bloqueado: false, criadoEm: '' },
+          { id: 2, login: 'manutencao.producao', nome: 'Manutenção Produção', email: '', ativo: true, bloqueado: false, criadoEm: '' }
+        ]
+      }
+    }));
+
+    expect(htmlByName).toContain('Manutenção Produção');
+    expect(htmlByName).not.toContain('Admin Produção</strong>');
+    expect(htmlByLogin).toContain('Admin Produção');
+    expect(htmlByLogin).not.toContain('Manutenção Produção</strong>');
+  });
+
+  it('pesquisa filtra usuários por e-mail', () => {
+    const html = renderAdminPanel(adminPanelState([adminUsersReadPermission], {
+      admin: {
+        userSearchQuery: 'fiscalizacao@amambai.ms.gov.br',
+        users: [
+          { id: 1, login: 'admin.producao', nome: 'Admin Produção', email: 'admin@amambai.ms.gov.br', ativo: true, bloqueado: false, criadoEm: '' },
+          { id: 2, login: 'fiscal.producao', nome: 'Fiscalização Produção', email: 'fiscalizacao@amambai.ms.gov.br', ativo: true, bloqueado: false, criadoEm: '' }
+        ]
+      }
+    }));
+
+    expect(html).toContain('Fiscalização Produção');
+    expect(html).toContain('fiscal.producao');
+    expect(html).not.toContain('Admin Produção</strong>');
+  });
+  it('não mostra todos os usuários quando a pesquisa está vazia', () => {
+    const users = Array.from({ length: 8 }, (_, index) => ({
+      id: index + 1,
+      login: `usuario${index + 1}.producao`,
+      nome: `Usuário ${index + 1}`,
+      email: '',
+      ativo: true,
+      bloqueado: false,
+      criadoEm: ''
+    }));
+    const html = renderAdminPanel(adminPanelState([adminUsersReadPermission], {
+      admin: { userSearchQuery: '', users }
+    }));
+
+    expect(html).toContain('Pesquisar usuário');
+    expect(html).toContain('Digite para filtrar');
+    expect(html).toContain('Usuário 1');
+    expect(html).toContain('Usuário 6');
+    expect(html).not.toContain('Usuário 7');
+    expect(html).not.toContain('Usuário 8');
+  });
+
+  it('mantém textos principais com acentuação correta', () => {
+    const html = renderAdminPanel(adminPanelState([adminUsersReadPermission, adminProfilesReadPermission, adminUsersCreatePermission]));
+
+    expect(html).toContain('Administração');
+    expect(html).toContain('Gestão interna de usuários e vínculos usuário/perfil.');
+    expect(html).toContain('Usuários internos');
+    expect(html).toContain('Pesquisar usuário');
+    expect(html).toContain('Criar usuário');
+    expect(html).toContain('Vínculos usuário/perfil');
+    expect(html).toContain('Desativação lógica');
+    expect(html).not.toMatch(/Ã|Â/);
+  });
+  it('lista usuarios com cookie de sessao', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse(200, { usuarios: [{ id: 1, login: 'admin.producao', nome: 'Admin', ativo: true, bloqueado: false }] })
+    );
+
+    const result = await fetchAdminUsers();
+
+    expect(result).toMatchObject({ status: 'ready' });
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/internal/admin/users');
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({ credentials: 'include' });
+  });
+
+  it('envia header mutavel nas mutacoes administrativas', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    fetchMock.mockResolvedValueOnce(jsonResponse(201, { usuario: { id: 3, login: 'novo', nome: 'Novo', ativo: true, bloqueado: false } }));
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, {}));
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, {}));
+
+    await fetchCreateAdminUser({ login: 'novo', nome: 'Novo', email: null, senha_inicial: 'Senha123' });
+    await fetchResetAdminUserPassword(3, 'Outra123', 'Outra123');
+    await fetchDeactivateAdminUserProfile(3, 2, '', 'Justificativa segura');
+
+    for (const call of fetchMock.mock.calls) {
+      expect(call[1]).toMatchObject({ credentials: 'include' });
+      expect(call[1].headers[INTERNAL_MUTATING_REQUEST_HEADER]).toBe('1');
+    }
+  });
+
+  it('nao exibe desativacao de vinculo sem permissao de remover perfis', () => {
+    const html = renderAdminPanel(adminPanelState([adminUsersReadPermission, adminProfilesReadPermission, adminUsersCreatePermission]));
+
+    expect(html).toContain('Vínculos usuário/perfil');
+    expect(html).not.toContain('data-admin-deactivate-profile-form');
+  });
+
+  it('exibe desativacao de vinculo com permissao propria', () => {
+    const html = renderAdminPanel(adminPanelState([
+      adminUsersReadPermission,
+      adminProfilesReadPermission,
+      adminUsersRemoveProfilesPermission
+    ]));
+
+    expect(html).toContain('data-admin-deactivate-profile-form');
+  });
+
+  it('nao retorna senha em resultados de criacao ou reset', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    fetchMock.mockResolvedValueOnce(jsonResponse(201, { usuario: { id: 4, login: 'novo', nome: 'Novo', ativo: true, bloqueado: false } }));
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, {}));
+
+    const createResult = await fetchCreateAdminUser({ login: 'novo', nome: 'Novo', email: null, senha_inicial: 'Senha123' });
+    const resetResult = await fetchResetAdminUserPassword(4, 'Outra123', 'Outra123');
+
+    expect(JSON.stringify(createResult)).not.toContain('Senha123');
+    expect(JSON.stringify(resetResult)).not.toContain('Outra123');
+  });
+
+  it('traduz erros administrativos esperados', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    fetchMock.mockResolvedValueOnce(jsonResponse(401, {}));
+    await expect(fetchAdminUsers()).resolves.toMatchObject({ status: 'expired', statusCode: 401 });
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(403, {}));
+    await expect(fetchCreateAdminUser({ login: 'a', nome: 'A', senha_inicial: 'Senha123' })).resolves.toMatchObject({ status: 'error', statusCode: 403 });
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(409, {}));
+    await expect(fetchDeactivateAdminUserProfile(1, 2, '', 'Justificativa segura')).resolves.toMatchObject({ status: 'error', statusCode: 409, message: 'Vínculo já está inativo.' });
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(422, {}));
+    await expect(fetchResetAdminUserPassword(1, 'x', 'x')).resolves.toMatchObject({ status: 'error', statusCode: 422 });
+  });
+
+  it('rotinas admin nao usam storage do navegador', () => {
+    expect(fetchAdminUsers.toString()).not.toContain('localStorage');
+    expect(fetchAdminUsers.toString()).not.toContain('sessionStorage');
+    expect(fetchCreateAdminUser.toString()).not.toContain('localStorage');
+    expect(fetchResetAdminUserPassword.toString()).not.toContain('sessionStorage');
+    expect(fetchUnblockAdminUser.toString()).not.toContain('localStorage');
+    expect(fetchUnblockAdminUser.toString()).not.toContain('sessionStorage');
+    expect(renderAdminPanel.toString()).not.toContain('localStorage');
+    expect(renderAdminPanel.toString()).not.toContain('sessionStorage');
   });
 });
