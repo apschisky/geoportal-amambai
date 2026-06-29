@@ -511,3 +511,57 @@ Para `seleido.admin`, com perfil `administrador-modulo-iluminacao`, a validacao 
 Resultado: o frontend refletiu as permissoes efetivas do backend/RBAC, perfis operacionais permaneceram sem `admin.*` e a Administracao do Sistema continuou restrita ao administrador interno global. Nao houve migration, deploy, restart, endpoint novo, frontend novo, Apache, NSSM ou `.env`.
 
 Proximos testes/ciclos: mapa operacional por modulo, ordenacao/filtros avancados da lista, ajustes finos de UX por perfil se necessario e replicacao do modelo para futuros modulos internos.
+
+### Plano de validacao - mapa operacional de Iluminacao
+
+Escopo planejado: validar o mapa operacional interno de Iluminacao Publica sem expor dados pessoais em camada publica, cache publico, GeoJSON aberto ou endpoint sem sessao. A autorizacao deve ser comprovada no backend/RBAC; o frontend deve apenas refletir permissoes.
+
+Testes backend/API recomendados, se houver endpoint proprio `GET /api/internal/iluminacao/mapa/ocorrencias`:
+
+- `401` sem sessao;
+- `403` sem `iluminacao.solicitacoes.ler` ou permissao futura equivalente;
+- `422` para filtros invalidos;
+- `503` sanitizado para falha tecnica;
+- resposta read-only sem nome, telefone, WhatsApp, e-mail, observacoes internas, historico ou descricao livre completa;
+- filtros por status, prioridade, tipo, fonte/origem e viewport, quando implementados;
+- chamados sem coordenada retornados de forma controlada ou contabilizados separadamente, sem ponto artificial;
+- nenhuma mutacao e nenhum requisito de `X-Geoportal-Internal-Request` em endpoint de leitura.
+
+Testes frontend recomendados:
+
+- mapa usa chamadas internas com `credentials: include`;
+- nao usa `localStorage`, `sessionStorage` ou token;
+- estados de carregando, sem pontos, sem coordenada, erro, sessao expirada e sem permissao;
+- filtros de status/prioridade/tipo/fonte combinam com os pontos visiveis;
+- clique no ponto abre popup com protocolo, status, prioridade, poste quando disponivel e link/botao para detalhe;
+- popup escapa HTML e nao renderiza dado pessoal que nao tenha sido retornado pelo backend;
+- selecao de um ou mais pontos filtra a lista operacional;
+- limpar selecao restaura a lista;
+- ponto selecionado recebe destaque visual;
+- rotulos de protocolo/poste aparecem apenas em zoom alto ou ponto selecionado, se implementados;
+- mapa e lista continuam usaveis em telas menores.
+
+Validacao por perfil:
+
+- `gestor-consulta-global`: mapa e lista read-only, sem acoes mutaveis, Administracao do Sistema ausente, dados pessoais omitidos ou mascarados conforme decisao LGPD.
+- `manutencao-iluminacao`: mapa operacional de campo, popup com dados estritamente necessarios se autorizado, sem administracao global.
+- `administrador-modulo-iluminacao`: mapa completo do modulo, selecao filtrando lista, popup operacional e acoes do modulo disponiveis no detalhe/lista conforme permissoes, sem `admin.*`.
+- `administrador-interno-geoportal`: acesso conforme permissoes globais, mantendo minimizacao da colecao de pontos.
+
+Validacao manual/homologacao:
+
+- comparar quantidade de pontos visiveis com filtros aplicados;
+- confirmar que chamados sem coordenada nao desaparecem da operacao;
+- testar popup em desktop e mobile;
+- confirmar que endpoint publico e Geoportal publico nao retornam nome/telefone de solicitante;
+- validar que a lista filtrada por selecao volta ao estado anterior ao limpar selecao;
+- registrar evidencias sem copiar senha, token, cookie ou dados pessoais desnecessarios.
+
+Fases de teste:
+
+1. Planejamento/documentacao.
+2. Testes backend read-only do mapa/popup, se endpoint novo for criado.
+3. Testes frontend do mapa/popup com mocks de OpenLayers/fetch quando possivel.
+4. Testes de selecao no mapa filtrando lista.
+5. Validacao funcional por perfil em homologacao e producao interna.
+6. Documentacao de publicacao, riscos residuais e monitoramento assistido.

@@ -1510,3 +1510,70 @@ O runtime interno de homologacao foi criado como `GeoportalAPIInternaHomologacao
 Em validacao autenticada manual pelo servico NSSM, o endpoint `GET /api/internal/iluminacao/solicitacoes?limit=10&offset=0` retornou itens reais apos login interno e confirmacao da permissao `iluminacao.solicitacoes.ler`, sem registrar token ou cookie real. `geoportal_api_homolog` possui somente `USAGE` no schema `mod_iluminacao` e `SELECT` em `mod_iluminacao.solicitacoes` para essa etapa; nao recebeu `INSERT`, `UPDATE` ou `DELETE` em `mod_iluminacao`.
 
 Registro historico: nessa validacao inicial de homologacao, producao, Apache/proxy, frontend, migrations, schema e `.env` versionado nao haviam sido alterados. O marco posterior de 2026-06-12 publicou a API interna de producao via Apache HTTPS em `/api/internal/`, apontando para `127.0.0.1:8003`.
+
+## Plano futuro - mapa operacional interno de Iluminacao
+
+Objetivo do ciclo: criar mapa operacional por modulo, iniciando por Iluminacao Publica, para exibir chamados com coordenadas, filtros operacionais, selecao de pontos e popup interno de protocolo. O mapa deve apoiar atendimento em campo e gestao do modulo sem transformar dados pessoais em camada publica, cache publico ou GeoJSON aberto.
+
+Inventario atual: a listagem interna `GET /api/internal/iluminacao/solicitacoes` ja possui dados suficientes para montar pontos iniciais, incluindo `id`, `protocolo`, `status`, `prioridade`, `tipo_problema`, `origem`, `localizacao_tipo`, `poste_id`, `latitude` e `longitude`. A mesma listagem tambem pode conter nome e contato do solicitante; por isso, o mapa operacional nao deve simplesmente serializar a resposta completa como camada cartografica. Os endpoints de dashboard continuam agregados, read-only e sem dados pessoais.
+
+Contrato recomendado para a fase backend, se a lista atual nao for suficiente ou se for desejavel separar responsabilidades:
+
+- `GET /api/internal/iluminacao/mapa/ocorrencias`;
+- endpoint interno, autenticado, somente HTTPS e com cookie HttpOnly;
+- chamada frontend sempre com `credentials: include`;
+- permissao minima inicial: `iluminacao.solicitacoes.ler`, por ser o mesmo dominio de leitura operacional ja validado;
+- permissao futura opcional: `iluminacao.mapa.ler`, se o mapa virar contrato independente reutilizavel por varios modulos;
+- resposta paginada ou limitada por filtros/viewport quando o volume crescer;
+- sem mutacoes e sem header `X-Geoportal-Internal-Request`, por ser leitura;
+- erros sanitizados: `401` sem sessao, `403` sem permissao, `422` para filtros invalidos e `503` generico para indisponibilidade.
+
+Campos recomendados para a colecao de pontos:
+
+- `id`;
+- `protocolo`;
+- `status`;
+- `prioridade`;
+- `tipo_problema`;
+- `origem`;
+- `localizacao_tipo`;
+- `poste_id`, se houver;
+- `latitude`;
+- `longitude`;
+- `criado_em`;
+- `atualizado_em`;
+- flags simples como `sem_coordenada=false`, quando aplicavel.
+
+Campos que nao devem ir na colecao de pontos: `nome_solicitante`, `contato_solicitante`, telefone, WhatsApp, e-mail, descricao livre completa, observacoes internas, historico e qualquer dado pessoal desnecessario ao desenho inicial do mapa. Esses dados devem ficar no detalhe interno autorizado, carregado sob demanda para o popup ou para a tela de detalhe.
+
+Popup operacional: ao clicar em um ponto, o frontend pode abrir popup inspirado no padrao publico de lotes/postes, reaproveitando a disciplina de `escapeHtml`, overlay OpenLayers e fechamento claro. O conteudo deve ser proprio da area interna e deve exibir, no minimo, protocolo, status, prioridade, identificador do poste quando disponivel e acao para abrir detalhe interno do chamado. Nome e telefone do solicitante so devem aparecer se o backend retornar esses campos para o perfil autenticado.
+
+Decisao LGPD recomendada para popup:
+
+- mapa publico: nunca expor nome, telefone, contato, observacoes internas ou historico administrativo;
+- `gestor-consulta-global`: mapa read-only; por padrao, omitir ou mascarar nome/telefone no popup, salvo decisao formal futura com permissao especifica de dados pessoais;
+- `manutencao-iluminacao`: pode receber telefone/nome quando necessario para execucao em campo e autorizado pelo backend;
+- `administrador-modulo-iluminacao`: popup operacional completo do modulo, com acoes mutaveis mantidas no detalhe, nao no popup na primeira fase;
+- `administrador-interno-geoportal`: acesso conforme permissoes globais, ainda com minimizacao no endpoint de mapa.
+
+Integracao mapa/lista:
+
+- filtros por status, prioridade, tipo, fonte/origem e modo do mapa devem combinar com a lista operacional;
+- clique em ponto abre popup;
+- selecao de um ou mais pontos deve filtrar a lista pelos chamados selecionados;
+- botao "limpar selecao/filtros do mapa" deve restaurar a lista operacional;
+- pontos selecionados devem ter destaque visual distinto;
+- chamados sem coordenada devem aparecer em estado separado na lista, sem forcar ponto artificial no mapa.
+
+Rotulos: protocolo ou `poste_id` podem ser considerados, mas nao devem aparecer sempre em todos os zooms. Recomendacao inicial: mostrar rotulo apenas no ponto selecionado ou em zoom alto, para evitar poluicao visual e sobreposicao.
+
+Estados obrigatorios de UX/API: carregando, sem pontos no filtro atual, existem chamados sem coordenada, erro de carregamento, sessao expirada (`401`), sem permissao (`403`) e filtros invalidos (`422`). Mensagens devem ser operacionais e nao revelar SQL, role, host, segredo ou caminho interno.
+
+Fases seguras:
+
+1. Planejamento/documentacao e confirmacao de matriz LGPD/RBAC.
+2. Backend read-only do mapa/popup, se necessario, sem dados pessoais na colecao de pontos.
+3. Frontend do mapa/popup com OpenLayers e padrao visual compativel com a shell interna.
+4. Selecao no mapa filtrando lista, com destaque e limpar selecao.
+5. Validacao por perfil real: gestor, manutencao, administrador de modulo e administrador global.
+6. Documentacao de publicacao, evidencias de validacao e plano de monitoramento.

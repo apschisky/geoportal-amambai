@@ -1074,3 +1074,44 @@ Validacao visual de `seleido.admin`: login OK, Dashboard disponivel, Iluminacao 
 Resultado: a decisao de seguranca foi confirmada em uso real. A autorizacao efetiva permanece no backend/RBAC; menu e telas do frontend refletem permissoes; perfis operacionais nao recebem `admin.*`; e Administracao do Sistema permanece restrita ao administrador interno global. Nao houve migration, deploy, restart, alteracao de endpoint, frontend, Apache, NSSM ou `.env`.
 
 Proximos ciclos recomendados: mapa operacional por modulo, ordenacao/filtros avancados da lista de chamados, ajustes finos de UX por perfil se necessario, e uso destes perfis como modelo para futuros modulos internos.
+
+## Plano RBAC - mapa operacional por modulo
+
+O mapa operacional por modulo deve ser autorizado pelo backend e apenas refletido pelo frontend. A primeira implementacao planejada e para Iluminacao Publica, usando dados internos protegidos por sessao, cookie HttpOnly, HTTPS e `credentials: include`. O frontend nao deve armazenar token, nao deve usar `localStorage`/`sessionStorage` para autorizacao e nao deve decidir sozinho se dados pessoais podem ser exibidos.
+
+Permissao de leitura recomendada para a fase inicial: reutilizar `iluminacao.solicitacoes.ler` enquanto o mapa for uma visualizacao da lista operacional existente. Se o mapa virar contrato proprio, especialmente reutilizavel por outros modulos, criar em ciclo separado uma permissao especifica como `iluminacao.mapa.ler`, com bootstrap, testes e validacao. Para dados pessoais no popup, a decisao recomendada e nao incluir nome/telefone na colecao de pontos; esses campos devem vir somente de detalhe interno autorizado e podem exigir permissao futura mais explicita, como leitura operacional com dados pessoais.
+
+Matriz proposta:
+
+| Perfil | Mapa | Popup | Lista filtrada por selecao | Dados pessoais | Mutacoes |
+| --- | --- | --- | --- | --- | --- |
+| `gestor-consulta-global` | Read-only em todos os modulos liberados | Protocolo, status, prioridade e referencia operacional | Sim | Omitir ou mascarar nome/telefone por padrao; revisar por LGPD antes de liberar completo | Nenhuma |
+| `manutencao-iluminacao` | Operacional de campo para Iluminacao | Dados necessarios para execucao, conforme retorno autorizado do backend | Sim | Nome/telefone somente se necessario para atendimento e permitido pelo backend | Somente acoes ja autorizadas ao perfil |
+| `administrador-modulo-iluminacao` | Operacional completo do modulo Iluminacao | Completo para operacao do modulo, mas sem acoes mutaveis diretas no popup na v1 | Sim | Pode ver dados pessoais se o backend autorizar para operacao do modulo | Acoes do modulo no detalhe/lista, sem `admin.*` |
+| `administrador-interno-geoportal` | Completo conforme permissoes globais | Completo conforme permissoes globais | Sim | Conforme autorizacao global, mantendo minimizacao no endpoint de mapa | Conforme permissoes globais |
+
+Regras de seguranca:
+
+- nenhum perfil operacional deve receber `admin.*` por causa do mapa;
+- o mapa publico nunca deve consumir endpoint interno nem camada com dados pessoais;
+- a colecao de pontos deve evitar nome, telefone, contato, descricao livre completa, observacoes internas e historico;
+- o popup deve escapar HTML e carregar informacoes sob demanda quando houver dado pessoal;
+- filtros e selecao no mapa nao substituem autorizacao de backend;
+- acoes de prioridade, status, correcao e observacao continuam nos endpoints ja protegidos e nao devem ser adicionadas diretamente ao popup na primeira fase.
+
+Endpoints impactados ou candidatos:
+
+- `GET /api/internal/iluminacao/solicitacoes`: pode atender um MVP se a UI filtrar campos antes de montar o mapa, mas exige cuidado para nao espalhar dados pessoais no estado de mapa.
+- `GET /api/internal/iluminacao/solicitacoes/{id}`: pode alimentar popup/detalhe sob demanda, respeitando perfil autenticado.
+- `GET /api/internal/iluminacao/mapa/ocorrencias`: endpoint recomendado se for necessario contrato enxuto, filtravel por viewport/status/prioridade/tipo/fonte e sem dados pessoais na colecao.
+
+Nao ha necessidade de migration estrutural nesta fase de planejamento. Backend novo so sera necessario se a lista atual nao for adequada por volume, minimizacao de dados, filtros por viewport ou separacao de contrato. Se uma nova permissao `iluminacao.mapa.ler` ou permissao explicita de dados pessoais for adotada, ela deve ser tratada em bootstrap controlado, nunca por permissao individual solta por usuario.
+
+Fases recomendadas:
+
+1. Planejamento/documentacao e aceite da matriz LGPD/RBAC.
+2. Backend read-only do mapa/popup, se necessario, com resposta minimizada.
+3. Frontend do mapa/popup com OpenLayers e padrao visual da shell interna.
+4. Selecao de pontos filtrando lista, com limpar selecao e destaque visual.
+5. Validacao por perfil real em homologacao e producao interna.
+6. Documentacao de publicacao e monitoramento assistido.
