@@ -419,3 +419,24 @@ Cenarios confirmados:
 A validacao de privilegios finais confirmou menor privilegio para `geoportal_api_interna_prod`: `mod_auth.usuario_perfis` com `SELECT=t`, `INSERT=t`, table `UPDATE=f`, `UPDATE(ativo)=t` e `DELETE=f`; `mod_auth.permissoes` sem `INSERT`/`UPDATE`; `mod_auth.perfil_permissoes` sem `INSERT`/`UPDATE`. O `INSERT` em `usuario_perfis` permanece necessario para o endpoint ja existente de atribuicao de perfil, enquanto a desativacao logica acrescenta somente `UPDATE(ativo)`.
 
 Resultado: producao interna validada com sucesso e funcionalidade operacional no backend/API. UI administrativa para este CRUD complementar deve ser planejada separadamente, se houver necessidade futura.
+
+### Publicacao frontend - tela administrativa MVP de usuarios internos
+
+A tela administrativa MVP de usuarios internos foi publicada no commit `be3d2e7 Adiciona tela administrativa de usuarios internos`, depois do marco `acda7c0 Documenta validacao em producao da desativacao administrativa de perfis`.
+
+Escopo validado antes do commit: alteracoes somente no frontend interno (`geoportal-vite/src/internal-iluminacao-shell.js`, `geoportal-vite/src/internal-iluminacao-shell.css` e `geoportal-vite/src/internal-iluminacao-shell.test.js`). Nao houve backend novo, migration, banco, scripts, `.env`, Apache, NSSM, configuracao de servico, deploy de API ou restart da API.
+
+Validacoes locais registradas:
+
+- `npm.cmd test -- internal-iluminacao-shell.test.js`: 78 testes passaram;
+- `npm.cmd run build`: passou;
+- scanner de mojibake no JS: OK;
+- `git diff --check`: sem erros, apenas avisos LF/CRLF do Windows.
+
+A publicacao operacional foi manual: build local no PC de desenvolvimento, compactacao em `.rar`, envio ao servidor e extracao nas pastas estaticas corretas, sem build no servidor. A URL publicada foi `https://geoserver.amambai.ms.gov.br/interno/`.
+
+Validacao visual em producao interna com `admin.producao`: login OK, menu `Administração do Sistema` habilitado, tela `Administração` abrindo corretamente, busca/lista de usuarios aparecendo, usuarios reais visiveis, textos principais sem mojibake e layout administrativo melhorado.
+
+Funcionalidades cobertas pelo MVP: listagem de usuarios internos, pesquisa por nome/login/e-mail, selecao de usuario, detalhe basico, listagem de vinculos usuario/perfil, criacao de usuario, bloqueio, desbloqueio via `POST /api/internal/admin/users/{id}/unblock`, redefinicao de senha, atribuicao de perfil e desativacao logica de vinculo usuario/perfil. As chamadas mantem `credentials: include`; mutacoes mantem `X-Geoportal-Internal-Request: 1`; a tela nao usa `localStorage`, `sessionStorage` ou token armazenado; e as acoes continuam condicionadas por permissoes administrativas.
+
+Ressalvas de teste e escopo: o MVP usa RBAC por perfis e nao implementa permissoes individuais por usuario. Criar/editar perfis e permissoes diretamente pela UI, perfil Prefeito/gestor somente leitura, mapa operacional da manutencao e ordenamentos/filtros avancados da lista de chamados permanecem fora deste ciclo e devem ter planos/testes proprios.

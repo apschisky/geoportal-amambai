@@ -1,4 +1,4 @@
-﻿# Plano de Autenticacao e Autorizacao Interna
+# Plano de Autenticacao e Autorizacao Interna
 
 Este documento registra a arquitetura funcional de autorizacao do Geoportal Interno e o desenho conceitual dos endpoints internos protegidos do modulo de Iluminacao Publica. Ele nao cria codigo, migrations, endpoints, usuarios reais, perfis reais, permissoes reais, senhas, tokens ou configuracoes de ambiente.
 
@@ -900,3 +900,19 @@ Antes da operacao houve backup manual `C:\apps\geoportal-api\backups\manual\pre_
 No teste positivo controlado, o usuario ficticio `zz_profile_deactivate_prod_20260626094758` (`id=4`) recebeu o perfil `manutencao-iluminacao` (`perfil_id=2`) com `201`; a desativacao retornou `200`, deixou `ativo=false/f`, retornou `"ativo": false` no raw JSON da listagem e auditou `admin.user.remove_profile` com `entidade_id=4:2:global`, resultado `sucesso`. A repeticao retornou `409`.
 
 A matriz final de menor privilegio para `geoportal_api_interna_prod` manteve `DELETE=false` em `mod_auth.usuario_perfis`, `UPDATE` de tabela falso e apenas `UPDATE(ativo)=t`. O `INSERT=t` em `mod_auth.usuario_perfis` permanece necessario para o endpoint ja existente de atribuicao de perfil; a nova desativacao nao amplia para `DELETE` nem exige migration estrutural. O usuario real `manutencao.producao` nao foi alterado. A UI administrativa para este CRUD complementar permanece etapa futura separada.
+
+## Publicacao frontend - tela administrativa MVP de usuarios internos
+
+Marco registrado apos o commit de producao documentada `acda7c0 Documenta validacao em producao da desativacao administrativa de perfis`: o commit publicado no GitHub `be3d2e7 Adiciona tela administrativa de usuarios internos` entregou o MVP frontend da tela administrativa interna, acessivel pela URL `https://geoserver.amambai.ms.gov.br/interno/`.
+
+A implementacao deste marco ficou restrita ao frontend interno, nos arquivos `geoportal-vite/src/internal-iluminacao-shell.js`, `geoportal-vite/src/internal-iluminacao-shell.css` e `geoportal-vite/src/internal-iluminacao-shell.test.js`. Nao houve backend novo, migration, alteracao de banco, script, `.env`, Apache, NSSM, configuracao de servico ou restart da API. A publicacao seguiu fluxo operacional manual do usuario: build local no PC de desenvolvimento, compactacao em `.rar`, envio ao servidor e extracao nas pastas estaticas corretas, sem build no servidor e sem restart de `GeoportalAPIInternaProducao`.
+
+Validações locais antes do commit: `npm.cmd test -- internal-iluminacao-shell.test.js` com 78 testes aprovados, `npm.cmd run build` aprovado, scanner de mojibake no JS com resultado OK e `git diff --check` sem erros, mantendo apenas avisos esperados de LF/CRLF do Windows.
+
+Validacao visual em producao interna com `admin.producao`: login OK, menu `Administração do Sistema` habilitado, tela `Administração` abrindo corretamente, busca/lista de usuarios visivel, usuarios reais aparecendo, textos principais sem mojibake e layout administrativo melhorado.
+
+Funcionalidades publicadas no MVP: listar usuarios internos; pesquisar por nome, login e e-mail; selecionar usuario; visualizar detalhe basico; listar vinculos usuario/perfil; criar usuario; bloquear usuario; desbloquear usuario por `POST /api/internal/admin/users/{id}/unblock`; redefinir senha; atribuir perfil; e desativar vinculo usuario/perfil. A tela usa os endpoints administrativos ja existentes, condiciona acoes as permissoes administrativas do usuario autenticado, envia `credentials: include` nas chamadas, envia `X-Geoportal-Internal-Request: 1` nas mutacoes e nao usa `localStorage`, `sessionStorage` ou token armazenado.
+
+Ressalvas de autorizacao: o MVP continua usando RBAC por perfis e nao implementa permissoes individuais por usuario. Criar ou editar perfis e permissoes diretamente pela UI permanece fora deste marco. Perfil Prefeito/gestor somente leitura, mapa operacional da manutencao e ordenamentos/filtros avancados da lista de chamados devem ser planejados em ciclos separados.
+
+Proximos passos recomendados: monitoramento assistido do uso administrativo real, documentacao de fechamento do marco apos janela inicial de observacao, planejamento separado para perfil de leitura gerencial e planejamento separado para evolucoes operacionais do modulo de Iluminacao.

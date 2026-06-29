@@ -456,3 +456,17 @@ O teste positivo controlado criou o usuario ficticio `zz_profile_deactivate_prod
 O usuario ficticio foi bloqueado ao final (`BLOCK_STATUS=200`, `bloqueado=true`), com banco confirmando `bloqueado_ate=2126-06-02 09:49:52.1409-04`; o vinculo `manutencao-iluminacao` permaneceu `ativo=f`. O usuario real `manutencao.producao` nao foi alterado. Login sem campo `login`, com senha ficticia, retornou `422`, confirmando que autenticacao incompleta nao foi aceita. O raw JSON do vinculo inativo retornou `"ativo": false`, sem problema de contrato na listagem de vinculos inativos. O logout retornou `200` nos fluxos autenticados.
 
 Resultado: producao interna validada com sucesso e funcionalidade operacional no backend/API. A UI administrativa para este CRUD complementar, se existir como etapa futura, deve ser planejada separadamente. Proximo passo recomendado: monitoramento assistido e documentacao de fechamento do marco.
+
+## Marco de publicacao - tela administrativa MVP de usuarios internos
+
+O commit publicado no GitHub `be3d2e7 Adiciona tela administrativa de usuarios internos`, posterior ao marco `acda7c0 Documenta validacao em producao da desativacao administrativa de perfis`, publicou o MVP frontend da administracao interna de usuarios em `https://geoserver.amambai.ms.gov.br/interno/`.
+
+O marco nao criou backend, migration, banco, script, `.env`, Apache, NSSM ou configuracao de servico, e nao exigiu restart da API. A mudanca ficou limitada aos arquivos frontend `geoportal-vite/src/internal-iluminacao-shell.js`, `geoportal-vite/src/internal-iluminacao-shell.css` e `geoportal-vite/src/internal-iluminacao-shell.test.js`. A publicacao ocorreu por build local, compactacao `.rar`, envio ao servidor e extracao nas pastas estaticas corretas, sem build no servidor.
+
+As validacoes locais anteriores ao commit registradas para este marco foram: 78 testes aprovados em `npm.cmd test -- internal-iluminacao-shell.test.js`, build Vite aprovado, scanner de mojibake do JS aprovado e `git diff --check` sem erros, apenas com avisos LF/CRLF esperados no Windows.
+
+A validacao visual com `admin.producao` confirmou login OK, menu `Administração do Sistema` habilitado, tela `Administração` funcional, busca/lista de usuarios internos visivel, usuarios reais aparecendo, textos principais sem mojibake e layout administrativo ajustado.
+
+Do ponto de vista de hardening, a tela apenas consome endpoints administrativos ja existentes, preservando cookies de sessao com `credentials: include`, header mutavel `X-Geoportal-Internal-Request: 1` em mutacoes, acoes condicionadas por permissoes administrativas e ausencia de `localStorage`, `sessionStorage` ou token armazenado. O MVP trabalha com RBAC por perfis; permissoes individuais por usuario e CRUD visual de perfis/permissoes continuam fora deste marco.
+
+Ressalvas e proximos ciclos: planejar separadamente perfil Prefeito/gestor somente leitura, criacao/edicao de perfis e permissoes pela UI, mapa operacional da manutencao e ordenamentos/filtros avancados da lista de chamados. A recomendacao imediata e monitoramento assistido e registro de fechamento apos a primeira janela de uso real.
