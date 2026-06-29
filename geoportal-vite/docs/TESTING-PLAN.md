@@ -483,3 +483,19 @@ Fase 2: com GRANT temporario minimo para perfis e vinculos, `bootstrap_internal_
 Validacao final: `administrador-modulo-iluminacao` retornou `admin_permissoes=0`, `auth_me=1` e `prioridade=1`; `gestor-consulta-global` retornou `admin_permissoes=0` e `auth_me=1`. O dry-run final do administrador do modulo listou `internal.auth.me`, `iluminacao.dashboard.ler`, `iluminacao.solicitacoes.ler`, `iluminacao.solicitacoes.ver_historico`, `iluminacao.solicitacoes.ver_observacoes`, `iluminacao.solicitacoes.comentar`, `iluminacao.solicitacoes.atualizar_status`, `iluminacao.solicitacoes.atualizar_prioridade` e `iluminacao.solicitacoes.corrigir_status`.
 
 Estado final de privilegios de `geoportal_api_homolog`: `mod_auth.perfis` com `INSERT=false`, `UPDATE=false`; `mod_auth.perfil_permissoes` com `INSERT=false`, `UPDATE=false`, `DELETE=false`. Nao houve migration estrutural, endpoint novo, frontend, Apache, NSSM, `.env`, deploy ou restart de API.
+
+### Validacao funcional em producao interna - bootstraps RBAC de perfis de autorizacao
+
+Em 2026-06-29, com o servidor alinhado ao commit `a1abb6d Documenta homologacao dos perfis RBAC internos`, foram executados e validados em producao interna os bootstraps dos perfis `gestor-consulta-global` e `administrador-modulo-iluminacao` no banco `amambaiGis`, em `127.0.0.1:5434`, com `APP_ENV=producao`, `DATABASE_USER=geoportal_api_interna_prod` e `GEOPORTAL_INTERNAL_SESSION_COOKIE_SECURE=true`.
+
+Inventario previo: `administrador-interno-geoportal` (`id=1`) e `manutencao-iluminacao` (`id=2`) ja existiam; os novos perfis ainda nao existiam; `iluminacao.dashboard.ler` ja existia e estava ativa; todas as permissoes candidatas estavam existentes e ativas; `geoportal_api_interna_prod` tinha somente leitura nas tabelas de perfis/permissoes/vinculos de perfil-permissao, com escrita fechada.
+
+Backup manual previo: `C:\apps\geoportal-api\backups\manual\pre_bootstrap_perfis_autorizacao_amambaiGis_20260629_094941.sql`, tamanho `249145986` bytes. O dry-run `bootstrap_internal_authorization_profiles.py --profile all --dry-run` passou sem alterar dados.
+
+A execucao real usou GRANT temporario minimo: `INSERT` em `mod_auth.perfis`, `INSERT` em `mod_auth.perfil_permissoes` e `USAGE, SELECT` temporario na sequence de `mod_auth.perfis`, sem `UPDATE` e sem `DELETE`. O comando `bootstrap_internal_authorization_profiles.py --profile all` concluiu com sucesso e criou `gestor-consulta-global` (`id=3`, ativo) e `administrador-modulo-iluminacao` (`id=4`, ativo).
+
+Matriz validada: `gestor-consulta-global` recebeu `internal.auth.me`, `iluminacao.dashboard.ler`, `iluminacao.solicitacoes.ler`, `iluminacao.solicitacoes.ver_historico` e `iluminacao.solicitacoes.ver_observacoes`, sem `admin.*` e sem mutacoes. `administrador-modulo-iluminacao` recebeu `internal.auth.me`, `iluminacao.dashboard.ler`, `iluminacao.solicitacoes.ler`, `iluminacao.solicitacoes.ver_historico`, `iluminacao.solicitacoes.ver_observacoes`, `iluminacao.solicitacoes.comentar`, `iluminacao.solicitacoes.atualizar_status`, `iluminacao.solicitacoes.atualizar_prioridade` e `iluminacao.solicitacoes.corrigir_status`, sem `admin.*`.
+
+Validacao agregada: `admin_permissoes=0` para ambos, `auth_me=1` para ambos, `prioridade=1` para `administrador-modulo-iluminacao` e `prioridade=0` para `gestor-consulta-global`. Apos revogacao, os privilegios finais ficaram `perfis_insert=false`, `perfil_permissoes_insert=false`, `perfis_update=false`, `perfil_permissoes_update=false` e `perfil_permissoes_delete=false`.
+
+Nao houve migration estrutural, endpoint novo, frontend, Apache, NSSM, `.env`, deploy ou restart de API. Proximos testes recomendados dependem de atribuicao real pela tela administrativa: login com usuario gestor e usuario administrador de modulo, sem menu Administracao do Sistema, com dashboard/listas conforme permissoes, gestor sem acoes mutaveis e administrador do modulo com acoes do modulo sem administracao global.

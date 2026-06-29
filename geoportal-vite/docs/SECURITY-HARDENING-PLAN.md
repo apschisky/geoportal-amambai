@@ -480,3 +480,15 @@ A execucao seguiu menor privilegio: backup previo, GRANTs temporarios apenas par
 A validacao final confirmou `geoportal_api_homolog` sem `INSERT`/`UPDATE` em `mod_auth.perfis` e sem `INSERT`/`UPDATE`/`DELETE` em `mod_auth.perfil_permissoes`. Nao houve migration estrutural, endpoint, frontend, Apache, NSSM, `.env`, deploy ou restart de API.
 
 Producao interna deve repetir apenas apos autorizacao explicita, com backup, inventario, GRANT temporario minimo, bootstrap admin se a permissao `iluminacao.dashboard.ler` estiver ausente, bootstrap dos perfis, revogacao, validacao SQL e documentacao final.
+
+## Marco de producao interna - bootstraps RBAC dos perfis de autorizacao
+
+Os bootstraps dos perfis `gestor-consulta-global` e `administrador-modulo-iluminacao` foram executados e validados em producao interna com o servidor no commit `a1abb6d Documenta homologacao dos perfis RBAC internos`, banco `amambaiGis` em `127.0.0.1:5434`, `APP_ENV=producao`, `DATABASE_USER=geoportal_api_interna_prod` e cookie interno Secure ativo.
+
+A operacao seguiu menor privilegio: backup manual previo `C:\apps\geoportal-api\backups\manual\pre_bootstrap_perfis_autorizacao_amambaiGis_20260629_094941.sql` (`249145986` bytes), inventario previo, dry-run sem escrita, GRANT temporario minimo apenas para `INSERT` em `mod_auth.perfis` e `mod_auth.perfil_permissoes` e `USAGE, SELECT` na sequence de perfis, sem `UPDATE` e sem `DELETE`, execucao do bootstrap, revogacao imediata e validacao final dos privilegios fechados.
+
+Foram criados os perfis `gestor-consulta-global` (`id=3`) e `administrador-modulo-iluminacao` (`id=4`), ambos ativos e sem `admin.*`. A matriz final manteve o perfil de gestor somente leitura, e o administrador do modulo restrito a permissoes de Iluminacao, incluindo prioridade e correcao administrativa do modulo, sem administracao global. `manutencao-iluminacao` e `administrador-interno-geoportal` ja existentes nao foram redefinidos por esse bootstrap.
+
+Privilegios finais de `geoportal_api_interna_prod` permaneceram fechados: `perfis_insert=false`, `perfil_permissoes_insert=false`, `perfis_update=false`, `perfil_permissoes_update=false` e `perfil_permissoes_delete=false`. Nao houve migration estrutural, endpoint, frontend, Apache, NSSM, `.env`, deploy ou restart de API.
+
+Proximo controle recomendado: atribuir usuarios reais a esses perfis apenas pela tela administrativa, com criterio operacional e validacao de login. Gestores nao devem ver acoes mutaveis nem Administracao do Sistema; administradores de modulo devem ver acoes do modulo, mas nao administracao global.

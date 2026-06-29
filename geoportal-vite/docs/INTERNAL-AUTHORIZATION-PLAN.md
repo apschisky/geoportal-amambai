@@ -1042,3 +1042,21 @@ O dry-run final de `administrador-modulo-iluminacao` lista `internal.auth.me`, `
 Estado final de privilegios de `geoportal_api_homolog`: `mod_auth.perfis` com `INSERT=false` e `UPDATE=false`; `mod_auth.perfil_permissoes` com `INSERT=false`, `UPDATE=false` e `DELETE=false`. Nao houve migration estrutural, alteracao de endpoint, frontend, Apache, NSSM, `.env`, deploy ou restart de API.
 
 Proximo passo: planejar execucao equivalente em producao interna somente com validacao explicita. O roteiro recomendado e backup previo, inventario, GRANT temporario minimo, bootstrap admin se `iluminacao.dashboard.ler` estiver ausente, bootstrap dos perfis, revogacao imediata, validacao SQL e documentacao final.
+
+## Producao interna - bootstraps RBAC de consulta global e administracao de Iluminacao
+
+Execucao operacional registrada com o servidor alinhado ao commit `a1abb6d Documenta homologacao dos perfis RBAC internos`. A producao interna estava carregada com `APP_ENV=producao`, `DATABASE_USER=geoportal_api_interna_prod`, `GEOPORTAL_INTERNAL_SESSION_COOKIE_SECURE=true` e banco confirmado `amambaiGis` em `127.0.0.1:5434`.
+
+Inventario previo: ja existiam `administrador-interno-geoportal` (`id=1`) e `manutencao-iluminacao` (`id=2`); os novos perfis ainda nao existiam; `iluminacao.dashboard.ler` ja existia e estava ativa em producao; todas as permissoes necessarias estavam existentes e ativas. A role `geoportal_api_interna_prod` tinha `SELECT` em `mod_auth.perfis`, `mod_auth.permissoes` e `mod_auth.perfil_permissoes`, com `INSERT`, `UPDATE` e `DELETE` fechados.
+
+Backup manual previo: `C:\apps\geoportal-api\backups\manual\pre_bootstrap_perfis_autorizacao_amambaiGis_20260629_094941.sql`, tamanho `249145986` bytes. O dry-run `bootstrap_internal_authorization_profiles.py --profile all --dry-run` validou o plano sem alterar dados.
+
+O bootstrap real usou GRANT temporario minimo: `INSERT` em `mod_auth.perfis`, `INSERT` em `mod_auth.perfil_permissoes` e `USAGE, SELECT` temporario na sequence de `mod_auth.perfis`, sem `UPDATE` e sem `DELETE`. A execucao `bootstrap_internal_authorization_profiles.py --profile all` concluiu com sucesso.
+
+Perfis criados em producao: `gestor-consulta-global` (`id=3`, ativo) e `administrador-modulo-iluminacao` (`id=4`, ativo). A matriz validada confirmou `gestor-consulta-global` com `internal.auth.me`, `iluminacao.dashboard.ler`, `iluminacao.solicitacoes.ler`, `iluminacao.solicitacoes.ver_historico` e `iluminacao.solicitacoes.ver_observacoes`, sem `admin.*` e sem mutacoes. Confirmou tambem `administrador-modulo-iluminacao` com `internal.auth.me`, `iluminacao.dashboard.ler`, `iluminacao.solicitacoes.ler`, `iluminacao.solicitacoes.ver_historico`, `iluminacao.solicitacoes.ver_observacoes`, `iluminacao.solicitacoes.comentar`, `iluminacao.solicitacoes.atualizar_status`, `iluminacao.solicitacoes.atualizar_prioridade` e `iluminacao.solicitacoes.corrigir_status`, sem `admin.*`.
+
+Validacao agregada: `admin_permissoes=0` para ambos os perfis; `auth_me=1` para ambos; `prioridade=1` para `administrador-modulo-iluminacao`; `prioridade=0` para `gestor-consulta-global`. Apos a revogacao dos GRANTs temporarios, os privilegios finais ficaram fechados: `perfis_insert=false`, `perfil_permissoes_insert=false`, `perfis_update=false`, `perfil_permissoes_update=false` e `perfil_permissoes_delete=false`.
+
+Nao houve migration estrutural, alteracao de endpoint, frontend, Apache, NSSM, `.env`, deploy ou restart de API.
+
+Proximos passos: criar/atribuir usuarios reais a esses perfis pela tela administrativa, com criterio operacional. Para Prefeito/gestor, atribuir `gestor-consulta-global`; para responsavel do modulo Iluminacao, atribuir `administrador-modulo-iluminacao`. Apos atribuicao, validar login real: menu Administracao do Sistema nao deve aparecer para esses perfis; dashboard/listas devem respeitar permissoes; gestor nao deve ver acoes mutaveis; administrador do modulo deve ver acoes do modulo, mas nao administracao global. Planejar ciclos separados para mapa operacional por modulo, ordenacao/filtros avancados da lista e ajustes de UX por perfil, se necessario.
