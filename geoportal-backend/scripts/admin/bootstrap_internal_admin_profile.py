@@ -55,6 +55,11 @@ INITIAL_ADMIN_PERMISSIONS: tuple[AdminPermissionSeed, ...] = (
     ),
     AdminPermissionSeed(
         "iluminacao",
+        "dashboard.ler",
+        "Ler dashboard gerencial interno de solicitacoes de Iluminacao Publica.",
+    ),
+    AdminPermissionSeed(
+        "iluminacao",
         "solicitacoes.corrigir_status",
         "Corrigir administrativamente status de solicitacoes de Iluminacao Publica.",
     ),

@@ -459,3 +459,9 @@ Cobertura principal:
 - seeds nao contem senha, token, hash, `session_secret` ou `DATABASE_URL`.
 
 Validacoes locais executadas nesta rodada: teste novo isolado com 12 passed; testes focados de bootstrap novo, administrativo e manutencao com 36 passed.
+
+### Cobertura local - bootstrap administrativo da permissao iluminacao.dashboard.ler
+
+A correcao local do bootstrap administrativo adicionou cobertura para garantir que `bootstrap_internal_admin_profile.py` cria `iluminacao.dashboard.ler` quando ausente, mantem idempotencia quando existente, vincula a permissao ao perfil `administrador-interno-geoportal` pelo fluxo normal de `perfil_permissoes` e nao inclui a permissao no perfil `manutencao-iluminacao`.
+
+Os testes tambem preservam a garantia de que os novos perfis de autorizacao nao criam permissoes novas por conta propria: eles continuam falhando claramente quando uma permissao candidata, como `iluminacao.dashboard.ler`, nao existir previamente.

@@ -1010,3 +1010,11 @@ A implementacao reaproveita o repository de bootstrap de perfis, mas usa uma fun
 A matriz local ficou alinhada ao plano: `gestor-consulta-global` recebe apenas `internal.auth.me`, `iluminacao.dashboard.ler`, `iluminacao.solicitacoes.ler`, `iluminacao.solicitacoes.ver_historico` e `iluminacao.solicitacoes.ver_observacoes`; `administrador-modulo-iluminacao` recebe permissoes operacionais do modulo Iluminacao, incluindo prioridade e `iluminacao.solicitacoes.corrigir_status`, mas nenhuma permissao `admin.*`.
 
 Esta etapa nao executa bootstrap em banco real, nao cria migration, nao altera frontend, backend de rotas, Apache, NSSM, `.env`, servico ou producao. A execucao em homologacao/producao deve seguir ciclo separado com backup previo, dry-run, GRANTs temporarios quando necessarios, revogacao e validacao por `/api/internal/auth/me`.
+
+## Marco local - bootstrap administrativo da permissao iluminacao.dashboard.ler
+
+Correcao local de bootstrap: a permissao `iluminacao.dashboard.ler`, usada por `READ_INTERNAL_ILUMINACAO_DASHBOARD_PERMISSION`, passa a ser garantida pelo script administrativo `bootstrap_internal_admin_profile.py`. Essa permissao ja estava documentada como necessaria para o dashboard gerencial e deve permanecer vinculada ao perfil `administrador-interno-geoportal`.
+
+A correcao preserva o contrato do script `bootstrap_internal_authorization_profiles.py`: os novos perfis `gestor-consulta-global` e `administrador-modulo-iluminacao` continuam vinculando somente permissoes ja existentes. O perfil `manutencao-iluminacao` permanece sem `iluminacao.dashboard.ler` e sem `admin.*`.
+
+Nao ha migration estrutural, endpoint novo, frontend novo, SQL real, deploy, restart ou alteracao de banco real nesta etapa local.
