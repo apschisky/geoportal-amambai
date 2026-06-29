@@ -1024,3 +1024,21 @@ Nao ha migration estrutural, endpoint novo, frontend novo, SQL real, deploy, res
 Apos validacao em homologacao, foi registrada a necessidade de reforcar o bootstrap dos perfis de autorizacao para garantir que `administrador-modulo-iluminacao` receba `internal.auth.me`, assim como `gestor-consulta-global`. O script `bootstrap_internal_authorization_profiles.py` passou a validar internamente que todo plano de perfil deste bootstrap inclui `internal.auth.me` e nao inclui permissoes `admin.*`.
 
 A correcao preserva a decisao de seguranca: o bootstrap dos novos perfis nao cria permissoes novas, apenas vincula permissoes existentes/ativas; tambem nao altera `manutencao-iluminacao`, nao concede `admin.*` aos novos perfis e nao executa SQL real nesta etapa local.
+
+## Homologacao - bootstraps RBAC de consulta global e administracao de Iluminacao
+
+Homologacao operacional registrada no servidor alinhado ao commit `bd50401 Garante auth me nos perfis de autorizacao`. Antes dele, o commit `52aa123 Garante permissao do dashboard no bootstrap admin` corrigiu o bootstrap administrativo para garantir a permissao `iluminacao.dashboard.ler`, usada pelos endpoints do dashboard gerencial.
+
+A homologacao ocorreu no banco `amambaiGis_homologacao`, com backup manual previo `C:\apps\geoportal-api\backups\manual\pre_bootstrap_perfis_autorizacao_amambaiGis_homologacao_20260629_080619.sql`, tamanho `249012192` bytes. No servidor, os testes focados `tests/test_bootstrap_internal_admin_profile_admin.py`, `tests/test_bootstrap_internal_authorization_profiles_admin.py` e `tests/test_bootstrap_internal_maintenance_profile_admin.py` executaram 39 itens sem falha reportada.
+
+Fase 1: foram aplicados GRANTs temporarios em homologacao para `mod_auth.permissoes` e `mod_auth.perfil_permissoes`; em seguida foi executado `bootstrap_internal_admin_profile.py --login admin.homologacao`. A permissao `iluminacao.dashboard.ler` foi garantida, vinculada ao perfil `administrador-interno-geoportal` e nao vinculada ao perfil `manutencao-iluminacao`. Os GRANTs temporarios foram revogados ao final e os privilegios finais ficaram fechados.
+
+Fase 2: foram aplicados GRANTs temporarios minimos para criar perfis e vinculos; em seguida foi executado `bootstrap_internal_authorization_profiles.py --profile all`. Foram criados em homologacao os perfis `gestor-consulta-global` (`id=5`, ativo) e `administrador-modulo-iluminacao` (`id=6`, ativo). Ambos ficaram sem permissoes `admin.*`. Os GRANTs temporarios foram revogados e os privilegios finais ficaram fechados.
+
+Correcao posterior: a validacao identificou que `administrador-modulo-iluminacao` precisava garantir o vinculo `internal.auth.me`. O commit `bd50401` corrigiu bootstrap e teste; o rerun controlado em homologacao completou o vinculo faltante. A validacao final confirmou `administrador-modulo-iluminacao` com `admin_permissoes=0`, `auth_me=1` e `prioridade=1`, e `gestor-consulta-global` com `admin_permissoes=0` e `auth_me=1`.
+
+O dry-run final de `administrador-modulo-iluminacao` lista `internal.auth.me`, `iluminacao.dashboard.ler`, `iluminacao.solicitacoes.ler`, `iluminacao.solicitacoes.ver_historico`, `iluminacao.solicitacoes.ver_observacoes`, `iluminacao.solicitacoes.comentar`, `iluminacao.solicitacoes.atualizar_status`, `iluminacao.solicitacoes.atualizar_prioridade` e `iluminacao.solicitacoes.corrigir_status`.
+
+Estado final de privilegios de `geoportal_api_homolog`: `mod_auth.perfis` com `INSERT=false` e `UPDATE=false`; `mod_auth.perfil_permissoes` com `INSERT=false`, `UPDATE=false` e `DELETE=false`. Nao houve migration estrutural, alteracao de endpoint, frontend, Apache, NSSM, `.env`, deploy ou restart de API.
+
+Proximo passo: planejar execucao equivalente em producao interna somente com validacao explicita. O roteiro recomendado e backup previo, inventario, GRANT temporario minimo, bootstrap admin se `iluminacao.dashboard.ler` estiver ausente, bootstrap dos perfis, revogacao imediata, validacao SQL e documentacao final.

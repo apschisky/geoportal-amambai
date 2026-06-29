@@ -470,3 +470,13 @@ A validacao visual com `admin.producao` confirmou login OK, menu `Administraçã
 Do ponto de vista de hardening, a tela apenas consome endpoints administrativos ja existentes, preservando cookies de sessao com `credentials: include`, header mutavel `X-Geoportal-Internal-Request: 1` em mutacoes, acoes condicionadas por permissoes administrativas e ausencia de `localStorage`, `sessionStorage` ou token armazenado. O MVP trabalha com RBAC por perfis; permissoes individuais por usuario e CRUD visual de perfis/permissoes continuam fora deste marco.
 
 Ressalvas e proximos ciclos: planejar separadamente perfil Prefeito/gestor somente leitura, criacao/edicao de perfis e permissoes pela UI, mapa operacional da manutencao e ordenamentos/filtros avancados da lista de chamados. A recomendacao imediata e monitoramento assistido e registro de fechamento apos a primeira janela de uso real.
+
+## Marco de homologacao - bootstraps RBAC dos perfis de autorizacao
+
+O commit `bd50401 Garante auth me nos perfis de autorizacao` foi homologado em `amambaiGis_homologacao` para os perfis `gestor-consulta-global` e `administrador-modulo-iluminacao`, apos a correcao `52aa123 Garante permissao do dashboard no bootstrap admin` para `iluminacao.dashboard.ler`.
+
+A execucao seguiu menor privilegio: backup previo, GRANTs temporarios apenas para bootstrap, revogacao imediata e validacao final de privilegios fechados. Os perfis criados ficaram ativos, sem `admin.*`; `administrador-modulo-iluminacao` recebeu `internal.auth.me`, dashboard, leitura, historico, observacoes, comentario, status, prioridade e correcao administrativa do modulo; `gestor-consulta-global` recebeu apenas leitura/consulta gerencial. `manutencao-iluminacao` permaneceu sem `iluminacao.dashboard.ler` e sem privilegios administrativos.
+
+A validacao final confirmou `geoportal_api_homolog` sem `INSERT`/`UPDATE` em `mod_auth.perfis` e sem `INSERT`/`UPDATE`/`DELETE` em `mod_auth.perfil_permissoes`. Nao houve migration estrutural, endpoint, frontend, Apache, NSSM, `.env`, deploy ou restart de API.
+
+Producao interna deve repetir apenas apos autorizacao explicita, com backup, inventario, GRANT temporario minimo, bootstrap admin se a permissao `iluminacao.dashboard.ler` estiver ausente, bootstrap dos perfis, revogacao, validacao SQL e documentacao final.
