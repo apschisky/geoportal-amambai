@@ -1060,3 +1060,17 @@ Validacao agregada: `admin_permissoes=0` para ambos os perfis; `auth_me=1` para 
 Nao houve migration estrutural, alteracao de endpoint, frontend, Apache, NSSM, `.env`, deploy ou restart de API.
 
 Proximos passos: criar/atribuir usuarios reais a esses perfis pela tela administrativa, com criterio operacional. Para Prefeito/gestor, atribuir `gestor-consulta-global`; para responsavel do modulo Iluminacao, atribuir `administrador-modulo-iluminacao`. Apos atribuicao, validar login real: menu Administracao do Sistema nao deve aparecer para esses perfis; dashboard/listas devem respeitar permissoes; gestor nao deve ver acoes mutaveis; administrador do modulo deve ver acoes do modulo, mas nao administracao global. Planejar ciclos separados para mapa operacional por modulo, ordenacao/filtros avancados da lista e ajustes de UX por perfil, se necessario.
+
+## Validacao funcional em producao - usuarios reais dos novos perfis RBAC
+
+Apos a criacao e validacao em producao dos perfis `gestor-consulta-global` (`id=3`) e `administrador-modulo-iluminacao` (`id=4`), foram criados/vinculados pela UI administrativa usuarios reais para validar o comportamento funcional de RBAC: `sergio` (`usuario_id=6`) recebeu o perfil `gestor-consulta-global` com vinculo ativo; `seleido.admin` (`usuario_id=8`) recebeu o perfil `administrador-modulo-iluminacao` com vinculo ativo.
+
+A confirmacao SQL mostrou `sergio` ativo, sem bloqueio, com vinculo ativo ao perfil `gestor-consulta-global`; e `seleido.admin` ativo, sem bloqueio, com vinculo ativo ao perfil `administrador-modulo-iluminacao`.
+
+Validacao visual de `sergio`: login OK, Dashboard disponivel, Iluminacao Publica disponivel, Administracao do Sistema ausente, tela de solicitacoes exibida como `Somente leitura`, alteracao de prioridade indisponivel, criacao de observacao indisponivel e sem acoes mutaveis do modulo.
+
+Validacao visual de `seleido.admin`: login OK, Dashboard disponivel, Iluminacao Publica disponivel, Administracao do Sistema ausente, e permissoes operacionais do modulo disponiveis conforme perfil: observacoes, alteracao de fase/status, alteracao de prioridade e correcao administrativa/volta de fase.
+
+Resultado: a decisao de seguranca foi confirmada em uso real. A autorizacao efetiva permanece no backend/RBAC; menu e telas do frontend refletem permissoes; perfis operacionais nao recebem `admin.*`; e Administracao do Sistema permanece restrita ao administrador interno global. Nao houve migration, deploy, restart, alteracao de endpoint, frontend, Apache, NSSM ou `.env`.
+
+Proximos ciclos recomendados: mapa operacional por modulo, ordenacao/filtros avancados da lista de chamados, ajustes finos de UX por perfil se necessario, e uso destes perfis como modelo para futuros modulos internos.

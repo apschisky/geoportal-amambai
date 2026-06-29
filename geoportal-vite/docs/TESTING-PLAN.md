@@ -499,3 +499,15 @@ Matriz validada: `gestor-consulta-global` recebeu `internal.auth.me`, `iluminaca
 Validacao agregada: `admin_permissoes=0` para ambos, `auth_me=1` para ambos, `prioridade=1` para `administrador-modulo-iluminacao` e `prioridade=0` para `gestor-consulta-global`. Apos revogacao, os privilegios finais ficaram `perfis_insert=false`, `perfil_permissoes_insert=false`, `perfis_update=false`, `perfil_permissoes_update=false` e `perfil_permissoes_delete=false`.
 
 Nao houve migration estrutural, endpoint novo, frontend, Apache, NSSM, `.env`, deploy ou restart de API. Proximos testes recomendados dependem de atribuicao real pela tela administrativa: login com usuario gestor e usuario administrador de modulo, sem menu Administracao do Sistema, com dashboard/listas conforme permissoes, gestor sem acoes mutaveis e administrador do modulo com acoes do modulo sem administracao global.
+
+### Validacao funcional em producao - usuarios reais vinculados aos novos perfis RBAC
+
+Depois da criacao e validacao dos perfis `gestor-consulta-global` (`id=3`) e `administrador-modulo-iluminacao` (`id=4`) em producao interna, foram criados/vinculados pela UI administrativa os usuarios reais `sergio` (`usuario_id=6`) e `seleido.admin` (`usuario_id=8`). SQL de confirmacao mostrou ambos ativos, sem bloqueio e com vinculos ativos aos respectivos perfis.
+
+Para `sergio`, com perfil `gestor-consulta-global`, a validacao visual confirmou login OK, Dashboard disponivel, Iluminacao Publica disponivel, Administracao do Sistema ausente, tela de solicitacoes como `Somente leitura`, alteracao de prioridade indisponivel, criacao de observacao indisponivel e ausencia de acoes mutaveis do modulo.
+
+Para `seleido.admin`, com perfil `administrador-modulo-iluminacao`, a validacao visual confirmou login OK, Dashboard disponivel, Iluminacao Publica disponivel, Administracao do Sistema ausente e acoes operacionais do modulo disponiveis conforme perfil: observacoes, alteracao de fase/status, alteracao de prioridade e correcao administrativa/volta de fase.
+
+Resultado: o frontend refletiu as permissoes efetivas do backend/RBAC, perfis operacionais permaneceram sem `admin.*` e a Administracao do Sistema continuou restrita ao administrador interno global. Nao houve migration, deploy, restart, endpoint novo, frontend novo, Apache, NSSM ou `.env`.
+
+Proximos testes/ciclos: mapa operacional por modulo, ordenacao/filtros avancados da lista, ajustes finos de UX por perfil se necessario e replicacao do modelo para futuros modulos internos.

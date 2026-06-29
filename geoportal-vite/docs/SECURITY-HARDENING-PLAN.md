@@ -492,3 +492,11 @@ Foram criados os perfis `gestor-consulta-global` (`id=3`) e `administrador-modul
 Privilegios finais de `geoportal_api_interna_prod` permaneceram fechados: `perfis_insert=false`, `perfil_permissoes_insert=false`, `perfis_update=false`, `perfil_permissoes_update=false` e `perfil_permissoes_delete=false`. Nao houve migration estrutural, endpoint, frontend, Apache, NSSM, `.env`, deploy ou restart de API.
 
 Proximo controle recomendado: atribuir usuarios reais a esses perfis apenas pela tela administrativa, com criterio operacional e validacao de login. Gestores nao devem ver acoes mutaveis nem Administracao do Sistema; administradores de modulo devem ver acoes do modulo, mas nao administracao global.
+
+## Marco funcional de producao - usuarios reais nos novos perfis RBAC
+
+Os perfis `gestor-consulta-global` e `administrador-modulo-iluminacao` foram validados com usuarios reais criados/vinculados pela UI administrativa: `sergio` (`usuario_id=6`) como gestor de consulta global e `seleido.admin` (`usuario_id=8`) como administrador do modulo Iluminacao. A confirmacao SQL mostrou ambos ativos, sem bloqueio e com vinculos ativos.
+
+A validacao visual confirmou a segregacao esperada: `sergio` acessa Dashboard e Iluminacao Publica em modo somente leitura, sem acoes mutaveis; `seleido.admin` acessa Dashboard e Iluminacao Publica com acoes operacionais do modulo, incluindo observacoes, status, prioridade e correcao administrativa/volta de fase. Nenhum dos dois visualiza Administracao do Sistema.
+
+O resultado confirma que a autorizacao efetiva por backend/RBAC esta refletida pelo frontend e que perfis operacionais continuam sem `admin.*`. Nao houve migration, deploy, restart, alteracao de endpoint, frontend, Apache, NSSM ou `.env`.
