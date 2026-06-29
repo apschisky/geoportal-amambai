@@ -1018,3 +1018,9 @@ Correcao local de bootstrap: a permissao `iluminacao.dashboard.ler`, usada por `
 A correcao preserva o contrato do script `bootstrap_internal_authorization_profiles.py`: os novos perfis `gestor-consulta-global` e `administrador-modulo-iluminacao` continuam vinculando somente permissoes ja existentes. O perfil `manutencao-iluminacao` permanece sem `iluminacao.dashboard.ler` e sem `admin.*`.
 
 Nao ha migration estrutural, endpoint novo, frontend novo, SQL real, deploy, restart ou alteracao de banco real nesta etapa local.
+
+## Correcao local - internal.auth.me no administrador do modulo Iluminacao
+
+Apos validacao em homologacao, foi registrada a necessidade de reforcar o bootstrap dos perfis de autorizacao para garantir que `administrador-modulo-iluminacao` receba `internal.auth.me`, assim como `gestor-consulta-global`. O script `bootstrap_internal_authorization_profiles.py` passou a validar internamente que todo plano de perfil deste bootstrap inclui `internal.auth.me` e nao inclui permissoes `admin.*`.
+
+A correcao preserva a decisao de seguranca: o bootstrap dos novos perfis nao cria permissoes novas, apenas vincula permissoes existentes/ativas; tambem nao altera `manutencao-iluminacao`, nao concede `admin.*` aos novos perfis e nao executa SQL real nesta etapa local.

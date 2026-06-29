@@ -216,6 +216,13 @@ def test_iluminacao_admin_permissions_are_module_scoped_without_admin_permission
     assert not any(code.startswith("admin.") for code in codes)
 
 
+def test_all_profile_plans_include_internal_auth_and_no_admin_permissions() -> None:
+    for plan in profile_script.PROFILE_PLANS.values():
+        codes = permission_codes(plan.permissions)
+
+        assert "internal.auth.me" in codes
+        assert not any(code.startswith("admin.") for code in codes)
+
 def test_profile_names_and_keys_are_expected() -> None:
     assert profile_script.GESTOR_PROFILE_KEY == "gestor-consulta-global"
     assert profile_script.ILUMINACAO_ADMIN_PROFILE_KEY == "administrador-modulo-iluminacao"
@@ -285,6 +292,41 @@ def test_bootstrap_creates_profile_and_links_without_creating_permissions_or_use
     assert "DELETE" not in sql.upper()
     assert "UPDATE" not in sql.upper()
 
+
+def test_bootstrap_repairs_existing_iluminacao_admin_missing_internal_auth_link() -> None:
+    permission_rows = [{"id": index, "ativo": True} for index in range(201, 210)]
+    rows: list[dict[str, Any] | None] = [
+        *permission_rows,
+        {"id": 50, "ativo": True},
+        None,
+        {"inserted": 1},
+        *({"exists": 1} for _ in range(8)),
+    ]
+    engine = FakeEngine(rows)
+
+    response = bootstrap_profile_with_existing_permissions(
+        perfil_chave=profile_script.ILUMINACAO_ADMIN_PROFILE_KEY,
+        perfil_nome=profile_script.ILUMINACAO_ADMIN_PROFILE_NAME,
+        perfil_descricao=profile_script.ILUMINACAO_ADMIN_PROFILE_DESCRIPTION,
+        permissoes=profile_script.ILUMINACAO_ADMIN_PERMISSIONS,
+        engine=engine,
+    )
+
+    sql = sql_history(engine)
+    insert_params = [
+        params
+        for statement, params in zip(engine.connection.statements, engine.connection.params)
+        if "INSERT INTO mod_auth.perfil_permissoes" in str(statement)
+    ]
+
+    assert response.perfil_id == 50
+    assert response.permissao_ids == tuple(range(201, 210))
+    assert response.perfil_permissoes_criadas == 1
+    assert insert_params == [{"perfil_id": 50, "permissao_id": 201}]
+    assert "INSERT INTO mod_auth.perfil_permissoes" in sql
+    assert "INSERT INTO mod_auth.permissoes" not in sql
+    assert "DELETE" not in sql.upper()
+    assert "UPDATE" not in sql.upper()
 
 def test_bootstrap_fails_clearly_when_required_permission_does_not_exist() -> None:
     rows: list[dict[str, Any] | None] = [

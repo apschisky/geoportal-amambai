@@ -465,3 +465,7 @@ Validacoes locais executadas nesta rodada: teste novo isolado com 12 passed; tes
 A correcao local do bootstrap administrativo adicionou cobertura para garantir que `bootstrap_internal_admin_profile.py` cria `iluminacao.dashboard.ler` quando ausente, mantem idempotencia quando existente, vincula a permissao ao perfil `administrador-interno-geoportal` pelo fluxo normal de `perfil_permissoes` e nao inclui a permissao no perfil `manutencao-iluminacao`.
 
 Os testes tambem preservam a garantia de que os novos perfis de autorizacao nao criam permissoes novas por conta propria: eles continuam falhando claramente quando uma permissao candidata, como `iluminacao.dashboard.ler`, nao existir previamente.
+
+### Cobertura local - internal.auth.me no administrador do modulo Iluminacao
+
+A cobertura do bootstrap `bootstrap_internal_authorization_profiles.py` foi reforcada para falhar se algum plano de perfil desse script nao incluir `internal.auth.me` ou incluir permissao `admin.*`. Tambem foi adicionado teste de regressao simulando `administrador-modulo-iluminacao` ja existente com o vinculo de `internal.auth.me` ausente; o bootstrap deve criar exatamente esse vinculo em `perfil_permissoes`, sem criar permissao nova e sem usar `DELETE` ou `UPDATE`.

@@ -160,6 +160,18 @@ def _permission_codes(permissions: Sequence[AdminPermissionSeed]) -> tuple[str, 
     return tuple(f"{permission.modulo}.{permission.chave}" for permission in permissions)
 
 
+def _validate_profile_plan(plan: ProfileBootstrapPlan) -> None:
+    permission_codes = _permission_codes(plan.permissions)
+    if "internal.auth.me" not in permission_codes:
+        raise ValueError(f"profile plan missing internal.auth.me: {plan.key}")
+
+    admin_permissions = tuple(
+        permission for permission in permission_codes if permission.startswith("admin.")
+    )
+    if admin_permissions:
+        raise ValueError(f"profile plan must not include admin permissions: {plan.key}")
+
+
 def run(
     argv: Sequence[str] | None = None,
     *,
@@ -178,6 +190,8 @@ def run(
         return 2
 
     plans = _selected_plans(args.profile)
+    for plan in plans:
+        _validate_profile_plan(plan)
     if args.dry_run:
         print(
             "Dry-run validado. Nenhum perfil, permissao ou vinculo foi alterado.",
