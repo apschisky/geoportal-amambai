@@ -916,3 +916,87 @@ Funcionalidades publicadas no MVP: listar usuarios internos; pesquisar por nome,
 Ressalvas de autorizacao: o MVP continua usando RBAC por perfis e nao implementa permissoes individuais por usuario. Criar ou editar perfis e permissoes diretamente pela UI permanece fora deste marco. Perfil Prefeito/gestor somente leitura, mapa operacional da manutencao e ordenamentos/filtros avancados da lista de chamados devem ser planejados em ciclos separados.
 
 Proximos passos recomendados: monitoramento assistido do uso administrativo real, documentacao de fechamento do marco apos janela inicial de observacao, planejamento separado para perfil de leitura gerencial e planejamento separado para evolucoes operacionais do modulo de Iluminacao.
+
+## Plano de perfis RBAC - consulta global e administracao do modulo Iluminacao
+
+Este plano registra a proxima evolucao de autorizacao apos a publicacao da tela administrativa MVP de usuarios internos. A decisao permanece RBAC por perfis/permissoes; nao ha permissao individual solta por usuario nesta etapa. A autorizacao efetiva deve continuar no backend por `require_permission(...)`; o frontend pode ocultar modulos e botoes, mas nao e fronteira de seguranca.
+
+### Inventario documental de permissoes reais existentes
+
+Permissoes administrativas ja documentadas para o perfil `administrador-interno-geoportal`: `internal.auth.me`, `admin.usuarios.ler`, `admin.usuarios.criar`, `admin.usuarios.bloquear`, `admin.usuarios.redefinir_senha`, `admin.usuarios.atribuir_perfis`, `admin.usuarios.remover_perfis`, `admin.perfis.ler`, `admin.perfis.gerenciar`, `admin.permissoes.ler` e `admin.permissoes.gerenciar`. Ciclos posteriores tambem vincularam ao perfil administrativo permissoes operacionais/gerenciais do modulo Iluminacao, como `iluminacao.dashboard.ler`, `iluminacao.solicitacoes.ler`, `iluminacao.solicitacoes.ver_historico`, `iluminacao.solicitacoes.ver_observacoes`, `iluminacao.solicitacoes.comentar`, `iluminacao.solicitacoes.atualizar_status`, `iluminacao.solicitacoes.atualizar_prioridade` e `iluminacao.solicitacoes.corrigir_status`, conforme validacoes documentadas.
+
+O perfil real `manutencao-iluminacao` esta documentado com menor privilegio: `internal.auth.me`, `iluminacao.solicitacoes.ler`, `iluminacao.solicitacoes.ver_observacoes`, `iluminacao.solicitacoes.comentar` e `iluminacao.solicitacoes.atualizar_status`. Ele nao possui `admin.*`, nao possui `iluminacao.solicitacoes.atualizar_prioridade`, nao possui `iluminacao.solicitacoes.corrigir_status` e nao possui `iluminacao.dashboard.ler`.
+
+### Perfil proposto: `gestor-consulta-global`
+
+Finalidade: Prefeito, gestor geral ou auditor gerencial com acesso visual e estrategico, sem mutacoes. Para evitar acoplamento a cargo politico especifico, o nome tecnico recomendado e `gestor-consulta-global`; `prefeito-visualizacao` pode ser usado apenas como rotulo operacional se a prefeitura preferir.
+
+Matriz inicial para o estado atual do sistema:
+
+| Permissao | Incluir? | Motivo |
+|---|---:|---|
+| `internal.auth.me` | Sim | Permite sessao interna e leitura das permissoes efetivas. |
+| `iluminacao.dashboard.ler` | Sim | Libera dashboard gerencial read-only do modulo atualmente implementado. |
+| `iluminacao.solicitacoes.ler` | Sim | Libera lista, mapa/listagem operacional e detalhe basico de solicitacoes. |
+| `iluminacao.solicitacoes.ver_historico` | Sim | Permite auditoria visual/linha do tempo em leitura. |
+| `iluminacao.solicitacoes.ver_observacoes` | Sim, com revisao de LGPD | Observacoes internas podem conter dado sensivel; liberar apenas se o papel gerencial realmente precisar. |
+| `iluminacao.solicitacoes.comentar` | Nao | Mutacao operacional. |
+| `iluminacao.solicitacoes.atualizar_status` | Nao | Mutacao operacional. |
+| `iluminacao.solicitacoes.atualizar_prioridade` | Nao | Mutacao operacional. |
+| `iluminacao.solicitacoes.corrigir_status` | Nao | Correcao administrativa/volta de fase, sensivel e mutavel. |
+| Qualquer `admin.*` | Nao | Administracao do Sistema fica fora do papel gerencial de leitura. |
+
+Para acesso visual a todos os modulos, cada novo modulo deve expor permissoes equivalentes de leitura/dashboard antes de ser incluido nesse perfil. Nao criar uma permissao global ampla que burle os `require_permission` especificos dos endpoints. Se no futuro existir um dashboard geral realmente transversal, planejar permissao propria, por exemplo `dashboard.geral.ler`, com backend correspondente e dados agregados/sanitizados.
+
+### Perfil proposto: `administrador-modulo-iluminacao`
+
+Finalidade: responsavel operacional pelo modulo Iluminacao Publica, com capacidade de administrar chamados do modulo, mas sem acesso a Administracao do Sistema e sem poderes globais de usuarios/perfis/permissoes.
+
+Matriz inicial recomendada:
+
+| Permissao | Incluir? | Motivo |
+|---|---:|---|
+| `internal.auth.me` | Sim | Permite sessao interna e leitura das permissoes efetivas. |
+| `iluminacao.dashboard.ler` | Sim | Permite acompanhamento gerencial do modulo. |
+| `iluminacao.solicitacoes.ler` | Sim | Lista, mapa/listagem e detalhe. |
+| `iluminacao.solicitacoes.ver_historico` | Sim | Necessario para acompanhar trilha operacional e auditoria do modulo. |
+| `iluminacao.solicitacoes.ver_observacoes` | Sim | Necessario para contexto operacional do chamado. |
+| `iluminacao.solicitacoes.comentar` | Sim | Permite registrar orientacoes/observacoes internas. |
+| `iluminacao.solicitacoes.atualizar_status` | Sim | Fluxo operacional normal de fases/status. |
+| `iluminacao.solicitacoes.atualizar_prioridade` | Sim | Administrador do modulo pode classificar criticidade. |
+| `iluminacao.solicitacoes.corrigir_status` | Sim, se aprovado | Necessario para voltar/corrigir fase pelo endpoint `PATCH /api/internal/iluminacao/solicitacoes/{id}/status-correcao`; manter separado de status normal e auditar com justificativa forte. |
+| Qualquer `admin.*` | Nao | Nao deve acessar `Administracao do Sistema`, usuarios, perfis ou permissoes globais. |
+
+Distincao obrigatoria: `PATCH /api/internal/iluminacao/solicitacoes/{id}/status` usa `iluminacao.solicitacoes.atualizar_status` e representa o fluxo operacional normal. A volta/correcao de fase usa `PATCH /api/internal/iluminacao/solicitacoes/{id}/status-correcao`, exige `iluminacao.solicitacoes.corrigir_status`, header `X-Geoportal-Internal-Request: 1`, justificativa e regras de negocio mais restritas no backend.
+
+### Endpoints impactados
+
+Para `gestor-consulta-global`, validar apenas endpoints GET/read-only: `/api/internal/auth/me`, `GET /api/internal/iluminacao/dashboard/resumo`, `GET /api/internal/iluminacao/dashboard/ranking`, `GET /api/internal/iluminacao/dashboard/series`, `GET /api/internal/iluminacao/solicitacoes`, `GET /api/internal/iluminacao/solicitacoes/{id}`, `GET /api/internal/iluminacao/solicitacoes/{id}/historico` e, se aprovado pela revisao de LGPD, `GET /api/internal/iluminacao/solicitacoes/{id}/observacoes`.
+
+Para `administrador-modulo-iluminacao`, validar os mesmos endpoints de leitura e os endpoints mutaveis do modulo: `POST /api/internal/iluminacao/solicitacoes/{id}/observacoes`, `PATCH /api/internal/iluminacao/solicitacoes/{id}/status`, `PATCH /api/internal/iluminacao/solicitacoes/{id}/prioridade` e, se aprovado, `PATCH /api/internal/iluminacao/solicitacoes/{id}/status-correcao`. Nenhum endpoint `/api/internal/admin/*` deve ficar acessivel por esse perfil.
+
+### Necessidade de backend, migration e bootstrap
+
+Nao ha necessidade de backend novo para os endpoints ja documentados se a decisao for apenas criar/vincular perfis com permissoes existentes. Tambem nao ha necessidade de migration estrutural: os perfis, permissoes e vinculos sao dados operacionais em `mod_auth`.
+
+Ha necessidade de bootstrap administrativo controlado para criar os perfis, garantir permissoes existentes e vincular permissoes aos perfis sem duplicar registros. Se for criada uma permissao nova de dashboard geral transversal, isso deve entrar em etapa propria com contrato backend, testes e bootstrap; nao deve ser inventada apenas no banco ou no frontend.
+
+O bootstrap futuro deve seguir o padrao ja usado: `--dry-run`, login alvo explicito somente para atribuicao quando aplicavel, SQL parametrizado, idempotencia, sem `DELETE`, sem impressao de senha/token/cookie/hash/`DATABASE_URL`, backup previo em homologacao/producao, GRANTs temporarios apenas para bootstrap e revogacao apos validacao.
+
+### Riscos de seguranca
+
+Principais riscos: conceder `admin.*` ao administrador do modulo por conveniencia; misturar `manutencao-iluminacao` com permissoes elevadas de prioridade/correcao; liberar `iluminacao.solicitacoes.corrigir_status` sem trilha de auditoria e justificativa forte; expor observacoes internas para perfil gerencial sem revisao LGPD; criar permissao global ampla que contorne checks especificos; e confiar somente no frontend para esconder acoes.
+
+Mitigacoes: backend como autoridade; matriz explicita por perfil; validacao negativa com usuario sem permissao; auditoria de mutacoes; revisao periodica de acessos; e separacao entre `administrador-interno-geoportal`, `administrador-modulo-iluminacao`, `gestor-consulta-global` e `manutencao-iluminacao`.
+
+### Plano de validacao
+
+Local: ajustar bootstrap/testes em etapa futura, com testes unitarios do script idempotente e testes de permissao efetiva para os dois perfis; validar que o gestor recebe somente permissoes GET/read-only e que o administrador do modulo nao recebe `admin.*`.
+
+Homologacao: backup manual previo; dry-run; execucao real controlada; conferir `/api/internal/auth/me` para usuarios ficticios de cada perfil; validar 200 nos endpoints esperados, 403 nas mutacoes do gestor, 403 em `/api/internal/admin/*` para o administrador do modulo, e 403 para `status-correcao` se a permissao nao for aprovada nesse perfil.
+
+Producao interna: repetir o ciclo somente apos homologacao aprovada, com backup previo, inventario antes/depois, GRANTs temporarios revogados, harness de validacao do servico se houver restart de API em ciclo futuro, e validacao manual HTTPS sem registrar senha/token/cookie. Se apenas dados `mod_auth` forem alterados e o backend ja estiver publicado, nao deve haver migration nem alteracao de banco estrutural.
+
+### Documentos a atualizar no ciclo de implementacao
+
+Atualizar este documento com a decisao final dos nomes e matriz; `SECURITY-HARDENING-PLAN.md` com o marco de menor privilegio dos novos perfis; `TESTING-PLAN.md` com os cenarios locais/homologacao/producao; `SECURE-DEVELOPMENT-HARNESS.md` apenas se o harness passar a cobrir a validacao operacional; e documentos de deploy somente quando houver execucao real em homologacao/producao.
