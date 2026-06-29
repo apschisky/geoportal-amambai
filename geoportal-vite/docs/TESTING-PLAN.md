@@ -440,3 +440,22 @@ Validacao visual em producao interna com `admin.producao`: login OK, menu `Admin
 Funcionalidades cobertas pelo MVP: listagem de usuarios internos, pesquisa por nome/login/e-mail, selecao de usuario, detalhe basico, listagem de vinculos usuario/perfil, criacao de usuario, bloqueio, desbloqueio via `POST /api/internal/admin/users/{id}/unblock`, redefinicao de senha, atribuicao de perfil e desativacao logica de vinculo usuario/perfil. As chamadas mantem `credentials: include`; mutacoes mantem `X-Geoportal-Internal-Request: 1`; a tela nao usa `localStorage`, `sessionStorage` ou token armazenado; e as acoes continuam condicionadas por permissoes administrativas.
 
 Ressalvas de teste e escopo: o MVP usa RBAC por perfis e nao implementa permissoes individuais por usuario. Criar/editar perfis e permissoes diretamente pela UI, perfil Prefeito/gestor somente leitura, mapa operacional da manutencao e ordenamentos/filtros avancados da lista de chamados permanecem fora deste ciclo e devem ter planos/testes proprios.
+
+### Cobertura local - bootstrap de perfis RBAC de consulta global e administracao de Iluminacao
+
+A implementacao local do bootstrap dos perfis `gestor-consulta-global` e `administrador-modulo-iluminacao` adicionou testes focados em `geoportal-backend/tests/test_bootstrap_internal_authorization_profiles_admin.py`.
+
+Cobertura principal:
+
+- script executa a partir da raiz do backend sem `PYTHONPATH` externo;
+- `--dry-run` nao chama repository nem persiste alteracoes;
+- fluxo padrao processa os dois perfis e `--profile` processa perfil unico;
+- nomes/chaves dos perfis sao os esperados;
+- `gestor-consulta-global` nao recebe mutacoes nem `admin.*`;
+- `administrador-modulo-iluminacao` recebe apenas permissoes do modulo e nenhuma `admin.*`;
+- bootstrap e idempotente quando perfil/vinculos ja existem;
+- cria perfil e vinculos sem criar permissoes nem usuarios;
+- permissao candidata inexistente falha com erro claro;
+- seeds nao contem senha, token, hash, `session_secret` ou `DATABASE_URL`.
+
+Validacoes locais executadas nesta rodada: teste novo isolado com 12 passed; testes focados de bootstrap novo, administrativo e manutencao com 36 passed.

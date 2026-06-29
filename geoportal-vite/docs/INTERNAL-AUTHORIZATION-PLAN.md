@@ -1000,3 +1000,13 @@ Producao interna: repetir o ciclo somente apos homologacao aprovada, com backup 
 ### Documentos a atualizar no ciclo de implementacao
 
 Atualizar este documento com a decisao final dos nomes e matriz; `SECURITY-HARDENING-PLAN.md` com o marco de menor privilegio dos novos perfis; `TESTING-PLAN.md` com os cenarios locais/homologacao/producao; `SECURE-DEVELOPMENT-HARNESS.md` apenas se o harness passar a cobrir a validacao operacional; e documentos de deploy somente quando houver execucao real em homologacao/producao.
+
+## Marco local - bootstrap de perfis RBAC de consulta global e administracao de Iluminacao
+
+Implementacao local: foi adicionado o script `geoportal-backend/scripts/admin/bootstrap_internal_authorization_profiles.py` para garantir os perfis `gestor-consulta-global` e `administrador-modulo-iluminacao` com permissoes de aplicacao ja existentes. O script aceita `--dry-run` e `--profile`, e por padrao processa os dois perfis. Ele nao recebe senha, token ou segredo por linha de comando e nao atribui perfil a usuario automaticamente.
+
+A implementacao reaproveita o repository de bootstrap de perfis, mas usa uma funcao propria para vincular somente permissoes existentes. Permissoes ausentes ou inativas falham com erro claro, sem criar permissao nova, sem migration estrutural e sem alterar `administrador-interno-geoportal` ou `manutencao-iluminacao`.
+
+A matriz local ficou alinhada ao plano: `gestor-consulta-global` recebe apenas `internal.auth.me`, `iluminacao.dashboard.ler`, `iluminacao.solicitacoes.ler`, `iluminacao.solicitacoes.ver_historico` e `iluminacao.solicitacoes.ver_observacoes`; `administrador-modulo-iluminacao` recebe permissoes operacionais do modulo Iluminacao, incluindo prioridade e `iluminacao.solicitacoes.corrigir_status`, mas nenhuma permissao `admin.*`.
+
+Esta etapa nao executa bootstrap em banco real, nao cria migration, nao altera frontend, backend de rotas, Apache, NSSM, `.env`, servico ou producao. A execucao em homologacao/producao deve seguir ciclo separado com backup previo, dry-run, GRANTs temporarios quando necessarios, revogacao e validacao por `/api/internal/auth/me`.

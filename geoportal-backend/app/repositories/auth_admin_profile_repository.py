@@ -26,6 +26,13 @@ class BootstrapAdminProfileResult:
 
 
 @dataclass(frozen=True)
+class BootstrapProfilePermissionsResult:
+    perfil_id: int
+    permissao_ids: tuple[int, ...]
+    perfil_permissoes_criadas: int
+
+
+@dataclass(frozen=True)
 class InternalAdminProfileListItem:
     id: int
     chave: str
@@ -175,6 +182,35 @@ def _ensure_permission_with_connection(
     ).mappings().first()
     return _row_id(inserted)
 
+
+def _get_existing_permission_id_with_connection(
+    connection: Connection,
+    *,
+    modulo: str,
+    chave: str,
+) -> int:
+    normalized_modulo = _normalize_required(modulo, "modulo").lower()
+    normalized_chave = _normalize_required(chave, "chave").lower()
+
+    statement = text(
+        """
+        SELECT id, ativo
+        FROM mod_auth.permissoes
+        WHERE lower(modulo) = lower(:modulo)
+          AND lower(chave) = lower(:chave)
+        LIMIT 1
+        """
+    )
+    row = connection.execute(
+        statement,
+        {"modulo": normalized_modulo, "chave": normalized_chave},
+    ).mappings().first()
+    permission_code = f"{normalized_modulo}.{normalized_chave}"
+    if row is None:
+        raise ValueError(f"required permission was not found: {permission_code}")
+    if row["ativo"] is not True:
+        raise ValueError(f"required permission is inactive: {permission_code}")
+    return int(row["id"])
 
 def ensure_permission(
     *,
@@ -447,4 +483,47 @@ def bootstrap_internal_admin_profile(
         permissao_ids=permissao_ids,
         perfil_permissoes_criadas=profile_links_created,
         usuario_perfil_criado=user_profile_created,
+    )
+
+def bootstrap_profile_with_existing_permissions(
+    *,
+    perfil_chave: str,
+    perfil_nome: str,
+    perfil_descricao: str | None,
+    permissoes: Sequence[AdminPermissionSeed],
+    engine: Engine | None = None,
+) -> BootstrapProfilePermissionsResult:
+    if not permissoes:
+        raise ValueError("permissoes must not be empty")
+
+    db_engine = engine or get_engine()
+    with db_engine.begin() as connection:
+        permissao_ids = tuple(
+            _get_existing_permission_id_with_connection(
+                connection,
+                modulo=permissao.modulo,
+                chave=permissao.chave,
+            )
+            for permissao in permissoes
+        )
+        perfil_id = _ensure_profile_with_connection(
+            connection,
+            chave=perfil_chave,
+            nome=perfil_nome,
+            descricao=perfil_descricao,
+        )
+        profile_links_created = sum(
+            1
+            for permissao_id in permissao_ids
+            if _ensure_profile_permission_with_connection(
+                connection,
+                perfil_id=perfil_id,
+                permissao_id=permissao_id,
+            )
+        )
+
+    return BootstrapProfilePermissionsResult(
+        perfil_id=perfil_id,
+        permissao_ids=permissao_ids,
+        perfil_permissoes_criadas=profile_links_created,
     )
