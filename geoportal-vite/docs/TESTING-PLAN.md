@@ -583,3 +583,31 @@ Validacoes locais executadas: testes novos do mapa com 22 passed; conjunto relac
 Ajuste local planejado para o backend do mapa operacional: a colecao `GET /api/internal/iluminacao/mapa/ocorrencias` continua sem dados pessoais em qualquer perfil. O popup `GET /api/internal/iluminacao/mapa/ocorrencias/{solicitacao_id}/popup` passa a liberar `nome_solicitante` e `contato_solicitante` somente quando a sessao possui, alem de `iluminacao.solicitacoes.ler`, a permissao especifica `iluminacao.solicitacoes.ver_dados_contato`.
 
 Cobertura esperada/adicionada: rota de mapa sem nome/telefone mesmo com a permissao de contato; popup sem contato para leitura simples/gestor global; popup com contato para perfis que recebem a permissao; repository com SQL parametrizado por `:incluir_dados_contato`; service propagando a flag; bootstraps garantindo a nova permissao no admin global, manutencao e administrador do modulo, e mantendo `gestor-consulta-global` sem essa permissao e sem `admin.*`.
+
+### Validacao real em producao interna - mapa operacional e contato no popup
+
+Marco validado com codigo no servidor em `1020240 Adiciona permissao de contato no popup do mapa`; o backend base do mapa havia sido publicado em `3c8060f Implementa backend do mapa operacional de iluminacao`.
+
+Testes no servidor: mapa/popup com 29 passed; bootstraps RBAC com 39 passed.
+
+Homologacao da permissao `iluminacao.solicitacoes.ver_dados_contato`: bootstrap controlado aplicado, matriz final `administrador-interno-geoportal=1`, `administrador-modulo-iluminacao=1`, `manutencao-iluminacao=1`, `gestor-consulta-global=0`, GRANTs temporarios revogados e privilegios finais fechados. Observacao: o bootstrap de manutencao exige `--login`; foi usado `manutencao.homologacao`, e rodar sem `--login` nao aplica a alteracao.
+
+Producao interna: permissao aplicada e validada com a mesma matriz final. `admin_permissoes` permaneceu apenas no administrador global. Privilegios finais fechados: `permissoes_insert=false`, `perfil_permissoes_insert=false`, `permissoes_update=false`, `perfil_permissoes_update=false`, `perfil_permissoes_delete=false`.
+
+Restart controlado: ambiente `InternaProducao`, servico `GeoportalAPIInternaProducao`, porta 8003. Pos-restart: `/api/health` OK, `/api/version` OK com `environment=producao`, `/api/internal/auth/me` retornou 401 sem sessao.
+
+Validacao sem sessao: `GET /api/internal/iluminacao/mapa/ocorrencias` retornou 401; `GET /api/internal/iluminacao/mapa/ocorrencias/1/popup` retornou 401.
+
+Validacao autenticada por perfil:
+
+- `sergio` / `gestor-consulta-global`: `HAS_LER=True`, `HAS_VER_DADOS_CONTATO=False`; mapa total 24 e 10 itens na amostra; item do mapa sem nome, contato ou telefone; popup `IP-2026-000027` com `dados_pessoais_disponiveis=false`, nome e contato ausentes.
+- `seleido.admin` / `administrador-modulo-iluminacao`: `HAS_LER=True`, `HAS_VER_DADOS_CONTATO=True`; item do mapa sem nome, contato ou telefone; popup com `dados_pessoais_disponiveis=true`, nome e contato presentes.
+- `manutencao.producao`: `HAS_LER=True`, `HAS_VER_DADOS_CONTATO=True`; item do mapa sem nome, contato ou telefone; popup com `dados_pessoais_disponiveis=true`, nome e contato presentes.
+
+Resultado: a colecao de pontos nunca expos dados pessoais; nome e telefone apareceram somente no popup; o popup liberou contato apenas para perfis com `iluminacao.solicitacoes.ver_dados_contato`; `gestor-consulta-global` permaneceu sem dados pessoais de contato; e backend/RBAC foi a autoridade.
+
+Observacao operacional: em validacoes PowerShell, `POST /auth/logout` deve enviar `X-Geoportal-Internal-Request: 1`; sem esse header, logout pode retornar 403. Isso nao afetou a validacao do mapa/popup.
+
+Nao houve migration, alteracao de schema, frontend, Apache, NSSM, `.env`, SQL manual de `INSERT`/`UPDATE`/`DELETE`, deploy de frontend ou exposicao de secrets/cookies/tokens.
+
+Proximos testes/ciclos: implementar frontend do mapa operacional, popup visual semelhante ao Geoportal publico, selecao de pontos filtrando lista, botao para limpar selecao/filtros, validacao visual por perfil e documentacao/publicacao do frontend.

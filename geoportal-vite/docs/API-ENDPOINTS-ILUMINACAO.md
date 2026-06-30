@@ -1592,3 +1592,36 @@ Ambos exigem sessao interna autenticada e `iluminacao.solicitacoes.ler`. O endpo
 A consulta filtra `deleted_at IS NULL`, exige `geom IS NOT NULL`, valida latitude/longitude derivadas de `ST_Transform(geom, 4326)` dentro dos intervalos WGS84 e aceita filtros `status`, `prioridade`, `ativos`, `limit` e `offset`. Nao retorna `nome_solicitante`, `contato_solicitante`, telefone, e-mail, documento, descricao livre, observacoes de localizacao, ponto de referencia, historico ou `deleted_at`.
 
 Ajuste local posterior do popup: foi planejada/implementada a permissao explicita `iluminacao.solicitacoes.ver_dados_contato` para liberar nome e telefone/contato somente no endpoint `GET /api/internal/iluminacao/mapa/ocorrencias/{solicitacao_id}/popup`. A colecao `GET /api/internal/iluminacao/mapa/ocorrencias` permanece sem dados pessoais em qualquer perfil. O popup continua exigindo `iluminacao.solicitacoes.ler`; quando a sessao nao possui `iluminacao.solicitacoes.ver_dados_contato`, retorna `dados_pessoais_disponiveis=false` e campos de contato nulos. Quando a sessao possui a permissao especifica, retorna `dados_pessoais_disponiveis=true`, `nome_solicitante` e `contato_solicitante`, sem e-mail, documento, descricao livre, observacoes ou historico.
+
+## Producao interna - backend do mapa operacional e contato no popup
+
+Implantacao e validacao real registradas para o backend do mapa operacional interno de Iluminacao Publica. O codigo publicado no servidor estava no commit `1020240 Adiciona permissao de contato no popup do mapa`; o backend base do mapa havia sido implementado antes em `3c8060f Implementa backend do mapa operacional de iluminacao`.
+
+Endpoints internos validados:
+
+- `GET /api/internal/iluminacao/mapa/ocorrencias`;
+- `GET /api/internal/iluminacao/mapa/ocorrencias/{solicitacao_id}/popup`.
+
+Testes no servidor: mapa/popup com 29 passed; bootstraps RBAC relacionados com 39 passed.
+
+Homologacao: a permissao `iluminacao.solicitacoes.ver_dados_contato` foi aplicada por bootstrap controlado. A matriz final confirmou `administrador-interno-geoportal=1`, `administrador-modulo-iluminacao=1`, `manutencao-iluminacao=1` e `gestor-consulta-global=0`. Os GRANTs temporarios foram revogados e os privilegios finais ficaram fechados. Observacao operacional: o bootstrap de manutencao exige `--login`; foi usado `manutencao.homologacao`. Rodar o script sem `--login` nao aplica a alteracao ao perfil de manutencao.
+
+Producao interna: a permissao foi aplicada e validada com a mesma matriz final (`administrador-interno-geoportal=1`, `administrador-modulo-iluminacao=1`, `manutencao-iluminacao=1`, `gestor-consulta-global=0`). `admin_permissoes` permaneceu apenas no administrador global. Apos revogacao dos GRANTs temporarios, os privilegios finais ficaram fechados: `permissoes_insert=false`, `perfil_permissoes_insert=false`, `permissoes_update=false`, `perfil_permissoes_update=false` e `perfil_permissoes_delete=false`.
+
+Houve restart controlado do ambiente `InternaProducao`, servico `GeoportalAPIInternaProducao`, porta `8003`, para carregar o codigo publicado. A validacao pos-restart confirmou `/api/health` OK, `/api/version` OK com `environment=producao` e `/api/internal/auth/me` retornando 401 sem sessao.
+
+Validacao sem sessao: `/api/internal/iluminacao/mapa/ocorrencias` retornou 401 e `/api/internal/iluminacao/mapa/ocorrencias/1/popup` retornou 401.
+
+Validacao autenticada por perfil:
+
+- `sergio` / `gestor-consulta-global`: `HAS_LER=True`, `HAS_VER_DADOS_CONTATO=False`; mapa com total 24 e 10 itens na amostra; item do mapa sem nome, contato ou telefone; popup `IP-2026-000027` com `dados_pessoais_disponiveis=false`, nome e contato ausentes.
+- `seleido.admin` / `administrador-modulo-iluminacao`: `HAS_LER=True`, `HAS_VER_DADOS_CONTATO=True`; item do mapa sem nome, contato ou telefone; popup com `dados_pessoais_disponiveis=true`, nome e contato presentes.
+- `manutencao.producao`: `HAS_LER=True`, `HAS_VER_DADOS_CONTATO=True`; item do mapa sem nome, contato ou telefone; popup com `dados_pessoais_disponiveis=true`, nome e contato presentes.
+
+Resultado de seguranca: a colecao de pontos do mapa nunca expoe dados pessoais; nome e telefone aparecem somente no popup; o popup so libera contato para perfis com `iluminacao.solicitacoes.ver_dados_contato`; `gestor-consulta-global` permanece sem dados pessoais de contato; e o backend/RBAC permanece como autoridade.
+
+Observacao operacional: em validacoes PowerShell, `POST /auth/logout` deve incluir o header `X-Geoportal-Internal-Request: 1`; sem esse header, o logout pode retornar 403. Isso nao afetou a validacao do mapa/popup.
+
+Nao houve migration, alteracao de schema, alteracao de frontend, alteracao de Apache/NSSM/.env, SQL manual de `INSERT`/`UPDATE`/`DELETE`, nem exposicao de secrets, cookies ou tokens.
+
+Proximos passos: implementar o frontend do mapa operacional, popup visual semelhante ao Geoportal publico, selecao de pontos filtrando lista, botao para limpar selecao/filtros, validacao visual por perfil e documentacao/publicacao do frontend.

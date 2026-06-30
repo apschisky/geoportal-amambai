@@ -1121,3 +1121,26 @@ Fases recomendadas:
 A implementacao local do backend read-only do mapa operacional reutiliza `iluminacao.solicitacoes.ler`, conforme decisao documental de fase inicial. Nenhuma permissao nova foi criada, nenhum perfil foi alterado e nenhum `admin.*` foi concedido por causa do mapa.
 
 A colecao de pontos e o popup sao autorizados pelo backend. A evolucao local introduz a permissao explicita `iluminacao.solicitacoes.ver_dados_contato` para dados pessoais no popup do mapa. `gestor-consulta-global` permanece sem essa permissao; `manutencao-iluminacao`, `administrador-modulo-iluminacao` e `administrador-interno-geoportal` podem recebe-la por bootstrap controlado. A colecao de pontos continua sem nome, telefone, e-mail, documento, descricao livre, observacoes ou historico em qualquer perfil. O popup retorna nome e telefone/contato somente quando a sessao autenticada tambem possui `iluminacao.solicitacoes.ver_dados_contato`; caso contrario, retorna `dados_pessoais_disponiveis=false` e contato nulo.
+
+## Producao interna - permissao de contato no popup do mapa
+
+Marco operacional registrado com codigo publicado no servidor em `1020240 Adiciona permissao de contato no popup do mapa`, depois do backend base `3c8060f Implementa backend do mapa operacional de iluminacao`.
+
+A permissao `iluminacao.solicitacoes.ver_dados_contato` foi homologada e aplicada em producao por bootstrap controlado, sem permissao individual solta por usuario. A matriz final ficou:
+
+| Perfil | `iluminacao.solicitacoes.ver_dados_contato` |
+| --- | ---: |
+| `administrador-interno-geoportal` | 1 |
+| `administrador-modulo-iluminacao` | 1 |
+| `manutencao-iluminacao` | 1 |
+| `gestor-consulta-global` | 0 |
+
+A regra validada preserva a separacao LGPD/RBAC: `iluminacao.solicitacoes.ler` autoriza mapa e popup operacional; `iluminacao.solicitacoes.ver_dados_contato` libera somente nome e telefone/contato no popup sob demanda. A colecao de pontos `GET /api/internal/iluminacao/mapa/ocorrencias` continua sem nome, contato, telefone, e-mail, documento, descricao livre, observacoes ou historico em todos os perfis.
+
+Validacao real em producao interna confirmou: `sergio` (`gestor-consulta-global`) possui leitura, nao possui contato e recebeu popup com `dados_pessoais_disponiveis=false`; `seleido.admin` (`administrador-modulo-iluminacao`) e `manutencao.producao` possuem leitura e contato, receberam popup com `dados_pessoais_disponiveis=true`, nome e contato presentes. Em todos os casos, a amostra da colecao de mapa nao trouxe nome, contato ou telefone.
+
+Em homologacao e producao, GRANTs temporarios foram revogados apos os bootstraps. Em producao, os privilegios finais ficaram fechados para escrita: `permissoes_insert=false`, `perfil_permissoes_insert=false`, `permissoes_update=false`, `perfil_permissoes_update=false` e `perfil_permissoes_delete=false`. `admin_permissoes` permaneceu apenas no administrador global.
+
+Nao houve migration, alteracao de schema, frontend, Apache, NSSM, `.env`, SQL manual de escrita, deploy de frontend ou exposicao de segredo/cookie/token. Houve restart controlado apenas do servico interno de API para carregar o codigo publicado, com `/api/health` OK, `/api/version` em `environment=producao` e `/api/internal/auth/me` retornando 401 sem sessao.
+
+Proximos passos de autorizacao/UX: o frontend do mapa deve refletir a resposta do backend, sem decidir contato por perfil localmente; implementar popup visual, selecao de pontos filtrando lista, limpar selecao/filtros e validacao visual por perfil antes da publicacao do frontend.
