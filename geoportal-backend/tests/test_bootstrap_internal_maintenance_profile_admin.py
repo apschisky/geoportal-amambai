@@ -172,6 +172,7 @@ def test_maintenance_permissions_are_minimal_and_do_not_include_admin_or_priorit
         "internal.auth.me",
         "iluminacao.solicitacoes.ler",
         "iluminacao.solicitacoes.ver_observacoes",
+        "iluminacao.solicitacoes.ver_dados_contato",
         "iluminacao.solicitacoes.comentar",
         "iluminacao.solicitacoes.atualizar_status",
     }
@@ -195,8 +196,8 @@ def test_script_rejects_password_cli_argument_without_printing_it() -> None:
 
 
 def test_bootstrap_is_idempotent_when_records_already_exist() -> None:
-    permission_rows = [{"id": index, "ativo": True} for index in range(101, 106)]
-    profile_permission_rows = [{"exists": 1} for _ in range(5)]
+    permission_rows = [{"id": index, "ativo": True} for index in range(101, 107)]
+    profile_permission_rows = [{"exists": 1} for _ in range(6)]
     rows: list[dict[str, Any] | None] = [
         {"id": 8},
         *permission_rows,
@@ -219,7 +220,7 @@ def test_bootstrap_is_idempotent_when_records_already_exist() -> None:
 
     assert response.usuario_id == 8
     assert response.perfil_id == 30
-    assert response.permissao_ids == tuple(range(101, 106))
+    assert response.permissao_ids == tuple(range(101, 107))
     assert response.perfil_permissoes_criadas == 0
     assert response.usuario_perfil_criado is False
     assert "INSERT INTO" not in sql

@@ -63,6 +63,11 @@ INITIAL_ADMIN_PERMISSIONS: tuple[AdminPermissionSeed, ...] = (
         "solicitacoes.corrigir_status",
         "Corrigir administrativamente status de solicitacoes de Iluminacao Publica.",
     ),
+    AdminPermissionSeed(
+        "iluminacao",
+        "solicitacoes.ver_dados_contato",
+        "Ver nome e telefone do solicitante em contexto operacional interno de Iluminacao Publica.",
+    ),
 )
 
 

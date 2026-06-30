@@ -297,13 +297,16 @@ def listar_mapa_ocorrencias_internas(
 
 def obter_mapa_ocorrencia_popup_interno(
     solicitacao_id: int,
+    *,
+    incluir_dados_contato: bool = False,
 ) -> IluminacaoMapaOcorrenciaPopupResponse:
     if solicitacao_id < 1:
         raise ValueError("solicitacao_id must be greater than or equal to 1")
 
     try:
         popup = iluminacao_repository.get_mapa_ocorrencia_popup_interno(
-            solicitacao_id
+            solicitacao_id,
+            incluir_dados_contato=incluir_dados_contato,
         )
     except (SQLAlchemyError, RuntimeError) as exc:
         raise DatabaseUnavailableError(DATABASE_UNAVAILABLE_MESSAGE) from exc

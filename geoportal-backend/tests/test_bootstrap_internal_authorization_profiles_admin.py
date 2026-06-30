@@ -193,6 +193,7 @@ def test_gestor_permissions_are_read_only_and_without_admin_permissions() -> Non
         "iluminacao.solicitacoes.ver_observacoes",
     }
     assert not any(code.startswith("admin.") for code in codes)
+    assert "iluminacao.solicitacoes.ver_dados_contato" not in codes
     assert "iluminacao.solicitacoes.comentar" not in codes
     assert "iluminacao.solicitacoes.atualizar_status" not in codes
     assert "iluminacao.solicitacoes.atualizar_prioridade" not in codes
@@ -208,6 +209,7 @@ def test_iluminacao_admin_permissions_are_module_scoped_without_admin_permission
         "iluminacao.solicitacoes.ler",
         "iluminacao.solicitacoes.ver_historico",
         "iluminacao.solicitacoes.ver_observacoes",
+        "iluminacao.solicitacoes.ver_dados_contato",
         "iluminacao.solicitacoes.comentar",
         "iluminacao.solicitacoes.atualizar_status",
         "iluminacao.solicitacoes.atualizar_prioridade",
@@ -263,12 +265,12 @@ def test_bootstrap_with_existing_permissions_is_idempotent() -> None:
 
 
 def test_bootstrap_creates_profile_and_links_without_creating_permissions_or_users() -> None:
-    permission_rows = [{"id": index, "ativo": True} for index in range(201, 210)]
+    permission_rows = [{"id": index, "ativo": True} for index in range(201, 211)]
     rows: list[dict[str, Any] | None] = [
         *permission_rows,
         None,
         {"id": 50},
-        *(None for _ in range(9)),
+        *(None for _ in range(10)),
     ]
     engine = FakeEngine(rows)
 
@@ -283,8 +285,8 @@ def test_bootstrap_creates_profile_and_links_without_creating_permissions_or_use
     sql = sql_history(engine)
 
     assert response.perfil_id == 50
-    assert response.permissao_ids == tuple(range(201, 210))
-    assert response.perfil_permissoes_criadas == 9
+    assert response.permissao_ids == tuple(range(201, 211))
+    assert response.perfil_permissoes_criadas == 10
     assert "INSERT INTO mod_auth.perfis" in sql
     assert "INSERT INTO mod_auth.perfil_permissoes" in sql
     assert "INSERT INTO mod_auth.permissoes" not in sql
@@ -294,13 +296,13 @@ def test_bootstrap_creates_profile_and_links_without_creating_permissions_or_use
 
 
 def test_bootstrap_repairs_existing_iluminacao_admin_missing_internal_auth_link() -> None:
-    permission_rows = [{"id": index, "ativo": True} for index in range(201, 210)]
+    permission_rows = [{"id": index, "ativo": True} for index in range(201, 211)]
     rows: list[dict[str, Any] | None] = [
         *permission_rows,
         {"id": 50, "ativo": True},
         None,
         {"inserted": 1},
-        *({"exists": 1} for _ in range(8)),
+        *({"exists": 1} for _ in range(9)),
     ]
     engine = FakeEngine(rows)
 
@@ -320,7 +322,7 @@ def test_bootstrap_repairs_existing_iluminacao_admin_missing_internal_auth_link(
     ]
 
     assert response.perfil_id == 50
-    assert response.permissao_ids == tuple(range(201, 210))
+    assert response.permissao_ids == tuple(range(201, 211))
     assert response.perfil_permissoes_criadas == 1
     assert insert_params == [{"perfil_id": 50, "permissao_id": 201}]
     assert "INSERT INTO mod_auth.perfil_permissoes" in sql

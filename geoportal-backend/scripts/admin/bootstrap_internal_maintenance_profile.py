@@ -41,6 +41,11 @@ MAINTENANCE_PERMISSIONS: tuple[AdminPermissionSeed, ...] = (
     ),
     AdminPermissionSeed(
         "iluminacao",
+        "solicitacoes.ver_dados_contato",
+        "Ver nome e telefone do solicitante em contexto operacional interno de Iluminacao Publica.",
+    ),
+    AdminPermissionSeed(
+        "iluminacao",
         "solicitacoes.comentar",
         "Registrar observacao interna em solicitacoes de Iluminacao Publica.",
     ),

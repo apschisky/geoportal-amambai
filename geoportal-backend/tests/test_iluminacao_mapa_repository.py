@@ -1,4 +1,4 @@
-﻿from datetime import datetime
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy.sql.elements import TextClause
@@ -31,6 +31,8 @@ def mapa_row(**overrides: Any) -> dict[str, Any]:
         "atualizado_em": UPDATED_AT,
         "finalizado_em": None,
         "dados_pessoais_disponiveis": False,
+        "nome_solicitante": None,
+        "contato_solicitante": None,
         **overrides,
     }
 
@@ -76,7 +78,9 @@ class FakeConnection:
         self.statements.append(statement)
         self.params_history.append(params)
         if "COUNT(*) AS total" in str(statement):
-            row_count = len(self.row) if isinstance(self.row, list) else int(self.row is not None)
+            row_count = (
+                len(self.row) if isinstance(self.row, list) else int(self.row is not None)
+            )
             return FakeResult({"total": row_count})
         return FakeResult(self.row)
 
@@ -202,7 +206,7 @@ def test_list_mapa_ocorrencias_rejects_invalid_pagination_without_sql() -> None:
     assert engine.connection.statement is None
 
 
-def test_get_mapa_ocorrencia_popup_uses_conservative_columns() -> None:
+def test_get_mapa_ocorrencia_popup_uses_contact_permission_gate_by_default() -> None:
     engine = FakeEngine(mapa_row())
 
     response = get_mapa_ocorrencia_popup_interno(10, engine=engine)
@@ -210,17 +214,22 @@ def test_get_mapa_ocorrencia_popup_uses_conservative_columns() -> None:
     assert response is not None
     assert response.protocolo == "IP-2026-000010"
     assert response.dados_pessoais_disponiveis is False
-    assert engine.connection.params == {"solicitacao_id": 10}
+    assert response.nome_solicitante is None
+    assert response.contato_solicitante is None
+    assert engine.connection.params == {
+        "solicitacao_id": 10,
+        "incluir_dados_contato": False,
+    }
     sql = str(engine.connection.statement)
     assert "id = :solicitacao_id" in sql
     assert "deleted_at IS NULL" in sql
     assert "geom IS NOT NULL" in sql
     assert "ST_Y(ST_Transform(geom, 4326)) BETWEEN -90 AND 90" in sql
     assert "ST_X(ST_Transform(geom, 4326)) BETWEEN -180 AND 180" in sql
-    assert "false AS dados_pessoais_disponiveis" in sql
+    assert "CAST(:incluir_dados_contato AS boolean) AS dados_pessoais_disponiveis" in sql
+    assert "THEN nome_solicitante" in sql
+    assert "THEN contato_solicitante" in sql
     for forbidden in (
-        "nome_solicitante",
-        "contato_solicitante",
         "descricao",
         "observacoes_localizacao",
         "ponto_referencia",
@@ -230,6 +239,31 @@ def test_get_mapa_ocorrencia_popup_uses_conservative_columns() -> None:
         "IP-2026-000010",
     ):
         assert forbidden not in sql
+
+
+def test_get_mapa_ocorrencia_popup_returns_contact_when_allowed() -> None:
+    engine = FakeEngine(
+        mapa_row(
+            dados_pessoais_disponiveis=True,
+            nome_solicitante="Maria Operacional",
+            contato_solicitante="67999990000",
+        )
+    )
+
+    response = get_mapa_ocorrencia_popup_interno(
+        10,
+        incluir_dados_contato=True,
+        engine=engine,
+    )
+
+    assert response is not None
+    assert response.dados_pessoais_disponiveis is True
+    assert response.nome_solicitante == "Maria Operacional"
+    assert response.contato_solicitante == "67999990000"
+    assert engine.connection.params == {
+        "solicitacao_id": 10,
+        "incluir_dados_contato": True,
+    }
 
 
 def test_get_mapa_ocorrencia_popup_returns_none_when_not_found() -> None:

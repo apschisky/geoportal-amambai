@@ -1,4 +1,4 @@
-﻿from datetime import datetime
+from datetime import datetime
 
 import pytest
 from sqlalchemy.exc import SQLAlchemyError
@@ -36,10 +36,15 @@ def mapa_item() -> IluminacaoMapaOcorrenciaItem:
     )
 
 
-def popup_item() -> IluminacaoMapaOcorrenciaPopupResponse:
+def popup_item(
+    *,
+    incluir_dados_contato: bool = False,
+) -> IluminacaoMapaOcorrenciaPopupResponse:
     return IluminacaoMapaOcorrenciaPopupResponse(
         **mapa_item().model_dump(),
-        dados_pessoais_disponiveis=False,
+        dados_pessoais_disponiveis=incluir_dados_contato,
+        nome_solicitante="Maria Operacional" if incluir_dados_contato else None,
+        contato_solicitante="67999990000" if incluir_dados_contato else None,
     )
 
 
@@ -115,13 +120,22 @@ def test_listar_mapa_ocorrencias_internas_converts_database_error_to_safe_error(
     assert "nome_solicitante" not in message
 
 
-def test_obter_mapa_ocorrencia_popup_interno_returns_conservative_popup(
+def test_obter_mapa_ocorrencia_popup_interno_omits_contact_by_default(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    calls: dict[str, object] = {}
+
+    def fake_get_popup(solicitacao_id: int, **kwargs: object):
+        calls["solicitacao_id"] = solicitacao_id
+        calls.update(kwargs)
+        return popup_item(
+            incluir_dados_contato=bool(kwargs["incluir_dados_contato"]),
+        )
+
     monkeypatch.setattr(
         iluminacao_service.iluminacao_repository,
         "get_mapa_ocorrencia_popup_interno",
-        lambda solicitacao_id: popup_item(),
+        fake_get_popup,
     )
 
     response = iluminacao_service.obter_mapa_ocorrencia_popup_interno(10)
@@ -129,8 +143,38 @@ def test_obter_mapa_ocorrencia_popup_interno_returns_conservative_popup(
     assert response.id == 10
     assert response.protocolo == "IP-2026-000010"
     assert response.dados_pessoais_disponiveis is False
-    assert not hasattr(response, "nome_solicitante")
-    assert not hasattr(response, "contato_solicitante")
+    assert response.nome_solicitante is None
+    assert response.contato_solicitante is None
+    assert calls == {"solicitacao_id": 10, "incluir_dados_contato": False}
+
+
+def test_obter_mapa_ocorrencia_popup_interno_returns_contact_when_allowed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: dict[str, object] = {}
+
+    def fake_get_popup(solicitacao_id: int, **kwargs: object):
+        calls["solicitacao_id"] = solicitacao_id
+        calls.update(kwargs)
+        return popup_item(
+            incluir_dados_contato=bool(kwargs["incluir_dados_contato"]),
+        )
+
+    monkeypatch.setattr(
+        iluminacao_service.iluminacao_repository,
+        "get_mapa_ocorrencia_popup_interno",
+        fake_get_popup,
+    )
+
+    response = iluminacao_service.obter_mapa_ocorrencia_popup_interno(
+        10,
+        incluir_dados_contato=True,
+    )
+
+    assert response.dados_pessoais_disponiveis is True
+    assert response.nome_solicitante == "Maria Operacional"
+    assert response.contato_solicitante == "67999990000"
+    assert calls == {"solicitacao_id": 10, "incluir_dados_contato": True}
 
 
 def test_obter_mapa_ocorrencia_popup_interno_raises_safe_not_found(
@@ -139,7 +183,7 @@ def test_obter_mapa_ocorrencia_popup_interno_raises_safe_not_found(
     monkeypatch.setattr(
         iluminacao_service.iluminacao_repository,
         "get_mapa_ocorrencia_popup_interno",
-        lambda solicitacao_id: None,
+        lambda solicitacao_id, **kwargs: None,
     )
 
     with pytest.raises(iluminacao_service.SolicitacaoInternaNotFoundError) as exc_info:
@@ -151,7 +195,7 @@ def test_obter_mapa_ocorrencia_popup_interno_raises_safe_not_found(
 def test_obter_mapa_ocorrencia_popup_interno_converts_database_error_to_safe_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def fail_with_database_error(solicitacao_id: int) -> None:
+    def fail_with_database_error(solicitacao_id: int, **kwargs: object) -> None:
         raise SQLAlchemyError("DATABASE_URL host internal SELECT contato_solicitante")
 
     monkeypatch.setattr(

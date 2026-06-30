@@ -2,6 +2,7 @@ from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
 
+from app.dependencies import auth_dependencies
 from app.dependencies.auth_dependencies import require_internal_mutating_request_header
 from app.dependencies.auth_dependencies import require_permission
 from app.schemas.iluminacao import (
@@ -71,7 +72,9 @@ CORRIGIR_INTERNAL_ILUMINACAO_STATUS_PERMISSION = (
 )
 EXPORT_INTERNAL_ILUMINACAO_RELATORIO_PERMISSION = "admin.usuarios.ler"
 READ_INTERNAL_ILUMINACAO_DASHBOARD_PERMISSION = "iluminacao.dashboard.ler"
-
+READ_INTERNAL_ILUMINACAO_CONTACT_DATA_PERMISSION = (
+    "iluminacao.solicitacoes.ver_dados_contato"
+)
 router = APIRouter(prefix="/api/internal/iluminacao", tags=["internal-iluminacao"])
 
 
@@ -122,12 +125,19 @@ def list_internal_mapa_ocorrencias(
 )
 def get_internal_mapa_ocorrencia_popup(
     solicitacao_id: int = Path(ge=1),
-    _current_session: AuthenticatedCurrentSession = Depends(
+    current_session: AuthenticatedCurrentSession = Depends(
         require_permission(LIST_INTERNAL_ILUMINACAO_SOLICITACOES_PERMISSION)
     ),
 ) -> IluminacaoMapaOcorrenciaPopupResponse:
     try:
-        return obter_mapa_ocorrencia_popup_interno(solicitacao_id)
+        incluir_dados_contato = auth_dependencies.has_permission(
+            current_session.usuario_id,
+            READ_INTERNAL_ILUMINACAO_CONTACT_DATA_PERMISSION,
+        )
+        return obter_mapa_ocorrencia_popup_interno(
+            solicitacao_id,
+            incluir_dados_contato=incluir_dados_contato,
+        )
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

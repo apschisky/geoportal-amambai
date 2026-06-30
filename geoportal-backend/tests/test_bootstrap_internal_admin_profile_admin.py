@@ -200,6 +200,7 @@ def test_initial_admin_permissions_are_complete() -> None:
         "internal.auth.me",
         "iluminacao.dashboard.ler",
         "iluminacao.solicitacoes.corrigir_status",
+        "iluminacao.solicitacoes.ver_dados_contato",
     }
 
 
@@ -330,8 +331,8 @@ def test_link_repositories_are_idempotent_with_bind_parameters() -> None:
 
 
 def test_bootstrap_is_idempotent_when_records_already_exist() -> None:
-    permission_rows = [{"id": index, "ativo": True} for index in range(101, 114)]
-    profile_permission_rows = [{"exists": 1} for _ in range(13)]
+    permission_rows = [{"id": index, "ativo": True} for index in range(101, 115)]
+    profile_permission_rows = [{"exists": 1} for _ in range(14)]
     rows: list[dict[str, Any] | None] = [
         {"id": 7},
         *permission_rows,
@@ -354,7 +355,7 @@ def test_bootstrap_is_idempotent_when_records_already_exist() -> None:
 
     assert response.usuario_id == 7
     assert response.perfil_id == 20
-    assert response.permissao_ids == tuple(range(101, 114))
+    assert response.permissao_ids == tuple(range(101, 115))
     assert response.perfil_permissoes_criadas == 0
     assert response.usuario_perfil_criado is False
     assert "INSERT INTO" not in sql
@@ -370,8 +371,9 @@ def test_admin_bootstrap_creates_missing_dashboard_permission() -> None:
         None,
         {"id": 112},
         {"id": 113, "ativo": True},
+        {"id": 114, "ativo": True},
         {"id": 20, "ativo": True},
-        *({"exists": 1} for _ in range(13)),
+        *({"exists": 1} for _ in range(14)),
         {"ativo": True},
     ]
     engine = FakeEngine(rows)
@@ -388,7 +390,7 @@ def test_admin_bootstrap_creates_missing_dashboard_permission() -> None:
     sql = sql_history(engine)
     params = params_history(engine)
 
-    assert response.permissao_ids == tuple(range(101, 114))
+    assert response.permissao_ids == tuple(range(101, 115))
     assert response.perfil_permissoes_criadas == 0
     assert any(
         params_item == {
@@ -403,12 +405,12 @@ def test_admin_bootstrap_creates_missing_dashboard_permission() -> None:
     assert "DELETE" not in sql.upper()
     assert "UPDATE" not in sql.upper()
 def test_bootstrap_creates_missing_records_without_sensitive_output_or_delete() -> None:
-    permission_insert_rows = [{"id": index} for index in range(101, 114)]
+    permission_insert_rows = [{"id": index} for index in range(101, 115)]
     rows: list[dict[str, Any] | None] = [{"id": 7}]
     for insert_row in permission_insert_rows:
         rows.extend([None, insert_row])
     rows.extend([None, {"id": 20}])
-    rows.extend([None for _ in range(13)])
+    rows.extend([None for _ in range(14)])
     rows.append(None)
     engine = FakeEngine(rows)
 
@@ -425,7 +427,7 @@ def test_bootstrap_creates_missing_records_without_sensitive_output_or_delete() 
 
     assert response.usuario_id == 7
     assert response.perfil_id == 20
-    assert response.perfil_permissoes_criadas == 13
+    assert response.perfil_permissoes_criadas == 14
     assert response.usuario_perfil_criado is True
     assert "INSERT INTO mod_auth.permissoes" in sql
     assert "INSERT INTO mod_auth.perfis" in sql
@@ -443,7 +445,7 @@ def test_bootstrap_creates_missing_records_without_sensitive_output_or_delete() 
 def test_bootstrap_rejects_inactive_profile_without_reactivation() -> None:
     rows: list[dict[str, Any] | None] = [
         {"id": 7},
-        *({"id": index, "ativo": True} for index in range(101, 114)),
+        *({"id": index, "ativo": True} for index in range(101, 115)),
         {"id": 20, "ativo": False},
     ]
     engine = FakeEngine(rows)

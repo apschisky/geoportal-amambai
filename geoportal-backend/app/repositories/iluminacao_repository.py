@@ -362,6 +362,8 @@ def list_mapa_ocorrencias_internas(
 
 def get_mapa_ocorrencia_popup_interno(
     solicitacao_id: int,
+    *,
+    incluir_dados_contato: bool = False,
     engine: Engine | None = None,
 ) -> IluminacaoMapaOcorrenciaPopupResponse | None:
     if solicitacao_id < 1:
@@ -388,7 +390,17 @@ def get_mapa_ocorrencia_popup_interno(
             criado_em,
             atualizado_em,
             finalizado_em,
-            false AS dados_pessoais_disponiveis
+            CAST(:incluir_dados_contato AS boolean) AS dados_pessoais_disponiveis,
+            CASE
+                WHEN CAST(:incluir_dados_contato AS boolean) IS TRUE
+                THEN nome_solicitante
+                ELSE NULL
+            END AS nome_solicitante,
+            CASE
+                WHEN CAST(:incluir_dados_contato AS boolean) IS TRUE
+                THEN contato_solicitante
+                ELSE NULL
+            END AS contato_solicitante
         FROM mod_iluminacao.solicitacoes
         WHERE id = :solicitacao_id
           AND deleted_at IS NULL
@@ -402,7 +414,10 @@ def get_mapa_ocorrencia_popup_interno(
     with db_engine.begin() as connection:
         row = connection.execute(
             statement,
-            {"solicitacao_id": solicitacao_id},
+            {
+                "solicitacao_id": solicitacao_id,
+                "incluir_dados_contato": incluir_dados_contato,
+            },
         ).mappings().first()
 
     if row is None:
@@ -955,7 +970,9 @@ def get_solicitacao_interna_por_id(
     with db_engine.begin() as connection:
         row = connection.execute(
             statement,
-            {"solicitacao_id": solicitacao_id},
+            {
+                "solicitacao_id": solicitacao_id,
+            },
         ).mappings().first()
 
     if row is None:
@@ -987,7 +1004,9 @@ def solicitacao_interna_existe(
     with db_engine.begin() as connection:
         row = connection.execute(
             statement,
-            {"solicitacao_id": solicitacao_id},
+            {
+                "solicitacao_id": solicitacao_id,
+            },
         ).mappings().one()
 
     return bool(row["existe"])
@@ -1049,7 +1068,9 @@ def list_historico_solicitacao_interna(
         rows = connection.execute(statement, params).mappings().all()
         total_row = connection.execute(
             count_statement,
-            {"solicitacao_id": solicitacao_id},
+            {
+                "solicitacao_id": solicitacao_id,
+            },
         ).mappings().one()
 
     return IluminacaoSolicitacaoHistoricoInternoResult(
@@ -1117,7 +1138,9 @@ def list_observacoes_solicitacao_interna(
         rows = connection.execute(statement, params).mappings().all()
         total_row = connection.execute(
             count_statement,
-            {"solicitacao_id": solicitacao_id},
+            {
+                "solicitacao_id": solicitacao_id,
+            },
         ).mappings().one()
 
     return IluminacaoSolicitacaoObservacoesInternasResult(
@@ -1224,7 +1247,9 @@ def create_observacao_solicitacao_interna(
     with db_engine.begin() as connection:
         exists_row = connection.execute(
             exists_statement,
-            {"solicitacao_id": solicitacao_id},
+            {
+                "solicitacao_id": solicitacao_id,
+            },
         ).mappings().one()
         if not bool(exists_row["existe"]):
             return None
@@ -1347,7 +1372,9 @@ def update_status_solicitacao_interna(
     with db_engine.begin() as connection:
         current_row = connection.execute(
             select_statement,
-            {"solicitacao_id": solicitacao_id},
+            {
+                "solicitacao_id": solicitacao_id,
+            },
         ).mappings().first()
 
         if current_row is None:
@@ -1498,7 +1525,9 @@ def update_status_correcao_solicitacao_interna(
     with db_engine.begin() as connection:
         current_row = connection.execute(
             select_statement,
-            {"solicitacao_id": solicitacao_id},
+            {
+                "solicitacao_id": solicitacao_id,
+            },
         ).mappings().first()
 
         if current_row is None:
@@ -1658,7 +1687,9 @@ def update_prioridade_solicitacao_interna(
     with db_engine.begin() as connection:
         current_row = connection.execute(
             select_statement,
-            {"solicitacao_id": solicitacao_id},
+            {
+                "solicitacao_id": solicitacao_id,
+            },
         ).mappings().first()
 
         if current_row is None:

@@ -577,3 +577,9 @@ A implementacao local do backend do mapa operacional adicionou testes focados em
 Cobertura principal: `401` sem sessao, `403` sem permissao, `200` com `iluminacao.solicitacoes.ler`, validacao de query params, erro de banco sanitizado, colecao de pontos sem dados pessoais, SQL com colunas explicitas, `deleted_at IS NULL`, `geom IS NOT NULL`, validacao de latitude/longitude WGS84, filtros `status`/`prioridade`/`ativos`, popup conservador sem nome/telefone e `404` para ocorrencia inexistente.
 
 Validacoes locais executadas: testes novos do mapa com 22 passed; conjunto relacionado de Iluminacao interna e feature flag com 207 passed e 3 warnings deprecativos conhecidos sobre `HTTP_422_UNPROCESSABLE_ENTITY`.
+
+### Cobertura local - permissao de contato no popup do mapa de Iluminacao
+
+Ajuste local planejado para o backend do mapa operacional: a colecao `GET /api/internal/iluminacao/mapa/ocorrencias` continua sem dados pessoais em qualquer perfil. O popup `GET /api/internal/iluminacao/mapa/ocorrencias/{solicitacao_id}/popup` passa a liberar `nome_solicitante` e `contato_solicitante` somente quando a sessao possui, alem de `iluminacao.solicitacoes.ler`, a permissao especifica `iluminacao.solicitacoes.ver_dados_contato`.
+
+Cobertura esperada/adicionada: rota de mapa sem nome/telefone mesmo com a permissao de contato; popup sem contato para leitura simples/gestor global; popup com contato para perfis que recebem a permissao; repository com SQL parametrizado por `:incluir_dados_contato`; service propagando a flag; bootstraps garantindo a nova permissao no admin global, manutencao e administrador do modulo, e mantendo `gestor-consulta-global` sem essa permissao e sem `admin.*`.

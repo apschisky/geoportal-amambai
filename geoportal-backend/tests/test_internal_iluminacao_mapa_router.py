@@ -23,6 +23,7 @@ from app.services.iluminacao_service import (
 MAPA_PATH = "/api/internal/iluminacao/mapa/ocorrencias"
 POPUP_PATH = "/api/internal/iluminacao/mapa/ocorrencias/10/popup"
 EXPECTED_PERMISSION = "iluminacao.solicitacoes.ler"
+CONTACT_PERMISSION = "iluminacao.solicitacoes.ver_dados_contato"
 EXPIRES_AT = datetime(2030, 5, 27, 13, 0, tzinfo=UTC)
 CREATED_AT = datetime(2026, 5, 20, 10, 30, tzinfo=UTC)
 UPDATED_AT = datetime(2026, 5, 21, 8, 15, tzinfo=UTC)
@@ -61,10 +62,19 @@ def fake_mapa_item() -> IluminacaoMapaOcorrenciaItem:
     )
 
 
-def fake_popup() -> IluminacaoMapaOcorrenciaPopupResponse:
+def fake_popup(
+    *,
+    incluir_dados_contato: bool = False,
+) -> IluminacaoMapaOcorrenciaPopupResponse:
     return IluminacaoMapaOcorrenciaPopupResponse(
         **fake_mapa_item().model_dump(),
-        dados_pessoais_disponiveis=False,
+        dados_pessoais_disponiveis=incluir_dados_contato,
+        nome_solicitante=(
+            "Maria Operacional" if incluir_dados_contato else None
+        ),
+        contato_solicitante=(
+            "67999990000" if incluir_dados_contato else None
+        ),
     )
 
 
@@ -123,7 +133,8 @@ def test_mapa_ocorrencias_returns_operational_points_without_personal_data(
     monkeypatch.setattr(
         auth_dependencies,
         "has_permission",
-        lambda usuario_id, permission_code: permission_code == EXPECTED_PERMISSION,
+        lambda usuario_id, permission_code: permission_code
+        in {EXPECTED_PERMISSION, CONTACT_PERMISSION},
     )
     calls: dict[str, object] = {}
 
@@ -179,6 +190,8 @@ def test_mapa_ocorrencias_returns_operational_points_without_personal_data(
         "DATABASE_URL",
         "token",
         "cookie",
+        "Maria Operacional",
+        "67999990000",
     ):
         assert forbidden not in response.text
     assert calls == {
@@ -270,7 +283,7 @@ def test_mapa_popup_returns_403_without_required_permission(
     monkeypatch.setattr(
         internal_iluminacao,
         "obter_mapa_ocorrencia_popup_interno",
-        lambda solicitacao_id: fake_popup(),
+        lambda solicitacao_id, **kwargs: fake_popup(),
     )
     client = TestClient(app)
 
@@ -281,7 +294,7 @@ def test_mapa_popup_returns_403_without_required_permission(
     assert "IP-2026-000010" not in response.text
 
 
-def test_mapa_popup_is_conservative_and_does_not_return_personal_data(
+def test_mapa_popup_without_contact_permission_omits_personal_values(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     app = build_isolated_app()
@@ -293,10 +306,19 @@ def test_mapa_popup_is_conservative_and_does_not_return_personal_data(
         "has_permission",
         lambda usuario_id, permission_code: permission_code == EXPECTED_PERMISSION,
     )
+    calls: dict[str, object] = {}
+
+    def fake_obter_popup(solicitacao_id: int, **kwargs: object):
+        calls["solicitacao_id"] = solicitacao_id
+        calls.update(kwargs)
+        return fake_popup(
+            incluir_dados_contato=bool(kwargs["incluir_dados_contato"]),
+        )
+
     monkeypatch.setattr(
         internal_iluminacao,
         "obter_mapa_ocorrencia_popup_interno",
-        lambda solicitacao_id: fake_popup(),
+        fake_obter_popup,
     )
     client = TestClient(app)
 
@@ -306,9 +328,12 @@ def test_mapa_popup_is_conservative_and_does_not_return_personal_data(
     body = response.json()
     assert body["protocolo"] == "IP-2026-000010"
     assert body["dados_pessoais_disponiveis"] is False
+    assert body["nome_solicitante"] is None
+    assert body["contato_solicitante"] is None
+    assert calls == {"solicitacao_id": 10, "incluir_dados_contato": False}
     for forbidden in (
-        "nome_solicitante",
-        "contato_solicitante",
+        "Maria Operacional",
+        "67999990000",
         "telefone",
         "email",
         "documento",
@@ -318,6 +343,101 @@ def test_mapa_popup_is_conservative_and_does_not_return_personal_data(
         "DATABASE_URL",
     ):
         assert forbidden not in response.text
+
+
+def test_mapa_popup_with_contact_permission_returns_name_and_contact(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: permission_code
+        in {EXPECTED_PERMISSION, CONTACT_PERMISSION},
+    )
+    calls: dict[str, object] = {}
+
+    def fake_obter_popup(solicitacao_id: int, **kwargs: object):
+        calls["solicitacao_id"] = solicitacao_id
+        calls.update(kwargs)
+        return fake_popup(
+            incluir_dados_contato=bool(kwargs["incluir_dados_contato"]),
+        )
+
+    monkeypatch.setattr(
+        internal_iluminacao,
+        "obter_mapa_ocorrencia_popup_interno",
+        fake_obter_popup,
+    )
+    client = TestClient(app)
+
+    response = client.get(POPUP_PATH)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["dados_pessoais_disponiveis"] is True
+    assert body["nome_solicitante"] == "Maria Operacional"
+    assert body["contato_solicitante"] == "67999990000"
+    assert calls == {"solicitacao_id": 10, "incluir_dados_contato": True}
+    assert "email" not in response.text
+    assert "documento" not in response.text
+
+
+@pytest.mark.parametrize(
+    ("profile_label", "permissions", "expected_personal_data"),
+    [
+        ("gestor-consulta-global", {EXPECTED_PERMISSION}, False),
+        ("manutencao-iluminacao", {EXPECTED_PERMISSION, CONTACT_PERMISSION}, True),
+        (
+            "administrador-modulo-iluminacao",
+            {EXPECTED_PERMISSION, CONTACT_PERMISSION},
+            True,
+        ),
+        (
+            "administrador-interno-geoportal",
+            {EXPECTED_PERMISSION, CONTACT_PERMISSION},
+            True,
+        ),
+    ],
+)
+def test_mapa_popup_contact_data_follows_specific_permission(
+    profile_label: str,
+    permissions: set[str],
+    expected_personal_data: bool,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = build_isolated_app()
+    app.dependency_overrides[get_current_authenticated_session] = (
+        authenticated_current_session
+    )
+    monkeypatch.setattr(
+        auth_dependencies,
+        "has_permission",
+        lambda usuario_id, permission_code: permission_code in permissions,
+    )
+    monkeypatch.setattr(
+        internal_iluminacao,
+        "obter_mapa_ocorrencia_popup_interno",
+        lambda solicitacao_id, **kwargs: fake_popup(
+            incluir_dados_contato=bool(kwargs["incluir_dados_contato"]),
+        ),
+    )
+    client = TestClient(app)
+
+    response = client.get(POPUP_PATH)
+
+    assert response.status_code == 200, profile_label
+    body = response.json()
+    assert body["dados_pessoais_disponiveis"] is expected_personal_data
+    if expected_personal_data:
+        assert body["nome_solicitante"] == "Maria Operacional"
+        assert body["contato_solicitante"] == "67999990000"
+    else:
+        assert body["nome_solicitante"] is None
+        assert body["contato_solicitante"] is None
 
 
 def test_mapa_popup_returns_404_for_missing_occurrence(
@@ -333,7 +453,7 @@ def test_mapa_popup_returns_404_for_missing_occurrence(
         lambda usuario_id, permission_code: True,
     )
 
-    def fail_not_found(solicitacao_id: int) -> None:
+    def fail_not_found(solicitacao_id: int, **kwargs: object) -> None:
         raise SolicitacaoInternaNotFoundError("Solicitacao nao encontrada.")
 
     monkeypatch.setattr(

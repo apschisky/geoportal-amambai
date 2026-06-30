@@ -221,6 +221,8 @@ class IluminacaoMapaOcorrenciaPopupResponse(BaseModel):
     atualizado_em: datetime
     finalizado_em: datetime | None = None
     dados_pessoais_disponiveis: bool = False
+    nome_solicitante: str | None = None
+    contato_solicitante: str | None = None
 
 
 class IluminacaoRelatorioSolicitacaoInternaItem(BaseModel):
