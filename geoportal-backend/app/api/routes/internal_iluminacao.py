@@ -8,6 +8,8 @@ from app.schemas.iluminacao import (
     IluminacaoDashboardRankingInternoResponse,
     IluminacaoDashboardResumoInternoResponse,
     IluminacaoDashboardSeriesInternoResponse,
+    IluminacaoMapaOcorrenciaPopupResponse,
+    IluminacaoMapaOcorrenciasResponse,
     IluminacaoRelatorioResumoInternoResponse,
     IluminacaoSolicitacaoHistoricoInternoResponse,
     IluminacaoSolicitacaoInternaItem,
@@ -31,6 +33,7 @@ from app.services.iluminacao_service import atualizar_prioridade_solicitacao_int
 from app.services.iluminacao_service import build_relatorio_solicitacoes_csv
 from app.services.iluminacao_service import corrigir_status_solicitacao_interna
 from app.services.iluminacao_service import listar_historico_solicitacao_interna
+from app.services.iluminacao_service import listar_mapa_ocorrencias_internas
 from app.services.iluminacao_service import listar_observacoes_solicitacao_interna
 from app.services.iluminacao_service import listar_relatorio_solicitacoes_internas
 from app.services.iluminacao_service import listar_solicitacoes_internas
@@ -38,6 +41,7 @@ from app.services.iluminacao_service import montar_nome_arquivo_relatorio_solici
 from app.services.iluminacao_service import obter_dashboard_ranking_interno
 from app.services.iluminacao_service import obter_dashboard_resumo_interno
 from app.services.iluminacao_service import obter_dashboard_series_interno
+from app.services.iluminacao_service import obter_mapa_ocorrencia_popup_interno
 from app.services.iluminacao_service import obter_solicitacao_interna_por_id
 from app.services.iluminacao_service import resumir_relatorio_solicitacoes_internas
 from app.services.iluminacao_service import SolicitacaoInternaNotFoundError
@@ -69,6 +73,76 @@ EXPORT_INTERNAL_ILUMINACAO_RELATORIO_PERMISSION = "admin.usuarios.ler"
 READ_INTERNAL_ILUMINACAO_DASHBOARD_PERMISSION = "iluminacao.dashboard.ler"
 
 router = APIRouter(prefix="/api/internal/iluminacao", tags=["internal-iluminacao"])
+
+
+@router.get("/mapa/ocorrencias", response_model=IluminacaoMapaOcorrenciasResponse)
+def list_internal_mapa_ocorrencias(
+    status_filter: StatusSolicitacaoIluminacao | None = Query(
+        default=None,
+        alias="status",
+    ),
+    prioridade: str | None = Query(default=None, min_length=1, max_length=40),
+    ativos: bool | None = Query(default=None),
+    limit: int = Query(default=250, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    _current_session: AuthenticatedCurrentSession = Depends(
+        require_permission(LIST_INTERNAL_ILUMINACAO_SOLICITACOES_PERMISSION)
+    ),
+) -> IluminacaoMapaOcorrenciasResponse:
+    try:
+        result = listar_mapa_ocorrencias_internas(
+            status=status_filter,
+            prioridade=prioridade,
+            ativos=ativos,
+            limit=limit,
+            offset=offset,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid query parameters",
+        ) from exc
+    except DatabaseUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
+    return IluminacaoMapaOcorrenciasResponse(
+        items=result.items,
+        limit=limit,
+        offset=offset,
+        total=result.total,
+    )
+
+
+@router.get(
+    "/mapa/ocorrencias/{solicitacao_id}/popup",
+    response_model=IluminacaoMapaOcorrenciaPopupResponse,
+)
+def get_internal_mapa_ocorrencia_popup(
+    solicitacao_id: int = Path(ge=1),
+    _current_session: AuthenticatedCurrentSession = Depends(
+        require_permission(LIST_INTERNAL_ILUMINACAO_SOLICITACOES_PERMISSION)
+    ),
+) -> IluminacaoMapaOcorrenciaPopupResponse:
+    try:
+        return obter_mapa_ocorrencia_popup_interno(solicitacao_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid query parameters",
+        ) from exc
+    except SolicitacaoInternaNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Not found",
+        ) from exc
+    except DatabaseUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
 
 
 @router.get("/solicitacoes", response_model=IluminacaoSolicitacoesInternasResponse)

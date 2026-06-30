@@ -1115,3 +1115,9 @@ Fases recomendadas:
 4. Selecao de pontos filtrando lista, com limpar selecao e destaque visual.
 5. Validacao por perfil real em homologacao e producao interna.
 6. Documentacao de publicacao e monitoramento assistido.
+
+### Implementacao local - RBAC do mapa operacional de Iluminacao
+
+A implementacao local do backend read-only do mapa operacional reutiliza `iluminacao.solicitacoes.ler`, conforme decisao documental de fase inicial. Nenhuma permissao nova foi criada, nenhum perfil foi alterado e nenhum `admin.*` foi concedido por causa do mapa.
+
+A colecao de pontos e o popup sao autorizados pelo backend. Nesta etapa, o popup nao retorna nome/telefone para nenhum perfil, inclusive administrador, porque ainda nao ha permissao especifica para dados de contato no contexto cartografico. Se a operacao exigir contato em campo, a permissao futura recomendada continua sendo um ciclo proprio, com menor privilegio e validacao LGPD.

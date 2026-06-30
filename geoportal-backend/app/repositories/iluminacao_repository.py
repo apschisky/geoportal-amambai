@@ -12,6 +12,9 @@ from app.schemas.iluminacao import (
     IluminacaoDashboardSeriesInternoResponse,
     IluminacaoDashboardSeriesPonto,
     IluminacaoConsultaRepositoryRecord,
+    IluminacaoMapaOcorrenciaItem,
+    IluminacaoMapaOcorrenciaPopupResponse,
+    IluminacaoMapaOcorrenciasResult,
     IluminacaoSolicitacaoHistoricoInternoItem,
     IluminacaoSolicitacaoHistoricoInternoResult,
     IluminacaoSolicitacaoInternaItem,
@@ -239,6 +242,173 @@ def get_solicitacao_publica_por_protocolo(
         return None
 
     return IluminacaoConsultaRepositoryRecord.model_validate(dict(row))
+
+
+def _mapa_ocorrencias_params(
+    *,
+    status: StatusSolicitacaoIluminacao | None,
+    prioridade: str | None,
+    ativos: bool | None,
+    limit: int | None = None,
+    offset: int | None = None,
+) -> dict[str, object]:
+    params: dict[str, object] = {
+        "status": status.value if status is not None else None,
+        "prioridade": prioridade,
+        "ativos": ativos,
+    }
+    if limit is not None:
+        params["limit"] = limit
+    if offset is not None:
+        params["offset"] = offset
+    return params
+
+
+_MAPA_OCORRENCIAS_FILTER_SQL = """
+WHERE deleted_at IS NULL
+  AND geom IS NOT NULL
+  AND ST_Y(ST_Transform(geom, 4326)) BETWEEN -90 AND 90
+  AND ST_X(ST_Transform(geom, 4326)) BETWEEN -180 AND 180
+  AND (
+      CAST(:status AS varchar) IS NULL
+      OR status = CAST(:status AS varchar)
+  )
+  AND (
+      CAST(:prioridade AS varchar) IS NULL
+      OR prioridade = CAST(:prioridade AS varchar)
+  )
+  AND (
+      CAST(:ativos AS boolean) IS NOT TRUE
+      OR status NOT IN (
+          'resolvida',
+          'cancelada',
+          'indeferida',
+          'nao_localizado'
+      )
+  )
+"""
+
+
+def list_mapa_ocorrencias_internas(
+    *,
+    status: StatusSolicitacaoIluminacao | None = None,
+    prioridade: str | None = None,
+    ativos: bool | None = None,
+    limit: int = 250,
+    offset: int = 0,
+    engine: Engine | None = None,
+) -> IluminacaoMapaOcorrenciasResult:
+    if limit < 1 or limit > 500:
+        raise ValueError("limit must be between 1 and 500")
+    if offset < 0:
+        raise ValueError("offset must be greater than or equal to 0")
+
+    db_engine = engine or get_engine()
+    params = _mapa_ocorrencias_params(
+        status=status,
+        prioridade=prioridade,
+        ativos=ativos,
+        limit=limit,
+        offset=offset,
+    )
+    count_params = {
+        key: value for key, value in params.items() if key not in {"limit", "offset"}
+    }
+
+    statement = text(
+        f"""
+        SELECT
+            id,
+            protocolo,
+            origem,
+            localizacao_tipo,
+            poste_id,
+            CASE
+                WHEN poste_id IS NULL OR btrim(poste_id) = '' THEN NULL
+                ELSE 'Poste ' || poste_id
+            END AS referencia_localizacao,
+            tipo_problema,
+            status,
+            prioridade,
+            ST_Y(ST_Transform(geom, 4326)) AS latitude,
+            ST_X(ST_Transform(geom, 4326)) AS longitude,
+            criado_em,
+            atualizado_em,
+            finalizado_em
+        FROM mod_iluminacao.solicitacoes
+        {_MAPA_OCORRENCIAS_FILTER_SQL}
+        ORDER BY criado_em DESC, id DESC
+        LIMIT :limit
+        OFFSET :offset
+        """
+    )
+    count_statement = text(
+        f"""
+        SELECT COUNT(*) AS total
+        FROM mod_iluminacao.solicitacoes
+        {_MAPA_OCORRENCIAS_FILTER_SQL}
+        """
+    )
+
+    with db_engine.begin() as connection:
+        rows = connection.execute(statement, params).mappings().all()
+        total_row = connection.execute(count_statement, count_params).mappings().one()
+
+    return IluminacaoMapaOcorrenciasResult(
+        items=[IluminacaoMapaOcorrenciaItem.model_validate(dict(row)) for row in rows],
+        total=int(total_row["total"]),
+    )
+
+
+def get_mapa_ocorrencia_popup_interno(
+    solicitacao_id: int,
+    engine: Engine | None = None,
+) -> IluminacaoMapaOcorrenciaPopupResponse | None:
+    if solicitacao_id < 1:
+        raise ValueError("solicitacao_id must be greater than or equal to 1")
+
+    db_engine = engine or get_engine()
+    statement = text(
+        """
+        SELECT
+            id,
+            protocolo,
+            origem,
+            localizacao_tipo,
+            poste_id,
+            CASE
+                WHEN poste_id IS NULL OR btrim(poste_id) = '' THEN NULL
+                ELSE 'Poste ' || poste_id
+            END AS referencia_localizacao,
+            tipo_problema,
+            status,
+            prioridade,
+            ST_Y(ST_Transform(geom, 4326)) AS latitude,
+            ST_X(ST_Transform(geom, 4326)) AS longitude,
+            criado_em,
+            atualizado_em,
+            finalizado_em,
+            false AS dados_pessoais_disponiveis
+        FROM mod_iluminacao.solicitacoes
+        WHERE id = :solicitacao_id
+          AND deleted_at IS NULL
+          AND geom IS NOT NULL
+          AND ST_Y(ST_Transform(geom, 4326)) BETWEEN -90 AND 90
+          AND ST_X(ST_Transform(geom, 4326)) BETWEEN -180 AND 180
+        LIMIT 1
+        """
+    )
+
+    with db_engine.begin() as connection:
+        row = connection.execute(
+            statement,
+            {"solicitacao_id": solicitacao_id},
+        ).mappings().first()
+
+    if row is None:
+        return None
+
+    return IluminacaoMapaOcorrenciaPopupResponse.model_validate(dict(row))
 
 
 def list_solicitacoes_internas(

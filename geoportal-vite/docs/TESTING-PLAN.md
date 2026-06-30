@@ -565,3 +565,15 @@ Fases de teste:
 4. Testes de selecao no mapa filtrando lista.
 5. Validacao funcional por perfil em homologacao e producao interna.
 6. Documentacao de publicacao, riscos residuais e monitoramento assistido.
+
+### Cobertura local - backend read-only do mapa operacional de Iluminacao
+
+A implementacao local do backend do mapa operacional adicionou testes focados em:
+
+- `tests/test_internal_iluminacao_mapa_router.py`;
+- `tests/test_iluminacao_mapa_service.py`;
+- `tests/test_iluminacao_mapa_repository.py`.
+
+Cobertura principal: `401` sem sessao, `403` sem permissao, `200` com `iluminacao.solicitacoes.ler`, validacao de query params, erro de banco sanitizado, colecao de pontos sem dados pessoais, SQL com colunas explicitas, `deleted_at IS NULL`, `geom IS NOT NULL`, validacao de latitude/longitude WGS84, filtros `status`/`prioridade`/`ativos`, popup conservador sem nome/telefone e `404` para ocorrencia inexistente.
+
+Validacoes locais executadas: testes novos do mapa com 22 passed; conjunto relacionado de Iluminacao interna e feature flag com 207 passed e 3 warnings deprecativos conhecidos sobre `HTTP_422_UNPROCESSABLE_ENTITY`.

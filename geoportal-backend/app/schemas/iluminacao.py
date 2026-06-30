@@ -176,6 +176,53 @@ class IluminacaoSolicitacoesInternasResult(BaseModel):
     total: int
 
 
+class IluminacaoMapaOcorrenciaItem(BaseModel):
+    id: int
+    protocolo: str
+    origem: str
+    localizacao_tipo: str
+    poste_id: str | None = None
+    referencia_localizacao: str | None = None
+    tipo_problema: str
+    status: str
+    prioridade: str
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+    criado_em: datetime
+    atualizado_em: datetime
+    finalizado_em: datetime | None = None
+
+
+class IluminacaoMapaOcorrenciasResponse(BaseModel):
+    items: list[IluminacaoMapaOcorrenciaItem]
+    limit: int
+    offset: int
+    total: int
+
+
+class IluminacaoMapaOcorrenciasResult(BaseModel):
+    items: list[IluminacaoMapaOcorrenciaItem]
+    total: int
+
+
+class IluminacaoMapaOcorrenciaPopupResponse(BaseModel):
+    id: int
+    protocolo: str
+    origem: str
+    localizacao_tipo: str
+    poste_id: str | None = None
+    referencia_localizacao: str | None = None
+    tipo_problema: str
+    status: str
+    prioridade: str
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+    criado_em: datetime
+    atualizado_em: datetime
+    finalizado_em: datetime | None = None
+    dados_pessoais_disponiveis: bool = False
+
+
 class IluminacaoRelatorioSolicitacaoInternaItem(BaseModel):
     protocolo: str
     status: str

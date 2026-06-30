@@ -1577,3 +1577,18 @@ Fases seguras:
 4. Selecao no mapa filtrando lista, com destaque e limpar selecao.
 5. Validacao por perfil real: gestor, manutencao, administrador de modulo e administrador global.
 6. Documentacao de publicacao, evidencias de validacao e plano de monitoramento.
+
+### Implementacao local - backend read-only do mapa operacional
+
+Implementacao local em 2026-06-30: foi adicionado o backend read-only do mapa operacional interno de Iluminacao Publica, sem frontend nesta rodada e sem migration/schema novo.
+
+Endpoints criados:
+
+- `GET /api/internal/iluminacao/mapa/ocorrencias`;
+- `GET /api/internal/iluminacao/mapa/ocorrencias/{solicitacao_id}/popup`.
+
+Ambos exigem sessao interna autenticada e `iluminacao.solicitacoes.ler`. O endpoint de colecao usa formato JSON interno com `items`, `limit`, `offset` e `total`, preservando o padrao das listagens internas. A colecao retorna apenas dados operacionais minimizados: `id`, `protocolo`, `origem`, `localizacao_tipo`, `poste_id`, `referencia_localizacao`, `tipo_problema`, `status`, `prioridade`, `latitude`, `longitude`, `criado_em`, `atualizado_em` e `finalizado_em`.
+
+A consulta filtra `deleted_at IS NULL`, exige `geom IS NOT NULL`, valida latitude/longitude derivadas de `ST_Transform(geom, 4326)` dentro dos intervalos WGS84 e aceita filtros `status`, `prioridade`, `ativos`, `limit` e `offset`. Nao retorna `nome_solicitante`, `contato_solicitante`, telefone, e-mail, documento, descricao livre, observacoes de localizacao, ponto de referencia, historico ou `deleted_at`.
+
+O endpoint de popup foi implementado de forma conservadora: retorna os mesmos dados operacionais minimizados e `dados_pessoais_disponiveis=false`. Como ainda nao existe permissao especifica e validada para contato/dados pessoais no popup, nome e telefone nao sao retornados para nenhum perfil nesta etapa. A liberacao futura de contato no popup deve ser tratada em ciclo separado, com permissao explicita, bootstrap, testes e validacao LGPD.

@@ -14,6 +14,8 @@ from app.schemas.iluminacao import (
     IluminacaoConsultaPublicResponse,
     IluminacaoConsultaRepositoryRecord,
     IluminacaoConsultaRequest,
+    IluminacaoMapaOcorrenciaPopupResponse,
+    IluminacaoMapaOcorrenciasResult,
     IluminacaoRelatorioResumoInternoResponse,
     IluminacaoRelatorioSolicitacaoInternaItem,
     IluminacaoRelatorioSolicitacoesInternasResult,
@@ -87,6 +89,7 @@ ALLOWED_REOPEN_STATUS_SOLICITACAO = {
 VALID_PRIORIDADE_SOLICITACAO = {"baixa", "normal", "alta", "urgente"}
 RELATORIO_MAX_DAYS = 366
 DASHBOARD_RANKING_MAX_LIMIT = 20
+MAPA_OCORRENCIAS_MAX_LIMIT = 500
 DASHBOARD_GRANULARIDADES = {
     "dia": "day",
     "semana": "week",
@@ -265,6 +268,50 @@ def consultar_solicitacao_publica(
         raise PublicConsultaNotFoundError(PUBLIC_CONSULTA_NOT_FOUND_MESSAGE)
 
     return _build_public_consulta_response(record)
+
+
+def listar_mapa_ocorrencias_internas(
+    *,
+    status: StatusSolicitacaoIluminacao | None = None,
+    prioridade: str | None = None,
+    ativos: bool | None = None,
+    limit: int = 250,
+    offset: int = 0,
+) -> IluminacaoMapaOcorrenciasResult:
+    if limit < 1 or limit > MAPA_OCORRENCIAS_MAX_LIMIT:
+        raise ValueError("limit must be between 1 and 500")
+    if offset < 0:
+        raise ValueError("offset must be greater than or equal to 0")
+
+    try:
+        return iluminacao_repository.list_mapa_ocorrencias_internas(
+            status=status,
+            prioridade=_normalize_relatorio_prioridade(prioridade),
+            ativos=ativos,
+            limit=limit,
+            offset=offset,
+        )
+    except (SQLAlchemyError, RuntimeError) as exc:
+        raise DatabaseUnavailableError(DATABASE_UNAVAILABLE_MESSAGE) from exc
+
+
+def obter_mapa_ocorrencia_popup_interno(
+    solicitacao_id: int,
+) -> IluminacaoMapaOcorrenciaPopupResponse:
+    if solicitacao_id < 1:
+        raise ValueError("solicitacao_id must be greater than or equal to 1")
+
+    try:
+        popup = iluminacao_repository.get_mapa_ocorrencia_popup_interno(
+            solicitacao_id
+        )
+    except (SQLAlchemyError, RuntimeError) as exc:
+        raise DatabaseUnavailableError(DATABASE_UNAVAILABLE_MESSAGE) from exc
+
+    if popup is None:
+        raise SolicitacaoInternaNotFoundError(SOLICITACAO_INTERNA_NOT_FOUND_MESSAGE)
+
+    return popup
 
 
 def listar_solicitacoes_internas(
