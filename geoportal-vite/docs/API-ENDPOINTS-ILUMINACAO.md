@@ -1624,4 +1624,54 @@ Observacao operacional: em validacoes PowerShell, `POST /auth/logout` deve inclu
 
 Nao houve migration, alteracao de schema, alteracao de frontend, alteracao de Apache/NSSM/.env, SQL manual de `INSERT`/`UPDATE`/`DELETE`, nem exposicao de secrets, cookies ou tokens.
 
-Proximos passos: implementar o frontend do mapa operacional, popup visual semelhante ao Geoportal publico, selecao de pontos filtrando lista, botao para limpar selecao/filtros, validacao visual por perfil e documentacao/publicacao do frontend.
+## Producao interna - frontend do mapa operacional interno de Iluminacao
+
+Fechamento documental da implementacao frontend do mapa operacional interno de Iluminacao Publica, integrada ao modulo Iluminacao na shell interna. O backend ja estava implementado e validado nos commits `3c8060f Implementa backend do mapa operacional de iluminacao`, `1020240 Adiciona permissao de contato no popup do mapa` e `e4d3e72 Documenta validacao do mapa interno de iluminacao`; esta etapa consolidou o frontend sem alterar backend, banco, migrations, scripts, `.env`, Apache/NSSM, deploy ou servico.
+
+Arquivos frontend envolvidos:
+
+- `geoportal-vite/src/internal-iluminacao-shell.js`;
+- `geoportal-vite/src/internal-iluminacao-shell.css`;
+- `geoportal-vite/src/internal-iluminacao-shell.test.js`.
+
+Funcionalidades fechadas:
+
+1. Painel `Mapa operacional` integrado ao modulo Iluminacao.
+2. Consumo seguro dos endpoints internos `GET /api/internal/iluminacao/mapa/ocorrencias` e `GET /api/internal/iluminacao/mapa/ocorrencias/{solicitacao_id}/popup` com `credentials: include`.
+3. Colecao de pontos sem dados pessoais; nome e contato aparecem somente no popup/card quando o backend autoriza.
+4. Popup operacional com protocolo, status, prioridade, poste/localizacao e dados de contato quando autorizados.
+5. Botao `Copiar para WhatsApp` no popup, no card/listagem e com fallback para buscar o popup autorizado antes de copiar quando o card nao renderiza nome.
+6. Botoes de card reorganizados em linha em telas largas e empilhados em telas menores.
+7. Selecao multipla de pontos no mapa com `getFeaturesAtPixel(..., { hitTolerance: 12 })`, acumulacao sem duplicar IDs e filtragem da lista pela selecao do mapa.
+8. Limpeza de selecao e filtro por pontos visiveis corrigidos, restaurando a lista carregada quando os filtros sao removidos.
+9. Filtro `Filtrar lista pelo mapa visivel`, recalculo ao mover/zoomar, combinacao com demais filtros e restauracao ao limpar selecao/filtros.
+10. Ordenacao client-side da lista carregada por protocolo, status, prioridade, poste, criado em e atualizado em.
+11. Dashboard e resumos corrigidos para refletirem a base ampla do mapa operacional, inclusive casos com varias solicitacoes finalizadas/canceladas e sem depender apenas da primeira pagina da listagem.
+12. Popup corrigido para abrir com os dados do ultimo ponto clicado, preservando a selecao acumulada para lista/filtro.
+
+Decisoes de seguranca registradas:
+
+- O backend/RBAC continua sendo a autoridade; o frontend apenas reflete respostas e permissoes.
+- O mapa de pontos nao contem dados pessoais.
+- Nome e contato aparecem somente quando o backend autoriza.
+- Nao foi usado `localStorage`/`sessionStorage` para autenticacao.
+- Nao foram impressos secrets, cookies, tokens, senhas ou dados pessoais em console.
+
+Limitacao operacional registrada:
+
+- A ordenacao, os filtros por selecao e pelo mapa visivel atuam sobre a lista/base carregada no frontend, sem criar novo endpoint backend.
+
+Validacoes registradas:
+
+- `npm.cmd test -- --run src/internal-iluminacao-shell.test.js`: 100 passed.
+- `npm.cmd run build`: passou.
+- Em rodadas anteriores da mesma implementacao, a suite frontend chegou a 186 passed.
+- `git diff --check`: sem erros, apenas avisos LF/CRLF do Windows.
+
+Proximos passos operacionais:
+
+- Commit da branch de feature.
+- Pull Request para revisao.
+- Merge controlado em `main`.
+- Publicacao manual do frontend interno apos merge.
+- Validacao visual em producao interna por `manutencao.producao`, `seleido.admin`, `sergio` e `admin.producao`.

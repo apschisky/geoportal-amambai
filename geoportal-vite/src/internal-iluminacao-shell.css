@@ -1204,8 +1204,9 @@ textarea:disabled {
 
 .internal-maintenance-actions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+  align-items: start;
 }
 
 .internal-maintenance-actions .internal-row-action,
@@ -2973,4 +2974,301 @@ textarea:disabled {
     width: auto;
     max-width: max-content;
   }
+}
+/* Internal operational map for Iluminacao. */
+.internal-operational-map-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.internal-operational-map-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(150px, 1fr)) minmax(140px, auto);
+  gap: 12px;
+  align-items: end;
+  padding: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.internal-operational-map-filters label {
+  display: grid;
+  gap: 6px;
+  color: #475569;
+  font-size: 0.86rem;
+}
+
+.internal-operational-map-filters select,
+.internal-operational-map-filters input[type="number"] {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  border-radius: 8px;
+  padding: 9px 10px;
+  font: inherit;
+  background: #fff;
+}
+
+.internal-operational-map-check {
+  align-self: end;
+  display: flex !important;
+  align-items: center;
+  gap: 8px !important;
+  min-height: 40px;
+  padding-bottom: 0;
+}
+
+.internal-operational-map-check input {
+  width: 16px;
+  height: 16px;
+}
+
+.internal-operational-map-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 2px;
+}
+
+.internal-operational-map-actions .internal-secondary-action {
+  width: auto;
+  min-width: 160px;
+  margin-top: 0;
+  padding-inline: 14px;
+}
+
+.internal-operational-map-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2.15fr) minmax(260px, 0.85fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.internal-operational-map-shell,
+.internal-operational-popup {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.internal-operational-map-canvas {
+  position: relative;
+  min-height: clamp(430px, 48vh, 620px);
+  overflow: hidden;
+  border: 1px solid #dce7eb;
+  border-radius: 8px;
+  background: #edf4f6;
+}
+
+.internal-operational-map-canvas .ol-viewport,
+.internal-operational-map-canvas canvas {
+  border-radius: 8px;
+}
+
+.internal-map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  color: #475569;
+  font-size: 0.82rem;
+}
+
+.internal-map-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.internal-map-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 3px rgba(15, 23, 42, 0.16);
+}
+
+.internal-operational-popup {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 16px;
+}
+
+.internal-operational-popup h4,
+.internal-operational-popup p,
+.internal-operational-popup dl {
+  margin: 0;
+}
+
+.internal-operational-popup-card {
+  display: grid;
+  gap: 12px;
+}
+
+.internal-operational-popup-heading {
+  display: grid;
+  gap: 3px;
+}
+
+.internal-operational-popup-heading span,
+.internal-operational-popup-list dt {
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.internal-operational-popup-heading strong {
+  color: #0f172a;
+  font-size: 1.05rem;
+}
+
+.internal-operational-popup-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.internal-operational-popup-list dd {
+  margin: 2px 0 0;
+  color: #0f172a;
+  overflow-wrap: anywhere;
+}
+
+.internal-operational-popup-contact {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #ecfdf5;
+  color: #14532d;
+}
+
+.internal-operational-popup-message {
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.internal-operational-popup-message.is-error {
+  color: #b91c1c;
+}
+
+.internal-map-selection-bar,
+.internal-map-selection-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border: 1px solid rgba(37, 99, 235, 0.24);
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+
+.internal-map-selection-inline {
+  margin: 0 0 12px;
+}
+
+@media (max-width: 1120px) {
+  .internal-operational-map-filters,
+  .internal-operational-map-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .internal-operational-map-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  .internal-operational-map-canvas {
+    min-height: 320px;
+  }
+
+  .internal-operational-popup-list {
+    grid-template-columns: 1fr;
+  }
+
+  .internal-map-selection-bar .internal-secondary-action,
+  .internal-map-selection-inline .internal-secondary-action,
+  .internal-operational-map-actions .internal-secondary-action {
+    width: 100%;
+  }
+}
+/* List ordering and dashboard period controls. */
+.internal-list-sort-control {
+  display: grid;
+  gap: 5px;
+  min-width: 190px;
+  color: #475569;
+  font-size: 0.82rem;
+  text-align: left;
+}
+
+.internal-list-sort-control select,
+.internal-dashboard-filter-form input[type="date"] {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  border-radius: 8px;
+  padding: 9px 10px;
+  font: inherit;
+  background: #fff;
+}
+
+.internal-dashboard-filter-actions {
+  display: grid;
+  gap: 8px;
+  align-self: end;
+}
+
+.internal-dashboard-filter-form .internal-secondary-action {
+  align-self: stretch;
+  min-height: 39px;
+  margin-top: 0;
+}
+
+@media (max-width: 720px) {
+  .internal-list-sort-control {
+    width: 100%;
+  }
+}.internal-whatsapp-copy {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.internal-whatsapp-copy .internal-secondary-action {
+  justify-self: start;
+}
+
+.internal-operational-map-shell {
+  min-width: 0;
+}
+
+.internal-operational-map-canvas .ol-viewport,
+.internal-operational-map-canvas .ol-layer,
+.internal-operational-map-canvas canvas {
+  max-width: none;
+}
+
+.internal-maintenance-actions .internal-whatsapp-copy {
+  grid-column: auto;
+  margin-top: 0;
+}
+
+.internal-maintenance-actions .internal-whatsapp-copy .internal-secondary-action {
+  width: 100%;
+  min-height: 42px;
+  margin-top: 0;
+}
+
+.internal-operational-map-placeholder {
+  min-height: clamp(430px, 48vh, 620px);
 }

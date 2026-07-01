@@ -571,6 +571,10 @@ Antes de integrar login real ou listagem real, recomenda-se evoluir a shell para
 
 Registro de implementacao visual: a Fase 2A evoluiu a shell em `/interno/` para representar o `Geoportal Interno` como portal unico multi-modulo, com Iluminacao Publica como modulo ativo, menu planejado de modulos, placeholders de resumo inicial e estados visuais de autenticacao/permissao. A shell continua sem API real, sem login real, sem cookie/token, sem `POST`, sem `PATCH`, sem dados reais e sem alterar o Geoportal publico.
 
+### Marco final do frontend do mapa operacional interno de Iluminacao
+
+A etapa de frontend do mapa operacional interno foi fechada na shell de Iluminacao sem alterar backend, banco, migrations, scripts, `.env`, Apache/NSSM, deploy ou restart de servico. O painel `Mapa operacional` passa a integrar listagem, mapa, filtros, selecao de pontos, popup operacional e botao de copiar para WhatsApp, mantendo o backend/RBAC como autoridade e sem expor dados pessoais na colecao de pontos. O fluxo foi validado localmente com `npm.cmd test -- --run src/internal-iluminacao-shell.test.js` e `npm.cmd run build`, com registro documental das validacoes finais e dos proximos passos operacionais de commit, PR, merge e publicacao manual.
+
 ## 12.4. Contrato planejado de sessao e permissoes da shell `/interno/`
 
 Nota historica: esta secao registra o primeiro contrato usado na integracao inicial de sessao. Ela permanece relevante para entender a evolucao da shell, mas nao substitui o contrato atual validado de `/api/internal/auth/me`, que hoje retorna `authenticated`, `usuario_id`, `login`, `nome`, `perfis` e `permissoes`.
