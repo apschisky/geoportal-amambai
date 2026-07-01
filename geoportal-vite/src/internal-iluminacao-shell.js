@@ -1,4 +1,5 @@
 import './internal-iluminacao-shell.css';
+import 'ol/ol.css';
 import Feature from 'ol/Feature.js';
 import Map from 'ol/Map.js';
 import View from 'ol/View.js';
@@ -22,6 +23,7 @@ const AUTH_LOGOUT_ENDPOINT = '/api/internal/auth/logout';
 const INTERNAL_ADMIN_USERS_ENDPOINT = '/api/internal/admin/users';
 const INTERNAL_ADMIN_PROFILES_ENDPOINT = '/api/internal/admin/profiles';
 const INTERNAL_SOLICITACOES_ENDPOINT = '/api/internal/iluminacao/solicitacoes';
+const INTERNAL_MAPA_OCORRENCIAS_ENDPOINT = '/api/internal/iluminacao/mapa/ocorrencias';
 const INTERNAL_RELATORIO_SOLICITACOES_CSV_ENDPOINT =
   '/api/internal/iluminacao/relatorios/solicitacoes.csv';
 const INTERNAL_RELATORIO_SOLICITACOES_RESUMO_ENDPOINT =
@@ -33,6 +35,7 @@ const INTERNAL_DASHBOARD_RANKING_ENDPOINT =
 const INTERNAL_DASHBOARD_SERIES_SEMANAL_ENDPOINT =
   '/api/internal/iluminacao/dashboard/series?granularidade=semana';
 const SOLICITACOES_PAGE_SIZE = 20;
+const MAPA_OCORRENCIAS_LIMIT = 250;
 const HISTORICO_PAGE_SIZE = 20;
 const OBSERVACOES_PAGE_SIZE = 20;
 const OBSERVACAO_MIN_LENGTH = 3;
@@ -45,6 +48,7 @@ const PRIORIDADE_OBSERVACAO_MIN_LENGTH = 3;
 const PRIORIDADE_OBSERVACAO_MAX_LENGTH = 1000;
 const INTERNAL_MUTATING_REQUEST_HEADER = 'X-Geoportal-Internal-Request';
 const OPERATIONAL_MAP_ZOOM = 17;
+const OPERATIONAL_MAP_CENTER = [-55.225, -23.105];
 const DETAIL_SECTION_SELECTOR = '[data-solicitacao-detail-section]';
 
 const SESSION_STATES = {
@@ -350,11 +354,65 @@ function createSolicitacoesState(overrides = {}) {
     total: 0,
     limit: SOLICITACOES_PAGE_SIZE,
     offset: 0,
+    sortBy: 'protocolo_desc',
     statusCode: null,
     message: 'Listagem somente leitura ainda não carregada.',
     ...overrides
   };
 }
+
+function createOperationalMapState(overrides = {}) {
+  const defaultFilters = {
+    status: '',
+    prioridade: '',
+    ativos: false,
+    limit: MAPA_OCORRENCIAS_LIMIT
+  };
+  const defaultPopup = {
+    status: 'idle',
+    solicitacaoId: null,
+    item: null,
+    statusCode: null,
+    message: 'Selecione um ponto no mapa para abrir o resumo operacional.'
+  };
+
+  return {
+    status: 'idle',
+    items: [],
+    total: 0,
+    limit: MAPA_OCORRENCIAS_LIMIT,
+    offset: 0,
+    statusCode: null,
+    message: 'Mapa operacional ainda não carregado.',
+    filters: defaultFilters,
+    selectedIds: [],
+    selectionMode: '',
+    viewState: null,
+    popup: defaultPopup,
+    ...overrides,
+    filters: {
+      ...defaultFilters,
+      ...(overrides.filters || {})
+    },
+    selectedIds: Array.isArray(overrides.selectedIds)
+      ? Array.from(new Set(overrides.selectedIds.map(Number).filter((id) => Number.isInteger(id) && id > 0)))
+      : [],
+    selectionMode: ['selection', 'viewport'].includes(overrides.selectionMode)
+      ? overrides.selectionMode
+      : '',
+    viewState: overrides.viewState && Array.isArray(overrides.viewState.center)
+      ? {
+          center: overrides.viewState.center.map(Number).filter((value) => Number.isFinite(value)).slice(0, 2),
+          zoom: Number.isFinite(Number(overrides.viewState.zoom)) ? Number(overrides.viewState.zoom) : null
+        }
+      : null,
+    popup: {
+      ...defaultPopup,
+      ...(overrides.popup || {})
+    }
+  };
+}
+
 
 function createHistoricoState(overrides = {}) {
   return {
@@ -444,21 +502,32 @@ function createRelatorioState(overrides = {}) {
 }
 
 function createDashboardState(overrides = {}) {
+  const defaultFilters = {
+    source: 'all',
+    status: 'all',
+    prioridade: 'all',
+    tipo: 'all',
+    dataInicio: '',
+    dataFim: '',
+    mapMode: 'points'
+  };
+
   return {
     status: 'idle',
     filters: {
-      source: 'all',
-      status: 'all',
-      prioridade: 'all',
-      tipo: 'all',
-      mapMode: 'points'
+      ...defaultFilters,
+      ...(overrides.filters || {})
     },
     statusCode: null,
     message: 'Dashboard geral carregado conforme permissoes.',
     resumo: null,
     ranking: null,
     series: null,
-    ...overrides
+    ...overrides,
+    filters: {
+      ...defaultFilters,
+      ...(overrides.filters || {})
+    }
   };
 }
 
@@ -511,6 +580,7 @@ const initialSessionState = {
   dashboard: createDashboardState(),
   relatorio: createRelatorioState(),
   solicitacoes: createSolicitacoesState(),
+  mapaOperacional: createOperationalMapState(),
   detalhe: createDetalheState(),
   admin: createAdminState()
 };
@@ -568,6 +638,7 @@ function createSessionState(overrides = {}) {
     dashboard: createDashboardState(),
     relatorio: createRelatorioState(),
     solicitacoes: createSolicitacoesState(),
+    mapaOperacional: createOperationalMapState(),
     detalhe: createDetalheState(),
     admin: createAdminState(),
     ...overrides
@@ -612,12 +683,14 @@ function getSessionStatusMeta(state) {
 let currentState = createSessionState();
 let operationalDetailMap = null;
 let dashboardMap = null;
+let internalOperationalMap = null;
 
 function renderApp(root, state) {
   const normalizedState = {
     ...state,
     dashboard: state.dashboard || createDashboardState(),
     solicitacoes: state.solicitacoes || createSolicitacoesState(),
+    mapaOperacional: state.mapaOperacional || createOperationalMapState(),
     detalhe: state.detalhe || createDetalheState(),
     admin: state.admin || createAdminState()
   };
@@ -717,6 +790,34 @@ function isValidSolicitacoesPayload(payload) {
       && Number.isInteger(payload.total)
   );
 }
+
+function isValidMapaOcorrenciasPayload(payload) {
+  return Boolean(
+    payload
+      && typeof payload === 'object'
+      && Array.isArray(payload.items)
+      && Number.isInteger(payload.limit)
+      && Number.isInteger(payload.offset)
+      && Number.isInteger(payload.total)
+  );
+}
+
+function isValidMapaPopupPayload(payload) {
+  return Boolean(
+    payload
+      && typeof payload === 'object'
+      && Number.isInteger(payload.id)
+      && isOptionalText(payload.protocolo)
+      && isOptionalText(payload.status)
+      && isOptionalText(payload.prioridade)
+      && isOptionalText(payload.poste_id)
+      && isOptionalText(payload.referencia_localizacao)
+      && typeof payload.dados_pessoais_disponiveis === 'boolean'
+      && isOptionalText(payload.nome_solicitante)
+      && isOptionalText(payload.contato_solicitante)
+  );
+}
+
 
 function isOptionalText(value) {
   return value === null || value === undefined || typeof value === 'string';
@@ -981,7 +1082,10 @@ export {
   buildRelatorioSolicitacoesCsvUrl,
   buildRelatorioSolicitacoesResumoUrl,
   buildInternalWhatsappUrl,
+  buildWhatsAppDispatchText,
   buildSolicitacoesUrl,
+  buildMapaOcorrenciasUrl,
+  buildMapaOcorrenciaPopupUrl,
   buildUpdateSolicitacaoPrioridadeUrl,
   buildUpdateSolicitacaoStatusCorrecaoUrl,
   canViewDashboardWidgets,
@@ -995,10 +1099,13 @@ export {
   createPrioridadeFormState,
   createStatusCorrectionFormState,
   createAdminState,
+  createOperationalMapState,
   fetchDashboardGeralWidgets,
   fetchRelatorioSolicitacoesCsv,
   fetchRelatorioSolicitacoesResumo,
   fetchSolicitacoesInternas,
+  fetchMapaOcorrencias,
+  fetchMapaOcorrenciaPopup,
   fetchUpdateSolicitacaoStatus,
   fetchUpdateSolicitacaoStatusCorrecao,
   fetchUpdateSolicitacaoPrioridade,
@@ -1019,12 +1126,16 @@ export {
   isMaintenanceLikeUser,
   resolveInitialActiveModule,
   normalizeSolicitacaoCoordinate,
+  filterSolicitacoesByMapSelection,
+  mergeOperationalMapSelectionIds,
   renderCoordinateRouteSection,
   renderDashboardPanel,
   renderAdminPanel,
   renderModuleMenu,
   renderObservacoesPanel,
   renderRelatorioPanel,
+  renderInternalOperationalMapPanel,
+  renderMapaOcorrenciaPopup,
   renderPriorityUpdatePanel,
   renderStatusCorrectionPanel,
   renderSessionBox,
@@ -1062,8 +1173,162 @@ function toDisplaySolicitacao(item) {
     coordinates,
     hasCoordinates: Boolean(coordinates),
     criadoEm: formatDateTime(safeItem.criado_em),
+    criadoEmRaw: safeText(safeItem.criado_em, ''),
     atualizadoEm: formatDateTime(safeItem.atualizado_em),
+    atualizadoEmRaw: safeText(safeItem.atualizado_em, ''),
     duplicidadeSuspeita: safeItem.duplicidade_suspeita === true ? 'Sim' : 'Não'
+  };
+}
+
+function toDisplayMapaOcorrencia(item) {
+  const safeItem = item && typeof item === 'object' ? item : {};
+  const id = Number.isInteger(safeItem.id) && safeItem.id > 0
+    ? safeItem.id
+    : null;
+  const coordinates = normalizeSolicitacaoCoordinate(
+    safeItem.latitude,
+    safeItem.longitude
+  );
+
+  return {
+    id,
+    protocolo: safeText(safeItem.protocolo),
+    statusKey: normalizeStatusKey(safeItem.status),
+    status: formatStatusLabel(safeItem.status),
+    tipoProblemaKey: safeText(safeItem.tipo_problema, ''),
+    tipoProblema: formatProblemTypeLabel(safeItem.tipo_problema),
+    prioridadeKey: safeText(safeItem.prioridade, ''),
+    prioridade: formatPriorityLabel(safeItem.prioridade),
+    origem: formatOriginLabel(safeItem.origem),
+    localizacaoTipo: formatLocationTypeLabel(safeItem.localizacao_tipo),
+    posteId: safeText(safeItem.poste_id, 'Sem poste'),
+    referenciaLocalizacao: safeText(safeItem.referencia_localizacao, 'Não informada'),
+    coordinates,
+    hasCoordinates: Boolean(coordinates),
+    criadoEm: formatDateTime(safeItem.criado_em),
+    atualizadoEm: formatDateTime(safeItem.atualizado_em),
+    finalizadoEm: formatDateTime(safeItem.finalizado_em)
+  };
+}
+
+function buildWhatsAppDispatchText(routeUrl, protocolo, nomeSolicitante) {
+  const safeRoute = safeText(routeUrl, '');
+  const safeProtocolo = safeText(protocolo, 'Não informado');
+  const safeSolicitante = safeText(nomeSolicitante, 'não disponível para este perfil')
+    || 'não disponível para este perfil';
+
+  return [
+    safeRoute,
+    `Protocolo: ${safeProtocolo}`,
+    `Solicitante: ${safeSolicitante}`
+  ].join('\n');
+}
+
+function renderWhatsappDispatchCopyButton(routeUrl, protocolo, nomeSolicitante, solicitacaoId = null) {
+  if (!routeUrl) {
+    return `
+      <p class="internal-muted-note">
+        Cópia para WhatsApp indisponível sem coordenada do chamado.
+      </p>
+    `;
+  }
+
+  return `
+    <div class="internal-whatsapp-copy">
+      <button
+        type="button"
+        class="internal-secondary-action"
+        data-action="copy-whatsapp-dispatch"
+        data-route-url="${escapeHtml(routeUrl)}"
+        data-protocolo="${escapeHtml(protocolo)}"
+        data-solicitante="${escapeHtml(nomeSolicitante || '')}"
+        ${Number.isInteger(solicitacaoId) && solicitacaoId > 0 ? `data-solicitacao-id="${escapeHtml(solicitacaoId)}"` : ''}
+      >
+        Copiar para WhatsApp
+      </button>
+      <p class="internal-muted-note" data-whatsapp-copy-message>
+        Copia rota, protocolo e solicitante autorizado para envio operacional.
+      </p>
+    </div>
+  `;
+}
+
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+    await navigator.clipboard.writeText(text);
+    return true;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-9999px';
+  document.body.appendChild(textarea);
+  textarea.select();
+
+  try {
+    return document.execCommand('copy');
+  } finally {
+    textarea.remove();
+  }
+}
+
+async function copyWhatsappDispatchMessage(button) {
+  const routeUrl = safeText(button.dataset.routeUrl, '');
+  const protocolo = safeText(button.dataset.protocolo, 'Não informado');
+  const solicitante = safeText(button.dataset.solicitante, '') || 'não disponível para este perfil';
+  const messageTarget = button.closest('.internal-whatsapp-copy')?.querySelector('[data-whatsapp-copy-message]');
+
+  if (!routeUrl) {
+    if (messageTarget) {
+      messageTarget.textContent = 'Não foi possível copiar: rota indisponível.';
+    }
+    return;
+  }
+
+  try {
+    const solicitacaoId = Number.parseInt(safeText(button.dataset.solicitacaoId, ''), 10);
+    if (!solicitante && Number.isInteger(solicitacaoId) && solicitacaoId > 0) {
+      if (messageTarget) {
+        messageTarget.textContent = 'Buscando solicitante autorizado...';
+      }
+      const popup = await fetchMapaOcorrenciaPopup(solicitacaoId);
+      if (popup.status === 'ready' && popup.item) {
+        solicitante = safeText(popup.item.nomeSolicitante, '');
+        button.dataset.solicitante = solicitante;
+      }
+    }
+
+    await copyTextToClipboard(buildWhatsAppDispatchText(routeUrl, protocolo, solicitante));
+    if (messageTarget) {
+      messageTarget.textContent = 'Copiado para WhatsApp.';
+    }
+  } catch {
+    if (messageTarget) {
+      messageTarget.textContent = 'Não foi possível copiar.';
+    }
+  }
+}
+
+function toDisplayMapaPopup(item) {
+  const safeItem = item && typeof item === 'object' ? item : {};
+  const dadosPessoaisDisponiveis = safeItem.dados_pessoais_disponiveis === true;
+
+  return {
+    id: Number.isInteger(safeItem.id) && safeItem.id > 0 ? safeItem.id : null,
+    protocolo: safeText(safeItem.protocolo),
+    statusKey: normalizeStatusKey(safeItem.status),
+    status: formatStatusLabel(safeItem.status),
+    prioridadeKey: safeText(safeItem.prioridade, ''),
+    prioridade: formatPriorityLabel(safeItem.prioridade),
+    posteId: safeText(safeItem.poste_id, 'Sem poste'),
+    referenciaLocalizacao: safeText(safeItem.referencia_localizacao, 'Não informada'),
+    localizacaoTipo: formatLocationTypeLabel(safeItem.localizacao_tipo),
+    dadosPessoaisDisponiveis,
+    nomeSolicitante: dadosPessoaisDisponiveis ? safeText(safeItem.nome_solicitante, '') : '',
+    contatoSolicitante: dadosPessoaisDisponiveis ? safeText(safeItem.contato_solicitante, '') : '',
+    routeUrl: safeText(safeItem.route_url, '')
   };
 }
 
@@ -1369,6 +1634,40 @@ function buildSolicitacoesUrl(offset = 0, options = {}) {
 
   return `${INTERNAL_SOLICITACOES_ENDPOINT}?${params.toString()}`;
 }
+
+function buildMapaOcorrenciasUrl(options = {}) {
+  const limit = Number.parseInt(String(options.limit || MAPA_OCORRENCIAS_LIMIT), 10);
+  const safeLimit = Number.isInteger(limit)
+    ? Math.max(1, Math.min(500, limit))
+    : MAPA_OCORRENCIAS_LIMIT;
+  const offset = Number.parseInt(String(options.offset || 0), 10);
+  const safeOffset = Number.isInteger(offset) && offset > 0 ? offset : 0;
+  const params = new URLSearchParams({
+    limit: String(safeLimit),
+    offset: String(safeOffset)
+  });
+  const status = safeText(options.status, '').toLowerCase();
+  const prioridade = safeText(options.prioridade, '').toLowerCase();
+
+  if (status) {
+    params.set('status', status);
+  }
+
+  if (prioridade) {
+    params.set('prioridade', prioridade);
+  }
+
+  if (options.ativos === true) {
+    params.set('ativos', 'true');
+  }
+
+  return `${INTERNAL_MAPA_OCORRENCIAS_ENDPOINT}?${params.toString()}`;
+}
+
+function buildMapaOcorrenciaPopupUrl(solicitacaoId) {
+  return `${INTERNAL_MAPA_OCORRENCIAS_ENDPOINT}/${encodeURIComponent(String(solicitacaoId))}/popup`;
+}
+
 
 function getSolicitacoesListOptions(state) {
   return {
@@ -1832,8 +2131,13 @@ function renderModuleMenu(state) {
 
 function getSummaryCardViews(state) {
   const listState = state.solicitacoes || createSolicitacoesState();
-  const items = Array.isArray(listState.items) ? listState.items : [];
-  const loaded = listState.status === 'ready' || listState.status === 'empty';
+  const listItems = Array.isArray(listState.items) ? listState.items : [];
+  const mapItems = getOperationalMapItems(state);
+  const listTotal = Number.isInteger(listState.total) ? listState.total : listItems.length;
+  const hasCompleteMapSummary = mapItems.length > 0 && mapItems.length >= listTotal;
+  const items = hasCompleteMapSummary ? mapItems : listItems;
+  const loaded = hasCompleteMapSummary || listState.status === 'ready' || listState.status === 'empty';
+  const summarySourceNote = hasCompleteMapSummary ? 'Base completa do mapa operacional' : 'Nesta página da listagem';
   const activeStatuses = ['aberta', 'em_triagem', 'encaminhada', 'em_execucao', 'aguardando_material'];
   const finishedStatuses = ['resolvida', 'cancelada', 'indeferida', 'nao_localizado'];
   const activeCount = items.filter((item) => activeStatuses.includes(item.statusKey)).length;
@@ -1853,7 +2157,7 @@ function getSummaryCardViews(state) {
       return {
         ...card,
         value: loaded ? activeCount : '--',
-        note: loaded ? 'Nesta página da listagem' : 'Aguardando listagem'
+        note: loaded ? summarySourceNote : 'Aguardando listagem'
       };
     }
 
@@ -1861,7 +2165,7 @@ function getSummaryCardViews(state) {
       return {
         ...card,
         value: loaded ? finishedCount : '--',
-        note: loaded ? 'Nesta página da listagem' : 'Aguardando listagem'
+        note: loaded ? summarySourceNote : 'Aguardando listagem'
       };
     }
 
@@ -2010,17 +2314,104 @@ function getDashboardFilters(state) {
     status: safeText(filters.status, 'all') || 'all',
     prioridade: safeText(filters.prioridade, 'all') || 'all',
     tipo: safeText(filters.tipo, 'all') || 'all',
+    dataInicio: normalizeRelatorioDateValue(filters.dataInicio),
+    dataFim: normalizeRelatorioDateValue(filters.dataFim),
     mapMode: safeText(filters.mapMode, 'points') || 'points'
   };
 }
 
+function getDashboardMapFetchOptions(filters = {}) {
+  const normalized = {
+    status: safeText(filters.status, 'all') || 'all',
+    prioridade: safeText(filters.prioridade, 'all') || 'all'
+  };
+  const options = {
+    limit: MAPA_OCORRENCIAS_LIMIT,
+    ativos: normalized.status === 'active'
+  };
+
+  if (normalized.status && !['all', 'active'].includes(normalized.status)) {
+    options.status = normalized.status;
+  }
+
+  if (normalized.prioridade && normalized.prioridade !== 'all') {
+    options.prioridade = normalized.prioridade;
+  }
+
+  return options;
+}
+
+function getOperationalMapItems(state) {
+  const mapState = state.mapaOperacional || createOperationalMapState();
+  if (mapState.status !== 'ready' || !Array.isArray(mapState.items)) {
+    return [];
+  }
+
+  return mapState.items;
+}
+
 function getDashboardMapPoints(state) {
+  const mapItems = getOperationalMapItems(state);
+  if (mapItems.length > 0) {
+    return mapItems
+      .filter((item) => item && item.hasCoordinates && item.coordinates)
+      .slice(0, MAPA_OCORRENCIAS_LIMIT);
+  }
+
   const listState = state.solicitacoes || createSolicitacoesState();
   const items = Array.isArray(listState.items) ? listState.items : [];
 
   return items
     .filter((item) => item && item.hasCoordinates && item.coordinates)
     .slice(0, SOLICITACOES_PAGE_SIZE);
+}
+
+function getDashboardItemDateValue(item) {
+  const candidates = [
+    item?.criadoEmRaw,
+    item?.atualizadoEmRaw,
+    item?.criadoEm,
+    item?.atualizadoEm
+  ];
+
+  for (const candidate of candidates) {
+    const value = safeText(candidate, '');
+    const isoMatch = value.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (isoMatch) {
+      return isoMatch[1];
+    }
+
+    const localMatch = value.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    if (localMatch) {
+      return `${localMatch[3]}-${localMatch[2]}-${localMatch[1]}`;
+    }
+  }
+
+  return '';
+}
+
+function isDashboardItemInDateRange(item, filters) {
+  const dataInicio = normalizeRelatorioDateValue(filters.dataInicio);
+  const dataFim = normalizeRelatorioDateValue(filters.dataFim);
+
+  if (!dataInicio && !dataFim) {
+    return true;
+  }
+
+  const itemDate = getDashboardItemDateValue(item);
+  if (!itemDate) {
+    return false;
+  }
+
+  if (dataInicio && itemDate < dataInicio) {
+    return false;
+  }
+
+  if (dataFim && itemDate > dataFim) {
+    return false;
+  }
+
+  return true;
 }
 
 function getDashboardFilterOptions(state) {
@@ -2037,7 +2428,8 @@ function getDashboardFilterOptions(state) {
       { value: 'iluminacao', label: 'Iluminacao Publica' }
     ],
     statuses: [
-      { value: 'all', label: 'Todos' },
+      { value: 'all', label: 'Todos (incluindo finalizadas)' },
+      { value: 'active', label: 'Todos (somente abertas/ativas)' },
       { value: 'aberta', label: 'Aberta' },
       { value: 'em_triagem', label: 'Em triagem' },
       { value: 'em_execucao', label: 'Em execucao' },
@@ -2073,7 +2465,11 @@ function isDashboardMapPointVisible(item, filters) {
     return false;
   }
 
-  if (filters.status !== 'all' && item.statusKey !== filters.status) {
+  if (filters.status === 'active' && terminalStatuses.includes(item.statusKey)) {
+    return false;
+  }
+
+  if (!['all', 'active'].includes(filters.status) && item.statusKey !== filters.status) {
     return false;
   }
 
@@ -2082,6 +2478,10 @@ function isDashboardMapPointVisible(item, filters) {
   }
 
   if (filters.tipo !== 'all' && item.tipoProblemaKey !== filters.tipo) {
+    return false;
+  }
+
+  if (!isDashboardItemInDateRange(item, filters)) {
     return false;
   }
 
@@ -2100,6 +2500,35 @@ function getDashboardPointCounts(points, key) {
     accumulator[value] = (accumulator[value] || 0) + 1;
     return accumulator;
   }, {});
+}
+
+
+function renderDashboardDateFilter(name, label, value) {
+  return `
+    <label>
+      <span>${escapeHtml(label)}</span>
+      <input type="date" name="${escapeHtml(name)}" value="${escapeHtml(value)}" data-dashboard-filter>
+    </label>
+  `;
+}
+
+function formatDashboardPeriodNote(filters = {}) {
+  const dataInicio = normalizeRelatorioDateValue(filters.dataInicio);
+  const dataFim = normalizeRelatorioDateValue(filters.dataFim);
+
+  if (dataInicio && dataFim) {
+    return `Período selecionado: ${dataInicio} a ${dataFim}`;
+  }
+
+  if (dataInicio) {
+    return `Período selecionado: a partir de ${dataInicio}`;
+  }
+
+  if (dataFim) {
+    return `Período selecionado: até ${dataFim}`;
+  }
+
+  return 'Tempo médio - total';
 }
 
 function renderDashboardFilterSelect(name, label, options, selectedValue) {
@@ -2121,19 +2550,27 @@ function renderDashboardFilters(state) {
 
   return `
     <form class="internal-dashboard-filter-form" data-dashboard-filter-form>
+      ${renderDashboardDateFilter('dataInicio', 'Data inicial', filters.dataInicio)}
+      ${renderDashboardDateFilter('dataFim', 'Data final', filters.dataFim)}
       ${renderDashboardFilterSelect('source', 'Fonte', options.sources, filters.source)}
       ${renderDashboardFilterSelect('status', 'Status', options.statuses, filters.status)}
       ${renderDashboardFilterSelect('prioridade', 'Prioridade', options.prioridades, filters.prioridade)}
       ${renderDashboardFilterSelect('tipo', 'Tipo', options.tipos, filters.tipo)}
       ${renderDashboardFilterSelect('mapMode', 'Modo do mapa', options.mapModes, filters.mapMode)}
-      <p class="internal-dashboard-mode-help">Troque aqui entre Pontos e Calor.</p>
+      <div class="internal-dashboard-filter-actions">
+        <button type="submit" class="internal-secondary-action" value="apply">Atualizar período</button>
+        <button type="submit" class="internal-secondary-action" value="reset" formnovalidate>Limpar filtros</button>
+      </div>
+      <p class="internal-dashboard-mode-help">Troque aqui entre Pontos e Calor. Use datas e filtros para recalcular indicadores e mapa, ou deixe em branco para o tempo total.</p>
     </form>
   `;
 }
 
-function renderDashboardStatusLegend(points) {
-  const counts = getDashboardPointCounts(points, 'statusKey');
-  const entries = Object.entries(counts);
+function renderDashboardStatusLegend(points, aggregateCounts = null) {
+  const counts = aggregateCounts && typeof aggregateCounts === 'object'
+    ? normalizeDashboardMap(aggregateCounts)
+    : getDashboardPointCounts(points, 'statusKey');
+  const entries = Object.entries(counts).filter(([, total]) => normalizeDashboardCount(total) > 0);
 
   if (entries.length === 0) {
     return '<p class="internal-muted-note">Sem ocorrencias visiveis para os filtros atuais.</p>';
@@ -2152,15 +2589,17 @@ function renderDashboardStatusLegend(points) {
   `;
 }
 
-function renderDashboardPrioritySummary(points) {
-  const counts = getDashboardPointCounts(points, 'prioridadeKey');
+function renderDashboardPrioritySummary(points, aggregateCounts = null, visibleTotal = null) {
+  const counts = aggregateCounts && typeof aggregateCounts === 'object'
+    ? normalizeDashboardMap(aggregateCounts)
+    : getDashboardPointCounts(points, 'prioridadeKey');
   const priorities = ['urgente', 'alta', 'normal', 'baixa'];
 
   return `
     <dl class="internal-dashboard-quick-facts">
       <div>
         <dt>Ocorrencias visiveis</dt>
-        <dd>${escapeHtml(String(points.length))}</dd>
+        <dd>${escapeHtml(String(Number.isInteger(visibleTotal) ? visibleTotal : points.length))}</dd>
       </div>
       ${priorities.map((priority) => `
         <div>
@@ -2287,6 +2726,8 @@ function renderDashboardPanel(state) {
   const resumo = dashboard.resumo || normalizeDashboardResumo({});
   const ranking = dashboard.ranking || normalizeDashboardRanking({});
   const series = dashboard.series || normalizeDashboardSeries({});
+  const dashboardFilters = getDashboardFilters(state);
+  const tempoMedioNote = formatDashboardPeriodNote(dashboardFilters);
   const filteredMapPoints = getFilteredDashboardMapPoints(state);
 
   return `
@@ -2312,7 +2753,7 @@ function renderDashboardPanel(state) {
         ${renderDashboardMetricCard('Encaminhadas', resumo.encaminhadas, 'Direcionadas', 'N')}
         ${renderDashboardMetricCard('Finalizadas', resumo.finalizadas, 'Concluidas', 'F')}
         ${renderDashboardMetricCard('Atrasadas', resumo.atrasadas, 'Acompanhar', '!')}
-        ${renderDashboardMetricCard('Tempo medio', formatDashboardSeconds(resumo.tempo_medio_resolucao_segundos), 'Resolucao', 'M')}
+        ${renderDashboardMetricCard('Tempo médio', formatDashboardSeconds(resumo.tempo_medio_resolucao_segundos), tempoMedioNote, 'M')}
       </div>
 
       <div class="internal-dashboard-territory-grid">
@@ -2326,8 +2767,8 @@ function renderDashboardPanel(state) {
             <span>Read-only</span>
           </div>
           ${renderDashboardFilters(state)}
-          ${renderDashboardStatusLegend(filteredMapPoints)}
-          ${renderDashboardPrioritySummary(filteredMapPoints)}
+          ${renderDashboardStatusLegend(filteredMapPoints, resumo.por_status)}
+          ${renderDashboardPrioritySummary(filteredMapPoints, resumo.por_prioridade, resumo.total)}
         </aside>
       </div>
 
@@ -2598,6 +3039,7 @@ function renderListRouteAction(item) {
     >
       Traçar rota
     </a>
+    ${renderWhatsappDispatchCopyButton(routeUrl, item.protocolo, '', item.id)}
   `;
 }
 
@@ -2820,6 +3262,132 @@ function renderSolicitacoesRows(items) {
     .join('');
 }
 
+
+function getSolicitacoesSortOptions() {
+  return [
+    { value: 'protocolo_desc', label: 'Protocolo mais recente' },
+    { value: 'protocolo_asc', label: 'Protocolo mais antigo' },
+    { value: 'status_asc', label: 'Status' },
+    { value: 'prioridade_desc', label: 'Prioridade operacional' },
+    { value: 'poste_asc', label: 'Poste' },
+    { value: 'criado_desc', label: 'Criado em mais recente' },
+    { value: 'criado_asc', label: 'Criado em mais antigo' },
+    { value: 'atualizado_desc', label: 'Atualizado em mais recente' },
+    { value: 'atualizado_asc', label: 'Atualizado em mais antigo' }
+  ];
+}
+
+function getPrioritySortWeight(priorityKey) {
+  return {
+    urgente: 4,
+    alta: 3,
+    normal: 2,
+    baixa: 1
+  }[safeText(priorityKey, '').toLowerCase()] || 0;
+}
+
+function getProtocolSortNumber(protocolo) {
+  const match = safeText(protocolo, '').match(/(\d+)$/);
+  return match ? Number.parseInt(match[1], 10) : 0;
+}
+
+function getSolicitacaoSortTime(item, key) {
+  const rawValue = key === 'atualizado' ? item.atualizadoEmRaw : item.criadoEmRaw;
+  const fallbackValue = key === 'atualizado' ? item.atualizadoEm : item.criadoEm;
+  const rawTime = Date.parse(safeText(rawValue, ''));
+
+  if (Number.isFinite(rawTime)) {
+    return rawTime;
+  }
+
+  const fallback = safeText(fallbackValue, '').match(/(\d{2})\/(\d{2})\/(\d{4}),?\s+(\d{2}):(\d{2})/);
+  if (!fallback) {
+    return 0;
+  }
+
+  return Date.UTC(
+    Number.parseInt(fallback[3], 10),
+    Number.parseInt(fallback[2], 10) - 1,
+    Number.parseInt(fallback[1], 10),
+    Number.parseInt(fallback[4], 10),
+    Number.parseInt(fallback[5], 10)
+  );
+}
+
+function sortSolicitacoesItems(items, sortBy = 'protocolo_desc') {
+  const sorted = [...items];
+
+  sorted.sort((left, right) => {
+    if (sortBy === 'protocolo_asc') {
+      return getProtocolSortNumber(left.protocolo) - getProtocolSortNumber(right.protocolo);
+    }
+
+    if (sortBy === 'status_asc') {
+      return left.status.localeCompare(right.status, 'pt-BR') || getProtocolSortNumber(right.protocolo) - getProtocolSortNumber(left.protocolo);
+    }
+
+    if (sortBy === 'prioridade_desc') {
+      return getPrioritySortWeight(right.prioridadeKey) - getPrioritySortWeight(left.prioridadeKey)
+        || getProtocolSortNumber(right.protocolo) - getProtocolSortNumber(left.protocolo);
+    }
+
+    if (sortBy === 'poste_asc') {
+      return left.posteId.localeCompare(right.posteId, 'pt-BR', { numeric: true })
+        || getProtocolSortNumber(right.protocolo) - getProtocolSortNumber(left.protocolo);
+    }
+
+    if (sortBy === 'criado_desc') {
+      return getSolicitacaoSortTime(right, 'criado') - getSolicitacaoSortTime(left, 'criado')
+        || getProtocolSortNumber(right.protocolo) - getProtocolSortNumber(left.protocolo);
+    }
+
+    if (sortBy === 'criado_asc') {
+      return getSolicitacaoSortTime(left, 'criado') - getSolicitacaoSortTime(right, 'criado')
+        || getProtocolSortNumber(right.protocolo) - getProtocolSortNumber(left.protocolo);
+    }
+
+    if (sortBy === 'atualizado_desc') {
+      return getSolicitacaoSortTime(right, 'atualizado') - getSolicitacaoSortTime(left, 'atualizado')
+        || getProtocolSortNumber(right.protocolo) - getProtocolSortNumber(left.protocolo);
+    }
+
+    if (sortBy === 'atualizado_asc') {
+      return getSolicitacaoSortTime(left, 'atualizado') - getSolicitacaoSortTime(right, 'atualizado')
+        || getProtocolSortNumber(right.protocolo) - getProtocolSortNumber(left.protocolo);
+    }
+
+    return getProtocolSortNumber(right.protocolo) - getProtocolSortNumber(left.protocolo);
+  });
+
+  return sorted;
+}
+
+function applySolicitacoesSort(listState) {
+  if (listState.status !== 'ready' || !Array.isArray(listState.items)) {
+    return listState;
+  }
+
+  return {
+    ...listState,
+    items: sortSolicitacoesItems(listState.items, listState.sortBy)
+  };
+}
+
+function renderSolicitacoesSortControl(listState, canLoad, isLoading) {
+  const sortBy = safeText(listState.sortBy, 'protocolo_desc') || 'protocolo_desc';
+
+  return `
+    <label class="internal-list-sort-control">
+      <span>Ordenar protocolos</span>
+      <select name="sortBy" data-solicitacoes-sort ${canLoad && !isLoading ? '' : 'disabled'}>
+        ${getSolicitacoesSortOptions().map((option) => `
+          <option value="${escapeHtml(option.value)}" ${option.value === sortBy ? 'selected' : ''}>${escapeHtml(option.label)}</option>
+        `).join('')}
+      </select>
+    </label>
+  `;
+}
+
 function renderSolicitacoesTable(listState, state) {
   if (listState.status === 'loading') {
     return `
@@ -2883,8 +3451,308 @@ function getSolicitacoesStatusText(listState, maintenanceMode = false) {
   return 'Aguardando';
 }
 
+function mergeOperationalMapSelectionIds(currentIds = [], nextIds = []) {
+  const merged = [];
+  [...currentIds, ...nextIds].forEach((id) => {
+    const normalizedId = Number(id);
+    if (Number.isInteger(normalizedId) && normalizedId > 0 && !merged.includes(normalizedId)) {
+      merged.push(normalizedId);
+    }
+  });
+  return merged;
+}
+
+function areOperationalMapIdListsEqual(left = [], right = []) {
+  const normalizedLeft = mergeOperationalMapSelectionIds([], left);
+  const normalizedRight = mergeOperationalMapSelectionIds([], right);
+  return normalizedLeft.length === normalizedRight.length
+    && normalizedLeft.every((id, index) => id === normalizedRight[index]);
+}
+
+function getOperationalMapViewState(map) {
+  if (!map || typeof map.getView !== 'function') {
+    return null;
+  }
+
+  const view = map.getView();
+  const center = view.getCenter();
+  const zoom = view.getZoom();
+
+  return Array.isArray(center) && center.length >= 2
+    ? { center: [Number(center[0]), Number(center[1])], zoom: Number(zoom) }
+    : null;
+}
+
+function getOperationalMapVisibleIds(map, items = []) {
+  if (!map || typeof map.getView !== 'function' || typeof map.getSize !== 'function') {
+    return [];
+  }
+
+  const size = map.getSize();
+  if (!Array.isArray(size) || size.length < 2 || size.some((value) => !Number.isFinite(Number(value)) || Number(value) <= 0)) {
+    return [];
+  }
+
+  const extent = map.getView().calculateExtent(size);
+  if (!Array.isArray(extent) || extent.length < 4) {
+    return [];
+  }
+
+  return items
+    .filter((item) => item.hasCoordinates && item.coordinates)
+    .filter((item) => {
+      const coordinate = fromLonLat([item.coordinates.longitude, item.coordinates.latitude]);
+      return coordinate[0] >= extent[0]
+        && coordinate[0] <= extent[2]
+        && coordinate[1] >= extent[1]
+        && coordinate[1] <= extent[3];
+    })
+    .map((item) => item.id)
+    .filter((id) => Number.isInteger(id) && id > 0);
+}
+
+function filterSolicitacoesByMapSelection(listState, mapState) {
+  const selectedIds = Array.isArray(mapState?.selectedIds)
+    ? mapState.selectedIds.map(Number).filter((id) => Number.isInteger(id) && id > 0)
+    : [];
+  const selectionMode = ['selection', 'viewport'].includes(mapState?.selectionMode)
+    ? mapState.selectionMode
+    : selectedIds.length > 0 ? 'selection' : '';
+
+  if (!selectionMode || listState.status !== 'ready') {
+    return listState;
+  }
+
+  const selectedSet = new Set(selectedIds);
+  const items = (listState.items || []).filter((item) => selectedSet.has(item.id));
+
+  return {
+    ...listState,
+    items,
+    total: items.length,
+    status: items.length > 0 ? 'ready' : 'empty',
+    message: items.length > 0
+      ? selectionMode === 'viewport'
+        ? 'Lista filtrada pelos pontos visíveis no mapa na página atual.'
+        : 'Lista filtrada pela seleção do mapa na página atual.'
+      : selectionMode === 'viewport'
+        ? 'Nenhuma solicitação da página atual está visível no recorte atual do mapa.'
+        : 'Nenhuma solicitação da página atual corresponde à seleção do mapa.'
+  };
+}
+
+function renderOperationalMapStatus(mapState) {
+  if (mapState.statusCode) {
+    return `Código ${mapState.statusCode}`;
+  }
+
+  if (mapState.status === 'ready' || mapState.status === 'empty') {
+    return `${mapState.total} ponto(s)`;
+  }
+
+  if (mapState.status === 'loading') {
+    return 'Carregando';
+  }
+
+  return 'Aguardando';
+}
+
+function renderOperationalMapFilterOptions(options, selectedValue) {
+  return options.map((option) => `
+    <option value="${escapeHtml(option.value)}" ${option.value === selectedValue ? 'selected' : ''}>${escapeHtml(option.label)}</option>
+  `).join('');
+}
+
+function renderMapaOcorrenciaPopup(popupState = createOperationalMapState().popup) {
+  if (popupState.status === 'loading') {
+    return '<p class="internal-operational-popup-message">Carregando resumo do ponto selecionado...</p>';
+  }
+
+  if (popupState.status === 'idle') {
+    return `<p class="internal-operational-popup-message">${escapeHtml(popupState.message)}</p>`;
+  }
+
+  if (popupState.status !== 'ready' || !popupState.item) {
+    return `<p class="internal-operational-popup-message is-error">${escapeHtml(popupState.message || 'Popup indisponível.')}</p>`;
+  }
+
+  const item = popupState.item;
+  const hasContact = Boolean(item.nomeSolicitante || item.contatoSolicitante);
+
+  return `
+    <article class="internal-operational-popup-card">
+      <div class="internal-operational-popup-heading">
+        <span>Protocolo</span>
+        <strong>${escapeHtml(item.protocolo)}</strong>
+      </div>
+      <dl class="internal-operational-popup-list">
+        <div><dt>Status</dt><dd>${escapeHtml(item.status)}</dd></div>
+        <div><dt>Prioridade</dt><dd>${escapeHtml(item.prioridade)}</dd></div>
+        <div><dt>Poste</dt><dd>${escapeHtml(item.posteId)}</dd></div>
+        <div><dt>Localização</dt><dd>${escapeHtml(item.referenciaLocalizacao)}</dd></div>
+      </dl>
+      ${hasContact ? `
+        <div class="internal-operational-popup-contact">
+          <strong>Contato autorizado</strong>
+          ${item.nomeSolicitante ? `<span>${escapeHtml(item.nomeSolicitante)}</span>` : ''}
+          ${item.contatoSolicitante ? `<span>${escapeHtml(item.contatoSolicitante)}</span>` : ''}
+        </div>
+      ` : `
+        <p class="internal-operational-popup-message">Contato não disponível para este perfil.</p>
+      `}
+      <button
+        type="button"
+        class="internal-row-action"
+        data-action="load-solicitacao-detail"
+        data-solicitacao-id="${escapeHtml(item.id)}"
+      >
+        Abrir detalhe interno
+      </button>
+      ${renderWhatsappDispatchCopyButton(item.routeUrl, item.protocolo, item.nomeSolicitante, item.id)}
+    </article>
+  `;
+}
+
+function renderOperationalMapCanvas(mapState) {
+  if (mapState.status === 'ready' && mapState.items.length > 0) {
+    return `
+      <div
+        class="internal-dashboard-real-map internal-operational-map-canvas"
+        data-internal-operational-map
+        role="img"
+        aria-label="Mapa cartografico com pontos de chamados de Iluminação Pública"
+      ></div>
+    `;
+  }
+
+  const message = mapState.status === 'loading'
+    ? 'Carregando pontos do mapa...'
+    : mapState.status === 'empty'
+    ? 'Nenhum ponto com coordenada para este filtro.'
+    : mapState.status === 'forbidden'
+    ? 'Sem permissão para visualizar o mapa operacional.'
+    : mapState.status === 'error'
+    ? mapState.message
+    : 'Use Atualizar mapa ou aplique filtros para carregar os pontos.';
+
+  return `
+    <div class="internal-dashboard-map-placeholder internal-operational-map-placeholder" role="img" aria-label="Mapa operacional sem pontos carregados">
+      <strong>Mapa operacional</strong>
+      <p>${escapeHtml(message)}</p>
+    </div>
+  `;
+}
+
+function renderInternalOperationalMapPanel(state) {
+  const mapState = state.mapaOperacional || createOperationalMapState();
+  const canLoad = canListSolicitacoes(state);
+  const isLoading = mapState.status === 'loading';
+  const selectedCount = Array.isArray(mapState.selectedIds) ? mapState.selectedIds.length : 0;
+  const filters = mapState.filters || createOperationalMapState().filters;
+  const statusOptionsForMap = [
+    { value: '', label: 'Todos' },
+    ...statusOptions.map((status) => ({ value: status, label: formatStatusLabel(status) }))
+  ];
+  const priorityOptionsForMap = [
+    { value: '', label: 'Todas' },
+    ...priorityOptions.map((priority) => ({ value: priority, label: formatPriorityLabel(priority) }))
+  ];
+  const visiblePoints = mapState.status === 'ready' ? mapState.items.length : 0;
+  const selectionMode = ['selection', 'viewport'].includes(mapState.selectionMode) ? mapState.selectionMode : '';
+  const selectionLabel = selectionMode === 'viewport'
+    ? `${selectedCount} ponto(s) visível(is) no mapa filtrando a lista carregada.`
+    : `${selectedCount} ponto(s) selecionado(s). A lista abaixo mostra correspondências da página atual.`;
+  const clearSelectionLabel = selectionMode === 'viewport' ? 'Limpar filtro do mapa' : 'Limpar seleção do mapa';
+
+  return `
+    <section class="internal-main-panel internal-operational-map-panel" aria-label="Mapa operacional de Iluminação Pública">
+      <div class="internal-panel-header">
+        <div>
+          <h3>Mapa operacional</h3>
+          <p>Chamados com coordenadas, sem dados pessoais na coleção de pontos.</p>
+        </div>
+        <span class="internal-pill">${escapeHtml(renderOperationalMapStatus(mapState))}</span>
+      </div>
+
+      <form class="internal-operational-map-filters" data-operational-map-filter-form>
+        <label>
+          <span>Status</span>
+          <select name="status" ${canLoad && !isLoading ? '' : 'disabled'}>
+            ${renderOperationalMapFilterOptions(statusOptionsForMap, filters.status || '')}
+          </select>
+        </label>
+        <label>
+          <span>Prioridade</span>
+          <select name="prioridade" ${canLoad && !isLoading ? '' : 'disabled'}>
+            ${renderOperationalMapFilterOptions(priorityOptionsForMap, filters.prioridade || '')}
+          </select>
+        </label>
+        <label>
+          <span>Limite</span>
+          <input name="limit" type="number" min="1" max="500" value="${escapeHtml(filters.limit || MAPA_OCORRENCIAS_LIMIT)}" ${canLoad && !isLoading ? '' : 'disabled'}>
+        </label>
+        <label class="internal-operational-map-check">
+          <input name="ativos" type="checkbox" value="true" ${filters.ativos ? 'checked' : ''} ${canLoad && !isLoading ? '' : 'disabled'}>
+          <span>Somente ativos</span>
+        </label>
+        <div class="internal-operational-map-actions">
+          <button type="submit" class="internal-secondary-action" value="apply" ${canLoad && !isLoading ? '' : 'disabled'}>Aplicar filtros</button>
+          <button type="submit" class="internal-secondary-action" value="reset" ${canLoad && !isLoading ? '' : 'disabled'}>Limpar tudo</button>
+          <button type="button" class="internal-secondary-action" data-action="refresh-operational-map" ${canLoad && !isLoading ? '' : 'disabled'}>Atualizar mapa</button>
+          <button type="button" class="internal-secondary-action" data-action="filter-operational-map-visible" ${canLoad && !isLoading && mapState.status === 'ready' && mapState.items.length > 0 ? '' : 'disabled'}>Filtrar lista pelo mapa visível</button>
+        </div>
+      </form>
+
+      ${selectedCount > 0 ? `
+        <div class="internal-map-selection-bar" role="status">
+          <span>${escapeHtml(selectionLabel)}</span>
+          <button type="button" class="internal-secondary-action" data-action="clear-operational-map-selection">${escapeHtml(clearSelectionLabel)}</button>
+        </div>
+      ` : ''}
+
+      <div class="internal-dashboard-territory-grid internal-operational-map-grid">
+        <article class="internal-dashboard-map-card internal-operational-map-shell">
+          <div class="internal-dashboard-widget-heading">
+            <div>
+              <h3>Mapa operacional do módulo</h3>
+              <p>Mesma base cartográfica do Dashboard, filtrada pelas ocorrências autorizadas de Iluminação.</p>
+            </div>
+            <span>Pontos - ${escapeHtml(String(visiblePoints))}/${escapeHtml(String(mapState.total || visiblePoints))} visíveis</span>
+          </div>
+          ${renderOperationalMapCanvas(mapState)}
+          <div class="internal-map-legend" aria-label="Legenda de status">
+            ${statusOptions.slice(0, 6).map((status) => `
+              <span><i style="background:${escapeHtml(getOperationalMapStatusColor(status))}" aria-hidden="true"></i>${escapeHtml(formatStatusLabel(status))}</span>
+            `).join('')}
+          </div>
+        </article>
+        <aside class="internal-dashboard-side-card internal-operational-popup" data-internal-operational-popup aria-label="Resumo do ponto selecionado">
+          <div class="internal-dashboard-widget-heading">
+            <div>
+              <h3>Resumo do ponto</h3>
+              <p>Contato aparece somente se o backend liberar para o perfil.</p>
+            </div>
+            <span>Popup</span>
+          </div>
+          ${renderMapaOcorrenciaPopup(mapState.popup)}
+        </aside>
+      </div>
+
+      <p class="internal-list-message" role="status">${escapeHtml(mapState.message)}</p>
+    </section>
+  `;
+}
+
 function renderSolicitacoesPanel(state) {
   const listState = state.solicitacoes || createSolicitacoesState();
+  const mapState = state.mapaOperacional || createOperationalMapState();
+  const visibleListState = applySolicitacoesSort(filterSolicitacoesByMapSelection(listState, mapState));
+  const selectedMapCount = Array.isArray(mapState.selectedIds) ? mapState.selectedIds.length : 0;
+  const mapSelectionMode = ['selection', 'viewport'].includes(mapState.selectionMode) ? mapState.selectionMode : '';
+  const mapSelectionMessage = mapSelectionMode === 'viewport'
+    ? `Filtro ativo pelo mapa visível: ${selectedMapCount} ponto(s) na página/lista carregada.`
+    : `Filtro ativo por seleção do mapa: ${selectedMapCount} ponto(s).`;
+  const clearMapSelectionLabel = mapSelectionMode === 'viewport' ? 'Limpar filtro' : 'Limpar seleção';
   const maintenanceMode = isMaintenanceLikeUser(state.permissions || []);
   const canLoad = state.sessionState === 'authenticated'
     && hasPermission(state, PERMISSIONS.iluminacaoRead);
@@ -2916,11 +3784,12 @@ function renderSolicitacoesPanel(state) {
 
       <div class="internal-list-toolbar" aria-label="Controles da listagem">
         <div>
-          <strong>${escapeHtml(getSolicitacoesStatusText(listState, maintenanceMode))}</strong>
+          <strong>${escapeHtml(getSolicitacoesStatusText(visibleListState, maintenanceMode))}</strong>
           <span>
             Página com até ${escapeHtml(listState.limit)} registros
           </span>
         </div>
+        ${renderSolicitacoesSortControl(listState, canLoad, isLoading)}
         <div class="internal-list-actions">
           <button
             type="button"
@@ -2953,8 +3822,17 @@ function renderSolicitacoesPanel(state) {
       </div>
 
       <p class="internal-list-message" role="status">
-        ${escapeHtml(listState.message)}
+        ${escapeHtml(visibleListState.message)}
       </p>
+
+      ${selectedMapCount > 0 ? `
+        <div class="internal-map-selection-inline" role="status">
+          <span>${escapeHtml(mapSelectionMessage)}</span>
+          <button type="button" class="internal-secondary-action" data-action="clear-operational-map-selection">
+            ${escapeHtml(clearMapSelectionLabel)}
+          </button>
+        </div>
+      ` : ''}
 
       <div class="internal-table-wrap${maintenanceMode ? ' internal-maintenance-list-wrap' : ''}">
         <div
@@ -2975,7 +3853,7 @@ function renderSolicitacoesPanel(state) {
             <span>Ações</span>
           </div>
           `}
-          ${renderSolicitacoesTable(listState, state)}
+          ${renderSolicitacoesTable(visibleListState, state)}
         </div>
       </div>
     </section>
@@ -4364,6 +5242,138 @@ function syncDashboardMap(root, state) {
     target.innerHTML = '<p class="internal-map-fallback">Mapa indisponivel neste navegador.</p>';
   }
 }
+
+function disposeInternalOperationalMap() {
+  if (internalOperationalMap) {
+    internalOperationalMap.setTarget(undefined);
+    internalOperationalMap = null;
+  }
+}
+
+function getInternalOperationalMapFeatureStyle(item, selected = false) {
+  const markerColor = getOperationalMapStatusColor(item.statusKey);
+
+  return new Style({
+    image: new CircleStyle({
+      radius: selected ? 11 : 8,
+      fill: new Fill({ color: markerColor }),
+      stroke: new Stroke({
+        color: selected ? '#f8fafc' : '#ffffff',
+        width: selected ? 5 : 3
+      })
+    })
+  });
+}
+
+function renderInternalOperationalMapIntoTarget(target, items, selectedIds = [], onSelect = () => {}, options = {}) {
+  const selectedSet = new Set(selectedIds);
+  target.innerHTML = '';
+  const features = items
+    .filter((item) => item.hasCoordinates && item.coordinates)
+    .map((item) => {
+      const feature = new Feature({
+        geometry: new Point(fromLonLat([item.coordinates.longitude, item.coordinates.latitude]))
+      });
+      feature.set('solicitacaoId', item.id);
+      feature.setStyle(getInternalOperationalMapFeatureStyle(item, selectedSet.has(item.id)));
+      return feature;
+    });
+
+  if (features.length === 0) {
+    return;
+  }
+
+  const centers = features.map((feature) => feature.getGeometry().getCoordinates());
+  const center = centers.reduce((accumulator, coordinate) => [
+    accumulator[0] + coordinate[0],
+    accumulator[1] + coordinate[1]
+  ], [0, 0]).map((value) => value / centers.length);
+  const extent = centers.reduce((accumulator, coordinate) => [
+    Math.min(accumulator[0], coordinate[0]),
+    Math.min(accumulator[1], coordinate[1]),
+    Math.max(accumulator[2], coordinate[0]),
+    Math.max(accumulator[3], coordinate[1])
+  ], [Infinity, Infinity, -Infinity, -Infinity]);
+
+  internalOperationalMap = new Map({
+    target,
+    layers: [
+      new TileLayer({ source: new OSM() }),
+      new VectorLayer({ source: new VectorSource({ features }) })
+    ],
+    view: new View({
+      center: options.viewState && Array.isArray(options.viewState.center) && options.viewState.center.length === 2
+        ? options.viewState.center
+        : center.length === 2 ? center : fromLonLat(OPERATIONAL_MAP_CENTER),
+      zoom: options.viewState && Number.isFinite(Number(options.viewState.zoom))
+        ? Number(options.viewState.zoom)
+        : OPERATIONAL_MAP_ZOOM - 1
+    }),
+    controls: []
+  });
+
+  if (features.length > 1 && !options.viewState) {
+    internalOperationalMap.getView().fit(extent, {
+      padding: [36, 36, 36, 36],
+      maxZoom: OPERATIONAL_MAP_ZOOM + 1
+    });
+  }
+
+  internalOperationalMap.on('moveend', () => {
+    if (typeof options.onViewportChange === 'function') {
+      options.onViewportChange(getOperationalMapVisibleIds(internalOperationalMap, items), getOperationalMapViewState(internalOperationalMap));
+    }
+  });
+
+  internalOperationalMap.on('singleclick', (event) => {
+    const selectedFeatureIds = (internalOperationalMap.getFeaturesAtPixel(event.pixel, {
+      hitTolerance: 12
+    }) || [])
+      .map((feature) => feature.get('solicitacaoId'))
+      .filter((solicitacaoId) => Number.isInteger(solicitacaoId) && solicitacaoId > 0);
+
+    if (selectedFeatureIds.length > 0) {
+      onSelect(Array.from(new Set(selectedFeatureIds)));
+    }
+  });
+
+  window.requestAnimationFrame(() => {
+    if (internalOperationalMap) {
+      internalOperationalMap.updateSize();
+      window.setTimeout(() => {
+        if (internalOperationalMap) {
+          internalOperationalMap.updateSize();
+        }
+      }, 0);
+    }
+  });
+}
+
+function syncInternalOperationalMap(root, state) {
+  const target = root.querySelector('[data-internal-operational-map]');
+  const mapState = state.mapaOperacional || createOperationalMapState();
+
+  disposeInternalOperationalMap();
+
+  if (!target || mapState.status !== 'ready' || mapState.items.length === 0) {
+    return;
+  }
+
+  try {
+    renderInternalOperationalMapIntoTarget(
+      target,
+      mapState.items,
+      mapState.selectedIds,
+      (solicitacaoIds) => selectOperationalMapOccurrences(root, currentState, solicitacaoIds),
+      {
+        viewState: mapState.viewState,
+        onViewportChange: (visibleIds, viewState) => updateOperationalMapViewportSelection(root, currentState, visibleIds, viewState)
+      }
+    );
+  } catch {
+    target.innerHTML = '<p class="internal-map-fallback">Mapa operacional indisponível neste navegador.</p>';
+  }
+}
 function renderOperationalMapIntoTarget(target, item) {
   const center = fromLonLat([item.coordinates.longitude, item.coordinates.latitude]);
   const marker = new Feature({
@@ -5208,6 +6218,7 @@ function renderInternalIluminacaoShell(root, state) {
 
             <div class="internal-workspace">
               ${renderRelatorioPanel(state)}
+              ${renderInternalOperationalMapPanel(state)}
               ${renderSolicitacoesPanel(state)}
 
               <div
@@ -5234,6 +6245,7 @@ function renderInternalIluminacaoShell(root, state) {
 
   syncOperationalDetailMap(root, state);
   syncDashboardMap(root, state);
+  syncInternalOperationalMap(root, state);
 }
 
 async function fetchCurrentSession() {
@@ -5400,6 +6412,42 @@ function dashboardErrorMessage(statusCode) {
   return 'Nao foi possivel carregar o dashboard agora.';
 }
 
+
+function buildDashboardEndpointUrl(endpoint, filters = {}, allowed = []) {
+  const [base, query = ''] = endpoint.split('?');
+  const params = new URLSearchParams(query);
+  const dataInicio = safeText(filters.dataInicio, '');
+  const dataFim = safeText(filters.dataFim, '');
+  const status = safeText(filters.status, 'all');
+  const prioridade = safeText(filters.prioridade, 'all');
+  const tipo = safeText(filters.tipo, 'all');
+
+  if (allowed.includes('data_inicio') && dataInicio) {
+    params.set('data_inicio', dataInicio);
+  }
+
+  if (allowed.includes('data_fim') && dataFim) {
+    params.set('data_fim', dataFim);
+  }
+
+  if (allowed.includes('ativos') && status === 'active') {
+    params.set('ativos', 'true');
+  } else if (allowed.includes('status') && status && status !== 'all' && status !== 'active') {
+    params.set('status', status);
+  }
+
+  if (allowed.includes('prioridade') && prioridade && prioridade !== 'all') {
+    params.set('prioridade', prioridade);
+  }
+
+  if (allowed.includes('tipo') && tipo && tipo !== 'all') {
+    params.set('tipo', tipo);
+  }
+
+  const queryText = params.toString();
+  return queryText ? `${base}?${queryText}` : base;
+}
+
 async function fetchDashboardJson(endpoint, normalizer) {
   const response = await fetch(endpoint, {
     method: 'GET',
@@ -5434,9 +6482,9 @@ async function fetchDashboardJson(endpoint, normalizer) {
   };
 }
 
-async function fetchDashboardGeralWidgets() {
+async function fetchDashboardGeralWidgets(filters = {}) {
   const resumo = await fetchDashboardJson(
-    INTERNAL_DASHBOARD_RESUMO_ENDPOINT,
+    buildDashboardEndpointUrl(INTERNAL_DASHBOARD_RESUMO_ENDPOINT, filters, ['data_inicio', 'data_fim', 'status', 'ativos', 'prioridade', 'tipo']),
     normalizeDashboardResumo
   );
 
@@ -5445,7 +6493,7 @@ async function fetchDashboardGeralWidgets() {
   }
 
   const ranking = await fetchDashboardJson(
-    INTERNAL_DASHBOARD_RANKING_ENDPOINT,
+    buildDashboardEndpointUrl(INTERNAL_DASHBOARD_RANKING_ENDPOINT, filters, ['data_inicio', 'data_fim', 'status', 'prioridade', 'tipo']),
     normalizeDashboardRanking
   );
 
@@ -5454,7 +6502,7 @@ async function fetchDashboardGeralWidgets() {
   }
 
   const series = await fetchDashboardJson(
-    INTERNAL_DASHBOARD_SERIES_SEMANAL_ENDPOINT,
+    buildDashboardEndpointUrl(INTERNAL_DASHBOARD_SERIES_SEMANAL_ENDPOINT, filters, ['data_inicio', 'data_fim', 'status']),
     normalizeDashboardSeries
   );
 
@@ -5665,6 +6713,173 @@ async function fetchRelatorioSolicitacoesCsv(filters) {
     message: 'Relatorio exportado com sucesso.',
     blob: await response.blob(),
     filename: extractDownloadFilename(response, fallbackName)
+  };
+}
+
+
+async function fetchMapaOcorrencias(options = {}) {
+  const response = await fetch(buildMapaOcorrenciasUrl(options), {
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json'
+    }
+  });
+
+  if (response.status === 401) {
+    return createOperationalMapState({
+      status: 'unauthenticated',
+      statusCode: response.status,
+      filters: options,
+      message: 'Sessão expirada. Faça login novamente para carregar o mapa operacional.'
+    });
+  }
+
+  if (response.status === 403) {
+    return createOperationalMapState({
+      status: 'forbidden',
+      statusCode: response.status,
+      filters: options,
+      message: 'Sem permissão para carregar o mapa operacional de Iluminação.'
+    });
+  }
+
+  if (response.status === 422) {
+    return createOperationalMapState({
+      status: 'error',
+      statusCode: response.status,
+      filters: options,
+      message: 'Filtros do mapa inválidos. Ajuste os parâmetros e tente novamente.'
+    });
+  }
+
+  if (response.status === 503) {
+    return createOperationalMapState({
+      status: 'error',
+      statusCode: response.status,
+      filters: options,
+      message: 'Serviço interno temporariamente indisponível para o mapa operacional.'
+    });
+  }
+
+  if (!response.ok) {
+    return createOperationalMapState({
+      status: 'error',
+      statusCode: response.status,
+      filters: options,
+      message: 'Não foi possível carregar o mapa operacional neste momento.'
+    });
+  }
+
+  const payload = await response.json();
+
+  if (!isValidMapaOcorrenciasPayload(payload)) {
+    return createOperationalMapState({
+      status: 'error',
+      statusCode: response.status,
+      filters: options,
+      message: 'Resposta do mapa em formato inesperado.'
+    });
+  }
+
+  const items = payload.items
+    .map(toDisplayMapaOcorrencia)
+    .filter((item) => item.id && item.hasCoordinates);
+  const safeLimit = Math.max(1, Math.min(500, payload.limit));
+  const safeOffset = Math.max(0, payload.offset);
+  const safeTotal = Math.max(0, payload.total);
+
+  return createOperationalMapState({
+    status: items.length > 0 ? 'ready' : 'empty',
+    items,
+    total: safeTotal,
+    limit: safeLimit,
+    offset: safeOffset,
+    statusCode: response.status,
+    filters: options,
+    message: items.length > 0
+      ? 'Mapa operacional carregado sem dados pessoais na coleção de pontos.'
+      : 'Nenhuma ocorrência com coordenada encontrada para o filtro atual.'
+  });
+}
+
+async function fetchMapaOcorrenciaPopup(solicitacaoId) {
+  const response = await fetch(buildMapaOcorrenciaPopupUrl(solicitacaoId), {
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json'
+    }
+  });
+
+  if (response.status === 401) {
+    return {
+      status: 'unauthenticated',
+      solicitacaoId,
+      item: null,
+      statusCode: response.status,
+      message: 'Sessão expirada. Faça login novamente para abrir o popup.'
+    };
+  }
+
+  if (response.status === 403) {
+    return {
+      status: 'forbidden',
+      solicitacaoId,
+      item: null,
+      statusCode: response.status,
+      message: 'Sem permissão para abrir o resumo operacional.'
+    };
+  }
+
+  if (response.status === 404) {
+    return {
+      status: 'error',
+      solicitacaoId,
+      item: null,
+      statusCode: response.status,
+      message: 'Ocorrência não encontrada ou indisponível.'
+    };
+  }
+
+  if (response.status === 422) {
+    return {
+      status: 'error',
+      solicitacaoId,
+      item: null,
+      statusCode: response.status,
+      message: 'Identificador da ocorrência inválido.'
+    };
+  }
+
+  if (!response.ok) {
+    return {
+      status: 'error',
+      solicitacaoId,
+      item: null,
+      statusCode: response.status,
+      message: 'Não foi possível abrir o popup operacional.'
+    };
+  }
+
+  const payload = await response.json();
+
+  if (!isValidMapaPopupPayload(payload)) {
+    return {
+      status: 'error',
+      solicitacaoId,
+      item: null,
+      statusCode: response.status,
+      message: 'Resposta do popup em formato inesperado.'
+    };
+  }
+
+  return {
+    status: 'ready',
+    solicitacaoId,
+    item: toDisplayMapaPopup(payload),
+    statusCode: response.status,
+    message: 'Resumo operacional carregado.'
   };
 }
 
@@ -6344,6 +7559,263 @@ async function fetchUpdateSolicitacaoPrioridade(solicitacaoId, prioridade, obser
     statusCode: response.status,
     message: 'Prioridade atualizada. Detalhe, listagem e histórico foram recarregados.'
   });
+}
+
+
+function readOperationalMapFilterFormState(form, currentMap = createOperationalMapState()) {
+  const formData = new FormData(form);
+  const limit = Number.parseInt(String(formData.get('limit') || MAPA_OCORRENCIAS_LIMIT), 10);
+
+  return createOperationalMapState({
+    ...currentMap,
+    filters: {
+      status: safeText(formData.get('status'), ''),
+      prioridade: safeText(formData.get('prioridade'), ''),
+      ativos: formData.get('ativos') === 'true',
+      limit: Number.isInteger(limit) ? Math.max(1, Math.min(500, limit)) : MAPA_OCORRENCIAS_LIMIT
+    },
+    selectedIds: [],
+    selectionMode: '',
+    viewState: null,
+    popup: createOperationalMapState().popup
+  });
+}
+
+function filterOperationalMapVisiblePoints(root, state) {
+  const mapState = state.mapaOperacional || createOperationalMapState();
+  const visibleIds = getOperationalMapVisibleIds(internalOperationalMap, mapState.items || []);
+  const viewState = getOperationalMapViewState(internalOperationalMap) || mapState.viewState;
+
+  renderApp(root, {
+    ...state,
+    activeModule: 'iluminacao',
+    mapaOperacional: createOperationalMapState({
+      ...mapState,
+      selectedIds: visibleIds,
+      selectionMode: 'viewport',
+      viewState,
+      message: visibleIds.length > 0
+        ? `${visibleIds.length} ponto(s) visível(is) filtrando a lista carregada.`
+        : 'Nenhum ponto visível no recorte atual do mapa.'
+    })
+  });
+}
+
+function updateOperationalMapViewportSelection(root, state, visibleIds, viewState) {
+  const mapState = state.mapaOperacional || createOperationalMapState();
+
+  if (mapState.selectionMode !== 'viewport') {
+    currentState = {
+      ...currentState,
+      mapaOperacional: createOperationalMapState({
+        ...(currentState.mapaOperacional || mapState),
+        viewState
+      })
+    };
+    return;
+  }
+
+  if (areOperationalMapIdListsEqual(mapState.selectedIds || [], visibleIds || []) && JSON.stringify(mapState.viewState || null) === JSON.stringify(viewState || null)) {
+    return;
+  }
+
+  renderApp(root, {
+    ...state,
+    activeModule: 'iluminacao',
+    mapaOperacional: createOperationalMapState({
+      ...mapState,
+      selectedIds: visibleIds,
+      selectionMode: 'viewport',
+      viewState,
+      message: visibleIds.length > 0
+        ? `${visibleIds.length} ponto(s) visível(is) filtrando a lista carregada.`
+        : 'Nenhum ponto visível no recorte atual do mapa.'
+    })
+  });
+}
+
+async function loadOperationalMap(root, state, nextMapState = null) {
+  const currentMap = nextMapState || state.mapaOperacional || createOperationalMapState();
+
+  if (!canListSolicitacoes(state)) {
+    renderApp(root, {
+      ...state,
+      mapaOperacional: createOperationalMapState({
+        ...currentMap,
+        status: state.sessionState === 'authenticated' ? 'forbidden' : 'idle',
+        statusCode: state.sessionState === 'authenticated' ? 403 : null,
+        message: state.sessionState === 'authenticated'
+          ? 'Mapa operacional indisponível para este perfil.'
+          : 'Mapa operacional aguarda autenticação.'
+      })
+    });
+    return;
+  }
+
+  renderApp(root, {
+    ...state,
+    activeModule: 'iluminacao',
+    mapaOperacional: createOperationalMapState({
+      ...currentMap,
+      status: 'loading',
+      message: 'Carregando mapa operacional.'
+    })
+  });
+
+  try {
+    const result = await fetchMapaOcorrencias(currentMap.filters || {});
+
+    if (result.status === 'unauthenticated') {
+      renderApp(root, createSessionState({
+        sessionState: 'unauthenticated',
+        statusCode: 401,
+        message: result.message,
+        hasChecked: true,
+        mapaOperacional: createOperationalMapState({
+          ...result,
+          filters: currentMap.filters,
+          viewState: currentMap.viewState
+        })
+      }));
+      return;
+    }
+
+    renderApp(root, {
+      ...currentState,
+      activeModule: 'iluminacao',
+      mapaOperacional: createOperationalMapState({
+        ...result,
+        filters: currentMap.filters,
+        viewState: currentMap.viewState
+      })
+    });
+  } catch {
+    renderApp(root, {
+      ...state,
+      activeModule: 'iluminacao',
+      mapaOperacional: createOperationalMapState({
+        ...currentMap,
+        status: 'error',
+        message: 'Falha temporária de conexão ao carregar o mapa operacional.'
+      })
+    });
+  }
+}
+
+async function selectOperationalMapOccurrences(root, state, solicitacaoIds) {
+  const currentMap = state.mapaOperacional || createOperationalMapState();
+  const clickedIds = (Array.isArray(solicitacaoIds) ? solicitacaoIds : [solicitacaoIds])
+    .map(Number)
+    .filter((id) => Number.isInteger(id) && id > 0);
+  const selectedIds = mergeOperationalMapSelectionIds(currentMap.selectedIds || [], clickedIds);
+  const popupSolicitacaoId = clickedIds[clickedIds.length - 1] || null;
+
+  if (!popupSolicitacaoId) {
+    return;
+  }
+
+  renderApp(root, {
+    ...state,
+    activeModule: 'iluminacao',
+    mapaOperacional: createOperationalMapState({
+      ...currentMap,
+      selectedIds,
+      selectionMode: 'selection',
+      popup: {
+        status: 'loading',
+        solicitacaoId: popupSolicitacaoId,
+        item: null,
+        statusCode: null,
+        message: 'Carregando resumo operacional.'
+      }
+    })
+  });
+
+  try {
+    const popup = await fetchMapaOcorrenciaPopup(popupSolicitacaoId);
+    const selectedPoint = (currentMap.items || []).find((item) => item.id === popupSolicitacaoId);
+    const routeUrl = selectedPoint?.coordinates
+      ? buildInternalGoogleMapsRouteUrl(selectedPoint.coordinates)
+      : '';
+    const enrichedPopup = popup.item
+      ? {
+          ...popup,
+          item: {
+            ...popup.item,
+            routeUrl
+          }
+        }
+      : popup;
+
+    if (enrichedPopup.status === 'unauthenticated') {
+      renderApp(root, createSessionState({
+        sessionState: 'unauthenticated',
+        statusCode: 401,
+        message: enrichedPopup.message,
+        hasChecked: true,
+        mapaOperacional: createOperationalMapState({
+          ...currentMap,
+          selectedIds,
+          selectionMode: 'selection',
+          popup: enrichedPopup
+        })
+      }));
+      return;
+    }
+
+    renderApp(root, {
+      ...currentState,
+      activeModule: 'iluminacao',
+      mapaOperacional: createOperationalMapState({
+        ...(currentState.mapaOperacional || currentMap),
+        selectedIds,
+        selectionMode: 'selection',
+        popup: enrichedPopup
+      })
+    });
+  } catch {
+    renderApp(root, {
+      ...currentState,
+      activeModule: 'iluminacao',
+      mapaOperacional: createOperationalMapState({
+        ...(currentState.mapaOperacional || currentMap),
+        selectedIds,
+        selectionMode: 'selection',
+        popup: {
+          status: 'error',
+          solicitacaoId: popupSolicitacaoId,
+          item: null,
+          statusCode: null,
+          message: 'Falha temporária de conexão ao abrir o popup.'
+        }
+      })
+    });
+  }
+}
+
+async function selectOperationalMapOccurrence(root, state, solicitacaoId) {
+  return selectOperationalMapOccurrences(root, state, [solicitacaoId]);
+}
+function clearOperationalMapSelection(root, state) {
+  const mapState = state.mapaOperacional || createOperationalMapState();
+  renderApp(root, {
+    ...state,
+    activeModule: 'iluminacao',
+    mapaOperacional: createOperationalMapState({
+      ...mapState,
+      selectedIds: [],
+      selectionMode: '',
+      popup: createOperationalMapState().popup
+    })
+  });
+}
+
+function submitOperationalMapFilters(root, state, form, action = 'apply') {
+  const baseMap = action === 'reset'
+    ? createOperationalMapState()
+    : readOperationalMapFilterFormState(form, state.mapaOperacional || createOperationalMapState());
+
+  loadOperationalMap(root, state, baseMap);
 }
 
 async function loadSolicitacoes(root, state, offset = 0) {
@@ -8035,8 +9507,22 @@ function readDashboardFilterFormState(form, currentDashboard = createDashboardSt
       status: safeText(formData.get('status'), 'all') || 'all',
       prioridade: safeText(formData.get('prioridade'), 'all') || 'all',
       tipo: safeText(formData.get('tipo'), 'all') || 'all',
+      dataInicio: normalizeRelatorioDateValue(formData.get('dataInicio')),
+      dataFim: normalizeRelatorioDateValue(formData.get('dataFim')),
       mapMode: safeText(formData.get('mapMode'), 'points') || 'points'
     }
+  });
+}
+
+
+function syncSolicitacoesSort(root, state, sortBy) {
+  const solicitacoes = state.solicitacoes || createSolicitacoesState();
+  renderApp(root, {
+    ...state,
+    solicitacoes: createSolicitacoesState({
+      ...solicitacoes,
+      sortBy: safeText(sortBy, 'protocolo_desc') || 'protocolo_desc'
+    })
   });
 }
 
@@ -8233,13 +9719,14 @@ async function loadDashboard(root, state) {
   renderApp(root, {
     ...baseState,
     dashboard: createDashboardState({
+      ...(baseState.dashboard || createDashboardState()),
       status: 'loading',
       message: 'Carregando indicadores do Dashboard geral.'
     })
   });
 
   try {
-    const result = await fetchDashboardGeralWidgets();
+    const result = await fetchDashboardGeralWidgets(getDashboardFilters(baseState));
 
     if (result.status === 'unauthenticated') {
       renderApp(root, createSessionState({
@@ -8255,6 +9742,7 @@ async function loadDashboard(root, state) {
       renderApp(root, {
         ...baseState,
         dashboard: createDashboardState({
+          ...(baseState.dashboard || createDashboardState()),
           status: 'error',
           statusCode: result.statusCode,
           message: result.message
@@ -8264,6 +9752,7 @@ async function loadDashboard(root, state) {
     }
 
     let dashboardSolicitacoes = baseState.solicitacoes || createSolicitacoesState();
+    let dashboardMapState = baseState.mapaOperacional || createOperationalMapState();
 
     if (canListSolicitacoes(baseState)) {
       try {
@@ -8290,12 +9779,34 @@ async function loadDashboard(root, state) {
           message: 'Mapa territorial indisponivel temporariamente.'
         });
       }
+
+      try {
+        const mapaResult = await fetchMapaOcorrencias(getDashboardMapFetchOptions(getDashboardFilters(baseState)));
+        if (mapaResult.status === 'unauthenticated') {
+          renderApp(root, createSessionState({
+            sessionState: 'unauthenticated',
+            statusCode: 401,
+            message: 'Sessao expirada ao carregar o mapa territorial. Faca login novamente.',
+            hasChecked: true,
+            mapaOperacional: mapaResult
+          }));
+          return;
+        }
+        dashboardMapState = mapaResult;
+      } catch {
+        dashboardMapState = createOperationalMapState({
+          status: 'error',
+          message: 'Mapa territorial indisponivel temporariamente.'
+        });
+      }
     }
 
     renderApp(root, {
       ...baseState,
       solicitacoes: dashboardSolicitacoes,
+      mapaOperacional: dashboardMapState,
       dashboard: createDashboardState({
+        ...(baseState.dashboard || createDashboardState()),
         status: 'ready',
         statusCode: result.statusCode,
         message: result.message,
@@ -8308,6 +9819,7 @@ async function loadDashboard(root, state) {
     renderApp(root, {
       ...baseState,
       dashboard: createDashboardState({
+        ...(baseState.dashboard || createDashboardState()),
         status: 'error',
         message: 'Falha temporaria de conexao ao carregar o dashboard.'
       })
@@ -8821,6 +10333,7 @@ async function selectModule(root, state, moduleKey) {
 
     if (canListSolicitacoes(nextState)) {
       await loadSolicitacoes(root, nextState, nextState.solicitacoes?.offset || 0);
+      await loadOperationalMap(root, { ...currentState, activeModule: 'iluminacao' });
     }
     return;
   }
@@ -9121,6 +10634,37 @@ if (root) {
 
     if (
       target instanceof HTMLElement
+      && target.matches('[data-action="copy-whatsapp-dispatch"]')
+    ) {
+      copyWhatsappDispatchMessage(target);
+      return;
+    }
+    if (
+      target instanceof HTMLElement
+      && target.matches('[data-action="refresh-operational-map"]')
+    ) {
+      loadOperationalMap(root, currentState);
+      return;
+    }
+
+    if (
+      target instanceof HTMLElement
+      && target.matches('[data-action="clear-operational-map-selection"]')
+    ) {
+      clearOperationalMapSelection(root, currentState);
+      return;
+    }
+
+    if (
+      target instanceof HTMLElement
+      && target.matches('[data-action="filter-operational-map-visible"]')
+    ) {
+      filterOperationalMapVisiblePoints(root, currentState);
+      return;
+    }
+
+    if (
+      target instanceof HTMLElement
       && target.matches('[data-action="load-solicitacao-detail"]')
     ) {
       const requestedId = Number.parseInt(target.dataset.solicitacaoId || '0', 10);
@@ -9243,6 +10787,14 @@ if (root) {
 
     if (
       target instanceof HTMLSelectElement
+      && target.matches('[data-solicitacoes-sort]')
+    ) {
+      syncSolicitacoesSort(root, currentState, target.value);
+      return;
+    }
+
+    if (
+      (target instanceof HTMLSelectElement || target instanceof HTMLInputElement)
       && target.form instanceof HTMLFormElement
       && target.form.matches('[data-dashboard-filter-form]')
     ) {
@@ -9282,6 +10834,24 @@ if (root) {
 
     if (
       target instanceof HTMLFormElement
+      && target.matches('[data-dashboard-filter-form]')
+    ) {
+      event.preventDefault();
+      const submitAction = event.submitter instanceof HTMLButtonElement
+        ? safeText(event.submitter.value, 'apply')
+        : 'apply';
+      const dashboard = submitAction === 'reset'
+        ? createDashboardState({
+          ...(currentState.dashboard || createDashboardState()),
+          filters: createDashboardState().filters
+        })
+        : readDashboardFilterFormState(target, currentState.dashboard || createDashboardState());
+      loadDashboard(root, { ...currentState, dashboard });
+      return;
+    }
+
+    if (
+      target instanceof HTMLFormElement
       && target.matches('[data-relatorio-form]')
     ) {
       event.preventDefault();
@@ -9289,6 +10859,18 @@ if (root) {
         ? event.submitter.value
         : 'resumo';
       submitRelatorio(root, currentState, target, action);
+      return;
+    }
+
+    if (
+      target instanceof HTMLFormElement
+      && target.matches('[data-operational-map-filter-form]')
+    ) {
+      event.preventDefault();
+      const action = event.submitter instanceof HTMLButtonElement
+        ? event.submitter.value
+        : 'apply';
+      submitOperationalMapFilters(root, currentState, target, action);
       return;
     }
 

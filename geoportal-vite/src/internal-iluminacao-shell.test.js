@@ -7,7 +7,10 @@ import {
   buildInternalGoogleMapsRouteUrl,
   buildRelatorioSolicitacoesCsvUrl,
   buildInternalWhatsappUrl,
+  buildWhatsAppDispatchText,
   buildSolicitacoesUrl,
+  buildMapaOcorrenciasUrl,
+  buildMapaOcorrenciaPopupUrl,
   buildUpdateSolicitacaoStatusCorrecaoUrl,
   canViewDashboardWidgets,
   canViewRelatorio,
@@ -18,6 +21,7 @@ import {
   createSessionState,
   createRelatorioState,
   createAdminState,
+  createOperationalMapState,
   fetchAdminUsers,
   fetchAdminUserDetail,
   fetchAdminUserProfiles,
@@ -29,6 +33,8 @@ import {
   fetchRelatorioSolicitacoesCsv,
   fetchRelatorioSolicitacoesResumo,
   fetchSolicitacoesInternas,
+  fetchMapaOcorrencias,
+  fetchMapaOcorrenciaPopup,
   fetchUpdateSolicitacaoStatus,
   fetchUpdateSolicitacaoStatusCorrecao,
   fetchUpdateSolicitacaoPrioridade,
@@ -38,12 +44,16 @@ import {
   getStatusCorrectionFormValidationMessage,
   isMaintenanceLikeUser,
   normalizeSolicitacaoCoordinate,
+  filterSolicitacoesByMapSelection,
+  mergeOperationalMapSelectionIds,
   renderCoordinateRouteSection,
   renderDashboardPanel,
   renderAdminPanel,
   renderModuleMenu,
   renderObservacoesPanel,
   renderRelatorioPanel,
+  renderInternalOperationalMapPanel,
+  renderMapaOcorrenciaPopup,
   renderPriorityUpdatePanel,
   renderStatusCorrectionPanel,
   renderSessionBox,
@@ -706,6 +716,97 @@ describe('internal dashboard geral', () => {
     expect(html).not.toContain('-55.225');
   });
 
+  it('diferencia filtros de abertas finalizadas e tempo medio por periodo', () => {
+    const baseHtml = renderDashboardPanel(createSessionState({
+      sessionState: 'authenticated',
+      permissions: [readPermission, dashboardPermission],
+      dashboard: createDashboardState({
+        status: 'ready',
+        resumo: dashboardResumoPayload(),
+        ranking: dashboardRankingPayload(),
+        series: dashboardSeriesPayload()
+      })
+    }));
+
+    expect(baseHtml).toContain('Todos (incluindo finalizadas)');
+    expect(baseHtml).toContain('Todos (somente abertas/ativas)');
+    expect(baseHtml).toContain('Tempo médio');
+    expect(baseHtml).toContain('Tempo médio - total');
+    expect(baseHtml).toContain('Limpar filtros');
+
+    const periodHtml = renderDashboardPanel(createSessionState({
+      sessionState: 'authenticated',
+      permissions: [readPermission, dashboardPermission],
+      dashboard: createDashboardState({
+        status: 'ready',
+        filters: {
+          dataInicio: '2026-06-01',
+          dataFim: '2026-06-30',
+          status: 'active'
+        },
+        resumo: dashboardResumoPayload(),
+        ranking: dashboardRankingPayload(),
+        series: dashboardSeriesPayload()
+      })
+    }));
+
+    expect(periodHtml).toContain('Período selecionado');
+    expect(periodHtml).toContain('value="2026-06-01"');
+    expect(periodHtml).toContain('value="2026-06-30"');
+  });
+
+  it('usa datas do dashboard como filtro do mapa territorial carregado', () => {
+    const solicitacoes = {
+      status: 'ready',
+      items: [
+        listItem({
+          id: 10,
+          protocolo: 'IP-2026-000010',
+          statusKey: 'aberta',
+          prioridadeKey: 'normal',
+          tipoProblemaKey: 'lampada_apagada',
+          criadoEmRaw: '2026-06-20T10:00:00Z',
+          coordinates: { latitude: -23.105, longitude: -55.225 }
+        }),
+        listItem({
+          id: 11,
+          protocolo: 'IP-2026-000011',
+          statusKey: 'aberta',
+          prioridadeKey: 'normal',
+          tipoProblemaKey: 'lampada_apagada',
+          criadoEmRaw: '2026-05-20T10:00:00Z',
+          coordinates: { latitude: -23.11, longitude: -55.23 }
+        })
+      ],
+      total: 2,
+      limit: 20,
+      offset: 0,
+      message: 'Solicitacoes carregadas.'
+    };
+
+    const html = renderDashboardPanel(createSessionState({
+      sessionState: 'authenticated',
+      permissions: [readPermission, dashboardPermission],
+      solicitacoes,
+      dashboard: createDashboardState({
+        status: 'ready',
+        filters: {
+          dataInicio: '2026-06-01',
+          dataFim: '2026-06-30',
+          status: 'aberta',
+          prioridade: 'normal',
+          tipo: 'lampada_apagada'
+        },
+        resumo: dashboardResumoPayload(),
+        ranking: dashboardRankingPayload(),
+        series: dashboardSeriesPayload()
+      })
+    }));
+
+    expect(html).toContain('Pontos - 1/2 visiveis');
+    expect(html).toContain('Período selecionado');
+  });
+
   it('aplica filtros locais de status prioridade tipo e fonte sobre o recorte carregado', () => {
     const solicitacoes = {
       status: 'ready',
@@ -763,10 +864,53 @@ describe('internal dashboard geral', () => {
     expect(html).toContain('Calor - 1/2 visiveis');
     expect(html).toContain('data-dashboard-map-mode="heatmap"');
     expect(html).toContain('Ocorrencias visiveis');
-    expect(html).toContain('<dd>1</dd>');
+    expect(html).toContain('<dd>7</dd>');
     expect(html).toContain('Aberta');
     expect(html).not.toContain('Fonte territorial');
     expect(html).not.toContain('Privacidade');
+  });
+
+  it('mostra distribuicao de status agregada do backend sem limitar a primeira pagina', () => {
+    const html = renderDashboardPanel(createSessionState({
+      sessionState: 'authenticated',
+      permissions: [readPermission, dashboardPermission],
+      solicitacoes: {
+        status: 'ready',
+        items: [
+          listItem({ id: 10, statusKey: 'resolvida', status: 'Resolvida' }),
+          listItem({ id: 11, statusKey: 'resolvida', status: 'Resolvida' })
+        ],
+        total: 26,
+        limit: 20,
+        offset: 0,
+        message: 'Solicitacoes carregadas.'
+      },
+      dashboard: createDashboardState({
+        status: 'ready',
+        resumo: dashboardResumoPayload({
+          total: 26,
+          abertas: 0,
+          em_triagem: 0,
+          em_execucao: 0,
+          encaminhadas: 0,
+          finalizadas: 26,
+          por_status: {
+            resolvida: 24,
+            nao_localizado: 1,
+            cancelada: 1
+          },
+          por_prioridade: { normal: 26 }
+        }),
+        ranking: dashboardRankingPayload(),
+        series: dashboardSeriesPayload()
+      })
+    }));
+
+    expect(html).toContain('Resolvida');
+    expect(html).toContain('<strong>24</strong>');
+    expect(html).toContain('Nao localizado');
+    expect(html).toContain('Cancelada');
+    expect(html).toContain('<dd>26</dd>');
   });
 
   it('mostra placeholder seguro quando nao ha pontos territoriais carregados', () => {
@@ -853,6 +997,30 @@ describe('internal dashboard geral', () => {
         series: dashboardSeriesPayload()
       })
     })).not.toContain('Lista operacional');
+  });
+
+  it('usa base completa do mapa operacional nos resumos do modulo quando disponivel', () => {
+    const state = solicitacoesReadyState([readPermission, dashboardPermission]);
+    state.solicitacoes = {
+      ...state.solicitacoes,
+      total: 3,
+      items: [listItem({ id: 10, statusKey: 'resolvida', status: 'Resolvida' })]
+    };
+    state.mapaOperacional = createOperationalMapState({
+      status: 'ready',
+      total: 3,
+      items: [
+        listItem({ id: 10, statusKey: 'resolvida', status: 'Resolvida' }),
+        listItem({ id: 11, statusKey: 'nao_localizado', status: 'Nao localizado' }),
+        listItem({ id: 12, statusKey: 'cancelada', status: 'Cancelada' })
+      ]
+    });
+
+    const html = renderSummaryCards(state);
+
+    expect(html).toContain('Base completa do mapa operacional');
+    expect(html).toContain('<strong>3</strong>');
+    expect(html).not.toContain('Nesta página da listagem');
   });
 });
 
@@ -1114,8 +1282,9 @@ describe('internal modo manutencao', () => {
     expect(html).toContain('Poste 3405');
     expect(html).toContain('internal-maintenance-card');
     expect(html).not.toContain('Â·');
-    expect(html).not.toContain('Criado em');
-    expect(html).not.toContain('Atualizado em');
+    expect(html).toContain('Ordenar protocolos');
+    expect(html).toContain('Criado em mais recente');
+    expect(html).toContain('Atualizado em mais recente');
     expect(html).not.toContain('Duplicidade');
   });
 
@@ -1684,5 +1853,383 @@ describe('internal admin MVP', () => {
     expect(fetchUnblockAdminUser.toString()).not.toContain('sessionStorage');
     expect(renderAdminPanel.toString()).not.toContain('localStorage');
     expect(renderAdminPanel.toString()).not.toContain('sessionStorage');
+  });
+});
+
+describe('internal operational map frontend', () => {
+  function mapaPayload(overrides = {}) {
+    return {
+      items: [
+        {
+          id: 20,
+          protocolo: 'IP-2026-000020',
+          status: 'aberta',
+          prioridade: 'normal',
+          tipo_problema: 'lampada_apagada',
+          origem: 'cidadao_web',
+          localizacao_tipo: 'poste_mapa',
+          poste_id: '3405',
+          referencia_localizacao: 'Av. Central',
+          latitude: -23.105,
+          longitude: -55.225,
+          criado_em: '2026-06-20T10:00:00Z',
+          atualizado_em: '2026-06-20T11:00:00Z',
+          nome_solicitante: 'Pessoa Sigilosa',
+          contato_solicitante: '(67) 99999-0000',
+          ...overrides
+        }
+      ],
+      limit: 250,
+      offset: 0,
+      total: 1
+    };
+  }
+
+  it('inclui CSS base do OpenLayers e classe propria para o mapa operacional', () => {
+    const source = readFileSync(new URL('./internal-iluminacao-shell.js', import.meta.url), 'utf8');
+    const css = readFileSync(new URL('./internal-iluminacao-shell.css', import.meta.url), 'utf8');
+
+    expect(source).toContain("import 'ol/ol.css';");
+    expect(source).toContain('internal-operational-map-shell');
+    expect(source).not.toContain('class="internal-operational-map-card"');
+    expect(css).toContain('.internal-operational-map-shell');
+    expect(css).toContain('.internal-operational-map-canvas .ol-viewport');
+  });
+
+  it('mantem o painel do mapa operacional dentro do workspace de Iluminacao', () => {
+    const source = readFileSync(new URL('./internal-iluminacao-shell.js', import.meta.url), 'utf8');
+    const workspaceIndex = source.indexOf('renderInternalOperationalMapPanel(state)');
+
+    expect(workspaceIndex).toBeGreaterThan(source.indexOf('renderRelatorioPanel(state)'));
+    expect(workspaceIndex).toBeLessThan(source.indexOf('renderSolicitacoesPanel(state)'));
+    expect(source).toContain('syncInternalOperationalMap(root, state);');
+  });
+
+  it('renderiza painel do mapa operacional com filtros e textos principais', () => {
+    const html = renderInternalOperationalMapPanel(authenticatedState([readPermission], {
+      mapaOperacional: createOperationalMapState({
+        status: 'ready',
+        items: [{
+          id: 20,
+          protocolo: 'IP-2026-000020',
+          statusKey: 'aberta',
+          status: 'Aberta',
+          prioridadeKey: 'normal',
+          prioridade: 'Normal',
+          posteId: '3405',
+          hasCoordinates: true,
+          coordinates: { latitude: -23.105, longitude: -55.225 }
+        }],
+        total: 1,
+        message: 'Mapa operacional carregado.'
+      })
+    }));
+
+    expect(html).toContain('Mapa operacional');
+    expect(html).toContain('internal-dashboard-real-map');
+    expect(html).toContain('data-internal-operational-map');
+    expect(html).toContain('data-operational-map-filter-form');
+    expect(html).toContain('sem dados pessoais');
+    expect(html).toContain('Atualizar mapa');
+  });
+
+  it('chama endpoint de ocorrencias com credentials include e filtros suportados', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(200, mapaPayload()));
+
+    const result = await fetchMapaOcorrencias({
+      status: 'aberta',
+      prioridade: 'normal',
+      ativos: true,
+      limit: 100
+    });
+
+    expect(fetchMock.mock.calls[0][0]).toBe(buildMapaOcorrenciasUrl({
+      status: 'aberta',
+      prioridade: 'normal',
+      ativos: true,
+      limit: 100
+    }));
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({
+      method: 'GET',
+      credentials: 'include'
+    });
+    expect(result.status).toBe('ready');
+  });
+
+  it('colecao de pontos nao depende nem renderiza nome ou telefone', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(200, mapaPayload()));
+
+    const result = await fetchMapaOcorrencias();
+    const html = renderInternalOperationalMapPanel(authenticatedState([readPermission], {
+      mapaOperacional: result
+    }));
+
+    expect(result.items[0]).not.toHaveProperty('nomeSolicitante');
+    expect(result.items[0]).not.toHaveProperty('contatoSolicitante');
+    expect(html).not.toContain('Pessoa Sigilosa');
+    expect(html).not.toContain('(67) 99999-0000');
+  });
+
+  it('popup sem permissao de contato mostra aviso discreto e omite dados pessoais', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(200, {
+      id: 20,
+      protocolo: 'IP-2026-000020',
+      status: 'aberta',
+      prioridade: 'normal',
+      poste_id: '3405',
+      referencia_localizacao: 'Av. Central',
+      dados_pessoais_disponiveis: false,
+      nome_solicitante: 'Pessoa Sigilosa',
+      contato_solicitante: '(67) 99999-0000'
+    }));
+
+    const popup = await fetchMapaOcorrenciaPopup(20);
+    const html = renderMapaOcorrenciaPopup(popup);
+
+    expect(globalThis.fetch.mock.calls[0][0]).toBe(buildMapaOcorrenciaPopupUrl(20));
+    expect(globalThis.fetch.mock.calls[0][1]).toMatchObject({ credentials: 'include' });
+    expect(html).toContain('Contato não disponível para este perfil');
+    expect(html).not.toContain('Pessoa Sigilosa');
+    expect(html).not.toContain('(67) 99999-0000');
+  });
+
+  it('popup com contato disponivel renderiza somente quando backend retorna autorizado', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(200, {
+      id: 20,
+      protocolo: 'IP-2026-000020',
+      status: 'aberta',
+      prioridade: 'alta',
+      poste_id: '3405',
+      referencia_localizacao: 'Av. Central',
+      dados_pessoais_disponiveis: true,
+      nome_solicitante: 'Operador Autorizado',
+      contato_solicitante: '(67) 98888-0000'
+    }));
+
+    const popup = await fetchMapaOcorrenciaPopup(20);
+    const html = renderMapaOcorrenciaPopup(popup);
+
+    expect(html).toContain('Contato autorizado');
+    expect(html).toContain('Operador Autorizado');
+    expect(html).toContain('(67) 98888-0000');
+  });
+
+  it('botao copiar WhatsApp monta mensagem operacional em tres linhas', () => {
+    expect(buildWhatsAppDispatchText(
+      'https://www.google.com/maps/dir/?api=1&destination=-23.000000,-55.000000',
+      'IP-2026-000029',
+      'João da Silva'
+    )).toBe([
+      'https://www.google.com/maps/dir/?api=1&destination=-23.000000,-55.000000',
+      'Protocolo: IP-2026-000029',
+      'Solicitante: João da Silva'
+    ].join('\n'));
+
+    expect(buildWhatsAppDispatchText('rota', 'IP-2026-000030', '')).toContain('Solicitante: não disponível para este perfil');
+  });
+
+  it('botao WhatsApp do card busca popup autorizado quando nao ha solicitante renderizado', () => {
+    const state = solicitacoesReadyState([readPermission, statusPermission, commentPermission], {
+      id: 10,
+      protocolo: 'IP-2026-000010',
+      coordinates: { latitude: -23.098883, longitude: -55.231625 }
+    });
+    const html = renderSolicitacoesPanel(state);
+    const source = readFileSync(new URL('./internal-iluminacao-shell.js', import.meta.url), 'utf8');
+
+    expect(html).toContain('data-action="copy-whatsapp-dispatch"');
+    expect(html).toContain('data-solicitacao-id="10"');
+    expect(html).toContain('data-solicitante=""');
+    expect(source).toContain('fetchMapaOcorrenciaPopup(solicitacaoId)');
+    expect(source).toContain('Buscando solicitante autorizado');
+  });
+
+  it('popup renderiza copia WhatsApp com contato autorizado e fallback sem contato', () => {
+    const withContact = renderMapaOcorrenciaPopup({
+      status: 'ready',
+      item: {
+        id: 20,
+        protocolo: 'IP-2026-000020',
+        status: 'Aberta',
+        prioridade: 'Alta',
+        posteId: '3405',
+        referenciaLocalizacao: 'Av. Central',
+        nomeSolicitante: 'Operador Autorizado',
+        contatoSolicitante: '(67) 98888-0000',
+        routeUrl: 'https://www.google.com/maps/dir/?api=1&destination=-23.105000,-55.225000'
+      }
+    });
+
+    expect(withContact).toContain('data-action="copy-whatsapp-dispatch"');
+    expect(withContact).toContain('data-solicitante="Operador Autorizado"');
+    expect(withContact).toContain('data-solicitacao-id="20"');
+
+    const withoutContact = renderMapaOcorrenciaPopup({
+      status: 'ready',
+      item: {
+        id: 21,
+        protocolo: 'IP-2026-000021',
+        status: 'Aberta',
+        prioridade: 'Normal',
+        posteId: '3406',
+        referenciaLocalizacao: 'Rua Central',
+        nomeSolicitante: '',
+        contatoSolicitante: '',
+        routeUrl: 'https://www.google.com/maps/dir/?api=1&destination=-23.106000,-55.226000'
+      }
+    });
+
+    expect(withoutContact).toContain('Contato não disponível para este perfil');
+    expect(withoutContact).toContain('data-solicitante=""');
+  });
+
+  it('ordenacao da listagem cobre protocolo status prioridade poste criado e atualizado', () => {
+    const state = solicitacoesReadyState([readPermission, adminUsersReadPermission], {});
+    state.solicitacoes.items = [
+      listItem({
+        id: 10,
+        protocolo: 'IP-2026-000010',
+        status: 'Resolvida',
+        statusKey: 'resolvida',
+        prioridade: 'Baixa',
+        prioridadeKey: 'baixa',
+        posteId: '2000',
+        criadoEm: '10/06/2026, 10:00',
+        criadoEmRaw: '2026-06-10T10:00:00Z',
+        atualizadoEm: '10/06/2026, 11:00',
+        atualizadoEmRaw: '2026-06-10T11:00:00Z'
+      }),
+      listItem({
+        id: 29,
+        protocolo: 'IP-2026-000029',
+        status: 'Aberta',
+        statusKey: 'aberta',
+        prioridade: 'Urgente',
+        prioridadeKey: 'urgente',
+        posteId: '100',
+        criadoEm: '30/06/2026, 10:21',
+        criadoEmRaw: '2026-06-30T10:21:00Z',
+        atualizadoEm: '30/06/2026, 10:25',
+        atualizadoEmRaw: '2026-06-30T10:25:00Z'
+      })
+    ];
+    state.solicitacoes.total = 2;
+
+    for (const sortBy of ['protocolo_desc', 'protocolo_asc', 'status_asc', 'prioridade_desc', 'poste_asc', 'criado_desc', 'atualizado_desc']) {
+      const html = renderSolicitacoesPanel({
+        ...state,
+        solicitacoes: {
+          ...state.solicitacoes,
+          sortBy
+        }
+      });
+
+      expect(html).toContain('value="' + sortBy + '"');
+    }
+
+    const byOldProtocol = renderSolicitacoesPanel({
+      ...state,
+      solicitacoes: { ...state.solicitacoes, sortBy: 'protocolo_asc' }
+    });
+    expect(byOldProtocol.indexOf('IP-2026-000010')).toBeLessThan(byOldProtocol.indexOf('IP-2026-000029'));
+
+    const byUpdated = renderSolicitacoesPanel({
+      ...state,
+      solicitacoes: { ...state.solicitacoes, sortBy: 'atualizado_desc' }
+    });
+    expect(byUpdated.indexOf('IP-2026-000029')).toBeLessThan(byUpdated.indexOf('IP-2026-000010'));
+  });
+
+  it('selecao do mapa filtra a lista pela pagina atual e permite limpar selecao', () => {
+    const state = solicitacoesReadyState([readPermission], {});
+    const selected = listItem({ id: 20, protocolo: 'IP-2026-000020' });
+    state.solicitacoes.items = [listItem({ id: 10, protocolo: 'IP-2026-000010' }), selected];
+    state.solicitacoes.total = 2;
+    state.mapaOperacional = createOperationalMapState({ selectedIds: [20] });
+
+    const filtered = filterSolicitacoesByMapSelection(state.solicitacoes, state.mapaOperacional);
+    const html = renderSolicitacoesPanel(state);
+
+    expect(filtered.items).toHaveLength(1);
+    expect(filtered.items[0].id).toBe(20);
+    expect(html).toContain('IP-2026-000020');
+    expect(html).not.toContain('IP-2026-000010');
+    expect(html).toContain('Limpar seleção');
+  });
+
+  it('filtra a lista pelos pontos visíveis no mapa carregado', () => {
+    const state = solicitacoesReadyState([readPermission], {});
+    const visible = listItem({ id: 20, protocolo: 'IP-2026-000020' });
+    state.solicitacoes.items = [listItem({ id: 10, protocolo: 'IP-2026-000010' }), visible];
+    state.solicitacoes.total = 2;
+    state.mapaOperacional = createOperationalMapState({
+      status: 'ready',
+      items: [
+        { id: 20, protocolo: 'IP-2026-000020', hasCoordinates: true, coordinates: { latitude: -23.1, longitude: -55.2 } }
+      ],
+      selectedIds: [20],
+      selectionMode: 'viewport'
+    });
+
+    const filtered = filterSolicitacoesByMapSelection(state.solicitacoes, state.mapaOperacional);
+    const mapHtml = renderInternalOperationalMapPanel(state);
+    const listHtml = renderSolicitacoesPanel(state);
+
+    expect(filtered.items).toHaveLength(1);
+    expect(filtered.message).toContain('pontos vis');
+    expect(mapHtml).toContain('Filtrar lista pelo mapa');
+    expect(mapHtml).toContain('Limpar filtro do mapa');
+    expect(listHtml).toContain('Filtro ativo pelo mapa');
+    expect(listHtml).toContain('Limpar filtro');
+    expect(listHtml).not.toContain('IP-2026-000010');
+  });
+
+  it('une selecao multipla do mapa sem duplicar ids invalidos', () => {
+    expect(mergeOperationalMapSelectionIds([20, '21'], [21, 22, 0, -1, 'abc'])).toEqual([20, 21, 22]);
+    expect(mergeOperationalMapSelectionIds([], [30, 31])).toEqual([30, 31]);
+  });
+
+  it('liga botoes do mapa e coleta grupo de pontos no clique', () => {
+    const source = readFileSync(new URL('./internal-iluminacao-shell.js', import.meta.url), 'utf8');
+
+    expect(source).toContain('getFeaturesAtPixel(event.pixel');
+    expect(source).toContain('hitTolerance: 12');
+    expect(source).toContain('selectOperationalMapOccurrences(root, currentState, solicitacaoIds)');
+    expect(source).toContain('clearOperationalMapSelection(root, currentState)');
+    expect(source).toContain('loadOperationalMap(root, currentState)');
+    expect(source).toContain('filterOperationalMapVisiblePoints(root, currentState)');
+    expect(source).toContain('getOperationalMapVisibleIds(internalOperationalMap');
+  });
+
+  it('abre popup do ponto clicado mesmo com selecao anterior acumulada', () => {
+    const source = readFileSync(new URL('./internal-iluminacao-shell.js', import.meta.url), 'utf8');
+
+    expect(source).toContain('const clickedIds = (Array.isArray(solicitacaoIds) ? solicitacaoIds : [solicitacaoIds])');
+    expect(source).toContain('const selectedIds = mergeOperationalMapSelectionIds(currentMap.selectedIds || [], clickedIds);');
+    expect(source).toContain('const popupSolicitacaoId = clickedIds[clickedIds.length - 1] || null;');
+    expect(source).not.toContain('const popupSolicitacaoId = selectedIds[selectedIds.length - 1] || null;');
+  });
+  it('trata 401 e 403 no mapa com mensagens seguras', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(jsonResponse(401, {}))
+      .mockResolvedValueOnce(jsonResponse(403, {}));
+
+    const expired = await fetchMapaOcorrencias();
+    const forbidden = await fetchMapaOcorrencias();
+
+    expect(expired.status).toBe('unauthenticated');
+    expect(expired.message).toContain('Sessão expirada');
+    expect(forbidden.status).toBe('forbidden');
+    expect(forbidden.message).toContain('Sem permissão');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('rotinas do mapa nao usam storage do navegador para autenticacao', () => {
+    expect(fetchMapaOcorrencias.toString()).not.toContain('localStorage');
+    expect(fetchMapaOcorrencias.toString()).not.toContain('sessionStorage');
+    expect(fetchMapaOcorrenciaPopup.toString()).not.toContain('localStorage');
+    expect(fetchMapaOcorrenciaPopup.toString()).not.toContain('sessionStorage');
+    expect(renderInternalOperationalMapPanel.toString()).not.toContain('localStorage');
+    expect(renderInternalOperationalMapPanel.toString()).not.toContain('sessionStorage');
   });
 });

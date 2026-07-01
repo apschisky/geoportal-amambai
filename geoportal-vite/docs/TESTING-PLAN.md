@@ -610,4 +610,17 @@ Observacao operacional: em validacoes PowerShell, `POST /auth/logout` deve envia
 
 Nao houve migration, alteracao de schema, frontend, Apache, NSSM, `.env`, SQL manual de `INSERT`/`UPDATE`/`DELETE`, deploy de frontend ou exposicao de secrets/cookies/tokens.
 
-Proximos testes/ciclos: implementar frontend do mapa operacional, popup visual semelhante ao Geoportal publico, selecao de pontos filtrando lista, botao para limpar selecao/filtros, validacao visual por perfil e documentacao/publicacao do frontend.
+### Validacao final do frontend do mapa operacional de Iluminacao
+
+Marco final registrado para o frontend do mapa operacional interno de Iluminacao Publica. A implementacao fechou a etapa na shell interna, com painel `Mapa operacional` integrado ao modulo, consumo seguro dos endpoints internos com `credentials: include`, colecao de pontos sem dados pessoais, popup operacional com contato autorizado pelo backend, selecao multipla no mapa, filtro por pontos visiveis, ordenacao client-side, correcao de resumos/dashboard e tratamento do popup para o ultimo ponto clicado.
+
+Escopo restrito ao frontend interno, sem alterar backend, banco, migrations, scripts, `.env`, Apache/NSSM, deploy ou restart de servico. Os arquivos alterados foram `geoportal-vite/src/internal-iluminacao-shell.js`, `geoportal-vite/src/internal-iluminacao-shell.css` e `geoportal-vite/src/internal-iluminacao-shell.test.js`.
+
+Validacoes registradas:
+
+- `npm.cmd test -- --run src/internal-iluminacao-shell.test.js`: 100 passed.
+- `npm.cmd run build`: passou.
+- Suite frontend anterior da mesma implementacao: 186 passed.
+- `git diff --check`: sem erros, apenas avisos LF/CRLF do Windows.
+
+Proximos passos operacionais: commit da branch de feature, pull request, merge controlado em `main`, publicacao manual do frontend interno e validacao visual em producao interna pelos perfis `manutencao.producao`, `seleido.admin`, `sergio` e `admin.producao`.
