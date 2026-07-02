@@ -12,6 +12,11 @@ export default defineConfig({
         target: 'https://geoserver.amambai.ms.gov.br',
         changeOrigin: true,
         secure: true
+      },
+      '/api/public/': {
+        target: 'https://geoserver.amambai.ms.gov.br',
+        changeOrigin: true,
+        secure: true
       }
     }
   },
