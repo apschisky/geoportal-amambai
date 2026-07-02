@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { POSTE_FORM_CONFIG } from './geoportal-config.js';
-import { buildPosteRepairFormUrl, calculateDistance, createPostePopupHTML } from './geoportal-postes-reparo.js';
+import { ILUMINACAO_API_TEST_CONFIG, POSTE_FORM_CONFIG } from './geoportal-config.js';
+import { buildPosteRepairFormUrl, calculateDistance, createPostePopupHTML, getIluminacaoConsultaApiUrl } from './geoportal-postes-reparo.js';
 
 const FORM_BASE_URL = 'https://docs.google.com/forms/d/e/test-form/viewform?usp=pp_url';
 const FORM_FIELDS = {
@@ -9,9 +9,13 @@ const FORM_FIELDS = {
 };
 
 const originalPosteFormEnabled = POSTE_FORM_CONFIG.enabled;
+const originalApiEnabled = ILUMINACAO_API_TEST_CONFIG.enabled;
+const originalConsultaEnabled = ILUMINACAO_API_TEST_CONFIG.consultaEnabled;
 
 afterEach(() => {
   POSTE_FORM_CONFIG.enabled = originalPosteFormEnabled;
+  ILUMINACAO_API_TEST_CONFIG.enabled = originalApiEnabled;
+  ILUMINACAO_API_TEST_CONFIG.consultaEnabled = originalConsultaEnabled;
 });
 
 function parseFormUrl(formUrl) {
@@ -159,5 +163,53 @@ describe('createPostePopupHTML', () => {
 
     expect(html).toContain('poste-popup-action-repair');
     expect(html).toContain('docs.google.com/forms');
+  });
+
+
+  it('remove o texto longo e exibe as acoes iniciais de localizacao e consulta', () => {
+    POSTE_FORM_CONFIG.enabled = true;
+    ILUMINACAO_API_TEST_CONFIG.enabled = true;
+    ILUMINACAO_API_TEST_CONFIG.consultaEnabled = true;
+
+    const html = createPostePopupHTML(
+      { IDs_coord: 'P-123' },
+      [-6123456.12, -2643210.45],
+      FORM_BASE_URL,
+      FORM_FIELDS
+    );
+
+    expect(html).not.toContain('N?o encontrou o poste correto?');
+    expect(html).not.toContain('N??o encontrou o poste correto?');
+    expect(html).toContain('LOCALIZA\u00c7\u00c3O');
+    expect(html).toContain('data-iluminacao-api-manual-location="true"');
+    expect(html).toContain('Selecionar local manualmente');
+    expect(html).toContain('J\u00c1 POSSUI UMA SOLICITA\u00c7\u00c3O?');
+    expect(html).toContain('data-iluminacao-consulta-open="true"');
+    expect(html).toContain('Consultar andamento da solicita\u00e7\u00e3o');
+  });
+});
+
+
+describe('getIluminacaoConsultaApiUrl', () => {
+  it('usa rota relativa no Vite local para passar pelo proxy', () => {
+    const previousWindow = globalThis.window;
+    globalThis.window = { location: { hostname: 'localhost' } };
+
+    try {
+      expect(getIluminacaoConsultaApiUrl()).toBe('/api/public/iluminacao/consulta');
+    } finally {
+      globalThis.window = previousWindow;
+    }
+  });
+
+  it('mantem URL configurada fora do localhost', () => {
+    const previousWindow = globalThis.window;
+    globalThis.window = { location: { hostname: 'geoportal.amambai.ms.gov.br' } };
+
+    try {
+      expect(getIluminacaoConsultaApiUrl()).toBe(ILUMINACAO_API_TEST_CONFIG.consultaApiUrl);
+    } finally {
+      globalThis.window = previousWindow;
+    }
   });
 });
